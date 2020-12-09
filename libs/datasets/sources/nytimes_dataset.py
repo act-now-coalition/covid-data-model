@@ -3,7 +3,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.timeseries import MultiRegionDataset
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from functools import lru_cache
 from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 
@@ -15,7 +15,7 @@ class NYTimesDataset(data_source.DataSource):
 
     HAS_AGGREGATED_NYC_BOROUGH = True
 
-    INDEX_FIELD_MAP = {f: f for f in TimeseriesDataset.INDEX_FIELDS}
+    INDEX_FIELD_MAP = {f: f for f in TIMESERIES_INDEX_FIELDS}
 
     COMMON_FIELD_MAP = {f: f for f in {CommonFields.CASES, CommonFields.DEATHS,}}
 

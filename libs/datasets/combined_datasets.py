@@ -15,7 +15,6 @@ from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
 from libs.datasets.dataset_pointer import DatasetPointer
-from libs.datasets import latest_values_dataset
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
@@ -23,9 +22,9 @@ from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.sources.usa_facts import UsaFactsDataSource
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.cms_testing_dataset import CMSTestingDataset
+from libs.datasets.sources.cdc_testing_dataset import CDCTestingDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
@@ -101,7 +100,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POSITIVE_CASES_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TESTS_PEOPLE_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
-    CommonFields.TEST_POSITIVITY: [CMSTestingDataset],
+    CommonFields.TEST_POSITIVITY_14D: [CMSTestingDataset],
+    CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
@@ -133,15 +133,6 @@ def load_us_timeseries_dataset(
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
-
-
-@functools.lru_cache(None)
-def load_us_latest_dataset(
-    pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
-) -> latest_values_dataset.LatestValuesDataset:
-    us_timeseries = load_us_timeseries_dataset(pointer_directory=pointer_directory)
-    # Returned object contains a DataFrame with a LOCATION_ID column
-    return LatestValuesDataset(us_timeseries.static_and_timeseries_latest_with_fips().reset_index())
 
 
 def get_county_name(region: Region) -> Optional[str]:

@@ -51,12 +51,13 @@ class RegionalInput:
 
     @property
     def timeseries(self) -> OneRegionTimeseriesDataset:
-        """Get the TimeseriesDataset"""
+        """Get the OneRegionTimeseriesDataset"""
         return self._regional_data
 
     @property
     def state_timeseries(self) -> Optional[OneRegionTimeseriesDataset]:
-        """Get the TimeseriesDataset for the state of a county region, or None for other regions."""
+        """Get the OneRegionTimeseriesDataset for the state of a county region, or None for other
+        regions."""
         if self.region.is_county():
             return self._state_combined_data.timeseries
         else:

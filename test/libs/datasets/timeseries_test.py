@@ -44,19 +44,6 @@ def test_remove_padded_nans(include_na_at_end):
     pd.testing.assert_series_equal(results.cases, expected_series)
 
 
-def test_multi_region_to_from_timeseries():
-    ts = read_csv_and_index_fips_date(
-        "fips,county,aggregate_level,date,m1,m2\n"
-        "97111,Bar County,county,2020-04-02,2,\n"
-        "97222,Foo County,county,2020-04-01,,10\n"
-        "01,,state,2020-04-01,,20\n"
-    ).reset_index()
-    multiregion = timeseries.MultiRegionDataset.from_fips_timeseries_df(ts)
-    pd.testing.assert_frame_equal(
-        ts, multiregion.data_with_fips.drop(columns=[CommonFields.LOCATION_ID]), check_like=True,
-    )
-
-
 def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Path):
     ts_df = read_csv_and_index_fips_date(
         "fips,county,aggregate_level,date,m1,m2\n"
@@ -118,7 +105,7 @@ def test_multi_region_to_csv_write_timeseries_latest_values(tmp_path: pathlib.Pa
 
     csv_path = tmp_path / "multiregion.csv"
     # Check that latest values are correctly derived from timeseries and merged with
-    # LatestValuesDataset.
+    # the static data.
     multiregion.to_csv(csv_path, write_timeseries_latest_values=True)
     assert csv_path.read_text() == (
         "location_id,date,fips,county,aggregate_level,c1,m1,m2\n"
@@ -168,8 +155,8 @@ def test_multi_region_get_counties():
             "iso1:us#fips:97,Great State,state,,1,2\n"
         )
     )
-    counties_ts = ts.get_counties(after=pd.to_datetime("2020-04-01"))
-    assert to_dict(["location_id", "date"], counties_ts.data[["location_id", "date", "m1"]]) == {
+    counties_ts = ts.get_counties(after=pd.to_datetime("2020-04-01")).timeseries.reset_index()
+    assert to_dict(["location_id", "date"], counties_ts[["location_id", "date", "m1"]]) == {
         ("iso1:us#fips:97111", pd.to_datetime("2020-04-02")): {"m1": 2},
         ("iso1:us#fips:97111", pd.to_datetime("2020-04-03")): {"m1": 3},
     }
