@@ -20,6 +20,21 @@ GEO_DATA_COLUMNS = [
 
 NON_NUMERIC_COLUMNS = GEO_DATA_COLUMNS + [CommonFields.CAN_LOCATION_PAGE_URL]
 
+LATEST_VALUES_INDEX_FIELDS = [
+    CommonFields.AGGREGATE_LEVEL,
+    CommonFields.COUNTRY,
+    CommonFields.STATE,
+    CommonFields.FIPS,
+]
+
+TIMESERIES_INDEX_FIELDS = [
+    CommonFields.DATE,
+    CommonFields.AGGREGATE_LEVEL,
+    CommonFields.COUNTRY,
+    CommonFields.STATE,
+    CommonFields.FIPS,
+]
+
 
 def _get_public_data_path():
     """Sets global path to covid-data-public directory."""
@@ -50,9 +65,6 @@ class AggregationLevel(enum.Enum):
 
 
 class DatasetType(enum.Enum):
-
-    TIMESERIES = "timeseries"
-    LATEST = "latest"
     MULTI_REGION = "multiregion"
 
     @property
@@ -61,14 +73,10 @@ class DatasetType(enum.Enum):
         # Avoidling circular import errors.
         from libs.datasets import timeseries
 
-        from libs.datasets import latest_values_dataset
-
-        if self is DatasetType.TIMESERIES:
-            return timeseries.TimeseriesDataset
-        elif self is DatasetType.LATEST:
-            return latest_values_dataset.LatestValuesDataset
-        elif self is DatasetType.MULTI_REGION:
+        if self is DatasetType.MULTI_REGION:
             return timeseries.MultiRegionDataset
+        else:
+            raise ValueError("Bad enum")
 
 
 class DuplicateValuesForIndex(Exception):

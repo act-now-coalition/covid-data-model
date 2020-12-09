@@ -1,7 +1,6 @@
 import os
 import logging
 import urllib.request
-from typing import Optional
 from typing import Tuple
 
 import requests
@@ -12,14 +11,11 @@ import zipfile
 import json
 from datetime import datetime
 from functools import lru_cache
-from enum import Enum
 
 import pandas as pd
 import numpy as np
 
 from covidactnow.datapublic.common_fields import CommonFields
-from libs import pipeline
-from libs.datasets import combined_datasets
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 import pyseir.utils
 
@@ -27,19 +23,6 @@ import pyseir.utils
 log = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pyseir_data")
-
-
-class HospitalizationCategory(Enum):
-    HOSPITALIZED = "hospitalized"
-    ICU = "icu"
-
-    def __str__(self):
-        return str(self.value)
-
-
-class HospitalizationDataType(Enum):
-    CUMULATIVE_HOSPITALIZATIONS = "cumulative_hospitalizations"
-    CURRENT_HOSPITALIZATIONS = "current_hospitalizations"
 
 
 def load_zip_get_file(url, file, decoder="utf-8"):
@@ -190,81 +173,6 @@ def calculate_new_case_data_by_region(
     # corrections in case count. These are always tiny so we just make
     # downstream easier to work with by clipping.
     return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
-
-
-@lru_cache(maxsize=None)
-def get_hospitalization_data() -> pd.DataFrame:
-    """
-    Creates a DataFrame of hospitalization timeseries with non-unique LOCATION_ID index.
-
-    Since we're using this data for hospitalized data only, only returning
-    values with hospitalization data.  I think as the use cases of this data source
-    expand, we may not want to drop. For context, as of 4/8 607/1821 rows contained
-    hospitalization data.
-    """
-    # TODO(tom): Change this function to accept the combined data as a parameter and call it once
-    # so the cache can be removed.
-    data = combined_datasets.load_us_timeseries_dataset().data  # processing rows, ignoring indexes
-    has_current_hospital = data[CommonFields.CURRENT_HOSPITALIZED].notnull()
-    has_cumulative_hospital = data[CommonFields.CUMULATIVE_HOSPITALIZED].notnull()
-
-    return (
-        data[has_current_hospital | has_cumulative_hospital]
-        .set_index(CommonFields.LOCATION_ID)
-        .sort_index()
-    )
-
-
-def get_hospitalization_data_for_region(region: pipeline.Region) -> pd.DataFrame:
-    """Returns a DataFrame of data in region or an empty DataFrame"""
-    all_data = get_hospitalization_data()
-    return all_data.loc[all_data.index.intersection([region.location_id])]
-
-
-def calculate_hospitalization_data(
-    hospitalization_df: pd.DataFrame,
-    t0: datetime,
-    category: HospitalizationCategory = HospitalizationCategory.HOSPITALIZED,
-) -> Tuple[Optional[np.array], Optional[np.array], Optional[HospitalizationDataType]]:
-    """
-    Obtain hospitalization data. We clip because there are sometimes negatives
-    either due to data reporting or corrections in case count. These are always
-    tiny so we just make downstream easier to work with by clipping.
-
-    Args:
-    hospitalization_df: one region of data returned by `get_hospitalization_data_for_region`
-    t0: Datetime to offset by.
-    category: HospitalizationCategory
-
-    Returns:
-        relative_days: Array of float days since t0 for the hospitalization data.
-        observed_hospitalizations: Array of int new cases observed each day.
-        type: Specifies cumulative or current hospitalizations.
-    """
-    if hospitalization_df.empty:
-        return None, None, None
-
-    if (hospitalization_df[f"current_{category}"] > 0).any():
-        hospitalization_df = hospitalization_df[hospitalization_df[f"current_{category}"].notnull()]
-        relative_days = (hospitalization_df["date"].dt.date - t0.date()).dt.days.values
-        return (
-            relative_days,
-            hospitalization_df[f"current_{category}"].values.clip(min=0),
-            HospitalizationDataType.CURRENT_HOSPITALIZATIONS,
-        )
-    elif (hospitalization_df[f"cumulative_{category}"] > 0).any():
-        hospitalization_df = hospitalization_df[
-            hospitalization_df[f"cumulative_{category}"].notnull()
-        ]
-        relative_days = (hospitalization_df["date"].dt.date - t0.date()).dt.days.values
-        cumulative = hospitalization_df[f"cumulative_{category}"].values.clip(min=0)
-        # Some minor glitches for a few states..
-        for i in range(len(cumulative[1:])):
-            if cumulative[i] > cumulative[i + 1]:
-                cumulative[i] = cumulative[i + 1]
-        return relative_days, cumulative, HospitalizationDataType.CUMULATIVE_HOSPITALIZATIONS
-    else:
-        return None, None, None
 
 
 def calculate_new_test_data_by_region(

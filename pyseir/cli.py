@@ -35,13 +35,11 @@ ALL_STATES: List[str] = [state_obj.abbr for state_obj in us.STATES] + ["PR"]
 
 
 def _cache_global_datasets():
-    # Populate cache for combined latest and timeseries.  Caching pre-fork
+    # Populate cache for combined timeseries.  Caching pre-fork
     # will make sure cache is populated for subprocesses.  Return value
     # is not needed as the only goal is to populate the cache.
-    combined_datasets.load_us_latest_dataset().data
     # Access data here to populate the property cache.
-    combined_datasets.load_us_timeseries_dataset().data
-    combined_datasets.load_us_timeseries_dataset().data_with_fips
+    combined_datasets.load_us_timeseries_dataset()
     infer_icu.get_region_weight_map()
 
 

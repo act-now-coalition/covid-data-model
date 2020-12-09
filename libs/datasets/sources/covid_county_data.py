@@ -10,8 +10,8 @@ from covidactnow.datapublic import common_df
 
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
+from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets.timeseries import MultiRegionDataset
-from libs.datasets.timeseries import TimeseriesDataset
 
 # 2020/11/01: By manual comparison of test positivity calculated via Covid County Data vs CMS
 # and local dashboards where available, these states have data that seems less credible than
@@ -23,13 +23,7 @@ class CovidCountyDataDataSource(data_source.DataSource):
     DATA_PATH = "data/cases-covid-county-data/timeseries-common.csv"
     SOURCE_NAME = "Valorum"
 
-    # Covid County Data reports values at both the state and county level. However, state values
-    # are not reported until complete values from states are received.  The latest
-    # row may contain some county data but not state data - instead of aggregating and returning
-    # incomplete state data, we are choosing to not aggregate.
-    FILL_MISSING_STATE_LEVEL_DATA = False
-
-    INDEX_FIELD_MAP = {f: f for f in TimeseriesDataset.INDEX_FIELDS}
+    INDEX_FIELD_MAP = {f: f for f in TIMESERIES_INDEX_FIELDS}
 
     # Keep in sync with update_covid_county_data.py in the covid-data-public repo.
     # DataSource objects must have a map from CommonFields to fields in the source file.

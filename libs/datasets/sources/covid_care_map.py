@@ -2,7 +2,7 @@ import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
-from libs.datasets.timeseries import LatestValuesDataset
+from libs.datasets.dataset_utils import LATEST_VALUES_INDEX_FIELDS
 
 
 class CovidCareMapBeds(data_source.DataSource):
@@ -10,7 +10,7 @@ class CovidCareMapBeds(data_source.DataSource):
 
     SOURCE_NAME = "CCM"
 
-    INDEX_FIELD_MAP = {f: f for f in LatestValuesDataset.INDEX_FIELDS}
+    INDEX_FIELD_MAP = {f: f for f in LATEST_VALUES_INDEX_FIELDS}
 
     COMMON_FIELD_MAP = {
         f: f

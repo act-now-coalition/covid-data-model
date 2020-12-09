@@ -12,6 +12,7 @@ from typing import Mapping
 from typing import Sequence
 from typing import Tuple
 
+from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from pandas.core.dtypes.common import is_numeric_dtype
@@ -21,18 +22,14 @@ import pandas as pd
 import numpy as np
 import structlog
 from covidactnow.datapublic import common_df
-from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 from libs import pipeline
 from libs.datasets import dataset_utils
-from libs.datasets import dataset_base
-from libs.datasets.common_fields import CommonIndexFields
-from libs.datasets.common_fields import CommonFields
 from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import NON_NUMERIC_COLUMNS
-from libs.datasets.latest_values_dataset import LatestValuesDataset
+from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
@@ -118,25 +115,6 @@ class OneRegionTimeseriesDataset:
     def remove_padded_nans(self, columns: List[str]):
         """Returns a copy of `self`, skipping rows at the start and end where `columns` are NA"""
         return dataclasses.replace(self, data=_remove_padded_nans(self.data, columns))
-
-
-class TimeseriesDataset(dataset_base.DatasetBase):
-    """Represents timeseries dataset.
-
-    To make a data source compatible with the timeseries, it must have the required
-    fields in the Fields class below + metrics. The other fields are generated
-    in the `from_source` method.
-    """
-
-    INDEX_FIELDS = [
-        CommonIndexFields.DATE,
-        CommonIndexFields.AGGREGATE_LEVEL,
-        CommonIndexFields.COUNTRY,
-        CommonIndexFields.STATE,
-        CommonIndexFields.FIPS,
-    ]
-
-    COMMON_INDEX_FIELDS = COMMON_FIELDS_TIMESERIES_KEYS
 
 
 def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
@@ -278,14 +256,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
     # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and VARIABLE.
     provenance: pd.Series = _EMPTY_PROVENANCE_SERIES
 
-    # `data` has a simple integer index and columns from CommonFields. DATE and LOCATION_ID must
-    # be non-null in every row.
-    @cached_property
-    def data(self) -> pd.DataFrame:
-        # TODO(tom): Remove this attribute. There are only a few users of it.
-        df = self._geo_data.join(self.timeseries).drop(columns=[CommonFields.FIPS], errors="ignore")
-        return df.reset_index()
-
     @cached_property
     def _geo_data(self) -> pd.DataFrame:
         return self.static.loc[:, self.static.columns.isin(GEO_DATA_COLUMNS)]
@@ -293,24 +263,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
     @cached_property
     def dataset_type(self) -> DatasetType:
         return DatasetType.MULTI_REGION
-
-    @cached_property
-    def data_with_fips(self) -> pd.DataFrame:
-        """data with FIPS column, use `data` when FIPS is not need."""
-        data_copy = self.data.copy()
-        _add_fips_if_missing(data_copy)
-        return data_copy
-
-    @cached_property
-    def static_data_with_fips(self) -> pd.DataFrame:
-        """_latest_data with FIPS column and LOCATION_ID index.
-
-        TODO(tom): This data is usually accessed via OneRegionTimeseriesDataset. Retire this
-        property.
-        """
-        data_copy = self.static.reset_index()
-        _add_fips_if_missing(data_copy)
-        return data_copy.set_index(CommonFields.LOCATION_ID)
 
     @lru_cache(maxsize=None)
     def static_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
@@ -387,7 +339,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         )
 
         geodata_column_mask = timeseries_and_geodata_df.columns.isin(
-            set(TimeseriesDataset.INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
+            set(TIMESERIES_INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
         )
         timeseries_df = timeseries_and_geodata_df.loc[:, ~geodata_column_mask]
         # Change all columns in timeseries_df to have a numeric dtype, as checked in __post_init__
@@ -488,11 +440,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return MultiRegionDataset.from_fips_timeseries_df(
             pd.DataFrame([], columns=[CommonFields.FIPS, CommonFields.DATE])
         )
-
-    @staticmethod
-    def from_latest(latest: LatestValuesDataset) -> "MultiRegionDataset":
-        """Creates a new MultiRegionDataset with static data from latest and no timeseries data."""
-        return MultiRegionDataset.new_without_timeseries().add_fips_static_df(latest.data)
 
     def __post_init__(self):
         """Checks that attributes of this object meet certain expectations."""
@@ -701,9 +648,14 @@ class MultiRegionDataset(SaveableDatasetInterface):
         if write_timeseries_latest_values:
             latest_data = self.static_and_timeseries_latest_with_fips().reset_index()
         else:
-            latest_data = self.static_data_with_fips.reset_index()
+            latest_data = self.static.reset_index()
+            _add_fips_if_missing(latest_data)
+
+        timeseries_data = self._geo_data.join(self.timeseries).reset_index()
+        _add_fips_if_missing(timeseries_data)
+
         # A DataFrame with timeseries data and latest data (with DATE=NaT) together
-        combined = pd.concat([self.data_with_fips, latest_data], ignore_index=True)
+        combined = pd.concat([timeseries_data, latest_data], ignore_index=True)
         assert combined[CommonFields.LOCATION_ID].notna().all()
         common_df.write_csv(
             combined, path, structlog.get_logger(), [CommonFields.LOCATION_ID, CommonFields.DATE]

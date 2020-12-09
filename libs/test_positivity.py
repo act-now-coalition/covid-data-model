@@ -161,7 +161,7 @@ class AllMethods:
     ) -> "AllMethods":
         """Runs `methods` on `dataset_in` and returns the results or raises a TestPositivityException."""
         relevant_columns = AllMethods._list_columns(
-            AllMethods._methods_with_columns_available(methods, dataset_in.data.columns)
+            AllMethods._methods_with_columns_available(methods, dataset_in.timeseries.columns)
         )
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()

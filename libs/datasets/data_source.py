@@ -2,9 +2,9 @@ from typing import Type, Optional
 
 import pandas as pd
 
+from libs.datasets.dataset_utils import LATEST_VALUES_INDEX_FIELDS
+from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets.timeseries import MultiRegionDataset
-from libs.datasets.timeseries import TimeseriesDataset
-from libs.datasets.latest_values_dataset import LatestValuesDataset
 from functools import lru_cache
 
 
@@ -25,13 +25,6 @@ class DataSource(object):
     # Indicates if NYC data is aggregated into one NYC county or not.
     HAS_AGGREGATED_NYC_BOROUGH = False
 
-    # Flag to indicate whether or not to fill missing state level data with county data
-    # when converting to either a TimeseriesDataset or LatestValuesDataset.
-    # Some data sources provide state level data, while others don't, however, due to how
-    # some data sources report data, aggregating on the county level data may lead to incorrect
-    # assumptions about missing vs data that is just zero.
-    FILL_MISSING_STATE_LEVEL_DATA = True
-
     def __init__(self, data: pd.DataFrame, provenance: Optional[pd.Series] = None):
         self.data = data
         self.provenance = provenance
@@ -46,7 +39,7 @@ class DataSource(object):
 
     @lru_cache(None)
     def multi_region_dataset(self) -> MultiRegionDataset:
-        if set(self.INDEX_FIELD_MAP.keys()) == set(TimeseriesDataset.INDEX_FIELDS):
+        if set(self.INDEX_FIELD_MAP.keys()) == set(TIMESERIES_INDEX_FIELDS):
             dataset = MultiRegionDataset.from_fips_timeseries_df(self.data).add_provenance_all(
                 self.SOURCE_NAME
             )
@@ -57,7 +50,7 @@ class DataSource(object):
             #     dataset.add_fips_provenance(self.provenance)
             return dataset
 
-        if set(self.INDEX_FIELD_MAP.keys()) == set(LatestValuesDataset.INDEX_FIELDS):
+        if set(self.INDEX_FIELD_MAP.keys()) == set(LATEST_VALUES_INDEX_FIELDS):
             return MultiRegionDataset.new_without_timeseries().add_fips_static_df(self.data)
 
         raise ValueError("Unexpected index fields")

@@ -6,7 +6,6 @@ from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS, ABBREV_US_UNKNOWN_COUNTY_FIPS
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.common_fields import CommonIndexFields
 
 CURRENT_FOLDER = pathlib.Path(__file__).parent
 
@@ -36,10 +35,10 @@ class FIPSPopulation(data_source.DataSource):
         COUNTRY = "country"
 
     INDEX_FIELD_MAP = {
-        CommonIndexFields.COUNTRY: Fields.COUNTRY,
-        CommonIndexFields.STATE: Fields.STATE,
-        CommonIndexFields.FIPS: Fields.FIPS,
-        CommonIndexFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
+        CommonFields.COUNTRY: Fields.COUNTRY,
+        CommonFields.STATE: Fields.STATE,
+        CommonFields.FIPS: Fields.FIPS,
+        CommonFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
     }
 
     COMMON_FIELD_MAP = {
