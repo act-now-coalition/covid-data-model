@@ -1,7 +1,9 @@
 import os
 from datetime import datetime
 from enum import Enum
+
 from scipy import signal
+
 from libs.pipeline import Region
 
 from pyseir import OUTPUT_DIR

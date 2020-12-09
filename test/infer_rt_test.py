@@ -4,6 +4,8 @@ import pytest
 import pandas as pd
 import structlog
 
+import pyseir.cli
+import pyseir.utils
 from libs.datasets import combined_datasets
 from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
@@ -269,7 +271,7 @@ def test_patch_substatepipeline_nola_infection_rate():
         region = pipeline.Region.from_fips(fips)
         infection_rate_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
         pipelines.append(
-            cli.RegionPipeline(
+            pyseir.cli.RegionPipeline(
                 region=region,
                 infer_df=infection_rate_df,
                 icu_data=None,

@@ -6,6 +6,10 @@ import time
 import pydantic
 import structlog
 
+import pyseir.cli
+import pyseir.utils
+from libs import test_positivity
+
 from libs.pipelines.api_v2_paths import APIOutputPathBuilder
 from libs.pipelines.api_v2_paths import FileType
 from api.can_api_v2_definition import AggregateRegionSummary
@@ -240,3 +244,34 @@ def deploy_csv_api_output(
 
     rows = dataset_deployer.remove_root_wrapper(api_output.dict())
     dataset_deployer.write_nested_csv(rows, output_path, keys_to_skip=keys_to_skip)
+
+
+def loaded_generate_api_v2(
+    model_output: "pyseir.cli.PyseirOutputDatasets",
+    output: pathlib.Path,
+    selected_dataset: MultiRegionDataset,
+    log,
+):
+    icu_data_map = dict(model_output.icu.iter_one_regions())
+    rt_data_map = dict(model_output.infection_rate.iter_one_regions())
+
+    # If calculating test positivity succeeds join it with the combined_datasets into one
+    # MultiRegionDataset
+    regions_data = test_positivity.run_and_maybe_join_columns(selected_dataset, log)
+    regional_inputs = [
+        RegionalInput.from_one_regions(
+            region,
+            regional_data,
+            icu_data=icu_data_map.get(region),
+            rt_data=rt_data_map.get(region),
+        )
+        for region, regional_data in regions_data.iter_one_regions()
+    ]
+    log.info(f"Finished loading all regional inputs.")
+    # Build all region timeseries API Output objects.
+    log.info("Generating all API Timeseries")
+    all_timeseries = run_on_regions(regional_inputs)
+    deploy_single_level(all_timeseries, AggregationLevel.COUNTY, output)
+    deploy_single_level(all_timeseries, AggregationLevel.STATE, output)
+    deploy_single_level(all_timeseries, AggregationLevel.CBSA, output)
+    log.info("Finished API generation.")
