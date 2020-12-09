@@ -56,22 +56,6 @@ def save_combined_csv(csv_path_format, output_dir):
     timeseries.to_csv(csv_path)
 
 
-@main.command()
-@click.option(
-    "--csv-path-format",
-    default="latest-{git_branch}-{git_sha}-{timestamp}.csv",
-    show_default=True,
-    help="Filename template where CSV is written",
-)
-@click.option("--output-dir", "-o", type=pathlib.Path, default=pathlib.Path("."))
-def save_combined_latest_csv(csv_path_format, output_dir):
-    """Save the combined datasets latest DataFrame, cleaned up for easier comparisons."""
-    csv_path = form_path_name(csv_path_format, output_dir)
-
-    latest = combined_datasets.load_us_latest_dataset()
-    latest.to_csv(csv_path)
-
-
 def form_path_name(csv_path_format, output_dir):
     """Create a path from a format string that may contain `{git_sha}` etc and output_dir."""
     try:

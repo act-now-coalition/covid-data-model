@@ -4,7 +4,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.timeseries import TimeseriesDataset
+from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 
 
 class TestAndTraceData(data_source.DataSource):
@@ -21,7 +21,7 @@ class TestAndTraceData(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    INDEX_FIELD_MAP = {f: f for f in TimeseriesDataset.INDEX_FIELDS}
+    INDEX_FIELD_MAP = {f: f for f in TIMESERIES_INDEX_FIELDS}
 
     COMMON_FIELD_MAP = {f: f for f in [CommonFields.CONTACT_TRACERS_COUNT]}
 
