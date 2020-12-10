@@ -4,22 +4,18 @@ import dataclasses
 import sys
 import os
 import logging
-
-import pandas as pd
 import us
 import click
 
 
 from covidactnow.datapublic import common_init
 from covidactnow.datapublic.common_fields import CommonFields
-from typing_extensions import final
 
 from libs.pipelines import api_v2_pipeline
 from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import MultiRegionDataset
 from pyseir.icu import infer_icu
 import pyseir.rt.patches
 
@@ -27,7 +23,6 @@ import pyseir.utils
 from pyseir.rt import infer_rt
 from pyseir.rt.utils import NEW_ORLEANS_FIPS
 from pyseir.run import OneRegionPipeline
-from pyseir.utils import SummaryArtifact
 
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
 
@@ -155,56 +150,18 @@ def build_all(states, output_dir, level, fips, generate_api_v2: bool):
     )
     regions = [one_region for _, one_region in regions_dataset.iter_one_regions()]
     root.info(f"Executing pipeline for {len(regions)} regions")
-    region_pipelines = parallel_utils.parallel_map(OneRegionPipeline.run, regions)
+    region_pipelines: List[OneRegionPipeline] = parallel_utils.parallel_map(
+        OneRegionPipeline.run, regions
+    )
     region_pipelines = _patch_nola_infection_rate_in_pipelines(region_pipelines)
 
-    model_output = PyseirOutputDatasets.from_pipeline_output(region_pipelines)
+    model_output = pyseir.run.PyseirOutputDatasets.from_pipeline_output(region_pipelines)
     model_output.write(output_dir, root)
 
     if generate_api_v2:
         api_v2_pipeline.generate_api_v2_from_loaded_data(
             model_output, output_dir, regions_dataset, root
         )
-
-
-@final
-@dataclasses.dataclass(frozen=True)
-class PyseirOutputDatasets:
-    icu: MultiRegionDataset
-    infection_rate: MultiRegionDataset
-
-    def write(self, output_dir: pathlib.Path, log):
-        output_dir_path = pathlib.Path(output_dir)
-        if not output_dir_path.exists():
-            output_dir_path.mkdir()
-
-        output_path = output_dir_path / SummaryArtifact.RT_METRIC_COMBINED.value
-        self.infection_rate.to_csv(output_path)
-        log.info(f"Saving Rt results to {output_path}")
-
-        output_path = output_dir_path / SummaryArtifact.ICU_METRIC_COMBINED.value
-        self.icu.to_csv(output_path)
-        log.info(f"Saving ICU results to {output_path}")
-
-    @staticmethod
-    def read(output_dir: pathlib.Path) -> "PyseirOutputDatasets":
-        icu_data_path = output_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
-        icu_data = MultiRegionDataset.from_csv(icu_data_path)
-
-        rt_data_path = output_dir / SummaryArtifact.RT_METRIC_COMBINED.value
-        rt_data = MultiRegionDataset.from_csv(rt_data_path)
-
-        return PyseirOutputDatasets(icu=icu_data, infection_rate=rt_data)
-
-    @staticmethod
-    def from_pipeline_output(pipelines: List["OneRegionPipeline"]) -> "PyseirOutputDatasets":
-        infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
-        infection_rate_ds = MultiRegionDataset.from_geodata_timeseries_df(infection_rate_metric_df)
-
-        icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
-        icu_ds = MultiRegionDataset.from_geodata_timeseries_df(icu_df)
-
-        return PyseirOutputDatasets(icu=icu_ds, infection_rate=infection_rate_ds)
 
 
 if __name__ == "__main__":
