@@ -130,13 +130,17 @@ def run_infer_rt(state, states_only):
     help="Directory to deploy " "webui output.",
 )
 @click.option(
+    "--location-id-matches",
+    help="If set only location_id matching this regular expression are processed",
+)
+@click.option(
     "--generate-api-v2",
     default=False,
     is_flag=True,
     type=bool,
     help="Generate API v2 output after PySEIR finishes",
 )
-def build_all(states, output_dir, level, fips, generate_api_v2: bool):
+def build_all(states, output_dir, level, fips, location_id_matches: str, generate_api_v2: bool):
     # split columns by ',' and remove whitespace
     states = [c.strip() for c in states]
     states = [us.states.lookup(state).abbr for state in states]
@@ -146,7 +150,11 @@ def build_all(states, output_dir, level, fips, generate_api_v2: bool):
     _cache_global_datasets()
 
     regions_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(
-        fips=fips, aggregation_level=level, exclude_county_999=True, states=states,
+        fips=fips,
+        aggregation_level=level,
+        exclude_county_999=True,
+        states=states,
+        location_id_matches=location_id_matches,
     )
     regions = [one_region for _, one_region in regions_dataset.iter_one_regions()]
     root.info(f"Executing pipeline for {len(regions)} regions")
