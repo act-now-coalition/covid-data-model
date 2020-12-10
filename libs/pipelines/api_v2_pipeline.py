@@ -251,6 +251,7 @@ def generate_from_loaded_data(
     selected_dataset: MultiRegionDataset,
     log,
 ):
+    """Runs the API generation code using data in parameters, writing results to output."""
     icu_data_map = dict(model_output.icu.iter_one_regions())
     rt_data_map = dict(model_output.infection_rate.iter_one_regions())
 
