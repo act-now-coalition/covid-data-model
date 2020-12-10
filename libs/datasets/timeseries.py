@@ -183,7 +183,7 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     wide = wide.reindex(index=all_locations)
     missing_columns = all_columns - set(wide.columns)
     if missing_columns:
-        _log.warning(f"Re-adding empty columns: {missing_columns}")
+        _log.debug(f"Re-adding empty columns: {missing_columns}")
         wide = wide.reindex(columns=[*wide.columns, *missing_columns])
     # Make columns expected to be numeric have a numeric dtype so that aggregation functions
     # work on them.
@@ -472,17 +472,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
             .difference(self.timeseries.index.get_level_values(CommonFields.LOCATION_ID))
             .empty
         )
-        self._check_fips()
-
-    def _check_fips(self):
-        """Logs a message if FIPS is present for a subset of regions, a bit of a mysterious problem."""
-        if CommonFields.FIPS in self.static:
-            missing_fips = self.static[CommonFields.FIPS].isna()
-            if missing_fips.any():
-                columns = self.static.columns.intersection(GEO_DATA_COLUMNS)
-                _log.info(
-                    f"Missing fips for some regions:\n{self.static.loc[missing_fips, columns]}"
-                )
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         common_location_id = self.static.index.intersection(other.static.index)
