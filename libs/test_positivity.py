@@ -117,8 +117,7 @@ class PassThruMethod(Method):
 TEST_POSITIVITY_METHODS = (
     # HACK: For now we assume TEST_POSITIVITY_7D came from CDC numbers while
     # TEST_POSITIVITY_14D came from CMS.
-    # CDC Data disabled until data quality issue fixed
-    # PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
+    PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
     PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY_14D),
     DivisionMethod(
         "positiveTestsViral_totalTestsViral",
