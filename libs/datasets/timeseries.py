@@ -565,6 +565,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         fips: Optional[str] = None,
         state: Optional[str] = None,
         states: Optional[List[str]] = None,
+        location_id_matches: Optional[str] = None,
         exclude_county_999: bool = False,
     ) -> "MultiRegionDataset":
         """Returns a new object containing data for a subset of the regions in `self`."""
@@ -574,6 +575,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
             fips=fips,
             state=state,
             states=states,
+            location_id_matches=location_id_matches,
             exclude_county_999=exclude_county_999,
         )
         location_ids = self.static.loc[rows_key, :].index
