@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "450317a64e842fa75772cc414f1f851057928f26",
+    "sha": "75d3f91cbb1e26d7a17d1aeba80a99ded3992279",
     "branch": "master",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "bdff9b8939e89ba2b8f2558105a2bb577c31fb47",
-    "branch": "master",
+    "sha": "74e9d79d8c30401327dd9b1afa3d80742f177892",
+    "branch": "tgb-nyc-no-agg",
     "is_dirty": false
   },
-  "updated_at": "2020-12-10T01:35:47.712397"
+  "updated_at": "2020-12-10T01:47:35.489577"
 }
