@@ -11,17 +11,19 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
 import api
+import pyseir.cli
+import pyseir.run
 
 from api import update_open_api_spec
 from libs import test_positivity
 from libs import top_level_metrics
-from libs.pipelines import api_v2_pipeline
 from libs.datasets import combined_datasets
-from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
-from pyseir.utils import SummaryArtifact
+import pyseir.utils
 import pandas as pd
+
+from libs.pipelines import api_v2_pipeline
 
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -138,36 +140,5 @@ def generate_api_v2(model_output_dir, output, level, state, fips):
     )
     _logger.info(f"Loading all regional inputs.")
 
-    icu_data_path = model_output_dir / SummaryArtifact.ICU_METRIC_COMBINED.value
-    icu_data = MultiRegionDataset.from_csv(icu_data_path)
-    icu_data_map = dict(icu_data.iter_one_regions())
-
-    rt_data_path = model_output_dir / SummaryArtifact.RT_METRIC_COMBINED.value
-    rt_data = MultiRegionDataset.from_csv(rt_data_path)
-    rt_data_map = dict(rt_data.iter_one_regions())
-
-    # If calculating test positivity succeeds join it with the combined_datasets into one
-    # MultiRegionDataset
-    regions_data = test_positivity.run_and_maybe_join_columns(selected_dataset, _logger)
-
-    regional_inputs = [
-        api_v2_pipeline.RegionalInput.from_one_regions(
-            region,
-            regional_data,
-            icu_data=icu_data_map.get(region),
-            rt_data=rt_data_map.get(region),
-        )
-        for region, regional_data in regions_data.iter_one_regions()
-    ]
-
-    _logger.info(f"Finished loading all regional inputs.")
-
-    # Build all region timeseries API Output objects.
-    _logger.info("Generating all API Timeseries")
-    all_timeseries = api_v2_pipeline.run_on_regions(regional_inputs)
-
-    api_v2_pipeline.deploy_single_level(all_timeseries, AggregationLevel.COUNTY, output)
-    api_v2_pipeline.deploy_single_level(all_timeseries, AggregationLevel.STATE, output)
-    api_v2_pipeline.deploy_single_level(all_timeseries, AggregationLevel.CBSA, output)
-
-    _logger.info("Finished API generation.")
+    model_output = pyseir.run.PyseirOutputDatasets.read(model_output_dir)
+    api_v2_pipeline.generate_from_loaded_data(model_output, output, selected_dataset, _logger)

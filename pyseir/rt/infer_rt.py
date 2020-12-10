@@ -1,5 +1,4 @@
 from typing import Optional
-import math
 from dataclasses import dataclass
 from datetime import timedelta
 import structlog
