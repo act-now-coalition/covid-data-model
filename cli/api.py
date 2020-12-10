@@ -23,7 +23,7 @@ from libs.datasets.dataset_utils import AggregationLevel
 import pyseir.utils
 import pandas as pd
 
-from libs.pipelines.api_v2_pipeline import generate_api_v2_from_loaded_data
+from libs.pipelines import api_v2_pipeline
 
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -141,4 +141,4 @@ def generate_api_v2(model_output_dir, output, level, state, fips):
     _logger.info(f"Loading all regional inputs.")
 
     model_output = pyseir.run.PyseirOutputDatasets.read(model_output_dir)
-    generate_api_v2_from_loaded_data(model_output, output, selected_dataset, _logger)
+    api_v2_pipeline.generate_from_loaded_data(model_output, output, selected_dataset, _logger)

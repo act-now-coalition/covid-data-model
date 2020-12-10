@@ -245,7 +245,7 @@ def deploy_csv_api_output(
     dataset_deployer.write_nested_csv(rows, output_path, keys_to_skip=keys_to_skip)
 
 
-def generate_api_v2_from_loaded_data(
+def generate_from_loaded_data(
     model_output: pyseir.run.PyseirOutputDatasets,
     output: pathlib.Path,
     selected_dataset: MultiRegionDataset,

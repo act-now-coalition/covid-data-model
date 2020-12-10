@@ -159,9 +159,7 @@ def build_all(states, output_dir, level, fips, generate_api_v2: bool):
     model_output.write(output_dir, root)
 
     if generate_api_v2:
-        api_v2_pipeline.generate_api_v2_from_loaded_data(
-            model_output, output_dir, regions_dataset, root
-        )
+        api_v2_pipeline.generate_from_loaded_data(model_output, output_dir, regions_dataset, root)
 
 
 if __name__ == "__main__":
