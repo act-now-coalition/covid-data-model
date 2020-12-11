@@ -63,7 +63,7 @@ def test_combined_county_has_some_timeseries_data(fips):
     region = Region.from_fips(fips)
     latest = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
     df = latest.data.set_index(CommonFields.DATE)
-    date = "2020-09-01"  # Arbitrary date that both FIPS have data for.
+    date = "2020-09-04"  # Arbitrary date that both FIPS have data for.
     assert df.loc[date, CommonFields.CASES] > 0
     assert df.loc[date, CommonFields.DEATHS] > 0
     assert df.loc[date, CommonFields.POSITIVE_TESTS] > 0
