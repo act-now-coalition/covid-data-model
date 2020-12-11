@@ -841,6 +841,8 @@ WEIGHTED_AGGREGATIONS = (
     # Maybe test_positivity is better averaged using time-varying total tests, but it isn't
     # implemented. See TODO next to call to _find_scale_factors.
     StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY, CommonFields.POPULATION),
+    StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_7D, CommonFields.POPULATION),
+    StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_14D, CommonFields.POPULATION),
     StaticWeightedAverageAggregation(
         CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE, CommonFields.MAX_BED_COUNT
     ),
