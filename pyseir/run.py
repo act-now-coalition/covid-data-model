@@ -10,6 +10,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from typing_extensions import final
 
 from libs import pipeline
+from libs.datasets import AggregationLevel
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from pyseir.icu import infer_icu
@@ -42,13 +43,15 @@ class OneRegionPipeline:
 
         icu_data = None
 
-        icu_input = infer_icu.RegionalInput.from_regional_data(input)
-        try:
-            icu_data = infer_icu.get_icu_timeseries_from_regional_input(
-                icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
-            )
-        except KeyError:
-            _log.exception(f"Failed to run icu data for {input.region}")
+        # TODO: Re-enable for CBSAs once typical utilization number aggregation fixed.
+        if input.region.level is not AggregationLevel.CBSA:
+            icu_input = infer_icu.RegionalInput.from_regional_data(input)
+            try:
+                icu_data = infer_icu.get_icu_timeseries_from_regional_input(
+                    icu_input, weight_by=infer_icu.ICUWeightsPath.ONE_MONTH_TRAILING_CASES
+                )
+            except KeyError:
+                _log.exception(f"Failed to run icu data for {input.region}")
 
         return OneRegionPipeline(
             region=input.region, infer_df=infer_df, icu_data=icu_data, _combined_data=input,
