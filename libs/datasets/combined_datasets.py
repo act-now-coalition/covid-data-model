@@ -68,31 +68,22 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
+        CovidCountyDataDataSource,
+        CovidTrackingDataSource,
+        TexasHospitalizations,
         HHSHospitalDataset,
-        # CovidCountyDataDataSource,
-        # CovidTrackingDataSource,
-        # TexasHospitalizations,
     ],
     CommonFields.CURRENT_ICU: [
+        CovidCountyDataDataSource,
+        CovidTrackingDataSource,
+        TexasHospitalizations,
         HHSHospitalDataset,
-        # CovidCountyDataDataSource,
-        # CovidTrackingDataSource,
-        # TexasHospitalizations,
     ],
-    CommonFields.CURRENT_ICU_TOTAL: [
-        HHSHospitalDataset,
-        # CovidCountyDataDataSource
-    ],
+    CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource, HHSHospitalDataset,],
     CommonFields.CURRENT_VENTILATED: [CovidCountyDataDataSource, CovidTrackingDataSource,],
     CommonFields.DEATHS: [NYTimesDataset],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [
-        HHSHospitalDataset,
-        # CovidCountyDataDataSource
-    ],
-    CommonFields.ICU_BEDS: [
-        HHSHospitalDataset,
-        # CovidCountyDataDataSource
-    ],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource, HHSHospitalDataset,],
+    CommonFields.ICU_BEDS: [CovidCountyDataDataSource, HHSHospitalDataset,],
     CommonFields.NEGATIVE_TESTS: [
         CovidCountyDataDataSource,
         CovidTrackingDataSource,
@@ -122,6 +113,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.FIPS: [FIPSPopulation, CovidCountyDataDataSource],
     CommonFields.STATE: [FIPSPopulation, CovidCountyDataDataSource],
     CommonFields.POPULATION: [FIPSPopulation],
+    # TODO(michael): We don't really trust the CCM bed numbers and would ideally remove them entirely.
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
