@@ -17,6 +17,7 @@ from libs.datasets import dataset_pointer
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
+from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalDataset
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
@@ -67,20 +68,31 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
-        CovidCountyDataDataSource,
-        CovidTrackingDataSource,
-        TexasHospitalizations,
+        HHSHospitalDataset,
+        # CovidCountyDataDataSource,
+        # CovidTrackingDataSource,
+        # TexasHospitalizations,
     ],
     CommonFields.CURRENT_ICU: [
-        CovidCountyDataDataSource,
-        CovidTrackingDataSource,
-        TexasHospitalizations,
+        HHSHospitalDataset,
+        # CovidCountyDataDataSource,
+        # CovidTrackingDataSource,
+        # TexasHospitalizations,
     ],
-    CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource],
+    CommonFields.CURRENT_ICU_TOTAL: [
+        HHSHospitalDataset,
+        # CovidCountyDataDataSource
+    ],
     CommonFields.CURRENT_VENTILATED: [CovidCountyDataDataSource, CovidTrackingDataSource,],
     CommonFields.DEATHS: [NYTimesDataset],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource],
-    CommonFields.ICU_BEDS: [CovidCountyDataDataSource],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [
+        HHSHospitalDataset,
+        # CovidCountyDataDataSource
+    ],
+    CommonFields.ICU_BEDS: [
+        HHSHospitalDataset,
+        # CovidCountyDataDataSource
+    ],
     CommonFields.NEGATIVE_TESTS: [
         CovidCountyDataDataSource,
         CovidTrackingDataSource,
