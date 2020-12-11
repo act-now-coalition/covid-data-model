@@ -19,7 +19,7 @@ class HHSHospitalDataset(data_source.DataSource):
             CommonFields.CURRENT_ICU_TOTAL,
             CommonFields.CURRENT_ICU,
             CommonFields.STAFFED_BEDS,
-            CommonFields.CURRENT_HOSPITALIZED_TOTAL,
+            CommonFields.HOSPITAL_BEDS_IN_USE_ANY,
             CommonFields.CURRENT_HOSPITALIZED,
         }
     }
