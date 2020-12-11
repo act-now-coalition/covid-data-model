@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "d6c4bfd5f098ddbbf63cf0a15fd22fbbe9114eb7",
+    "sha": "366e292b3bf991b06960f2599bdfb8fcbfdd90d1",
     "branch": "mikelehen/drop-county-hhs-data",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "c60400410fb79457fe1bcaf10c5843b170759b59",
+    "sha": "4338eba0ab66407c7802d2d44923c14b7db91ae0",
     "branch": "mikelehen-use-hhs-data",
-    "is_dirty": true
+    "is_dirty": false
   },
-  "updated_at": "2020-12-11T20:17:15.141281"
+  "updated_at": "2020-12-11T20:31:12.188188"
 }
