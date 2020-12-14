@@ -183,7 +183,7 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     wide = wide.reindex(index=all_locations)
     missing_columns = all_columns - set(wide.columns)
     if missing_columns:
-        _log.warning(f"Re-adding empty columns: {missing_columns}")
+        _log.debug(f"Re-adding empty columns: {missing_columns}")
         wide = wide.reindex(columns=[*wide.columns, *missing_columns])
     # Make columns expected to be numeric have a numeric dtype so that aggregation functions
     # work on them.
@@ -472,17 +472,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
             .difference(self.timeseries.index.get_level_values(CommonFields.LOCATION_ID))
             .empty
         )
-        self._check_fips()
-
-    def _check_fips(self):
-        """Logs a message if FIPS is present for a subset of regions, a bit of a mysterious problem."""
-        if CommonFields.FIPS in self.static:
-            missing_fips = self.static[CommonFields.FIPS].isna()
-            if missing_fips.any():
-                columns = self.static.columns.intersection(GEO_DATA_COLUMNS)
-                _log.info(
-                    f"Missing fips for some regions:\n{self.static.loc[missing_fips, columns]}"
-                )
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         common_location_id = self.static.index.intersection(other.static.index)
@@ -576,6 +565,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         fips: Optional[str] = None,
         state: Optional[str] = None,
         states: Optional[List[str]] = None,
+        location_id_matches: Optional[str] = None,
         exclude_county_999: bool = False,
     ) -> "MultiRegionDataset":
         """Returns a new object containing data for a subset of the regions in `self`."""
@@ -585,6 +575,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
             fips=fips,
             state=state,
             states=states,
+            location_id_matches=location_id_matches,
             exclude_county_999=exclude_county_999,
         )
         location_ids = self.static.loc[rows_key, :].index
@@ -850,6 +841,8 @@ WEIGHTED_AGGREGATIONS = (
     # Maybe test_positivity is better averaged using time-varying total tests, but it isn't
     # implemented. See TODO next to call to _find_scale_factors.
     StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY, CommonFields.POPULATION),
+    StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_7D, CommonFields.POPULATION),
+    StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_14D, CommonFields.POPULATION),
     StaticWeightedAverageAggregation(
         CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE, CommonFields.MAX_BED_COUNT
     ),

@@ -263,6 +263,7 @@ def make_rows_key(
     on=None,
     after=None,
     before=None,
+    location_id_matches: Optional[str] = None,
     exclude_county_999: bool = False,
     exclude_fips_prefix: Optional[str] = None,
 ):
@@ -291,6 +292,11 @@ def make_rows_key(
         # create a binary Series here and refer to it from the query.
         not_county_999 = data[CommonFields.FIPS].str[-3:] != "999"
         query_parts.append("@not_county_999")
+    if location_id_matches:
+        location_id_match_mask = data.index.get_level_values(CommonFields.LOCATION_ID).str.match(
+            location_id_matches
+        )
+        query_parts.append("@location_id_match_mask")
     if exclude_fips_prefix:
         not_fips_prefix = data[CommonFields.FIPS].str[0:2] != exclude_fips_prefix
         query_parts.append("@not_fips_prefix")

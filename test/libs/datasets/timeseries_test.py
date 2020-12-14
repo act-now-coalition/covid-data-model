@@ -1160,25 +1160,27 @@ def test_multi_region_dataset_get_subset():
             "iso1:us#iso2:us-tx,state,TX,,,,,5000\n"
             "iso1:us#fips:97222,county,,97222,2020-04-01,1,2,\n"
             "iso1:us#fips:97222,county,,97222,,,,1000\n"
+            "iso1:us#cbsa:10100,cbsa,,,2020-04-01,1,2,20000\n"
         )
     )
 
-    assert (
-        ds.get_subset(aggregation_level=AggregationLevel.COUNTRY).static.at[
-            "iso1:us", CommonFields.POPULATION
-        ]
-        == 10000
-    )
-    assert (
-        ds.get_subset(fips="97222").timeseries.at[("iso1:us#fips:97222", "2020-04-01"), "m2"] == 2
-    )
-    assert (
-        ds.get_subset(state="TX").static.at["iso1:us#iso2:us-tx", CommonFields.POPULATION] == 5000
-    )
-    assert (
-        ds.get_subset(states=["TX"]).static.at["iso1:us#iso2:us-tx", CommonFields.POPULATION]
-        == 5000
-    )
+    subset = ds.get_subset(aggregation_level=AggregationLevel.COUNTRY)
+    assert subset.static.at["iso1:us", CommonFields.POPULATION] == 10000
+
+    subset = ds.get_subset(fips="97222")
+    assert subset.timeseries.at[("iso1:us#fips:97222", "2020-04-01"), "m2"] == 2
+
+    subset = ds.get_subset(state="TX")
+    assert subset.static.at["iso1:us#iso2:us-tx", CommonFields.POPULATION] == 5000
+
+    subset = ds.get_subset(states=["TX"])
+    assert subset.static.at["iso1:us#iso2:us-tx", CommonFields.POPULATION] == 5000
+
+    subset = ds.get_subset(location_id_matches=r"\A(iso1\:us|iso1\:us\#cbsa.+)\Z")
+    assert {r.location_id for r, _ in subset.iter_one_regions()} == {
+        "iso1:us",
+        "iso1:us#cbsa:10100",
+    }
 
 
 @pytest.mark.skip(reason="test not written, needs proper columns")
