@@ -35,6 +35,7 @@ def test_basic():
             "iso1:us#iso2:tx,2020-04-04,4,40,400\n"
         )
     )
+
     methods = [
         DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
@@ -223,3 +224,63 @@ def test_all_columns_na():
     ]
     with pytest.raises(test_positivity.NoRealTimeseriesValuesException):
         AllMethods.run(ts, methods, diff_days=1, recent_days=1)
+
+
+def test_provenance():
+    ts = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,positive_tests,positive_tests_viral,total_tests,\n"
+            "iso1:us#iso2:as,2020-04-01,0,,100\n"
+            "iso1:us#iso2:as,2020-04-02,2,,200\n"
+            "iso1:us#iso2:as,2020-04-03,4,,300\n"
+            "iso1:us#iso2:as,2020-04-04,6,,400\n"
+            "iso1:us#iso2:tx,2020-04-01,1,10,100\n"
+            "iso1:us#iso2:tx,2020-04-02,2,20,200\n"
+            "iso1:us#iso2:tx,2020-04-03,3,30,300\n"
+            "iso1:us#iso2:tx,2020-04-04,4,40,400\n"
+        )
+    ).add_provenance_csv(
+        io.StringIO(
+            "location_id,variable,provenance\n"
+            "iso1:us#iso2:as,positive_tests,pt_src1\n"
+            "iso1:us#iso2:tx,positive_tests,pt_src2\n"
+        )
+    )
+
+    methods = [
+        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+    ]
+    all_methods = AllMethods.run(ts, methods, 3, 14)
+
+    expected_df = _parse_wide_dates(
+        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
+        "iso1:us#iso2:as,method2,,,,0.02\n"
+        "iso1:us#iso2:tx,method1,,,,0.1\n"
+        "iso1:us#iso2:tx,method2,,,,0.01\n"
+    )
+    pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
+
+    expected_positivity = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,test_positivity\n"
+            "iso1:us#iso2:as,2020-04-04,0.02\n"
+            "iso1:us#iso2:tx,2020-04-04,0.1\n"
+        )
+    ).add_provenance_csv(
+        io.StringIO(
+            "location_id,variable,provenance\n"
+            "iso1:us#iso2:as,test_positivity,method2\n"
+            "iso1:us#iso2:tx,test_positivity,method1\n"
+        )
+    )
+    assert_dataset_like(all_methods.test_positivity, expected_positivity)
+
+    positivity_provenance = all_methods.test_positivity.provenance
+    # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
+    assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
+        CommonFields.TEST_POSITIVITY: "method2"
+    }
+    assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {
+        CommonFields.TEST_POSITIVITY: "method1"
+    }

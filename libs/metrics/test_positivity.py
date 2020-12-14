@@ -80,9 +80,15 @@ class DivisionMethod(Method):
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
+        assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
+        assert dataset.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
+        numerator_provenance = dataset.provenance.loc[locations, self._numerator]
+        denominator_provenance = dataset.provenance.loc[locations, self._denominator]
+        provenance = numerator_provenance.str.cat(denominator_provenance.str, sep=";", join="outer")
         _append_variable_index_level(wide_date_df, CommonFields.TEST_POSITIVITY)
-        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_all(
-            self._name
+        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_series(
+            provenance
         )
 
 
@@ -111,8 +117,15 @@ class PassThruMethod(Method):
         # Optional optimization: The following likely adds the variable/field/column name back in
         # to the index which was just taken out. Consider skipping reindexing.
         _append_variable_index_level(wide_date_df, CommonFields.TEST_POSITIVITY)
-        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_all(
-            self._name
+
+        assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
+        assert dataset.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        provenance = dataset.provenance.loc[
+            wide_date_df.get_level_values(CommonFields.LOCATION_ID), self._column
+        ]
+
+        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_series(
+            provenance
         )
 
 
