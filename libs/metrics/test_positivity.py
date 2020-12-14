@@ -36,7 +36,7 @@ class Method(ABC):
         pass
 
     @abstractmethod
-    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> MultiRegionDataset:
+    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
         """Calculate a DataFrame with LOCATION_ID index and DATE columns.
 
         Args:
@@ -72,7 +72,8 @@ class DivisionMethod(Method):
     def columns(self) -> Set[FieldName]:
         return {self._numerator, self._denominator}
 
-    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> MultiRegionDataset:
+    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
+        delta_df = dataset.timeseries_wide_dates_variable_first_diff(periods=diff_days)
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
@@ -100,7 +101,8 @@ class PassThruMethod(Method):
     def columns(self) -> Set[FieldName]:
         return {self._column}
 
-    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> MultiRegionDataset:
+    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
+        df = dataset.timeseries_wide_dates_variable_first()
         assert df.columns.names == [CommonFields.DATE]
         assert df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # df has the field name as the first level of the index. delta_df.loc[field, :] returns a
@@ -168,9 +170,7 @@ class AllMethods:
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()
 
-        input_wide = dataset_in.timeseries_wide_dates().reorder_levels(
-            [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-        )
+        input_wide = dataset_in.timeseries_wide_dates_variable_first()
         if input_wide.empty:
             raise NoRealTimeseriesValuesException()
         dates = input_wide.columns.get_level_values(CommonFields.DATE)
@@ -185,12 +185,8 @@ class AllMethods:
         if not methods_with_data:
             raise NoColumnsWithDataException()
 
-        # This calculates the difference only when the cumulative value is a real value `diff_days` apart.
-        # It looks like our input data has few or no holes so this works well enough.
-        diff_df = input_wide.diff(periods=diff_days, axis=1)
-
         calculated_dataset_map = {
-            timeseries.DatasetName(method.name): method.calculate(input_wide, diff_df)
+            timeseries.DatasetName(method.name): method.calculate(dataset_in, diff_days)
             for method in methods_with_data
         }
         calculated_dataset_recent_map = {
