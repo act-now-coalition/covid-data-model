@@ -28,7 +28,7 @@ def fips_to_location_id(fips: str) -> str:
     if state_obj:
         if len(fips) == 2:
             return f"iso1:us#iso2:us-{state_obj.abbr.lower()}"
-        elif len(fips) == 5:
+        elif len(fips) == 5 or len(fips) == 7:
             return f"iso1:us#iso2:us-{state_obj.abbr.lower()}#fips:{fips}"
 
     # This happens mostly (entirely?) in unittest data where the first two digits
@@ -106,6 +106,9 @@ class Region:
 
     @staticmethod
     def from_fips(fips: str) -> "Region":
+        """Creates a Region object from a state, county or place FIPS code.
+
+        Use from_cbsa_code for CBSAs; this function assumes fips[0:2] is the correct state code."""
         return Region(location_id=fips_to_location_id(fips), fips=fips)
 
     @staticmethod
@@ -117,7 +120,9 @@ class Region:
 
     @staticmethod
     def from_cbsa_code(cbsa_code: str) -> "Region":
-        # cbsa_code is a valid fips code, setting it to fips code
+        """Creates a Region object from a CBSA FIPS code.
+
+        Use from_fips for state, county or place FIPS."""
         fips = cbsa_code
         return Region(location_id=cbsa_to_location_id(cbsa_code), fips=fips)
 

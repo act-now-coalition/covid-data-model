@@ -17,3 +17,8 @@ def test_location_id_to_level():
     for location_id, level in param_result_map.items():
         assert pipeline.location_id_to_level(location_id) == level
         assert pipeline.Region.from_location_id(location_id).level == level
+
+
+def test_state_region():
+    assert pipeline.Region.from_fips("3651000").get_state_region().state == "NY"
+    assert pipeline.Region.from_fips("36061").get_state_region().state == "NY"

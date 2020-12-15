@@ -28,8 +28,8 @@ def aggregate_to_new_york_city(
     static_excluding_numbers = ds_in.get_regions_subset([nyc_region]).static.select_dtypes(
         exclude="number"
     )
-    nyc_dataset = timeseries.aggregate_regions(
-        ds_in, nyc_map, AggregationLevel.PLACE, ignore_na=True
-    ).add_static_values(static_excluding_numbers.reset_index())
+    nyc_dataset = timeseries.aggregate_regions(ds_in, nyc_map, ignore_na=True).add_static_values(
+        static_excluding_numbers.reset_index()
+    )
 
     return ds_in.append_regions(nyc_dataset)

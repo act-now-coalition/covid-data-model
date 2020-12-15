@@ -937,10 +937,7 @@ def test_aggregate_states_to_country():
     )
     region_us = Region.from_iso1("us")
     country = timeseries.aggregate_regions(
-        ts,
-        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        AggregationLevel.COUNTRY,
-        [],
+        ts, {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us}, [],
     )
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1080,7 +1077,6 @@ def test_aggregate_states_to_country_scale():
     country = timeseries.aggregate_regions(
         ts,
         {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        AggregationLevel.COUNTRY,
         [timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),],
     )
     # The column m1 is scaled by population.
@@ -1111,7 +1107,6 @@ def test_aggregate_states_to_country_scale_static():
     country = timeseries.aggregate_regions(
         ts,
         {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        AggregationLevel.COUNTRY,
         [
             timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),
             timeseries.StaticWeightedAverageAggregation(FieldName("s1"), CommonFields.POPULATION),
