@@ -1,5 +1,9 @@
 import io
 import pathlib
+from typing import Mapping
+from typing import Sequence
+from typing import Union
+
 import pytest
 import pandas as pd
 import structlog
@@ -873,9 +877,21 @@ def test_merge_provenance():
         )
 
 
-def _build_one_column_multiregion_dataset(
-    column, values, location_id="iso1:us#fips:97222", start_date="2020-08-25"
+def _build_one_column_dataset(
+    column,
+    values: Union[Sequence[float], Mapping[Region, Sequence[float]]],
+    location_id="iso1:us#fips:97222",
+    start_date="2020-08-25",
 ):
+    if isinstance(values, Mapping):
+        # Multiple regions passed in a Mapping. Build a new empty dataset and append result of
+        # recursive call for each region.
+        dataset = timeseries.MultiRegionDataset.new_without_timeseries()
+        for region, region_values in values.items():
+            dataset = dataset.append_regions(
+                _build_one_column_dataset(column, region_values, region.location_id, start_date)
+            )
+        return dataset
 
     dates = pd.date_range(start_date, periods=len(values), freq="D")
     ts_rows = []
@@ -889,18 +905,18 @@ def _build_one_column_multiregion_dataset(
 
 def test_remove_outliers():
     values = [10.0] * 7 + [1000.0]
-    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     dataset = timeseries.drop_new_case_outliers(dataset)
 
     # Expected result is the same series with the last value removed
     values = [10.0] * 7 + [None]
-    expected = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    expected = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     assert_dataset_like(dataset, expected)
 
 
 def test_remove_outliers_threshold():
     values = [1.0] * 7 + [30.0]
-    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
@@ -910,17 +926,37 @@ def test_remove_outliers_threshold():
 
     # Expected result is the same series with the last value removed
     values = [1.0] * 7 + [None]
-    expected = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    expected = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     assert_dataset_like(result, expected)
 
 
 def test_not_removing_short_series():
     values = [None] * 7 + [1, 1, 300]
-    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
     assert_dataset_like(dataset, result)
+
+
+def test_truncate_stalled_timeseries():
+    values = list(range(100_000, 130_000, 1_000))
+    values_stalled = values[:]
+    values_stalled[-1] = values_stalled[-2]
+    values_truncated = values_stalled[0:-1]
+
+    region_1 = Region.from_fips("06065")
+    region_2 = Region.from_fips("36061")
+
+    ds_in = _build_one_column_dataset(
+        CommonFields.NEW_CASES, {region_1: values, region_2: values_stalled}
+    )
+    ds_out = timeseries.drop_bad_tails(ds_in, CommonFields.NEW_CASES)
+
+    ds_expected = _build_one_column_dataset(
+        CommonFields.NEW_CASES, {region_1: values, region_2: values_truncated}
+    )
+    assert_dataset_like(ds_out, ds_expected)
 
 
 def test_timeseries_empty_timeseries_and_static():
@@ -1186,7 +1222,7 @@ def test_multi_region_dataset_get_subset():
             "iso1:us#iso2:us-tx,state,TX,,2020-04-01,4,2,\n"
             "iso1:us#iso2:us-tx,state,TX,,,,,5000\n"
             "iso1:us#fips:97222,county,,97222,2020-04-01,1,2,\n"
-            "iso1:us#fips:97222,county,,97222,,,,1000\n"
+            "iso-2:us#fips:97222,county,,97222,,,,1000\n"
             "iso1:us#cbsa:10100,cbsa,,,2020-04-01,1,2,20000\n"
         )
     )

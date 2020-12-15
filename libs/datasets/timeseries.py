@@ -1224,3 +1224,27 @@ def aggregate_puerto_rico_from_counties(dataset: MultiRegionDataset) -> MultiReg
             patched_static.at[pr_location_id, field] = aggregated_value
 
     return dataclasses.replace(dataset, static=patched_static)
+
+
+def _drop_bad_tail(series_in: pd.Series) -> pd.Series:
+    diff = series_in.diff()
+    mean = diff[-28:-14].mean()
+    threshold = mean / 100
+    for i in range(-1, -14, -1):
+        if diff[i] > threshold:
+            break
+    return series_in[:i]
+
+
+def drop_bad_tails(dataset: MultiRegionDataset, field: FieldName) -> MultiRegionDataset:
+    """Returns a dataset with recent data that looks bad removed from field."""
+
+    timeseries_wide_dates = dataset.timeseries_wide_dates()
+    fields_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE) == field
+    to_filter = timeseries_wide_dates.loc[pd.IndexSlice[:, fields_mask], :]
+    everything_else = timeseries_wide_dates.loc[pd.IndexSlice[:, ~fields_mask], :]
+    filtered = to_filter.apply(_drop_bad_tail)
+    merged = pd.concat([everything_else, filtered])
+
+    timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
+    return dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
