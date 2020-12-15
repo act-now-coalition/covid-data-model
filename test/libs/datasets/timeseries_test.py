@@ -672,6 +672,8 @@ def test_timeseries_latest_values_copied_to_static():
     assert dataset_t1_latest_in_static.static.loc["iso1:us#cbsa:10100", t1] == 10
     assert dataset_t1_latest_in_static.static.loc["iso1:us#fips:97111", t1] == 4
 
+    # Trying to copy the latest values of s1 fails because s1 already has a real value in static.
+    # See also longer comment where the ValueError is raised.
     with pytest.raises(ValueError):
         dataset.latest_in_static(s1)
 

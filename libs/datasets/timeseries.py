@@ -320,10 +320,13 @@ class MultiRegionDataset(SaveableDatasetInterface):
         """Returns a new object with the latest values from timeseries 'field' copied to static."""
         latest_series = self._timeseries_latest_values()[field]
         if field in self.static.columns and self.static[field].notna().any():
-            # This is not expected, so detect it and don't continue
+            # This looks like an attempt at copying the latest timeseries values to a static field
+            # which already has some values. Currently this behavior is not needed. To implement it
+            # decide if you want to clear all the existing static values or have the latest
+            # override the static or have the latest only copied where the static is currently NA.
             raise ValueError("Can only copy field when static is unset")
-        static_copy = self.static.drop(columns=[field], errors="ignore")
-        static_copy.insert(len(static_copy.columns), field, latest_series)
+        static_copy = self.static.copy()
+        static_copy[field] = latest_series
         return dataclasses.replace(self, static=static_copy)
 
     @staticmethod
