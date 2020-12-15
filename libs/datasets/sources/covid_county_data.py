@@ -1,4 +1,3 @@
-import dataclasses
 from functools import lru_cache
 from typing import Tuple
 
@@ -154,17 +153,4 @@ class CovidCountyDataDataSource(data_source.DataSource):
 
     @lru_cache(None)
     def multi_region_dataset(self) -> MultiRegionDataset:
-        dataset = super().multi_region_dataset()
-
-        # Add latest ICU_BEDS from timeseries to static.
-        # Hacked out of _timeseries_latest_values
-        # timeseries is already sorted by DATE with the latest at the bottom.
-        long = dataset.timeseries[CommonFields.ICU_BEDS].droplevel(CommonFields.DATE).dropna()
-        # `long` Index with LOCATION_ID. Keep only the last
-        # row with each index to get the last value for each date.
-        unduplicated_and_last_mask = ~long.index.duplicated(keep="last")
-        latest_icu_beds = long.loc[unduplicated_and_last_mask]
-        static_df = dataset.static.copy()
-        static_df.insert(len(static_df.columns), CommonFields.ICU_BEDS, latest_icu_beds)
-
-        return dataclasses.replace(dataset, static=static_df)
+        return super().multi_region_dataset().latest_in_static(CommonFields.ICU_BEDS)
