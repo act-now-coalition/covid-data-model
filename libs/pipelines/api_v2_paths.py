@@ -26,10 +26,12 @@ class APIOutputPathBuilder:
     def region_key(self):
         if self.level is AggregationLevel.COUNTY:
             return "counties"
-        if self.level is AggregationLevel.STATE:
+        elif self.level is AggregationLevel.STATE:
             return "states"
-        if self.level is AggregationLevel.CBSA:
+        elif self.level is AggregationLevel.CBSA:
             return "cbsas"
+        elif self.level is AggregationLevel.PLACE:
+            return "places"
 
         raise ValueError("Unsupported aggregation level")
 

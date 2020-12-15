@@ -4,7 +4,6 @@ from typing import Mapping
 import pandas as pd
 
 from libs import pipeline
-from libs.datasets import AggregationLevel
 from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionDataset
 from covidactnow.datapublic.common_fields import CommonFields

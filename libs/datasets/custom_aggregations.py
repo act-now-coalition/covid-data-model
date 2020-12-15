@@ -1,6 +1,5 @@
 from libs import pipeline
 from libs.datasets import timeseries
-from libs.datasets.dataset_utils import AggregationLevel
 
 NEW_YORK_COUNTY = "New York County"
 NEW_YORK_COUNTY_FIPS = "36061"
