@@ -1,8 +1,10 @@
+from functools import lru_cache
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
+from libs.datasets.timeseries import MultiRegionDataset
 
 
 class HHSHospitalDataset(data_source.DataSource):
@@ -30,3 +32,7 @@ class HHSHospitalDataset(data_source.DataSource):
         input_path = data_root / cls.DATA_PATH
         data = common_df.read_csv(input_path, set_index=False)
         return cls(data)
+
+    @lru_cache(None)
+    def multi_region_dataset(self) -> MultiRegionDataset:
+        return super().multi_region_dataset().latest_in_static(CommonFields.ICU_BEDS)

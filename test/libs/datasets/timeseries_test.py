@@ -656,6 +656,33 @@ def test_timeseries_latest_values():
     }
 
 
+def test_timeseries_latest_values_copied_to_static():
+    dataset = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,date,county,aggregate_level,t1,s1\n"
+            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
+            "iso1:us#cbsa:10100,2020-04-03,,,10,3\n"
+            "iso1:us#cbsa:10100,2020-04-04,,,,1\n"
+            "iso1:us#cbsa:10100,,,,,4\n"
+            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
+            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
+            "iso1:us#fips:97111,,Bar County,county,,\n"
+        )
+    )
+
+    # Check access to latest values as copied to static
+    t1 = FieldName("t1")
+    s1 = FieldName("s1")
+    dataset_t1_latest_in_static = dataset.latest_in_static(t1)
+    assert dataset_t1_latest_in_static.static.loc["iso1:us#cbsa:10100", t1] == 10
+    assert dataset_t1_latest_in_static.static.loc["iso1:us#fips:97111", t1] == 4
+
+    # Trying to copy the latest values of s1 fails because s1 already has a real value in static.
+    # See also longer comment where the ValueError is raised.
+    with pytest.raises(ValueError):
+        dataset.latest_in_static(s1)
+
+
 def test_join_columns():
     ts_1 = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(

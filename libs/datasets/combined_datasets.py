@@ -116,7 +116,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
     # TODO(michael): We don't really trust the CCM bed numbers and would ideally remove them entirely.
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds],
+    CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds, HHSHospitalDataset],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],

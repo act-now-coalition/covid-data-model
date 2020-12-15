@@ -316,6 +316,19 @@ class MultiRegionDataset(SaveableDatasetInterface):
         unduplicated_and_last_mask = ~long.index.duplicated(keep="last")
         return long.loc[unduplicated_and_last_mask, :].unstack()
 
+    def latest_in_static(self, field: FieldName) -> "MultiRegionDataset":
+        """Returns a new object with the latest values from timeseries 'field' copied to static."""
+        latest_series = self._timeseries_latest_values()[field]
+        if field in self.static.columns and self.static[field].notna().any():
+            # This looks like an attempt at copying the latest timeseries values to a static field
+            # which already has some values. Currently this behavior is not needed. To implement it
+            # decide if you want to clear all the existing static values or have the latest
+            # override the static or have the latest only copied where the static is currently NA.
+            raise ValueError("Can only copy field when static is unset")
+        static_copy = self.static.copy()
+        static_copy[field] = latest_series
+        return dataclasses.replace(self, static=static_copy)
+
     @staticmethod
     def from_timeseries_wide_dates_df(timeseries_wide_dates: pd.DataFrame) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame as returned by timeseries_wide_dates."""
