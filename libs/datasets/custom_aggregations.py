@@ -4,6 +4,7 @@ from libs.datasets.dataset_utils import AggregationLevel
 
 NEW_YORK_COUNTY = "New York County"
 NEW_YORK_COUNTY_FIPS = "36061"
+NEW_YORK_CITY_FIPS = "3651000"
 
 NYC_BOROUGH_FIPS = [
     "36047",  # Kings County
@@ -18,9 +19,8 @@ ALL_NYC_REGIONS = [pipeline.Region.from_fips(fips) for fips in ALL_NYC_FIPS]
 def aggregate_to_new_york_city(
     ds_in: timeseries.MultiRegionDataset,
 ) -> timeseries.MultiRegionDataset:
-    nyc_region = pipeline.Region.from_fips(NEW_YORK_COUNTY_FIPS)
-    # Map from borough / county to the region used for aggregated NYC, which is confusingly the
-    # same as Manhatten / 36061.
+    nyc_region = pipeline.Region.from_fips(NEW_YORK_CITY_FIPS)
+    # Map from borough / county to the region used for aggregated NYC
     nyc_map = {borough_region: nyc_region for borough_region in ALL_NYC_REGIONS}
 
     # aggregate_regions only copies number columns. Extract them and re-add to the aggregated
@@ -29,7 +29,7 @@ def aggregate_to_new_york_city(
         exclude="number"
     )
     nyc_dataset = timeseries.aggregate_regions(
-        ds_in, nyc_map, AggregationLevel.COUNTY, ignore_na=True
+        ds_in, nyc_map, AggregationLevel.PLACE, ignore_na=True
     ).add_static_values(static_excluding_numbers.reset_index())
 
-    return ds_in.remove_regions(ALL_NYC_REGIONS).append_regions(nyc_dataset)
+    return ds_in.append_regions(nyc_dataset)

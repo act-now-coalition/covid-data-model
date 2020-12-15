@@ -62,8 +62,10 @@ def location_id_to_level(location_id: str) -> Optional[AggregationLevel]:
         fips = match.group(1)
         if len(fips) == 2:
             return AggregationLevel.STATE
-        if len(fips) == 5:
+        elif len(fips) == 5:
             return AggregationLevel.COUNTY
+        elif len(fips) == 7:
+            return AggregationLevel.PLACE
 
     match = re.fullmatch(r"iso1:us#iso2:us-(..)", location_id)
     if match:
@@ -98,7 +100,8 @@ class Region:
     # https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes
     location_id: str
 
-    # The FIPS identifier for the region, either 2 digits for a state or 5 digits for a county.
+    # The FIPS identifier for the region, either 2 digits for a state, 5 digits for a county or 7
+    # digits for a place.
     fips: Optional[str]
 
     @staticmethod
