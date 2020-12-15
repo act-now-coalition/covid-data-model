@@ -50,14 +50,14 @@ endpoints to the API.
 You can now view results aggregated by CBSA:
 ```bash
 # Aggregate CBSA data
-https://api.covidactnow.org/latest/v2/cbsas.json?apiKey={apiKey}
-https://api.covidactnow.org/latest/v2/cbsas.timeseries.json?apiKey={apiKey}
-https://api.covidactnow.org/latest/v2/cbsas.csv?apiKey={apiKey}
-https://api.covidactnow.org/latest/v2/cbsas.timeseries.csv?apiKey={apiKey}
+https://api.covidactnow.org/v2/cbsas.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/cbsas.timeseries.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/cbsas.csv?apiKey={apiKey}
+https://api.covidactnow.org/v2/cbsas.timeseries.csv?apiKey={apiKey}
 
 # Individual CBSAs
-https://api.covidactnow.org/latest/v2/cbsa/{cbsa_code}.json?apiKey={apiKey}
-https://api.covidactnow.org/latest/v2/cbsa/{cbsa_code}.timeseries.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/cbsa/{cbsa_code}.json?apiKey={apiKey}
+https://api.covidactnow.org/v2/cbsa/{cbsa_code}.timeseries.json?apiKey={apiKey}
 ```
 
 Read the [CBSA API Documentation](/api#tag/CBSA-Data) to learn more.
