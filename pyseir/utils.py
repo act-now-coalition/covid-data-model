@@ -86,20 +86,21 @@ def get_run_artifact_path(region: Region, artifact, output_dir=None) -> str:
     """
 
     if region.level is AggregationLevel.COUNTY:
-        agg_level = AggregationLevel.COUNTY
         state_name = region.get_state_region().state_obj().name
         county = combined_datasets.get_county_name(region)
     elif region.level is AggregationLevel.STATE:
-        agg_level = AggregationLevel.STATE
         state_name = region.state_obj().name
         county = None
     elif region.level is AggregationLevel.CBSA:
-        agg_level = AggregationLevel.CBSA
         state_name = "CBSA"
+        county = None
+    elif region.level is AggregationLevel.PLACE:
+        state_name = region.get_state_region().state_obj().name
         county = None
     else:
         raise AssertionError(f"Unsupported aggregation level {region.level}")
 
+    agg_level = region.level
     fips = region.fips
 
     artifact = RunArtifact(artifact)

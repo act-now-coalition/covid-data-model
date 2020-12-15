@@ -581,9 +581,14 @@ class MultiRegionDataset(SaveableDatasetInterface):
         location_ids = self.static.loc[rows_key, :].index
         return self.get_locations_subset(location_ids)
 
-    def get_counties(self, after: Optional[datetime.datetime] = None) -> "MultiRegionDataset":
-        return self.get_subset(aggregation_level=AggregationLevel.COUNTY)._trim_timeseries(
-            after=after
+    def get_counties_and_places(
+        self, after: Optional[datetime.datetime] = None
+    ) -> "MultiRegionDataset":
+        places = self.get_subset(aggregation_level=AggregationLevel.PLACE)
+        return (
+            self.get_subset(aggregation_level=AggregationLevel.COUNTY)
+            .append_regions(places)
+            ._trim_timeseries(after=after)
         )
 
     def _trim_timeseries(self, *, after: datetime.datetime) -> "MultiRegionDataset":

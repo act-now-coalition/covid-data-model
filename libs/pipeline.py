@@ -168,8 +168,9 @@ class Region:
         return None
 
     def get_state_region(self) -> "Region":
-        """Returns a Region object for the state of a county, otherwise raises a ValueError."""
-        if len(self.fips) != 5:
+        """Returns a Region object for the state of a county or place, otherwise raises a
+        ValueError."""
+        if len(self.fips) != 5 and len(self.fips) != 7:
             raise ValueError(f"No state for {self}")
         return Region.from_fips(self.fips[:2])
 
