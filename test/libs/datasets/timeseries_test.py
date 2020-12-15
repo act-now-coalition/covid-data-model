@@ -142,23 +142,28 @@ def test_multi_region_get_one_region():
     assert region_97222_ts.latest["m2"] == 11
 
 
-def test_multi_region_get_counties():
-    ts = timeseries.MultiRegionDataset.from_csv(
+def test_multi_region_get_counties_and_places():
+    ds_in = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,county,aggregate_level,date,m1,m2\n"
             "iso1:us#fips:97111,Bar County,county,2020-04-02,2,\n"
             "iso1:us#fips:97111,Bar County,county,2020-04-03,3,\n"
             "iso1:us#fips:97222,Foo County,county,2020-04-01,,10\n"
+            "iso1:us#fips:9711122,,place,2020-04-02,5,60\n"
             "iso1:us#fips:97,Great State,state,2020-04-01,1,2\n"
             "iso1:us#fips:97111,Bar County,county,,3,\n"
+            "iso1:us#fips:9711122,,place,,3,\n"
             "iso1:us#fips:97222,Foo County,county,,,10\n"
             "iso1:us#fips:97,Great State,state,,1,2\n"
         )
     )
-    counties_ts = ts.get_counties(after=pd.to_datetime("2020-04-01")).timeseries.reset_index()
-    assert to_dict(["location_id", "date"], counties_ts[["location_id", "date", "m1"]]) == {
+    ds_out = ds_in.get_counties_and_places(
+        after=pd.to_datetime("2020-04-01")
+    ).timeseries.reset_index()
+    assert to_dict(["location_id", "date"], ds_out[["location_id", "date", "m1"]]) == {
         ("iso1:us#fips:97111", pd.to_datetime("2020-04-02")): {"m1": 2},
         ("iso1:us#fips:97111", pd.to_datetime("2020-04-03")): {"m1": 3},
+        ("iso1:us#fips:9711122", pd.to_datetime("2020-04-02")): {"m1": 5},
     }
 
 
@@ -248,7 +253,7 @@ def test_multiregion_provenance():
     assert out.provenance.loc["iso1:us#fips:03"].at["m2"] == "src32"
     assert out.get_one_region(Region.from_fips("03")).provenance["m2"] == "src32"
 
-    counties = out.get_counties(after=pd.to_datetime("2020-04-01"))
+    counties = out.get_counties_and_places(after=pd.to_datetime("2020-04-01"))
     assert "iso1:us#fips:03" not in counties.provenance.index
     assert counties.provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
     assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == "src21"
@@ -932,10 +937,7 @@ def test_aggregate_states_to_country():
     )
     region_us = Region.from_iso1("us")
     country = timeseries.aggregate_regions(
-        ts,
-        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        AggregationLevel.COUNTRY,
-        [],
+        ts, {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us}, [],
     )
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1075,7 +1077,6 @@ def test_aggregate_states_to_country_scale():
     country = timeseries.aggregate_regions(
         ts,
         {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        AggregationLevel.COUNTRY,
         [timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),],
     )
     # The column m1 is scaled by population.
@@ -1106,7 +1107,6 @@ def test_aggregate_states_to_country_scale_static():
     country = timeseries.aggregate_regions(
         ts,
         {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        AggregationLevel.COUNTRY,
         [
             timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),
             timeseries.StaticWeightedAverageAggregation(FieldName("s1"), CommonFields.POPULATION),

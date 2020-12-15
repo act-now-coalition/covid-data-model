@@ -28,7 +28,7 @@ def fips_to_location_id(fips: str) -> str:
     if state_obj:
         if len(fips) == 2:
             return f"iso1:us#iso2:us-{state_obj.abbr.lower()}"
-        elif len(fips) == 5:
+        elif len(fips) == 5 or len(fips) == 7:
             return f"iso1:us#iso2:us-{state_obj.abbr.lower()}#fips:{fips}"
 
     # This happens mostly (entirely?) in unittest data where the first two digits
@@ -62,8 +62,10 @@ def location_id_to_level(location_id: str) -> Optional[AggregationLevel]:
         fips = match.group(1)
         if len(fips) == 2:
             return AggregationLevel.STATE
-        if len(fips) == 5:
+        elif len(fips) == 5:
             return AggregationLevel.COUNTY
+        elif len(fips) == 7:
+            return AggregationLevel.PLACE
 
     match = re.fullmatch(r"iso1:us#iso2:us-(..)", location_id)
     if match:
@@ -98,11 +100,15 @@ class Region:
     # https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes
     location_id: str
 
-    # The FIPS identifier for the region, either 2 digits for a state or 5 digits for a county.
+    # The FIPS identifier for the region, either 2 digits for a state, 5 digits for a county or 7
+    # digits for a place.
     fips: Optional[str]
 
     @staticmethod
     def from_fips(fips: str) -> "Region":
+        """Creates a Region object from a state, county or place FIPS code.
+
+        Use from_cbsa_code for CBSAs; this function assumes fips[0:2] is the correct state code."""
         return Region(location_id=fips_to_location_id(fips), fips=fips)
 
     @staticmethod
@@ -114,7 +120,9 @@ class Region:
 
     @staticmethod
     def from_cbsa_code(cbsa_code: str) -> "Region":
-        # cbsa_code is a valid fips code, setting it to fips code
+        """Creates a Region object from a CBSA FIPS code.
+
+        Use from_fips for state, county or place FIPS."""
         fips = cbsa_code
         return Region(location_id=cbsa_to_location_id(cbsa_code), fips=fips)
 
@@ -165,8 +173,9 @@ class Region:
         return None
 
     def get_state_region(self) -> "Region":
-        """Returns a Region object for the state of a county, otherwise raises a ValueError."""
-        if len(self.fips) != 5:
+        """Returns a Region object for the state of a county or place, otherwise raises a
+        ValueError."""
+        if len(self.fips) != 5 and len(self.fips) != 7:
             raise ValueError(f"No state for {self}")
         return Region.from_fips(self.fips[:2])
 

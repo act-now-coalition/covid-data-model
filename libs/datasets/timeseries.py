@@ -581,9 +581,14 @@ class MultiRegionDataset(SaveableDatasetInterface):
         location_ids = self.static.loc[rows_key, :].index
         return self.get_locations_subset(location_ids)
 
-    def get_counties(self, after: Optional[datetime.datetime] = None) -> "MultiRegionDataset":
-        return self.get_subset(aggregation_level=AggregationLevel.COUNTY)._trim_timeseries(
-            after=after
+    def get_counties_and_places(
+        self, after: Optional[datetime.datetime] = None
+    ) -> "MultiRegionDataset":
+        places = self.get_subset(aggregation_level=AggregationLevel.PLACE)
+        return (
+            self.get_subset(aggregation_level=AggregationLevel.COUNTY)
+            .append_regions(places)
+            ._trim_timeseries(after=after)
         )
 
     def _trim_timeseries(self, *, after: datetime.datetime) -> "MultiRegionDataset":
@@ -969,7 +974,6 @@ def _aggregate_dataframe_by_region(
 def aggregate_regions(
     dataset_in: MultiRegionDataset,
     aggregate_map: Mapping[Region, Region],
-    aggregate_level: AggregationLevel,
     aggregations: Sequence[StaticWeightedAverageAggregation] = WEIGHTED_AGGREGATIONS,
     *,
     ignore_na: bool = False,
@@ -1032,7 +1036,19 @@ def aggregate_regions(
         # It looks like concat doesn't always set the index name, but haven't worked out
         # the pattern of when the fix is needed.
         static_agg = static_agg.rename_axis(index=CommonFields.LOCATION_ID)
-    static_agg[CommonFields.AGGREGATE_LEVEL] = aggregate_level.value
+
+    if CommonFields.AGGREGATE_LEVEL in dataset_in.static.columns:
+        # location_id_to_level returns an AggregationLevel enum, but we use the str in DataFrames.
+        # These are not equivalent so put the `value` attribute in static_agg.
+        static_agg[CommonFields.AGGREGATE_LEVEL] = (
+            static_agg.index.get_level_values(CommonFields.LOCATION_ID)
+            .map(pipeline.location_id_to_level)
+            .map(lambda l: l.value)
+        )
+    if CommonFields.FIPS in dataset_in.static.columns:
+        static_agg[CommonFields.FIPS] = static_agg.index.get_level_values(
+            CommonFields.LOCATION_ID
+        ).map(pipeline.location_id_to_fips)
 
     return MultiRegionDataset(timeseries=timeseries_agg, static=static_agg)
 

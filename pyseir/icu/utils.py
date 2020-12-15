@@ -20,11 +20,8 @@ def calculate_case_based_weights() -> dict:
     LOOKBACK_DAYS = 31
     SUMMED_CASES_LABEL = "summed_cases"
     cutoff_date = pd.Timestamp.now() - pd.Timedelta(days=LOOKBACK_DAYS)
-    region_groupby = (
-        combined_datasets.load_us_timeseries_dataset()
-        .get_counties(after=cutoff_date)
-        .groupby_region()
-    )
+    us_dataset = combined_datasets.load_us_timeseries_dataset()
+    region_groupby = us_dataset.get_counties_and_places(after=cutoff_date).groupby_region()
 
     last_month_cum_cases = region_groupby[CommonFields.CASES].apply(_quantile_range)
     last_month_cum_cases.name = SUMMED_CASES_LABEL

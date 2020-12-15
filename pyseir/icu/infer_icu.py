@@ -78,8 +78,9 @@ def get_icu_timeseries(
     region: pipeline.Region,
     regional_combined_data: OneRegionTimeseriesDataset,
     state_combined_data: Optional[OneRegionTimeseriesDataset],
+    *,
     use_actuals: bool = True,
-    weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
+    weight_by: ICUWeightsPath,
 ) -> pd.Series:
     """
     Loads data for region of interest and returns ICU Utilization numerator.
@@ -101,9 +102,7 @@ def get_icu_timeseries(
 
 
 def get_icu_timeseries_from_regional_input(
-    regional_input: RegionalInput,
-    use_actuals: bool = True,
-    weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
+    regional_input: RegionalInput, *, use_actuals: bool = True, weight_by: ICUWeightsPath,
 ) -> OneRegionTimeseriesDataset:
     """
     Loads data for region of interest and returns ICU Utilization numerator.
@@ -132,8 +131,8 @@ def get_icu_timeseries_from_regional_input(
 def _calculate_icu_timeseries(
     data: pd.DataFrame,
     region: pipeline.Region,
-    use_actuals: bool = True,
-    weight_by: ICUWeightsPath = ICUWeightsPath.POPULATION,
+    use_actuals: bool,
+    weight_by: ICUWeightsPath,
     log=None,
 ) -> pd.Series:
     """Loads data for region of interest and return ICU Utilization numerator.

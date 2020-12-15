@@ -4,12 +4,10 @@ from typing import Mapping
 import pandas as pd
 
 from libs import pipeline
-from libs.datasets import AggregationLevel
 from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionDataset
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
-from libs.datasets import custom_aggregations
 
 
 CBSA_LIST_PATH = "data/census-msa/list1_2020.xls"
@@ -37,9 +35,7 @@ class CountyToCBSAAggregator:
             for fips, cbsa_code in self.county_map.items()
         }
 
-        return timeseries.aggregate_regions(
-            dataset_in, region_map, AggregationLevel.CBSA, self.aggregations
-        )
+        return timeseries.aggregate_regions(dataset_in, region_map, self.aggregations)
 
     @staticmethod
     def from_local_public_data() -> "CountyToCBSAAggregator":
@@ -52,10 +48,6 @@ class CountyToCBSAAggregator:
         )
         df[CommonFields.FIPS] = df["FIPS State Code"] + df["FIPS County Code"]
         df = df.loc[df[CommonFields.FIPS].notna(), :]
-
-        # Remove NYC Fips so that NY aggregations work properly. This should be removed
-        # once NYC aggregation is removed.
-        df = df.loc[~df[CommonFields.FIPS].isin(custom_aggregations.NYC_BOROUGH_FIPS), :]
 
         dups = df.duplicated(CommonFields.FIPS, keep=False)
         if dups.any():

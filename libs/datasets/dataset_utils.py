@@ -63,6 +63,8 @@ class AggregationLevel(enum.Enum):
     # Core Base Statistical Area
     CBSA = "cbsa"
 
+    PLACE = "place"
+
 
 class DatasetType(enum.Enum):
     MULTI_REGION = "multiregion"
