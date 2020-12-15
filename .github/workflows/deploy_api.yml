@@ -135,7 +135,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
 
-    - name: Trigger Label API if master branch build
-      env:
-        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
-      run: ./covid-data-model/tools/maybe-trigger-label-api.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}}
+    # Temporarily disabling auto-latest labeling until have verified NYC aggregation change
+    # with clients.
+    # - name: Trigger Label API if master branch build
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+    #   run: ./covid-data-model/tools/maybe-trigger-label-api.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}}
