@@ -1230,10 +1230,10 @@ def _drop_bad_tail(series_in: pd.Series) -> pd.Series:
     diff = series_in.diff()
     mean = diff[-28:-14].mean()
     threshold = mean / 100
-    for i in range(-1, -14, -1):
+    for i in range(len(series_in) - 1, len(series_in) - 14, -1):
         if diff[i] > threshold:
             break
-    return series_in[:i]
+    return series_in[: (i + 1)]
 
 
 def drop_bad_tails(dataset: MultiRegionDataset, field: FieldName) -> MultiRegionDataset:
@@ -1243,7 +1243,7 @@ def drop_bad_tails(dataset: MultiRegionDataset, field: FieldName) -> MultiRegion
     fields_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE) == field
     to_filter = timeseries_wide_dates.loc[pd.IndexSlice[:, fields_mask], :]
     everything_else = timeseries_wide_dates.loc[pd.IndexSlice[:, ~fields_mask], :]
-    filtered = to_filter.apply(_drop_bad_tail)
+    filtered = to_filter.apply(_drop_bad_tail, axis=1)
     merged = pd.concat([everything_else, filtered])
 
     timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
