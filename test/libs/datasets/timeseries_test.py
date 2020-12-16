@@ -957,7 +957,9 @@ def _assert_tail_filter_counts(
 
 
 def test_tail_filter_stalled_timeseries():
+    # Make a timeseries that has 24 days increasing.
     values_increasing = list(range(100_000, 124_000, 1_000))
+    # Add 4 days that copy the 24th day. The filter is meant to remove these.
     values_stalled = values_increasing + [values_increasing[-1]] * 4
     assert len(values_stalled) == 28
 
@@ -971,9 +973,15 @@ def test_tail_filter_stalled_timeseries():
             AnnotationField.LOCATION_ID: "iso1:us#fips:97222",
         }
     ]
-
     ds_expected = _build_one_column_dataset(CommonFields.NEW_CASES, values_increasing)
     assert_dataset_like(ds_out, ds_expected)
+
+    # Try again with one day less, not enough for the filter so it returns the data unmodified.
+    ds_in = _build_one_column_dataset(CommonFields.NEW_CASES, values_stalled[:-1])
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
+    _assert_tail_filter_counts(tail_filter, skipped_too_short=1)
+    assert tail_filter.annotations == []
+    assert_dataset_like(ds_out, ds_in)
 
 
 def test_timeseries_empty_timeseries_and_static():
