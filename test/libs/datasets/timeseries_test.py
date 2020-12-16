@@ -18,6 +18,8 @@ from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
+from libs.datasets.timeseries import AnnotationField
+from libs.datasets.timeseries import AnnotationType
 from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips
@@ -939,23 +941,38 @@ def test_not_removing_short_series():
     assert_dataset_like(dataset, result)
 
 
-def test_truncate_stalled_timeseries():
-    values = list(range(100_000, 130_000, 1_000))
-    values_stalled = values[:]
-    values_stalled[-1] = values_stalled[-2]
-    values_truncated = values_stalled[0:-1]
+def _assert_tail_filter_counts(
+    tail_filter: timeseries.TailFilter,
+    *,
+    skipped_too_short: int = 0,
+    skipped_na_mean: int = 0,
+    all_good: int = 0,
+    truncated: int = 0,
+):
+    """Asserts that tail_filter has given attribute count values, defaulting to zero."""
+    assert tail_filter.skipped_too_short == skipped_too_short
+    assert tail_filter.skipped_na_mean == skipped_na_mean
+    assert tail_filter.all_good == all_good
+    assert tail_filter.truncated == truncated
 
-    region_1 = Region.from_fips("06065")
-    region_2 = Region.from_fips("36061")
 
-    ds_in = _build_one_column_dataset(
-        CommonFields.NEW_CASES, {region_1: values, region_2: values_stalled}
-    )
-    filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
+def test_tail_filter_stalled_timeseries():
+    values_increasing = list(range(100_000, 124_000, 1_000))
+    values_stalled = values_increasing + [values_increasing[-1]] * 4
+    assert len(values_stalled) == 28
 
-    ds_expected = _build_one_column_dataset(
-        CommonFields.NEW_CASES, {region_1: values, region_2: values_truncated}
-    )
+    ds_in = _build_one_column_dataset(CommonFields.NEW_CASES, values_stalled)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
+    _assert_tail_filter_counts(tail_filter, truncated=1)
+    assert tail_filter.annotations == [
+        {
+            AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
+            AnnotationField.VARIABLE: CommonFields.NEW_CASES,
+            AnnotationField.LOCATION_ID: "iso1:us#fips:97222",
+        }
+    ]
+
+    ds_expected = _build_one_column_dataset(CommonFields.NEW_CASES, values_increasing)
     assert_dataset_like(ds_out, ds_expected)
 
 

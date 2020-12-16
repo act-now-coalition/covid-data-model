@@ -1263,13 +1263,13 @@ class TailFilter:
         to_filter = timeseries_wide_dates.loc[pd.IndexSlice[:, fields_mask], :]
         not_filtered = timeseries_wide_dates.loc[pd.IndexSlice[:, ~fields_mask], :]
 
-        filter = TailFilter()
-        filtered = to_filter.apply(filter._filter_one_series, axis=1)
+        tail_filter = TailFilter()
+        filtered = to_filter.apply(tail_filter._filter_one_series, axis=1)
 
         merged = pd.concat([not_filtered, filtered])
         timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
 
-        return filter, dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
+        return tail_filter, dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
 
     def annotations_as_dataframe(self):
         return pd.DataFrame(self.annotations)
@@ -1295,7 +1295,8 @@ class TailFilter:
             self.annotations.append(
                 {
                     AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
-                    AnnotationField.VARIABLE: series_in.name,
+                    AnnotationField.VARIABLE: series_in.name[1],
+                    AnnotationField.LOCATION_ID: series_in.name[0],
                 }
             )
             return series_in[: -(i - 1)]
