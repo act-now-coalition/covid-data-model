@@ -179,6 +179,16 @@ def run_population_filter(output_path: pathlib.Path):
 
 
 @main.command()
+@click.argument("output_path", type=pathlib.Path)
+def run_bad_tails_filter(output_path: pathlib.Path):
+    us_dataset = combined_datasets.load_us_timeseries_dataset()
+    log = structlog.get_logger()
+    log.info("starting filter")
+    dataset_out = timeseries.drop_bad_tails(us_dataset, CommonFields.TOTAL_TESTS)
+    wide_dates_df.write_csv(dataset_out.timeseries_rows(), output_path)
+
+
+@main.command()
 @click.option("--name", envvar="DATA_AVAILABILITY_SHEET_NAME", default="Data Availability - Dev")
 @click.option("--share-email")
 def update_availability_report(name: str, share_email: Optional[str]):
