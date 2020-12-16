@@ -1247,6 +1247,8 @@ class AnnotationType(GetByValueMixin, ValueAsStrMixin, enum.Enum):
 @dataclass
 class TailFilter:
     annotations: List[Mapping[str, Any]] = dataclasses.field(default_factory=list)
+
+    # Counts that track what the filter has done.
     skipped_too_short: int = 0
     skipped_na_mean: int = 0
     all_good: int = 0
@@ -1256,7 +1258,7 @@ class TailFilter:
     def run(
         dataset: MultiRegionDataset, fields: List[FieldName]
     ) -> Tuple["TailFilter", MultiRegionDataset]:
-        """Returns a dataset with recent data that looks bad removed from field."""
+        """Returns a dataset with recent data that looks bad removed from fields."""
         timeseries_wide_dates = dataset.timeseries_wide_dates()
 
         fields_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(fields)
@@ -1283,6 +1285,7 @@ class TailFilter:
         if pd.isna(mean):
             self.skipped_na_mean += 1
             return series_in
+        # TODO(tom): experiment with other ways to calculate the threshold
         threshold = math.floor(mean / 100)
         for i in range(1, 15):
             if diff.iloc[-i] >= threshold:
@@ -1297,6 +1300,9 @@ class TailFilter:
                     AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
                     AnnotationField.VARIABLE: series_in.name[1],
                     AnnotationField.LOCATION_ID: series_in.name[0],
+                    # TODO(tom): sort out rest of fields
+                    # AnnotationField.COMMENT: f"Removed N values less than {threshold}.",
+                    # AnnotationField.DATE: ...
                 }
             )
             return series_in[: -(i - 1)]
