@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+import enum
 import pathlib
 from dataclasses import dataclass
 from functools import lru_cache
@@ -14,7 +15,9 @@ from typing import Tuple
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
+from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import PdFields
+from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
 
@@ -1226,6 +1229,30 @@ def aggregate_puerto_rico_from_counties(dataset: MultiRegionDataset) -> MultiReg
     return dataclasses.replace(dataset, static=patched_static)
 
 
+@enum.unique
+class AnnotationField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
+    VARIABLE = PdFields.VARIABLE
+    LOCATION_ID = CommonFields.LOCATION_ID
+    DATE = CommonFields.DATE
+    TYPE = "annotation_type"
+    COMMENT = "comment"
+
+
+@enum.unique
+class AnnotationField(GetByValueMixin, ValueAsStrMixin, enum.Enum):
+    CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
+
+
+def _find_bad_tail(series_in: pd.Series) -> pd.Series:
+    diff = series_in.diff()
+    mean = diff[-28:-14].mean()
+    threshold = mean / 100
+    for i in range(1, 15):
+        if diff.iloc[-i] > threshold:
+            break
+    return pd.Series([i - 1, threshold], ["to_remove", "threshold"])
+
+
 def _drop_bad_tail(series_in: pd.Series) -> pd.Series:
     diff = series_in.diff()
     mean = diff[-28:-14].mean()
@@ -1242,9 +1269,12 @@ def drop_bad_tails(dataset: MultiRegionDataset, field: FieldName) -> MultiRegion
     timeseries_wide_dates = dataset.timeseries_wide_dates()
     fields_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE) == field
     to_filter = timeseries_wide_dates.loc[pd.IndexSlice[:, fields_mask], :]
-    everything_else = timeseries_wide_dates.loc[pd.IndexSlice[:, ~fields_mask], :]
-    filtered = to_filter.apply(_drop_bad_tail, axis=1)
-    merged = pd.concat([everything_else, filtered])
+    wide_dates_output_to_concat = [timeseries_wide_dates.loc[pd.IndexSlice[:, ~fields_mask], :]]
+    bad_tails = to_filter.apply(_find_bad_tail, axis=1)
+    wide_dates_output_to_concat.append(to_filter.loc[bad_tails["to_remove"] == 0])
+    not_okay_tails = to_filter.loc[bad_tails["to_remove"] != 0]
+    wide_dates_output_to_concat.append(not_okay_tails.apply(_drop_bad_tail, axis=1))
+    merged = pd.concat(wide_dates_output_to_concat)
 
     timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
     return dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
