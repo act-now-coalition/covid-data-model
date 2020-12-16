@@ -183,9 +183,16 @@ def run_population_filter(output_path: pathlib.Path):
 def run_bad_tails_filter(output_path: pathlib.Path):
     us_dataset = combined_datasets.load_us_timeseries_dataset()
     log = structlog.get_logger()
-    log.info("starting filter")
-    dataset_out = timeseries.drop_bad_tails(us_dataset, CommonFields.TOTAL_TESTS)
+    log.info("Starting filter")
+    filter, dataset_out = timeseries.TailFilter.run(
+        us_dataset,
+        [CommonFields.TOTAL_TESTS, CommonFields.NEGATIVE_TESTS, CommonFields.POSITIVE_TESTS],
+    )
+    log.info("Writing output")
     wide_dates_df.write_csv(dataset_out.timeseries_rows(), output_path)
+    filter.annotations_as_dataframe().to_csv(
+        str(output_path).replace(".csv", "-annotations.csv"), index=True
+    )
 
 
 @main.command()

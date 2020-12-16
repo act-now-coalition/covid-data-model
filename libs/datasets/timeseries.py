@@ -13,6 +13,7 @@ from typing import Mapping
 from typing import Sequence
 from typing import Tuple
 
+import math
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import GetByValueMixin
@@ -1239,42 +1240,62 @@ class AnnotationField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
 
 
 @enum.unique
-class AnnotationField(GetByValueMixin, ValueAsStrMixin, enum.Enum):
+class AnnotationType(GetByValueMixin, ValueAsStrMixin, enum.Enum):
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
 
 
-def _find_bad_tail(series_in: pd.Series) -> pd.Series:
-    diff = series_in.diff()
-    mean = diff[-28:-14].mean()
-    threshold = mean / 100
-    for i in range(1, 15):
-        if diff.iloc[-i] > threshold:
-            break
-    return pd.Series([i - 1, threshold], ["to_remove", "threshold"])
+@dataclass
+class TailFilter:
+    annotations: List[Mapping[str, Any]] = dataclasses.field(default_factory=list)
+    skipped_too_short: int = 0
+    skipped_na_mean: int = 0
+    all_good: int = 0
+    truncated: int = 0
 
+    @staticmethod
+    def run(
+        dataset: MultiRegionDataset, fields: List[FieldName]
+    ) -> Tuple["TailFilter", MultiRegionDataset]:
+        """Returns a dataset with recent data that looks bad removed from field."""
+        timeseries_wide_dates = dataset.timeseries_wide_dates()
 
-def _drop_bad_tail(series_in: pd.Series) -> pd.Series:
-    diff = series_in.diff()
-    mean = diff[-28:-14].mean()
-    threshold = mean / 100
-    for i in range(len(series_in) - 1, len(series_in) - 14, -1):
-        if diff[i] > threshold:
-            break
-    return series_in[: (i + 1)]
+        fields_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(fields)
+        to_filter = timeseries_wide_dates.loc[pd.IndexSlice[:, fields_mask], :]
+        not_filtered = timeseries_wide_dates.loc[pd.IndexSlice[:, ~fields_mask], :]
 
+        filter = TailFilter()
+        filtered = to_filter.apply(filter._filter_one_series, axis=1)
 
-def drop_bad_tails(dataset: MultiRegionDataset, field: FieldName) -> MultiRegionDataset:
-    """Returns a dataset with recent data that looks bad removed from field."""
+        merged = pd.concat([not_filtered, filtered])
+        timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
 
-    timeseries_wide_dates = dataset.timeseries_wide_dates()
-    fields_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE) == field
-    to_filter = timeseries_wide_dates.loc[pd.IndexSlice[:, fields_mask], :]
-    wide_dates_output_to_concat = [timeseries_wide_dates.loc[pd.IndexSlice[:, ~fields_mask], :]]
-    bad_tails = to_filter.apply(_find_bad_tail, axis=1)
-    wide_dates_output_to_concat.append(to_filter.loc[bad_tails["to_remove"] == 0])
-    not_okay_tails = to_filter.loc[bad_tails["to_remove"] != 0]
-    wide_dates_output_to_concat.append(not_okay_tails.apply(_drop_bad_tail, axis=1))
-    merged = pd.concat(wide_dates_output_to_concat)
+        return filter, dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
 
-    timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
-    return dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
+    def annotations_as_dataframe(self):
+        return pd.DataFrame(self.annotations)
+
+    def _filter_one_series(self, series_in: pd.Series) -> pd.Series:
+        if len(series_in) < 28:
+            self.skipped_too_short += 1
+            return series_in
+        diff = series_in.diff()
+        mean = diff[-28:-14].mean()
+        if pd.isna(mean):
+            self.skipped_na_mean += 1
+            return series_in
+        threshold = math.floor(mean / 100)
+        for i in range(1, 15):
+            if diff.iloc[-i] >= threshold:
+                break
+        if i == 1:
+            self.all_good += 1
+            return series_in
+        else:
+            self.truncated += 1
+            self.annotations.append(
+                {
+                    AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
+                    AnnotationField.VARIABLE: series_in.name,
+                }
+            )
+            return series_in[: -(i - 1)]

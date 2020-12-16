@@ -951,7 +951,7 @@ def test_truncate_stalled_timeseries():
     ds_in = _build_one_column_dataset(
         CommonFields.NEW_CASES, {region_1: values, region_2: values_stalled}
     )
-    ds_out = timeseries.drop_bad_tails(ds_in, CommonFields.NEW_CASES)
+    filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
 
     ds_expected = _build_one_column_dataset(
         CommonFields.NEW_CASES, {region_1: values, region_2: values_truncated}
