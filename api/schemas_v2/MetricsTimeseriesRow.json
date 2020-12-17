@@ -80,6 +80,17 @@
     "icuHeadroomDetails": {
       "$ref": "#/definitions/ICUHeadroomMetricDetails"
     },
+    "icuCapacityRatio": {
+      "title": "Icucapacityratio",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "date": {
       "title": "Date",
       "description": "Date of timeseries data point",
@@ -94,6 +105,7 @@
     "infectionRate",
     "infectionRateCI90",
     "icuHeadroomRatio",
+    "icuCapacityRatio",
     "date"
   ],
   "definitions": {

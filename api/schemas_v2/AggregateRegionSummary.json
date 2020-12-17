@@ -13,7 +13,8 @@
         "country",
         "state",
         "county",
-        "cbsa"
+        "cbsa",
+        "place"
       ]
     },
     "TestPositivityRatioMethod": {
@@ -168,6 +169,17 @@
         },
         "icuHeadroomDetails": {
           "$ref": "#/definitions/ICUHeadroomMetricDetails"
+        },
+        "icuCapacityRatio": {
+          "title": "Icucapacityratio",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -176,7 +188,8 @@
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
-        "icuHeadroomRatio"
+        "icuHeadroomRatio",
+        "icuCapacityRatio"
       ]
     },
     "RiskLevel": {
