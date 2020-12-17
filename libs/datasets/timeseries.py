@@ -764,7 +764,7 @@ def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
 
     # Replacing days with single back tracking adjustments to be 0, reduces
     # number of na days
-    # new_cases[new_cases == -1] = 0
+    new_cases[new_cases == -1] = 0
     # Remove the occasional negative case adjustments.
     new_cases[new_cases < 0] = pd.NA
     new_cases = new_cases.dropna()
