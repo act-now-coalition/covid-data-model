@@ -1042,6 +1042,19 @@ def test_tail_filter_diff_goes_negative():
     # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
 
 
+def test_tail_filter_long_stall():
+    # This timeseries has stalled for a long time.
+    values = list(range(100_000, 128_000, 1_000)) + [128_000] * 16
+    assert len(values) == 28 + 16
+
+    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
+    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[:-13])
+    _assert_tail_filter_counts(tail_filter, truncated=1)
+    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
+    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+
+
 def test_timeseries_empty_timeseries_and_static():
     # Check that empty dataset creates a MultiRegionDataset
     # and that get_one_region raises expected exception.
