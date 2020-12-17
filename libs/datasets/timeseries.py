@@ -1287,22 +1287,24 @@ class TailFilter:
             return series_in
         # TODO(tom): experiment with other ways to calculate the threshold
         threshold = math.floor(mean / 100)
+        count_observation_diff_under_threshold = 0
         for i in range(1, 15):
             if diff.iloc[-i] >= threshold:
                 break
-        if i == 1:
+            if pd.notna(diff.iloc[-i]):
+                count_observation_diff_under_threshold += 1
+        if count_observation_diff_under_threshold == 0:
             self.all_good += 1
             return series_in
         else:
             self.truncated += 1
             self.annotations.append(
                 {
-                    AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
-                    AnnotationField.VARIABLE: series_in.name[1],
                     AnnotationField.LOCATION_ID: series_in.name[0],
-                    # TODO(tom): sort out rest of fields
-                    # AnnotationField.COMMENT: f"Removed N values less than {threshold}.",
-                    # AnnotationField.DATE: ...
+                    AnnotationField.VARIABLE: series_in.name[1],
+                    AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
+                    AnnotationField.COMMENT: f"Removed {count_observation_diff_under_threshold} values less than {threshold}.",
+                    AnnotationField.DATE: series_in.index[-i],
                 }
             )
             return series_in[: -(i - 1)]

@@ -980,6 +980,8 @@ def test_tail_filter_stalled_timeseries():
             AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
             AnnotationField.VARIABLE: CommonFields.NEW_CASES,
             AnnotationField.LOCATION_ID: "iso1:us#fips:97222",
+            AnnotationField.DATE: pd.to_datetime("2020-09-17"),
+            AnnotationField.COMMENT: "Removed 4 values less than 10.",
         }
     ]
     ds_expected = _build_one_column_dataset(CommonFields.NEW_CASES, values_increasing)
@@ -1004,6 +1006,40 @@ def test_tail_filter_mean_nan():
     _assert_tail_filter_counts(tail_filter, skipped_na_mean=1)
     assert tail_filter.annotations == []
     assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
+
+
+def test_tail_filter_two_series():
+    pos_tests = list(range(100_000, 128_000, 1_000))
+    tot_tests = list(range(1_000_000, 1_280_000, 10_000))
+    pos_tests_stalled = pos_tests + [pos_tests[-1]] * 3
+    tot_tests_stalled = tot_tests + [tot_tests[-1]] * 5
+
+    ds_in = _build_one_column_dataset(CommonFields.POSITIVE_TESTS, pos_tests_stalled).join_columns(
+        _build_one_column_dataset(CommonFields.TOTAL_TESTS, tot_tests_stalled)
+    )
+    tail_filter, ds_out = timeseries.TailFilter.run(
+        ds_in, [CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS]
+    )
+    ds_expected = _build_one_column_dataset(CommonFields.POSITIVE_TESTS, pos_tests).join_columns(
+        _build_one_column_dataset(CommonFields.TOTAL_TESTS, tot_tests)
+    )
+    _assert_tail_filter_counts(tail_filter, truncated=2)
+    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
+    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+
+
+def test_tail_filter_diff_goes_negative():
+    # The end of this timeseries is (in 1000s) ... 127, 126, 127, 127. Ony the last 127 is
+    # expected to be truncated.
+    values = list(range(100_000, 128_000, 1_000)) + [126_000, 127_000, 127_000]
+    assert len(values) == 31
+
+    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
+    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[:-1])
+    _assert_tail_filter_counts(tail_filter, truncated=1)
+    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
+    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
 
 
 def test_timeseries_empty_timeseries_and_static():
