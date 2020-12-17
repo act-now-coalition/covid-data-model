@@ -1344,12 +1344,16 @@ class TailFilter:
             else:
                 annotation_type = AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED
                 self.long_truncated += 1
+            # Currently one annotation is created per series. Maybe it makes more sense to add
+            # one for each dropped observation / real value?
+            # https://github.com/covid-projections/covid-data-model/pull/855#issuecomment-747698288
             self.annotations.append(
                 {
                     AnnotationField.LOCATION_ID: series_in.name[0],
                     AnnotationField.VARIABLE: series_in.name[1],
                     AnnotationField.TYPE: annotation_type,
-                    AnnotationField.COMMENT: f"Removed {count_observation_diff_under_threshold} values less than {threshold}.",
+                    AnnotationField.COMMENT: f"Removed {count_observation_diff_under_threshold} observations that look "
+                    f"suspicious compared to mean diff of {mean:.1f} a few weeks ago.",
                     AnnotationField.DATE: series_in.index[truncate_at - 1],
                 }
             )
