@@ -1011,6 +1011,8 @@ def test_tail_filter_mean_nan():
 
 
 def test_tail_filter_two_series():
+    # Check that two series are both filtered. Currently the 'good' dates of 14-28 days ago are
+    # relative to the most recent date of any timeseries but maybe it should be per-timeseries.
     pos_tests = list(range(100_000, 128_000, 1_000))
     tot_tests = list(range(1_000_000, 1_280_000, 10_000))
     pos_tests_stalled = pos_tests + [pos_tests[-1]] * 3
@@ -1042,6 +1044,17 @@ def test_tail_filter_diff_goes_negative():
     _assert_tail_filter_counts(tail_filter, truncated=1)
     assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
     # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+
+
+def test_tail_filter_zero_diff():
+    # Make sure constant value timeseries is not truncated.
+    values = [100_000] * 28
+
+    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
+    _assert_tail_filter_counts(tail_filter, all_good=1)
+    assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
+    assert tail_filter.annotations == []
 
 
 @pytest.mark.parametrize(

@@ -1279,16 +1279,25 @@ class TailFilter:
         return pd.DataFrame(self.annotations)
 
     def _filter_one_series(self, series_in: pd.Series) -> pd.Series:
+        """Filters one timeseries of cumulative values. This is a method so self can be used to
+        store side outputs."""
+
         if len(series_in) < 28:
             self.skipped_too_short += 1
             return series_in
         diff = series_in.diff()
+        # Treat the mean value 2 - 4 weeks ago as good.
         mean = diff[-28:-14].mean()
         if pd.isna(mean):
             self.skipped_na_mean += 1
             return series_in
-        # TODO(tom): experiment with other ways to calculate the threshold
+        # Pick a bound used to determine if the diff of recent values are reasonable. For
+        # now values less than 100th of the mean are considered stalled. The variance could be
+        # used to create a tighter bound but the simple threshold seems to work for now.
+        # TODO(tom): Experiment with other ways to calculate the bound.
         threshold = math.floor(mean / 100)
+        # Go backwards in time, starting with the most recent observation. Stop as soon as there
+        # is an observation with diff that looks reasonable / not stalled / over the threshold.
         count_observation_diff_under_threshold = 0
         for i in range(1, 15):
             if diff.iloc[-i] >= threshold:
