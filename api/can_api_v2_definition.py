@@ -153,6 +153,7 @@ class Metrics(base_model.APIBaseModel):
     )
     icuHeadroomRatio: Optional[float] = pydantic.Field(...)
     icuHeadroomDetails: ICUHeadroomMetricDetails = pydantic.Field(None)
+    icuCapacityRatio: Optional[float] = pydantic.Field(...)
 
     @staticmethod
     def empty():

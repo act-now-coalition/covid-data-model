@@ -12,6 +12,7 @@ from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityR
 from libs import series_utils
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.metrics import icu_headroom
+from libs.metrics import icu_capacity
 
 Metrics = can_api_v2_definition.Metrics
 ICUHeadroomMetricDetails = can_api_v2_definition.ICUHeadroomMetricDetails
@@ -40,6 +41,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     INFECTION_RATE = "infectionRate"
     INFECTION_RATE_CI90 = "infectionRateCI90"
     ICU_HEADROOM_RATIO = "icuHeadroomRatio"
+    ICU_CAPACITY_RATIO = "icuCapacityRatio"
 
 
 def has_data_in_past_10_days(series: pd.Series) -> bool:
@@ -89,6 +91,8 @@ def calculate_metrics_for_timeseries(
     )
     icu_metric, icu_metric_details = icu_headroom.calculate_icu_utilization_metric(icu_data)
 
+    icu_capacity_ratio = icu_capacity.calculate_icu_capacity(data)
+
     top_level_metrics_data = {
         CommonFields.FIPS: fips,
         MetricsFields.CASE_DENSITY_RATIO: case_density,
@@ -97,6 +101,7 @@ def calculate_metrics_for_timeseries(
         MetricsFields.INFECTION_RATE: infection_rate,
         MetricsFields.INFECTION_RATE_CI90: infection_rate_ci90,
         MetricsFields.ICU_HEADROOM_RATIO: icu_metric,
+        MetricsFields.ICU_CAPACITY_RATIO: icu_capacity_ratio,
     }
     metrics = pd.DataFrame(top_level_metrics_data)
     metrics.index.name = CommonFields.DATE
