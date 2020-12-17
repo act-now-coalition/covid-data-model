@@ -985,7 +985,8 @@ def test_tail_filter_stalled_timeseries():
             AnnotationField.VARIABLE: CommonFields.NEW_CASES,
             AnnotationField.LOCATION_ID: "iso1:us#fips:97222",
             AnnotationField.DATE: pd.to_datetime("2020-09-17"),
-            AnnotationField.COMMENT: "Removed 4 values less than 10.",
+            AnnotationField.COMMENT: "Removed 4 observations that look suspicious compared to "
+            "mean diff of 1000.0 a few weeks ago.",
         }
     ]
     ds_expected = _build_one_column_dataset(CommonFields.NEW_CASES, values_increasing)
