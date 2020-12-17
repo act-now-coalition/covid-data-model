@@ -123,7 +123,7 @@ def calculate_new_case_data_by_region(
     t0: datetime,
     include_testing_correction: bool = False,
     testing_correction_smoothing_tau: float = 5,
-) -> Tuple[np.array, np.array, np.array]:
+) -> Tuple[np.array, np.array]:
     """
     Calculate new cases from combined data.
 
