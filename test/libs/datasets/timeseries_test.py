@@ -266,14 +266,17 @@ def test_multiregion_provenance():
 
 
 def _timeseries_sorted_by_location_date(
-    ts: timeseries.MultiRegionDataset, drop_na: bool
+    dataset: timeseries.MultiRegionDataset, *, drop_na: bool, drop_na_dates: bool
 ) -> pd.DataFrame:
     """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
-    df = ts.timeseries.reset_index().sort_values(
-        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
-    )
+    df = dataset.timeseries
     if drop_na:
         df = df.dropna("columns", "all")
+    if drop_na_dates:
+        df = df.dropna("rows", "all")
+    df = df.reset_index().sort_values(
+        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
+    )
     return df
 
 
@@ -292,12 +295,18 @@ def _latest_sorted_by_location_date(
 def assert_dataset_like(
     ds1: timeseries.MultiRegionDataset,
     ds2: timeseries.MultiRegionDataset,
+    *,
     drop_na_timeseries=False,
     drop_na_latest=False,
+    drop_na_dates=False,
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
-    ts1 = _timeseries_sorted_by_location_date(ds1, drop_na=drop_na_timeseries)
-    ts2 = _timeseries_sorted_by_location_date(ds2, drop_na=drop_na_timeseries)
+    ts1 = _timeseries_sorted_by_location_date(
+        ds1, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
+    )
+    ts2 = _timeseries_sorted_by_location_date(
+        ds2, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
+    )
     pd.testing.assert_frame_equal(ts1, ts2, check_like=True, check_dtype=False)
     latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
     latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
@@ -982,6 +991,19 @@ def test_tail_filter_stalled_timeseries():
     _assert_tail_filter_counts(tail_filter, skipped_too_short=1)
     assert tail_filter.annotations == []
     assert_dataset_like(ds_out, ds_in)
+
+
+def test_tail_filter_mean_nan():
+    # Make a timeseries that has 14 days of NaN, than 14 days of increasing values. The first
+    # 100_000 is there so the NaN form a gap that isn't dropped by unrelated code.
+    values = [100_000] + [float("NaN")] * 14 + list(range(100_000, 114_000, 1_000))
+    assert len(values) == 29
+
+    ds_in = _build_one_column_dataset(CommonFields.NEW_CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
+    _assert_tail_filter_counts(tail_filter, skipped_na_mean=1)
+    assert tail_filter.annotations == []
+    assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
 
 
 def test_timeseries_empty_timeseries_and_static():
