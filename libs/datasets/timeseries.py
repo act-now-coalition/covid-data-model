@@ -740,6 +740,7 @@ def _diff_preserving_first_value(series):
     first_date = cases.notna().idxmax()
     if pd.notna(first_date):
         new_cases[first_date] = cases[first_date]
+
     # Return a DataFrame so NEW_CASES is a column with DATE index.
     return pd.DataFrame({CommonFields.NEW_CASES: new_cases})
 
@@ -760,9 +761,12 @@ def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
         _diff_preserving_first_value
     )
 
+    # Replacing days with single back tracking adjustments to be 0, reduces
+    # number of na days in timeseries
+    new_cases[new_cases == -1] = 0
+
     # Remove the occasional negative case adjustments.
     new_cases[new_cases < 0] = pd.NA
-
     new_cases = new_cases.dropna()
 
     new_cases_dataset = MultiRegionDataset(timeseries=new_cases)
