@@ -11,7 +11,7 @@ from api import can_api_v2_definition
 from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
 from libs import series_utils
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.metrics import icu_headroom_metric
+from libs.metrics import icu_headroom
 
 Metrics = can_api_v2_definition.Metrics
 ICUHeadroomMetricDetails = can_api_v2_definition.ICUHeadroomMetricDetails
@@ -83,11 +83,11 @@ def calculate_metrics_for_timeseries(
     )
 
     # Caculate icu headroom
-    decomp = icu_headroom_metric.get_decomp_for_state(latest[CommonFields.STATE])
-    icu_data = icu_headroom_metric.ICUMetricData(
+    decomp = icu_headroom.get_decomp_for_state(latest[CommonFields.STATE])
+    icu_data = icu_headroom.ICUMetricData(
         data, estimated_current_icu, latest, decomp, require_recent_data=require_recent_icu_data
     )
-    icu_metric, icu_metric_details = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
+    icu_metric, icu_metric_details = icu_headroom.calculate_icu_utilization_metric(icu_data)
 
     top_level_metrics_data = {
         CommonFields.FIPS: fips,
