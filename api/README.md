@@ -184,9 +184,9 @@ For `county_summaries/<state abreviation>.summary.json` files see the [JSON Sche
 For `county/counties_top_100.json` fields see the [JSON Schema](schema/CANPredictionAPI.json)
 
 ### For State/County Calculated Results
-For files like 
-- `us/counties/<fips>.<intervention>.json` 
-- `us/states/<state abbreviation>.<intervention>.json` 
+For files like
+- `us/counties/<fips>.<intervention>.json`
+- `us/states/<state abbreviation>.<intervention>.json`
 
 see the [JSON Schema](schema/CANPredictionAPIRow.json)
 
@@ -196,7 +196,7 @@ see the [JSON Schema](schema/CANPredictionAPIRow.json)
   * **version.json** - Metadata about how the API artifacts were generated.
     * *timestamp* (string) - an ISO 8601-formatted UTC timestamp.
     * *covid-data-public*
-      * *branch* (string) - Branch name (usually "master").
+      * *branch* (string) - Branch name (usually "main").
       * *hash* (string) - Commit hash that branch was synced to.
       * *dirty* (boolean) - Whether there were any uncommitted / untracked files
         in the repo (usually false).

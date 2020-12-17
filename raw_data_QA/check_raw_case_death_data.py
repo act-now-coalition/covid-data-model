@@ -301,10 +301,10 @@ def check_new_data(df1, df2, args, var):
 
 def get_production_hash(json_path):
     prod_snapshot_version = requests.get(json_path).json()["data_url"].split("/")[-2]
-    master_hash = requests.get(
+    main_hash = requests.get(
         f"https://data.covidactnow.org/snapshot/{prod_snapshot_version}/version.json"
     ).json()["covid-data-public"]["hash"]
-    return master_hash
+    return main_hash
 
 
 def make_outputdirs(args):
