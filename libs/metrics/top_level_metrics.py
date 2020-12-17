@@ -11,7 +11,7 @@ from api import can_api_v2_definition
 from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
 from libs import series_utils
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs import icu_headroom_metric
+from libs.metrics import icu_headroom_metric
 
 Metrics = can_api_v2_definition.Metrics
 ICUHeadroomMetricDetails = can_api_v2_definition.ICUHeadroomMetricDetails

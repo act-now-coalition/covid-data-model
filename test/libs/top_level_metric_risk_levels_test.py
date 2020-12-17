@@ -1,6 +1,6 @@
 import pytest
-from libs.top_level_metric_risk_levels import RiskLevel
-from libs import top_level_metric_risk_levels
+from libs.metrics.top_level_metric_risk_levels import RiskLevel
+from libs.metrics import top_level_metric_risk_levels
 
 
 def test_calc_risk_level_below_limit():

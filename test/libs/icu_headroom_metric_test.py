@@ -4,7 +4,7 @@ import pandas as pd
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from api import can_api_v2_definition
-from libs import icu_headroom_metric
+from libs.metrics import icu_headroom_metric
 
 ICUMetricData = icu_headroom_metric.ICUMetricData
 

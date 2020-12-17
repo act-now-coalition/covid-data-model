@@ -7,7 +7,7 @@ import pydantic
 import structlog
 
 import pyseir.run
-from libs import test_positivity
+from libs.metrics import test_positivity
 
 from libs.pipelines.api_v2_paths import APIOutputPathBuilder
 from libs.pipelines.api_v2_paths import FileType
@@ -17,8 +17,8 @@ from api.can_api_v2_definition import Metrics
 from api.can_api_v2_definition import MetricsTimeseriesRow
 from api.can_api_v2_definition import RegionSummaryWithTimeseries
 from libs import dataset_deployer
-from libs import top_level_metrics
-from libs import top_level_metric_risk_levels
+from libs.metrics import top_level_metrics
+from libs.metrics import top_level_metric_risk_levels
 from libs import parallel_utils
 from libs import pipeline
 from libs import build_api_v2

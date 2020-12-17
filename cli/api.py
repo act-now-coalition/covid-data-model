@@ -15,8 +15,8 @@ import pyseir.cli
 import pyseir.run
 
 from api import update_open_api_spec
-from libs import test_positivity
-from libs import top_level_metrics
+from libs.metrics import test_positivity
+from libs.metrics import top_level_metrics
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
