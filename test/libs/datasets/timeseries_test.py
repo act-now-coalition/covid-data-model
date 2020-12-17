@@ -435,6 +435,7 @@ def test_new_cases_remove_negative():
             "iso1:us#fips:1,2020-01-01,100\n"
             "iso1:us#fips:1,2020-01-02,50\n"
             "iso1:us#fips:1,2020-01-03,75\n"
+            "iso1:us#fips:1,2020-01-04,74\n"
             "iso1:us#fips:1,,75\n"
         )
     )
@@ -445,7 +446,8 @@ def test_new_cases_remove_negative():
             "iso1:us#fips:1,2020-01-01,100,100\n"
             "iso1:us#fips:1,2020-01-02,50,\n"
             "iso1:us#fips:1,2020-01-03,75,25\n"
-            "iso1:us#fips:1,,75,25.0\n"
+            "iso1:us#fips:1,2020-01-04,74,0\n"
+            "iso1:us#fips:1,,75,0.0\n"
         )
     )
 
