@@ -957,12 +957,14 @@ def _assert_tail_filter_counts(
     skipped_na_mean: int = 0,
     all_good: int = 0,
     truncated: int = 0,
+    long_truncated: int = 0,
 ):
     """Asserts that tail_filter has given attribute count values, defaulting to zero."""
     assert tail_filter.skipped_too_short == skipped_too_short
     assert tail_filter.skipped_na_mean == skipped_na_mean
     assert tail_filter.all_good == all_good
     assert tail_filter.truncated == truncated
+    assert tail_filter.long_truncated == long_truncated
 
 
 def test_tail_filter_stalled_timeseries():
@@ -1042,15 +1044,30 @@ def test_tail_filter_diff_goes_negative():
     # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
 
 
-def test_tail_filter_long_stall():
+@pytest.mark.parametrize(
+    "stall_count,annotation_type",
+    [
+        (6, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
+        (7, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
+        (8, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (9, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (18, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+    ],
+)
+def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationType):
     # This timeseries has stalled for a long time.
-    values = list(range(100_000, 128_000, 1_000)) + [128_000] * 16
-    assert len(values) == 28 + 16
+    values = list(range(100_000, 128_000, 1_000)) + [127_000] * stall_count
+    assert len(values) == 28 + stall_count
 
     ds_in = _build_one_column_dataset(CommonFields.CASES, values)
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
-    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[:-13])
-    _assert_tail_filter_counts(tail_filter, truncated=1)
+    # There are never more than 13 stalled observations removed.
+    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[: -min(stall_count, 13)])
+    if annotation_type is AnnotationType.CUMULATIVE_TAIL_TRUNCATED:
+        _assert_tail_filter_counts(tail_filter, truncated=1)
+    elif annotation_type is AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED:
+        _assert_tail_filter_counts(tail_filter, long_truncated=1)
+
     assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
     # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
 

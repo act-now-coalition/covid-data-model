@@ -30,6 +30,18 @@ from pyseir import DATA_DIR
 import pyseir.icu.utils
 from pyseir.icu import infer_icu
 
+CUMULATIVE_FIELDS_TO_FILTER = [
+    CommonFields.CASES,
+    CommonFields.DEATHS,
+    CommonFields.POSITIVE_TESTS,
+    CommonFields.NEGATIVE_TESTS,
+    CommonFields.TOTAL_TESTS,
+    CommonFields.POSITIVE_TESTS_VIRAL,
+    CommonFields.POSITIVE_CASES_VIRAL,
+    CommonFields.TOTAL_TESTS_VIRAL,
+    CommonFields.TOTAL_TESTS_PEOPLE_VIRAL,
+    CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL,
+]
 
 PROD_BUCKET = "data.covidactnow.org"
 
@@ -89,6 +101,10 @@ def update(
         build_field_dataset_source(ALL_TIMESERIES_FEATURE_DEFINITION),
         build_field_dataset_source(ALL_FIELDS_FEATURE_DEFINITION),
     )
+    # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
+    tail_filter, multiregion_dataset = timeseries.TailFilter.run(
+        multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER,
+    )
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
     multiregion_dataset = timeseries.drop_regions_without_population(
@@ -128,6 +144,11 @@ def update(
             log=structlog.get_logger(),
         )
         static_sorted.to_csv(path_prefix / wide_dates_filename.replace("wide-dates", "static"))
+        # TODO(tom): When the output filename is disentangled from persist_dataset use it to
+        #  store the annotations.
+        tail_filter.annotations_as_dataframe().to_csv(
+            path_prefix / wide_dates_filename.replace("wide-dates", "annotations"), index=False,
+        )
 
 
 @main.command()
@@ -184,14 +205,11 @@ def run_bad_tails_filter(output_path: pathlib.Path):
     us_dataset = combined_datasets.load_us_timeseries_dataset()
     log = structlog.get_logger()
     log.info("Starting filter")
-    filter, dataset_out = timeseries.TailFilter.run(
-        us_dataset,
-        [CommonFields.TOTAL_TESTS, CommonFields.NEGATIVE_TESTS, CommonFields.POSITIVE_TESTS],
-    )
+    tail_filter, dataset_out = timeseries.TailFilter.run(us_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
     log.info("Writing output")
     wide_dates_df.write_csv(dataset_out.timeseries_rows(), output_path)
-    filter.annotations_as_dataframe().to_csv(
-        str(output_path).replace(".csv", "-annotations.csv"), index=True
+    tail_filter.annotations_as_dataframe().to_csv(
+        str(output_path).replace(".csv", "-annotations.csv"), index=False
     )
 
 

@@ -1242,6 +1242,7 @@ class AnnotationField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
 @enum.unique
 class AnnotationType(GetByValueMixin, ValueAsStrMixin, enum.Enum):
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
+    CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
 
 
 @dataclass
@@ -1253,6 +1254,7 @@ class TailFilter:
     skipped_na_mean: int = 0
     all_good: int = 0
     truncated: int = 0
+    long_truncated: int = 0
 
     @staticmethod
     def run(
@@ -1297,12 +1299,17 @@ class TailFilter:
             self.all_good += 1
             return series_in
         else:
-            self.truncated += 1
+            if count_observation_diff_under_threshold <= 7:
+                annotation_type = AnnotationType.CUMULATIVE_TAIL_TRUNCATED
+                self.truncated += 1
+            else:
+                annotation_type = AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED
+                self.long_truncated += 1
             self.annotations.append(
                 {
                     AnnotationField.LOCATION_ID: series_in.name[0],
                     AnnotationField.VARIABLE: series_in.name[1],
-                    AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
+                    AnnotationField.TYPE: annotation_type,
                     AnnotationField.COMMENT: f"Removed {count_observation_diff_under_threshold} values less than {threshold}.",
                     AnnotationField.DATE: series_in.index[-i],
                 }
