@@ -1366,7 +1366,7 @@ def test_multi_region_dataset_get_subset():
             "iso1:us#iso2:us-tx,state,TX,,2020-04-01,4,2,\n"
             "iso1:us#iso2:us-tx,state,TX,,,,,5000\n"
             "iso1:us#fips:97222,county,,97222,2020-04-01,1,2,\n"
-            "iso-2:us#fips:97222,county,,97222,,,,1000\n"
+            "iso1:us#fips:97222,county,,97222,,,,1000\n"
             "iso1:us#cbsa:10100,cbsa,,,2020-04-01,1,2,20000\n"
         )
     )
