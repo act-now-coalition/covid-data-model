@@ -132,7 +132,7 @@ def _generate_input_data(
     """
     # TODO: Outlier Removal Before Test Correction
     try:
-        times, observed_new_cases, _ = load_data.calculate_new_case_data_by_region(
+        times, observed_new_cases = load_data.calculate_new_case_data_by_region(
             regional_input.timeseries,
             t0=InferRtConstants.REF_DATE,
             include_testing_correction=include_testing_correction,

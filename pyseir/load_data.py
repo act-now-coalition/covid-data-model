@@ -123,7 +123,7 @@ def calculate_new_case_data_by_region(
     t0: datetime,
     include_testing_correction: bool = False,
     testing_correction_smoothing_tau: float = 5,
-) -> Tuple[np.array, np.array, np.array]:
+) -> Tuple[np.array, np.array]:
     """
     Calculate new cases from combined data.
 
@@ -136,13 +136,12 @@ def calculate_new_case_data_by_region(
           on an exponentially weighted moving average of decay factor specified here.
 
     Returns:
-        times: List of float days since t0 for the case and death counts below
+        times: List of float days since t0 for the case counts below
         observed_new_cases: Array of integer new cases observed each day.
-        observed_new_deaths: Array of integer new deaths observed each day.
     """
     assert not region_timeseries.empty
     assert region_timeseries.has_one_region()
-    columns = [CommonFields.NEW_CASES, CommonFields.DEATHS]
+    columns = [CommonFields.NEW_CASES]
     county_case_timeseries = region_timeseries.get_subset(
         columns=([CommonFields.LOCATION_ID, CommonFields.DATE] + columns)
     ).remove_padded_nans(columns)
@@ -164,15 +163,10 @@ def calculate_new_case_data_by_region(
         df_cases["new_cases"] -= df_cases["expected_positives_from_test_increase"].fillna(0)
         observed_new_cases = df_cases["new_cases"].values
 
-    observed_new_deaths = (
-        county_case_data[CommonFields.DEATHS].values[1:]
-        - county_case_data[CommonFields.DEATHS].values[:-1]
-    )
-
     # Clip because there are sometimes negatives either due to data reporting or
     # corrections in case count. These are always tiny so we just make
     # downstream easier to work with by clipping.
-    return times_new, observed_new_cases.clip(min=0), observed_new_deaths.clip(min=0)
+    return times_new, observed_new_cases.clip(min=0)
 
 
 def calculate_new_test_data_by_region(
