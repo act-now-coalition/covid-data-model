@@ -5,6 +5,7 @@ import pathlib
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
+from typing import ClassVar
 from typing import Collection
 from typing import Dict
 from typing import Iterable
@@ -1260,11 +1261,21 @@ class TailFilter:
     truncated: int = 0
     long_truncated: int = 0
 
+    # Trust values 2 - 4 weeks ago to have reasonable diffs. Access series_in.iat[-15] to
+    # series_in.iat[-28] (inclusive).
+    TRUSTED_DATES_OLDEST: ClassVar[int] = -28
+    TRUSTED_DATES_NEWEST: ClassVar[int] = -15
+
+    # Possibly drop series_in.iat[-1] to series_in.iat[-14] (inclusive).
+    FILTER_DATES_OLDEST: ClassVar[int] = -14
+    # If this many real values are dropped use the more severe AnnotationType.
+    COUNT_OBSERVATION_LONG: ClassVar[int] = 8
+
     @staticmethod
     def run(
         dataset: MultiRegionDataset, fields: List[FieldName]
     ) -> Tuple["TailFilter", MultiRegionDataset]:
-        """Returns a dataset with recent data that looks bad removed from fields."""
+        """Returns a dataset with recent data that looks bad removed from cumulative fields."""
         timeseries_wide_dates = dataset.timeseries_wide_dates()
 
         fields_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(fields)
@@ -1284,14 +1295,19 @@ class TailFilter:
 
     def _filter_one_series(self, series_in: pd.Series) -> pd.Series:
         """Filters one timeseries of cumulative values. This is a method so self can be used to
-        store side outputs."""
+        store side outputs.
 
-        if len(series_in) < 28:
+        Args:
+            series_in: a timeseries of float values, with a sorted DatetimeIndex
+            """
+        if len(series_in) < -TailFilter.TRUSTED_DATES_OLDEST:
             self.skipped_too_short += 1
             return series_in
+
         diff = series_in.diff()
-        # Treat the mean value 2 - 4 weeks ago as good.
-        mean = diff[-28:-14].mean()
+        mean = diff.iloc[
+            TailFilter.TRUSTED_DATES_OLDEST : TailFilter.TRUSTED_DATES_NEWEST + 1
+        ].mean()
         if pd.isna(mean):
             self.skipped_na_mean += 1
             return series_in
@@ -1300,19 +1316,29 @@ class TailFilter:
         # used to create a tighter bound but the simple threshold seems to work for now.
         # TODO(tom): Experiment with other ways to calculate the bound.
         threshold = math.floor(mean / 100)
+
         # Go backwards in time, starting with the most recent observation. Stop as soon as there
         # is an observation with diff that looks reasonable / not stalled / over the threshold.
+        # If no such diff is found after reading iat[FILTER_DATES_OLDEST] the 'else' is taken.
         count_observation_diff_under_threshold = 0
-        for i in range(1, 15):
-            if diff.iloc[-i] >= threshold:
+        for i in range(-1, TailFilter.FILTER_DATES_OLDEST - 1, -1):  # range stop is exclusive
+            if pd.isna(diff.iat[i]):
+                continue
+            if diff.iat[i] >= threshold:
+                truncate_at = i + 1
                 break
-            if pd.notna(diff.iloc[-i]):
+            else:
                 count_observation_diff_under_threshold += 1
+        else:
+            # Reached end of loop without finding a diff >= threshold.
+            truncate_at = TailFilter.FILTER_DATES_OLDEST
         if count_observation_diff_under_threshold == 0:
             self.all_good += 1
             return series_in
         else:
-            if count_observation_diff_under_threshold <= 7:
+            # series_in.iat[truncate_at] is the first value *not* returned
+            assert TailFilter.FILTER_DATES_OLDEST <= truncate_at <= -1
+            if count_observation_diff_under_threshold < TailFilter.COUNT_OBSERVATION_LONG:
                 annotation_type = AnnotationType.CUMULATIVE_TAIL_TRUNCATED
                 self.truncated += 1
             else:
@@ -1324,7 +1350,9 @@ class TailFilter:
                     AnnotationField.VARIABLE: series_in.name[1],
                     AnnotationField.TYPE: annotation_type,
                     AnnotationField.COMMENT: f"Removed {count_observation_diff_under_threshold} values less than {threshold}.",
-                    AnnotationField.DATE: series_in.index[-i],
+                    AnnotationField.DATE: series_in.index[truncate_at - 1],
                 }
             )
-            return series_in[: -(i - 1)]
+            # Using integer position indexing where the upper bound is exclusive, like regular
+            # Python indexing and unlike Pandas label (`loc` and `at`) indexing.
+            return series_in.iloc[:truncate_at]

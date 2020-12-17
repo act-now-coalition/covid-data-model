@@ -1059,6 +1059,19 @@ def test_tail_filter_zero_diff():
     assert tail_filter.annotations == []
 
 
+@pytest.mark.parametrize("stall_count", [0, 1, 2, 4])
+def test_tail_filter_small_diff(stall_count: int):
+    # Make sure a zero increase in the most recent value(s) of a series that was increasing
+    # slowly is not dropped.
+    values = list(range(1_000, 1_030)) + [1_029] * stall_count
+
+    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
+    _assert_tail_filter_counts(tail_filter, all_good=1)
+    assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
+    assert tail_filter.annotations == []
+
+
 @pytest.mark.parametrize(
     "stall_count,annotation_type",
     [
@@ -1066,7 +1079,10 @@ def test_tail_filter_zero_diff():
         (7, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
         (8, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
         (9, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (18, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (13, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (14, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (15, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (16, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
     ],
 )
 def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationType):
@@ -1077,7 +1093,7 @@ def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationTyp
     ds_in = _build_one_column_dataset(CommonFields.CASES, values)
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
     # There are never more than 13 stalled observations removed.
-    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[: -min(stall_count, 13)])
+    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[: -min(stall_count, 14)])
     if annotation_type is AnnotationType.CUMULATIVE_TAIL_TRUNCATED:
         _assert_tail_filter_counts(tail_filter, truncated=1)
     elif annotation_type is AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED:
