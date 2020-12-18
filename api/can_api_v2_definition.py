@@ -153,6 +153,7 @@ class Metrics(base_model.APIBaseModel):
     )
     icuHeadroomRatio: Optional[float] = pydantic.Field(...)
     icuHeadroomDetails: ICUHeadroomMetricDetails = pydantic.Field(None)
+    icuCapacityRatio: Optional[float] = pydantic.Field(...)
 
     @staticmethod
     def empty():
@@ -206,6 +207,7 @@ class RiskLevels(base_model.APIBaseModel):
     )
     infectionRate: RiskLevel = pydantic.Field(..., description="Infection rate risk level.")
     icuHeadroomRatio: RiskLevel = pydantic.Field(..., description="ICU headroom ratio risk level.")
+    icuCapacityRatio: RiskLevel = pydantic.Field(..., description="ICU capacity ratio risk level.")
 
 
 class MetricsTimeseriesRow(Metrics):
