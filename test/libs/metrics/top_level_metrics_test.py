@@ -17,7 +17,7 @@ from freezegun import freeze_time
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
 
-def _build_metrics_df(fips, start_date=None, dates=None, **metrics_data,) -> pd.DataFrame:
+def _build_metrics_df(fips, start_date=None, dates=None, **metrics_data) -> pd.DataFrame:
     metrics = [
         "caseDensity",
         "testPositivityRatio",
@@ -439,6 +439,7 @@ def test_calculate_latest_different_latest_days():
         contactTracerCapacityRatio=[0.06, 0.08],
         infectionRate=[prev_rt, 2.01],
         infectionRateCI90=[prev_rt_ci90, 0.2],
+        icuCapacityRatio=0.75,
     )
     expected_metrics = can_api_v2_definition.Metrics(
         testPositivityRatio=0.2,
@@ -448,7 +449,7 @@ def test_calculate_latest_different_latest_days():
         infectionRateCI90=prev_rt_ci90,
         icuHeadroomRatio=None,
         icuHeadroomDetails=None,
-        icuCapacityRatio=None,
+        icuCapacityRatio=0.75,
     )
     metrics = top_level_metrics.calculate_latest_metrics(data, None, None, max_lookback_days=8)
     assert metrics == expected_metrics

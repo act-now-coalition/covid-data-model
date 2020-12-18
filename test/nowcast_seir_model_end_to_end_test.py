@@ -169,6 +169,7 @@ def test_demonstrate_hospitalization_delay_changes():
         fig.savefig(TEST_OUTPUT_DIR / (f"test_ratio_evolution_%s_states.pdf" % name))
 
 
+@pytest.mark.slow
 def test_historical_period_state_deaths_and_hospitalizations():
     """
     Validate model by recreating historical death and hospitalization timeseries starting
@@ -288,6 +289,7 @@ def test_historical_period_state_deaths_and_hospitalizations():
         # TODO add more assertions on a per state level
 
 
+@pytest.mark.slow
 def test_multiple_periods_for_select_states():
     """
     Show how fit evolves over time for one staste
@@ -368,6 +370,7 @@ def test_multiple_periods_for_select_states():
             plt.close(fig)
 
 
+@pytest.mark.slow
 def test_reproduce_TX_late_peak():
     """
     Reproduce behaviour of late peaks for Texas starting from t0 = 170
@@ -414,6 +417,7 @@ def test_reproduce_TX_late_peak():
     fig.savefig(TEST_OUTPUT_DIR / "test_reproduce_TX_late_peak.pdf", bbox_inches="tight")
 
 
+@pytest.mark.slow
 def test_inertia_of_model():
     """
     Explores delay of H and D relative to C and overshoot/undershoot with variable dwell time
@@ -469,6 +473,7 @@ def test_inertia_of_model():
         fig.savefig(TEST_OUTPUT_DIR / "test_inertia_of_model.pdf", bbox_inches="tight")
 
 
+@pytest.mark.slow
 def test_simulate_iowa_late_august():
     """
     What could happen in Iowa given similar behaviour as in Florida?
@@ -515,6 +520,7 @@ def test_simulate_iowa_late_august():
         fig.savefig(TEST_OUTPUT_DIR / "test_simulate_iowa.pdf", bbox_inches="tight")
 
 
+@pytest.mark.slow
 def test_reproducing_forecast_deaths_from_cases():
     """
     Use forecast cases from Reich Labs and evolve forward in time from present
@@ -593,6 +599,7 @@ def test_reproducing_forecast_deaths_from_cases():
 ############################### Obsolete tests below here ##############################
 
 
+@pytest.mark.slow
 def obsolete_test_reproduce_FL_late_peak():
     """
     This test is obsolete.

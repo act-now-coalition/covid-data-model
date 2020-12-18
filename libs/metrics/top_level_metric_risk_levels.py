@@ -74,6 +74,11 @@ def icu_headroom_ratio_risk_level(value: float) -> RiskLevel:
     return calc_risk_level(value, thresholds)
 
 
+def icu_capacity_ratio_risk_level(value: float) -> RiskLevel:
+    thresholds = [0.7, 0.8, 0.85]
+    return calc_risk_level(value, thresholds)
+
+
 def infection_rate_risk_level(value: float) -> RiskLevel:
     thresholds = [0.9, 1.1, 1.4]
     return calc_risk_level(value, thresholds)
@@ -120,6 +125,7 @@ def calculate_risk_level_from_metrics(
     contact_tracing_level = contact_tracing_risk_level(metrics.contactTracerCapacityRatio)
     icu_headroom_level = icu_headroom_ratio_risk_level(metrics.icuHeadroomRatio)
     infection_rate_level = infection_rate_risk_level(metrics.infectionRate)
+    icu_capacity_ratio_level = icu_capacity_ratio_risk_level(metrics.icuCapacityRatio)
 
     overall_level = top_level_risk_level(
         case_density_level,
@@ -135,5 +141,6 @@ def calculate_risk_level_from_metrics(
         contactTracerCapacityRatio=contact_tracing_level,
         infectionRate=infection_rate_level,
         icuHeadroomRatio=icu_headroom_level,
+        icuCapacityRatio=icu_capacity_ratio_level,
     )
     return levels
