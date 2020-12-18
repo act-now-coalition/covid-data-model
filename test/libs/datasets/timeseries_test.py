@@ -1,5 +1,9 @@
 import io
 import pathlib
+from typing import Mapping
+from typing import Sequence
+from typing import Union
+
 import pytest
 import pandas as pd
 import structlog
@@ -14,6 +18,8 @@ from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
+from libs.datasets.timeseries import AnnotationField
+from libs.datasets.timeseries import AnnotationType
 from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips
@@ -260,14 +266,17 @@ def test_multiregion_provenance():
 
 
 def _timeseries_sorted_by_location_date(
-    ts: timeseries.MultiRegionDataset, drop_na: bool
+    dataset: timeseries.MultiRegionDataset, *, drop_na: bool, drop_na_dates: bool
 ) -> pd.DataFrame:
     """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
-    df = ts.timeseries.reset_index().sort_values(
-        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
-    )
+    df = dataset.timeseries
     if drop_na:
         df = df.dropna("columns", "all")
+    if drop_na_dates:
+        df = df.dropna("rows", "all")
+    df = df.reset_index().sort_values(
+        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
+    )
     return df
 
 
@@ -286,12 +295,18 @@ def _latest_sorted_by_location_date(
 def assert_dataset_like(
     ds1: timeseries.MultiRegionDataset,
     ds2: timeseries.MultiRegionDataset,
+    *,
     drop_na_timeseries=False,
     drop_na_latest=False,
+    drop_na_dates=False,
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
-    ts1 = _timeseries_sorted_by_location_date(ds1, drop_na=drop_na_timeseries)
-    ts2 = _timeseries_sorted_by_location_date(ds2, drop_na=drop_na_timeseries)
+    ts1 = _timeseries_sorted_by_location_date(
+        ds1, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
+    )
+    ts2 = _timeseries_sorted_by_location_date(
+        ds2, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
+    )
     pd.testing.assert_frame_equal(ts1, ts2, check_like=True, check_dtype=False)
     latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
     latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
@@ -875,9 +890,21 @@ def test_merge_provenance():
         )
 
 
-def _build_one_column_multiregion_dataset(
-    column, values, location_id="iso1:us#fips:97222", start_date="2020-08-25"
+def _build_one_column_dataset(
+    column,
+    values: Union[Sequence[float], Mapping[Region, Sequence[float]]],
+    location_id="iso1:us#fips:97222",
+    start_date="2020-08-25",
 ):
+    if isinstance(values, Mapping):
+        # Multiple regions passed in a Mapping. Build a new empty dataset and append result of
+        # recursive call for each region.
+        dataset = timeseries.MultiRegionDataset.new_without_timeseries()
+        for region, region_values in values.items():
+            dataset = dataset.append_regions(
+                _build_one_column_dataset(column, region_values, region.location_id, start_date)
+            )
+        return dataset
 
     dates = pd.date_range(start_date, periods=len(values), freq="D")
     ts_rows = []
@@ -891,18 +918,18 @@ def _build_one_column_multiregion_dataset(
 
 def test_remove_outliers():
     values = [10.0] * 7 + [1000.0]
-    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     dataset = timeseries.drop_new_case_outliers(dataset)
 
     # Expected result is the same series with the last value removed
     values = [10.0] * 7 + [None]
-    expected = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    expected = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     assert_dataset_like(dataset, expected)
 
 
 def test_remove_outliers_threshold():
     values = [1.0] * 7 + [30.0]
-    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
@@ -912,17 +939,169 @@ def test_remove_outliers_threshold():
 
     # Expected result is the same series with the last value removed
     values = [1.0] * 7 + [None]
-    expected = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    expected = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     assert_dataset_like(result, expected)
 
 
 def test_not_removing_short_series():
     values = [None] * 7 + [1, 1, 300]
-    dataset = _build_one_column_multiregion_dataset(CommonFields.NEW_CASES, values)
+    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
     assert_dataset_like(dataset, result)
+
+
+def _assert_tail_filter_counts(
+    tail_filter: timeseries.TailFilter,
+    *,
+    skipped_too_short: int = 0,
+    skipped_na_mean: int = 0,
+    all_good: int = 0,
+    truncated: int = 0,
+    long_truncated: int = 0,
+):
+    """Asserts that tail_filter has given attribute count values, defaulting to zero."""
+    assert tail_filter.skipped_too_short == skipped_too_short
+    assert tail_filter.skipped_na_mean == skipped_na_mean
+    assert tail_filter.all_good == all_good
+    assert tail_filter.truncated == truncated
+    assert tail_filter.long_truncated == long_truncated
+
+
+def test_tail_filter_stalled_timeseries():
+    # Make a timeseries that has 24 days increasing.
+    values_increasing = list(range(100_000, 124_000, 1_000))
+    # Add 4 days that copy the 24th day. The filter is meant to remove these.
+    values_stalled = values_increasing + [values_increasing[-1]] * 4
+    assert len(values_stalled) == 28
+
+    ds_in = _build_one_column_dataset(CommonFields.NEW_CASES, values_stalled)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
+    _assert_tail_filter_counts(tail_filter, truncated=1)
+    assert tail_filter.annotations == [
+        {
+            AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
+            AnnotationField.VARIABLE: CommonFields.NEW_CASES,
+            AnnotationField.LOCATION_ID: "iso1:us#fips:97222",
+            AnnotationField.DATE: pd.to_datetime("2020-09-17"),
+            AnnotationField.COMMENT: "Removed 4 observations that look suspicious compared to "
+            "mean diff of 1000.0 a few weeks ago.",
+        }
+    ]
+    ds_expected = _build_one_column_dataset(CommonFields.NEW_CASES, values_increasing)
+    assert_dataset_like(ds_out, ds_expected)
+
+    # Try again with one day less, not enough for the filter so it returns the data unmodified.
+    ds_in = _build_one_column_dataset(CommonFields.NEW_CASES, values_stalled[:-1])
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
+    _assert_tail_filter_counts(tail_filter, skipped_too_short=1)
+    assert tail_filter.annotations == []
+    assert_dataset_like(ds_out, ds_in)
+
+
+def test_tail_filter_mean_nan():
+    # Make a timeseries that has 14 days of NaN, than 14 days of increasing values. The first
+    # 100_000 is there so the NaN form a gap that isn't dropped by unrelated code.
+    values = [100_000] + [float("NaN")] * 14 + list(range(100_000, 114_000, 1_000))
+    assert len(values) == 29
+
+    ds_in = _build_one_column_dataset(CommonFields.NEW_CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
+    _assert_tail_filter_counts(tail_filter, skipped_na_mean=1)
+    assert tail_filter.annotations == []
+    assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
+
+
+def test_tail_filter_two_series():
+    # Check that two series are both filtered. Currently the 'good' dates of 14-28 days ago are
+    # relative to the most recent date of any timeseries but maybe it should be per-timeseries.
+    pos_tests = list(range(100_000, 128_000, 1_000))
+    tot_tests = list(range(1_000_000, 1_280_000, 10_000))
+    pos_tests_stalled = pos_tests + [pos_tests[-1]] * 3
+    tot_tests_stalled = tot_tests + [tot_tests[-1]] * 5
+
+    ds_in = _build_one_column_dataset(CommonFields.POSITIVE_TESTS, pos_tests_stalled).join_columns(
+        _build_one_column_dataset(CommonFields.TOTAL_TESTS, tot_tests_stalled)
+    )
+    tail_filter, ds_out = timeseries.TailFilter.run(
+        ds_in, [CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS]
+    )
+    ds_expected = _build_one_column_dataset(CommonFields.POSITIVE_TESTS, pos_tests).join_columns(
+        _build_one_column_dataset(CommonFields.TOTAL_TESTS, tot_tests)
+    )
+    _assert_tail_filter_counts(tail_filter, truncated=2)
+    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
+    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+
+
+def test_tail_filter_diff_goes_negative():
+    # The end of this timeseries is (in 1000s) ... 127, 126, 127, 127. Ony the last 127 is
+    # expected to be truncated.
+    values = list(range(100_000, 128_000, 1_000)) + [126_000, 127_000, 127_000]
+    assert len(values) == 31
+
+    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
+    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[:-1])
+    _assert_tail_filter_counts(tail_filter, truncated=1)
+    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
+    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+
+
+def test_tail_filter_zero_diff():
+    # Make sure constant value timeseries is not truncated.
+    values = [100_000] * 28
+
+    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
+    _assert_tail_filter_counts(tail_filter, all_good=1)
+    assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
+    assert tail_filter.annotations == []
+
+
+@pytest.mark.parametrize("stall_count", [0, 1, 2, 4])
+def test_tail_filter_small_diff(stall_count: int):
+    # Make sure a zero increase in the most recent value(s) of a series that was increasing
+    # slowly is not dropped.
+    values = list(range(1_000, 1_030)) + [1_029] * stall_count
+
+    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
+    _assert_tail_filter_counts(tail_filter, all_good=1)
+    assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
+    assert tail_filter.annotations == []
+
+
+@pytest.mark.parametrize(
+    "stall_count,annotation_type",
+    [
+        (6, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
+        (7, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
+        (8, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (9, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (13, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (14, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (15, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (16, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+    ],
+)
+def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationType):
+    # This timeseries has stalled for a long time.
+    values = list(range(100_000, 128_000, 1_000)) + [127_000] * stall_count
+    assert len(values) == 28 + stall_count
+
+    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
+    # There are never more than 13 stalled observations removed.
+    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[: -min(stall_count, 14)])
+    if annotation_type is AnnotationType.CUMULATIVE_TAIL_TRUNCATED:
+        _assert_tail_filter_counts(tail_filter, truncated=1)
+    elif annotation_type is AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED:
+        _assert_tail_filter_counts(tail_filter, long_truncated=1)
+
+    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
+    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
 
 
 def test_timeseries_empty_timeseries_and_static():

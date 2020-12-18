@@ -30,7 +30,7 @@ prepare () {
     exit_with_usage
   fi
 
-  if [[ $COVID_DATA_MODEL_REF != "master" ]] || [[ $COVID_DATA_PUBLIC_REF != "master" ]]; then
+  if [[ $COVID_DATA_MODEL_REF != "master" ]] || [[ $COVID_DATA_PUBLIC_REF != "main" ]]; then
     echo "Not triggering covid-projections update-snapshot since this isn't a 'master' branch run."
     exit 0
   fi
@@ -46,7 +46,7 @@ exit_with_usage () {
   echo "Usage: $CMD <snapshot-id> <covid-data-model-ref> <covid-data-public-ref>"
   echo
   echo "Examples:"
-  echo "$CMD 123 master master"
+  echo "$CMD 123 master main"
   exit 1
 }
 
