@@ -17,7 +17,7 @@ on:
 
 env:
   # TODO: This may no longer be used for anything anymore. Remove?
-  COVID_DATA_PUBLIC_REF: 'master'
+  COVID_DATA_PUBLIC_REF: 'main'
 
   # S3 Bucket (used by s3-sync-action tasks) to store final API snapshot.
   AWS_S3_BUCKET: 'data.covidactnow.org'

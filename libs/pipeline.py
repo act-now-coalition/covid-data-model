@@ -86,7 +86,7 @@ def cbsa_to_location_id(cbsa_code: str) -> str:
     """Turns a CBSA code into a location_id.
 
     For information about how these identifiers are brought into the CAN code see
-    https://github.com/covid-projections/covid-data-public/tree/master/data/census-msa
+    https://github.com/covid-projections/covid-data-public/tree/main/data/census-msa
     """
     return f"iso1:us#cbsa:{cbsa_code}"
 
