@@ -1,18 +1,17 @@
 import dataclasses
-import io
 
 import numpy as np
 import pandas as pd
 import pytest
 import structlog
+from freezegun import freeze_time
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic import common_df
+
 from api import can_api_v2_definition
 from libs.metrics import top_level_metrics
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
-from freezegun import freeze_time
 
 from test.dataset_utils_test import read_csv_and_index_fips_date
 

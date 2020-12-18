@@ -7,7 +7,13 @@ from libs.datasets import timeseries
 
 
 def calculate_icu_capacity(region_df: pd.DataFrame):
+    """Calculate ICU Capacity ratio.
 
+    Args:
+        region_df: Data for a specific region.
+
+    Returns: np.nan if data missing or pd.Series of ICU capacity.
+    """
     # TODO(chris): Why does the common fields break if it's not in the array?
     icu_beds = region_df.get(CommonFields.ICU_BEDS.value)
     current_total_icu = region_df.get(CommonFields.CURRENT_ICU_TOTAL.value)
@@ -16,8 +22,3 @@ def calculate_icu_capacity(region_df: pd.DataFrame):
 
     icu_capacity = current_total_icu / icu_beds
     return icu_capacity
-
-
-def calculate_all_icu_capacity_ratio(dataset: timeseries.MultiRegionDataset):
-
-    dataset.groupby_region().apply(_calculate_icu_capacity)
