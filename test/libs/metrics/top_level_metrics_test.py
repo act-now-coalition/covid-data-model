@@ -13,7 +13,6 @@ from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
 
-from test.libs.datasets import timeseries_test
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
 INPUT_COLUMNS = [
