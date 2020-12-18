@@ -13,21 +13,25 @@ from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
 
+from test.libs.datasets import timeseries_test
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
+INPUT_COLUMNS = [
+    "new_cases",
+    "cases",
+    "test_positivity",
+    "positive_tests",
+    "negative_tests",
+    "contact_tracers_count",
+    "current_icu",
+    "icu_beds",
+    "current_icu_total",
+]
 
-def _build_metrics_df(fips, start_date=None, dates=None, **metrics_data) -> pd.DataFrame:
-    metrics = [
-        "caseDensity",
-        "testPositivityRatio",
-        "contactTracerCapacityRatio",
-        "infectionRate",
-        "infectionRateCI90",
-        "icuHeadroomRatio",
-        "icuCapacityRatio",
-    ]
 
-    data = {metric: metrics_data.get(metric, np.nan) for metric in metrics}
+def _build_timeseries_dataframe(fips, all_columns, start_date=None, dates=None, **column_data):
+
+    data = {column: column_data.get(column, np.nan) for column in all_columns}
 
     # TODO: Clean this up
     max_len = max(len(value) for value in data.values() if isinstance(value, list))
@@ -42,15 +46,45 @@ def _build_metrics_df(fips, start_date=None, dates=None, **metrics_data) -> pd.D
     return pd.DataFrame({"date": dates, "fips": fips, **data})
 
 
+def _build_metrics_df(fips, start_date=None, dates=None, **metrics_data) -> pd.DataFrame:
+    metrics = [
+        "caseDensity",
+        "testPositivityRatio",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90",
+        "icuHeadroomRatio",
+        "icuCapacityRatio",
+    ]
+    return _build_timeseries_dataframe(
+        fips, metrics, start_date=start_date, dates=dates, **metrics_data
+    )
+
+
 def _series_with_date_index(data, date: str = "2020-08-25", **series_kwargs):
     date_series = pd.date_range(date, periods=len(data), freq="D")
     return pd.Series(data, index=date_series, **series_kwargs)
 
 
-def _fips_csv_to_one_region(csv_str: str, region: Region) -> OneRegionTimeseriesDataset:
+def _fips_csv_to_one_region(
+    csv_str: str, region: Region, latest=None
+) -> OneRegionTimeseriesDataset:
     df = read_csv_and_index_fips_date(csv_str).reset_index()
     # from_timeseries_and_latest adds the location_id column needed by get_one_region
-    return MultiRegionDataset.from_fips_timeseries_df(df).get_one_region(region)
+    dataset = MultiRegionDataset.from_fips_timeseries_df(df).get_one_region(region)
+    if latest:
+        return dataclasses.replace(dataset, latest=latest)
+    else:
+        return dataset
+
+
+def _fips_df_to_one_region(df, region: Region, latest=None) -> OneRegionTimeseriesDataset:
+    # from_timeseries_and_latest adds the location_id column needed by get_one_region
+    dataset = MultiRegionDataset.from_fips_timeseries_df(df).get_one_region(region)
+    if latest:
+        return dataclasses.replace(dataset, latest=latest)
+    else:
+        return dataset
 
 
 def test_calculate_case_density():
@@ -117,7 +151,6 @@ def test_top_level_metrics_basic():
         "2020-08-19,36,,,,,3,10,20,\n"
         "2020-08-20,36,40,,40,360,4,10,20,\n"
     )
-    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
@@ -125,7 +158,7 @@ def test_top_level_metrics_basic():
         CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 30,
     }
-    one_region = dataclasses.replace(one_region, latest=latest)
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"), latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
     )
@@ -160,14 +193,13 @@ def test_top_level_metrics_incomplete_latest():
         "2020-08-19,36,10,,,,3,10,20,\n"
         "2020-08-20,36,10,40,40,360,4,10,20,\n"
     )
-    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
         # ICU_BEDS not set
     }
-    one_region = dataclasses.replace(one_region, latest=latest)
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"), latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
     )
@@ -192,14 +224,13 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
         "2020-08-19,36,10.0,30.0,,,3,,\n"
         "2020-08-20,36,10.0,40.0,,,4,,\n"
     )
-    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
         CommonFields.ICU_BEDS: 10,
     }
-    one_region = dataclasses.replace(one_region, latest=latest)
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"), latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, None, structlog.get_logger()
     )
@@ -223,14 +254,13 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
         "2020-08-19,36,10,30,0.04,,,3,,\n"
         "2020-08-20,36,10,40,0.05,,,4,,\n"
     )
-    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
         CommonFields.ICU_BEDS: 10,
     }
-    one_region = dataclasses.replace(one_region, latest=latest)
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"), latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, None, structlog.get_logger()
     )
@@ -258,14 +288,13 @@ def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tes
         "2020-08-14,36,10,50,0.06,,,4,,\n"
         "2020-08-15,36,10,60,0.07,,,4,,\n"
     )
-    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"))
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
         CommonFields.ICU_BEDS: 10,
     }
-    one_region = dataclasses.replace(one_region, latest=latest)
+    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"), latest=latest)
 
     if pos_neg_tests_recent:
         freeze_date = "2020-08-21"
@@ -300,6 +329,13 @@ def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tes
 
 def test_top_level_metrics_with_rt():
     region = Region.from_fips("36")
+    latest = {
+        CommonFields.POPULATION: 100_000,
+        CommonFields.FIPS: "36",
+        CommonFields.STATE: "NY",
+        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
+        CommonFields.ICU_BEDS: 25,
+    }
     data = (
         "date,fips,new_cases,positive_tests,negative_tests,contact_tracers_count"
         ",current_icu,current_icu_total,icu_beds\n"
@@ -308,7 +344,7 @@ def test_top_level_metrics_with_rt():
         "2020-08-19,36,,,,3,,,\n"
         "2020-08-20,36,,40,360,4,,,\n"
     )
-    one_region = _fips_csv_to_one_region(data, region)
+    one_region = _fips_csv_to_one_region(data, region, latest=latest)
 
     data = (
         "date,fips,Rt_MAP_composite,Rt_ci95_composite\n"
@@ -319,14 +355,6 @@ def test_top_level_metrics_with_rt():
     )
     rt_data = _fips_csv_to_one_region(data, region)
 
-    latest = {
-        CommonFields.POPULATION: 100_000,
-        CommonFields.FIPS: "36",
-        CommonFields.STATE: "NY",
-        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
-        CommonFields.ICU_BEDS: 25,
-    }
-    one_region = dataclasses.replace(one_region, latest=latest)
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, rt_data, None, structlog.get_logger()
     )
@@ -451,4 +479,28 @@ def test_calculate_latest_different_latest_days():
         icuCapacityRatio=0.75,
     )
     metrics = top_level_metrics.calculate_latest_metrics(data, None, None, max_lookback_days=8)
+    assert metrics == expected_metrics
+
+
+def test_calculate_icu_capacity():
+    region = Region.from_fips("36")
+    latest = {
+        CommonFields.POPULATION: 100_000,
+        CommonFields.FIPS: "36",
+        CommonFields.STATE: "NY",
+    }
+    data = _build_timeseries_dataframe(
+        "36", INPUT_COLUMNS, start_date="2020-12-18", icu_beds=[10, 20], current_icu_total=[10, 15]
+    )
+    one_region = _fips_df_to_one_region(data, region, latest=latest)
+
+    results, metrics = top_level_metrics.calculate_metrics_for_timeseries(
+        one_region, None, None, structlog.get_logger()
+    )
+    expected = _build_metrics_df("36", start_date="2020-12-18", icuCapacityRatio=[1.0, 0.75],)
+    positivity_method = can_api_v2_definition.TestPositivityRatioDetails(
+        source=can_api_v2_definition.TestPositivityRatioMethod.OTHER
+    )
+    expected_metrics = top_level_metrics.calculate_latest_metrics(expected, None, positivity_method)
+    pd.testing.assert_frame_equal(expected, results)
     assert metrics == expected_metrics

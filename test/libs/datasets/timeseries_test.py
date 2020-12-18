@@ -895,7 +895,7 @@ def _build_one_column_dataset(
     values: Union[Sequence[float], Mapping[Region, Sequence[float]]],
     location_id="iso1:us#fips:97222",
     start_date="2020-08-25",
-):
+) -> timeseries.MultiRegionDataset:
     if isinstance(values, Mapping):
         # Multiple regions passed in a Mapping. Build a new empty dataset and append result of
         # recursive call for each region.
