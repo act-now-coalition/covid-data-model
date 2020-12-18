@@ -3,8 +3,6 @@ import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
 
-from libs.datasets import timeseries
-
 
 def calculate_icu_capacity(region_df: pd.DataFrame):
     """Calculate ICU Capacity ratio.
