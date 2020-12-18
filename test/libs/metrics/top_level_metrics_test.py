@@ -1,3 +1,4 @@
+from typing import List
 import dataclasses
 
 import numpy as np
@@ -15,6 +16,8 @@ from libs.pipeline import Region
 
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
+# Columns used for building input dataframes in tests. It covers the fields
+# required to run top level metrics without error.
 INPUT_COLUMNS = [
     "new_cases",
     "cases",
@@ -28,11 +31,28 @@ INPUT_COLUMNS = [
 ]
 
 
-def _build_timeseries_dataframe(fips, all_columns, start_date=None, dates=None, **column_data):
+def _build_timeseries_dataframe(
+    fips: str,
+    all_columns: List[str],
+    start_date: str = None,
+    dates: List[str] = None,
+    **column_data,
+) -> pd.DataFrame:
+    """Build a timeseries dataframe with fips, date and specified columns.
 
+    Args:
+        fips: Fips code for region.
+        all_columns: All columns to be included in output dataframe.
+        start_date: Optional start date.
+        dates: Optional list of dates to use for rows, length of dates must match
+            length of data in column_data.
+        column_data: Column data with values.  Names of variables should match columns
+            in `all_columns`. All lists must be the same length.
+
+    Returns: DataFrame.
+    """
     data = {column: column_data.get(column, np.nan) for column in all_columns}
 
-    # TODO: Clean this up
     max_len = max(len(value) for value in data.values() if isinstance(value, list))
 
     if dates:
@@ -46,6 +66,9 @@ def _build_timeseries_dataframe(fips, all_columns, start_date=None, dates=None, 
 
 
 def _build_metrics_df(fips, start_date=None, dates=None, **metrics_data) -> pd.DataFrame:
+    """Builds a dataframe that has same structure as those built by
+    `top_level_metrics.calculate_metrics_for_timeseries`
+    """
     metrics = [
         "caseDensity",
         "testPositivityRatio",
@@ -161,15 +184,6 @@ def test_top_level_metrics_basic():
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
     )
-    metrics = [
-        "caseDensity",
-        "testPositivityRatio",
-        "contactTracerCapacityRatio",
-        "infectionRate",
-        "infectionRateCI90",
-        "icuHeadroomRatio",
-        "icuCapacityRatio",
-    ]
 
     expected = _build_metrics_df(
         "36",

@@ -12,11 +12,11 @@ def calculate_icu_capacity(region_df: pd.DataFrame):
 
     Returns: np.nan if data missing or pd.Series of ICU capacity.
     """
-    # TODO(chris): Why does the common fields break if it's not in the array?
-    icu_beds = region_df.get(CommonFields.ICU_BEDS.value)
-    current_total_icu = region_df.get(CommonFields.CURRENT_ICU_TOTAL.value)
-    if icu_beds is None or current_total_icu is None:
+    columns = region_df.columns
+    if CommonFields.ICU_BEDS not in columns or CommonFields.CURRENT_ICU_TOTAL not in columns:
         return np.nan
 
+    icu_beds = region_df[CommonFields.ICU_BEDS]
+    current_total_icu = region_df[CommonFields.CURRENT_ICU_TOTAL]
     icu_capacity = current_total_icu / icu_beds
     return icu_capacity
