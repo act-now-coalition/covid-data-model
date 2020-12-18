@@ -4,9 +4,9 @@ import pandas as pd
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from api import can_api_v2_definition
-from libs import icu_headroom_metric
+from libs.metrics import icu_headroom
 
-ICUMetricData = icu_headroom_metric.ICUMetricData
+ICUMetricData = icu_headroom.ICUMetricData
 
 
 def test_icu_metric_data_with_all_timeseries_actuals():
@@ -27,11 +27,11 @@ def test_icu_metric_data_with_all_timeseries_actuals():
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
     pd.testing.assert_series_equal(non_covid, pd.Series([15, 20], index=data.index))
-    assert source is icu_headroom_metric.NonCovidPatientsMethod.ACTUAL
+    assert source is icu_headroom.NonCovidPatientsMethod.ACTUAL
 
     covid, source = icu_data.current_icu_covid_with_source
     pd.testing.assert_series_equal(covid, data.current_icu)
-    assert source is icu_headroom_metric.CovidPatientsMethod.ACTUAL
+    assert source is icu_headroom.CovidPatientsMethod.ACTUAL
 
 
 def test_icu_metric_data_with_estimated_from_total_icu_actuals():
@@ -49,11 +49,11 @@ def test_icu_metric_data_with_estimated_from_total_icu_actuals():
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
     pd.testing.assert_series_equal(non_covid, pd.Series([5, 10], index=data.index))
-    assert source is icu_headroom_metric.NonCovidPatientsMethod.ESTIMATED_FROM_TOTAL_ICU_ACTUAL
+    assert source is icu_headroom.NonCovidPatientsMethod.ESTIMATED_FROM_TOTAL_ICU_ACTUAL
 
     covid, source = icu_data.current_icu_covid_with_source
     pd.testing.assert_series_equal(covid, estimated_icu)
-    assert source is icu_headroom_metric.CovidPatientsMethod.ESTIMATED
+    assert source is icu_headroom.CovidPatientsMethod.ESTIMATED
 
 
 def test_icu_metric_data_with_estimated_from_decomp_and_total_beds_timeseries():
@@ -71,11 +71,11 @@ def test_icu_metric_data_with_estimated_from_decomp_and_total_beds_timeseries():
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
     pd.testing.assert_series_equal(non_covid, pd.Series([25.0, 25.0], index=data.index))
-    assert source is icu_headroom_metric.NonCovidPatientsMethod.ESTIMATED_FROM_TYPICAL_UTILIZATION
+    assert source is icu_headroom.NonCovidPatientsMethod.ESTIMATED_FROM_TYPICAL_UTILIZATION
 
     covid, source = icu_data.current_icu_covid_with_source
     pd.testing.assert_series_equal(covid, estimated_icu)
-    assert source is icu_headroom_metric.CovidPatientsMethod.ESTIMATED
+    assert source is icu_headroom.CovidPatientsMethod.ESTIMATED
 
 
 def test_icu_metric_data_with_estimated_from_decomp_and_latest_total_beds():
@@ -93,11 +93,11 @@ def test_icu_metric_data_with_estimated_from_decomp_and_latest_total_beds():
 
     non_covid, source = icu_data.current_icu_non_covid_with_source
     pd.testing.assert_series_equal(non_covid, pd.Series([25.0, 25.0], index=data.index))
-    assert source is icu_headroom_metric.NonCovidPatientsMethod.ESTIMATED_FROM_TYPICAL_UTILIZATION
+    assert source is icu_headroom.NonCovidPatientsMethod.ESTIMATED_FROM_TYPICAL_UTILIZATION
 
     covid, source = icu_data.current_icu_covid_with_source
     pd.testing.assert_series_equal(covid, estimated_icu)
-    assert source is icu_headroom_metric.CovidPatientsMethod.ESTIMATED
+    assert source is icu_headroom.CovidPatientsMethod.ESTIMATED
 
 
 def test_icu_utilization_metric():
@@ -113,14 +113,14 @@ def test_icu_utilization_metric():
 
     icu_data = ICUMetricData(data, estimated_icu, {}, 0.0, require_recent_data=False)
 
-    metrics, details = icu_headroom_metric.calculate_icu_utilization_metric(icu_data)
+    metrics, details = icu_headroom.calculate_icu_utilization_metric(icu_data)
 
     expected_metric = pd.Series([1.0, 0.6, np.nan], index=data.index)
 
     expected_details = can_api_v2_definition.ICUHeadroomMetricDetails(
-        currentIcuCovidMethod=icu_headroom_metric.CovidPatientsMethod.ACTUAL,
+        currentIcuCovidMethod=icu_headroom.CovidPatientsMethod.ACTUAL,
         currentIcuCovid=15,
-        currentIcuNonCovidMethod=icu_headroom_metric.NonCovidPatientsMethod.ACTUAL,
+        currentIcuNonCovidMethod=icu_headroom.NonCovidPatientsMethod.ACTUAL,
         currentIcuNonCovid=15,
     )
 

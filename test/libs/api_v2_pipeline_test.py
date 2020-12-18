@@ -1,7 +1,7 @@
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
-from libs import test_positivity
+from libs.metrics import test_positivity
 from libs.datasets import timeseries
 from libs.pipeline import Region
 from libs.pipelines import api_v2_pipeline

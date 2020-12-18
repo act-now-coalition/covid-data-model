@@ -8,7 +8,7 @@ import structlog
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 from api import can_api_v2_definition
-from libs import top_level_metrics
+from libs.metrics import top_level_metrics
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region

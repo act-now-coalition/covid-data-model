@@ -5,7 +5,7 @@ import structlog
 
 from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import RegionSummary
-from libs import top_level_metric_risk_levels
+from libs.metrics import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
 from libs import build_api_v2
 from libs.pipelines import api_v2_pipeline

@@ -7,9 +7,9 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 from libs.datasets import timeseries
 from libs.pipeline import Region
-from libs.test_positivity import AllMethods
-from libs.test_positivity import DivisionMethod
-from libs import test_positivity
+from libs.metrics.test_positivity import AllMethods
+from libs.metrics.test_positivity import DivisionMethod
+from libs.metrics import test_positivity
 from test.libs.datasets.timeseries_test import assert_dataset_like
 
 
