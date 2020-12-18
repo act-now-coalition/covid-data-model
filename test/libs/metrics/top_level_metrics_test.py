@@ -17,13 +17,30 @@ from freezegun import freeze_time
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
 
-def _build_metrics_df(content: str) -> pd.DataFrame:
-    header = (
-        "date,fips,caseDensity,testPositivityRatio,contactTracerCapacityRatio,"
-        "infectionRate,infectionRateCI90,icuHeadroomRatio\n"
-    )
-    data = io.StringIO(f"{header}\n{content}")
-    return common_df.read_csv(data, set_index=False)
+def _build_metrics_df(fips, start_date=None, dates=None, **metrics_data,) -> pd.DataFrame:
+    metrics = [
+        "caseDensity",
+        "testPositivityRatio",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90",
+        "icuHeadroomRatio",
+        "icuCapacityRatio",
+    ]
+
+    data = {metric: metrics_data.get(metric, np.nan) for metric in metrics}
+
+    # TODO: Clean this up
+    max_len = max(len(value) for value in data.values() if isinstance(value, list))
+
+    if dates:
+        dates = [pd.Timestamp(date) for date in dates]
+    elif start_date:
+        dates = pd.date_range(start_date, periods=max_len, freq="D")
+    else:
+        raise ValueError("Must set either `start_date` or `dates`")
+
+    return pd.DataFrame({"date": dates, "fips": fips, **data})
 
 
 def _series_with_date_index(data, date: str = "2020-08-25", **series_kwargs):
@@ -113,12 +130,23 @@ def test_top_level_metrics_basic():
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
     )
+    metrics = [
+        "caseDensity",
+        "testPositivityRatio",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90",
+        "icuHeadroomRatio",
+        "icuCapacityRatio",
+    ]
 
     expected = _build_metrics_df(
-        "2020-08-17,36,10,,0.02,,,0.5\n"
-        "2020-08-18,36,10,0.1,0.04,,,0.5\n"
-        "2020-08-19,36,,0.1,,,,0.5\n"
-        "2020-08-20,36,,0.1,,,,0.5\n"
+        "36",
+        start_date="2020-08-17",
+        caseDensity=[10, 10, None, None],
+        testPositivityRatio=[None, 0.1, 0.1, 0.1],
+        contactTracerCapacityRatio=[0.02, 0.04, None, None],
+        icuHeadroomRatio=[0.5, 0.5, 0.5, 0.5],
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -146,10 +174,11 @@ def test_top_level_metrics_incomplete_latest():
     )
 
     expected = _build_metrics_df(
-        "2020-08-17,36,10,,0.02,,,\n"
-        "2020-08-18,36,10,0.1,0.04,,,\n"
-        "2020-08-19,36,10,0.1,0.06,,,\n"
-        "2020-08-20,36,10,0.1,0.08,,,\n"
+        "36",
+        start_date="2020-08-17",
+        caseDensity=[10, 10, 10, 10],
+        testPositivityRatio=[None, 0.1, 0.1, 0.1],
+        contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08],
     )
     pd.testing.assert_frame_equal(expected, results, check_dtype=False)
 
@@ -177,10 +206,10 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
     )
 
     expected = _build_metrics_df(
-        "2020-08-17,36,10.0,,0.02,,\n"
-        "2020-08-18,36,10.0,,0.04,,\n"
-        "2020-08-19,36,10.0,,0.06,,\n"
-        "2020-08-20,36,10.0,,0.08,,\n"
+        "36",
+        start_date="2020-08-17",
+        caseDensity=[10.0, 10.0, 10.0, 10.0],
+        contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08],
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -208,10 +237,11 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
     )
 
     expected = _build_metrics_df(
-        "2020-08-17,36,10,0.02,0.02,,\n"
-        "2020-08-18,36,10,0.03,0.04,,\n"
-        "2020-08-19,36,10,0.04,0.06,,\n"
-        "2020-08-20,36,10,0.05,0.08,,\n"
+        "36",
+        start_date="2020-08-17",
+        caseDensity=[10, 10, 10, 10],
+        testPositivityRatio=[0.02, 0.03, 0.04, 0.05],
+        contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08],
     )
     pd.testing.assert_frame_equal(expected, results, check_dtype=False)
 
@@ -242,23 +272,22 @@ def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tes
         freeze_date = "2020-08-21"
         # positive_tests and negative_tests are used
         expected = _build_metrics_df(
-            "2020-08-10,36,10,,0.02,,\n"
-            "2020-08-11,36,10,0.0909,0.04,,\n"
-            "2020-08-12,36,10,,0.06,,\n"
-            "2020-08-13,36,10,,0.08,,\n"
-            "2020-08-14,36,10,,0.08,,\n"
-            "2020-08-15,36,10,,0.08,,\n"
+            "36",
+            start_date="2020-08-10",
+            caseDensity=[10, 10, 10, 10, 10, 10],
+            testPositivityRatio=[None, 0.0909, None, None, None, None],
+            contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08, 0.08, 0.08],
         )
+
     else:
         freeze_date = "2020-08-22"
         # positive_tests and negative_tests no longer recent so test_positivity is copied to output.
         expected = _build_metrics_df(
-            "2020-08-10,36,10,0.02,0.02,,\n"
-            "2020-08-11,36,10,0.03,0.04,,\n"
-            "2020-08-12,36,10,0.04,0.06,,\n"
-            "2020-08-13,36,10,0.05,0.08,,\n"
-            "2020-08-14,36,10,0.06,0.08,,\n"
-            "2020-08-15,36,10,0.07,0.08,,\n"
+            "36",
+            start_date="2020-08-10",
+            caseDensity=[10, 10, 10, 10, 10, 10],
+            testPositivityRatio=[0.02, 0.03, 0.04, 0.05, 0.06, 0.07],
+            contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08, 0.08, 0.08],
         )
 
     with freeze_time(freeze_date):
@@ -303,10 +332,13 @@ def test_top_level_metrics_with_rt():
         one_region, rt_data, None, structlog.get_logger()
     )
     expected = _build_metrics_df(
-        "2020-08-17,36,0,,,1.1,.1\n"
-        "2020-08-18,36,5,0.1,0.08,1.2,.1\n"
-        "2020-08-19,36,,0.1,,1.1,.2\n"
-        "2020-08-20,36,,0.1,,1.1,.1\n"
+        "36",
+        start_date="2020-08-17",
+        caseDensity=[0, 5, None, None],
+        testPositivityRatio=[None, 0.1, 0.1, 0.1],
+        contactTracerCapacityRatio=[None, 0.08, None, None],
+        infectionRate=[1.1, 1.2, 1.1, 1.1],
+        infectionRateCI90=[0.1, 0.1, 0.2, 0.1],
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -335,8 +367,13 @@ def test_calculate_latest_rt():
     prev_rt = 1.0
     prev_rt_ci90 = 0.2
     data = _build_metrics_df(
-        f"2020-08-13,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
-        "2020-08-20,36,10,0.1,0.08,2.0,0.2\n"
+        "36",
+        dates=["2020-08-13", "2020-08-20"],
+        caseDensity=[10, 10],
+        testPositivityRatio=[0.1, 0.1],
+        contactTracerCapacityRatio=[0.06, 0.08],
+        infectionRate=[prev_rt, 2.0],
+        infectionRateCI90=[prev_rt_ci90, 0.2],
     )
     metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
     assert metrics.infectionRate == prev_rt
@@ -347,10 +384,15 @@ def test_lookback_days():
     prev_rt = 1.0
     prev_rt_ci90 = 0.2
     data = _build_metrics_df(
-        f"2020-08-12,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
-        f"2020-08-13,36,10,0.1,0.06,,\n"
-        "2020-08-28,,,,,,\n"
+        "36",
+        dates=["2020-08-12", "2020-08-13", "2020-08-28"],
+        caseDensity=[10, 10, None],
+        testPositivityRatio=[0.1, 0.1, None],
+        contactTracerCapacityRatio=[0.06, 0.6, None],
+        infectionRate=[prev_rt, None, None],
+        infectionRateCI90=[prev_rt_ci90, None, None],
     )
+
     metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
     assert not metrics.caseDensity
     assert not metrics.testPositivityRatio
@@ -359,14 +401,28 @@ def test_lookback_days():
 
 
 def test_calculate_latest_rt_no_previous_row():
-    data = _build_metrics_df("2020-08-20,36,10,0.1,0.08,2.0,0.2\n")
+    data = _build_metrics_df(
+        "36",
+        start_date="2020-08-20",
+        caseDensity=[10],
+        testPositivityRatio=[0.1],
+        contactTracerCapacityRatio=[0.08],
+        infectionRate=[2.0],
+        infectionRateCI90=[0.2],
+    )
     metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
     assert not metrics.infectionRate
     assert not metrics.infectionRateCI90
 
 
 def test_calculate_latest_rt_no_rt():
-    data = _build_metrics_df("2020-08-20,36,10,0.1,0.08,,\n")
+    data = _build_metrics_df(
+        "36",
+        start_date="2020-08-20",
+        caseDensity=[10],
+        testPositivityRatio=[0.1],
+        contactTracerCapacityRatio=[0.08],
+    )
     metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
     assert not metrics.infectionRate
     assert not metrics.infectionRateCI90
@@ -376,8 +432,13 @@ def test_calculate_latest_different_latest_days():
     prev_rt = 1.0
     prev_rt_ci90 = 0.2
     data = _build_metrics_df(
-        f"2020-08-13,36,10,0.1,0.06,{prev_rt},{prev_rt_ci90}\n"
-        "2020-08-20,36,,0.20,0.08,2.01,0.2\n"
+        "36",
+        dates=["2020-08-13", "2020-08-20"],
+        caseDensity=[10, None],
+        testPositivityRatio=[0.1, 0.2],
+        contactTracerCapacityRatio=[0.06, 0.08],
+        infectionRate=[prev_rt, 2.01],
+        infectionRateCI90=[prev_rt_ci90, 0.2],
     )
     expected_metrics = can_api_v2_definition.Metrics(
         testPositivityRatio=0.2,
@@ -387,6 +448,7 @@ def test_calculate_latest_different_latest_days():
         infectionRateCI90=prev_rt_ci90,
         icuHeadroomRatio=None,
         icuHeadroomDetails=None,
+        icuCapacityRatio=None,
     )
     metrics = top_level_metrics.calculate_latest_metrics(data, None, None, max_lookback_days=8)
     assert metrics == expected_metrics
