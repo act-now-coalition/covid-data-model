@@ -8,6 +8,7 @@ import shutil
 import structlog
 
 import click
+import pandas as pd
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 
@@ -41,6 +42,12 @@ CUMULATIVE_FIELDS_TO_FILTER = [
     CommonFields.TOTAL_TESTS_VIRAL,
     CommonFields.TOTAL_TESTS_PEOPLE_VIRAL,
     CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL,
+]
+
+CURRENT_FIELDS_TO_FILTER = [
+    CommonFields.CURRENT_ICU,
+    CommonFields.CURRENT_ICU_TOTAL,
+    CommonFields.CURRENT_HOSPITALIZED,
 ]
 
 PROD_BUCKET = "data.covidactnow.org"
@@ -102,8 +109,11 @@ def update(
         build_field_dataset_source(ALL_FIELDS_FEATURE_DEFINITION),
     )
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
-    tail_filter, multiregion_dataset = timeseries.TailFilter.run(
+    cumulative_tail_filter, multiregion_dataset = timeseries.TailFilter.run(
         multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER,
+    )
+    current_tail_filter, multiregion_dataset = timeseries.TailFilter.run(
+        multiregion_dataset, CURRENT_FIELDS_TO_FILTER, is_cumulative=False
     )
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
@@ -146,7 +156,13 @@ def update(
         static_sorted.to_csv(path_prefix / wide_dates_filename.replace("wide-dates", "static"))
         # TODO(tom): When the output filename is disentangled from persist_dataset use it to
         #  store the annotations.
-        tail_filter.annotations_as_dataframe().to_csv(
+        annotations = pd.concat(
+            [
+                cumulative_tail_filter.annotations_as_dataframe(),
+                current_tail_filter.annotations_as_dataframe(),
+            ]
+        )
+        annotations.to_csv(
             path_prefix / wide_dates_filename.replace("wide-dates", "annotations"), index=False,
         )
 
@@ -201,16 +217,25 @@ def run_population_filter(output_path: pathlib.Path):
 
 @main.command()
 @click.argument("output_path", type=pathlib.Path)
-def run_bad_tails_filter(output_path: pathlib.Path):
+@click.option("--state")
+def run_bad_tails_filter(output_path: pathlib.Path, state: str):
     us_dataset = combined_datasets.load_us_timeseries_dataset()
+    us_dataset = us_dataset.get_subset(state=state)
     log = structlog.get_logger()
     log.info("Starting filter")
-    tail_filter, dataset_out = timeseries.TailFilter.run(us_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
+    cumulative_tail_filter, dataset_out = timeseries.TailFilter.run(
+        us_dataset, CUMULATIVE_FIELDS_TO_FILTER,
+    )
+    current_tail_filter, dataset_out = timeseries.TailFilter.run(
+        dataset_out, CURRENT_FIELDS_TO_FILTER, is_cumulative=False
+    )
     log.info("Writing output")
     wide_dates_df.write_csv(dataset_out.timeseries_rows(), output_path)
-    tail_filter.annotations_as_dataframe().to_csv(
-        str(output_path).replace(".csv", "-annotations.csv"), index=False
-    )
+    filters = [
+        cumulative_tail_filter.annotations_as_dataframe(),
+        current_tail_filter.annotations_as_dataframe(),
+    ]
+    pd.concat(filters).to_csv(str(output_path).replace(".csv", "-annotations.csv"), index=False)
 
 
 @main.command()

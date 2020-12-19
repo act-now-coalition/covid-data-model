@@ -981,7 +981,7 @@ def test_tail_filter_stalled_timeseries():
     _assert_tail_filter_counts(tail_filter, truncated=1)
     assert tail_filter.annotations == [
         {
-            AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
+            AnnotationField.TYPE: AnnotationType.TAIL_TRUNCATED,
             AnnotationField.VARIABLE: CommonFields.NEW_CASES,
             AnnotationField.LOCATION_ID: "iso1:us#fips:97222",
             AnnotationField.DATE: pd.to_datetime("2020-09-17"),
@@ -1060,6 +1060,22 @@ def test_tail_filter_zero_diff():
     assert tail_filter.annotations == []
 
 
+def test_tail_filter_cumulative_current_equal():
+    # Make sure constant value timeseries is not truncated.
+    values = [100_000] * 30
+    values[-1] = 0
+
+    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    series = pd.Series(values).diff().to_list()
+    ds_in_current = _build_one_column_dataset(CommonFields.CASES, series)
+
+    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
+    tail_filter_current, ds_out_current = timeseries.TailFilter.run(
+        ds_in_current, [CommonFields.CASES], is_cumulative=False
+    )
+    assert tail_filter == tail_filter_current
+
+
 @pytest.mark.parametrize("stall_count", [0, 1, 2, 4])
 def test_tail_filter_small_diff(stall_count: int):
     # Make sure a zero increase in the most recent value(s) of a series that was increasing
@@ -1076,14 +1092,14 @@ def test_tail_filter_small_diff(stall_count: int):
 @pytest.mark.parametrize(
     "stall_count,annotation_type",
     [
-        (6, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
-        (7, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
-        (8, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (9, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (13, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (14, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (15, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (16, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (6, AnnotationType.TAIL_TRUNCATED),
+        (7, AnnotationType.TAIL_TRUNCATED),
+        (8, AnnotationType.LONG_TAIL_TRUNCATED),
+        (9, AnnotationType.LONG_TAIL_TRUNCATED),
+        (13, AnnotationType.LONG_TAIL_TRUNCATED),
+        (14, AnnotationType.LONG_TAIL_TRUNCATED),
+        (15, AnnotationType.LONG_TAIL_TRUNCATED),
+        (16, AnnotationType.LONG_TAIL_TRUNCATED),
     ],
 )
 def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationType):
@@ -1095,9 +1111,9 @@ def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationTyp
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
     # There are never more than 13 stalled observations removed.
     ds_expected = _build_one_column_dataset(CommonFields.CASES, values[: -min(stall_count, 14)])
-    if annotation_type is AnnotationType.CUMULATIVE_TAIL_TRUNCATED:
+    if annotation_type is AnnotationType.TAIL_TRUNCATED:
         _assert_tail_filter_counts(tail_filter, truncated=1)
-    elif annotation_type is AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED:
+    elif annotation_type is AnnotationType.LONG_TAIL_TRUNCATED:
         _assert_tail_filter_counts(tail_filter, long_truncated=1)
 
     assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
