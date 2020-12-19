@@ -1302,12 +1302,12 @@ class TailFilter:
         return pd.DataFrame(self.annotations)
 
     def _filter_one_series(self, series_in: pd.Series, is_cumulative: bool = True) -> pd.Series:
-        """Filters one timeseries of cumulative values. This is a method so self can be used to
+        """Filters one timeseries of values. This is a method so self can be used to
         store side outputs.
 
         Args:
             series_in: a timeseries of float values, with a sorted DatetimeIndex
-            """
+        """
         if len(series_in) < -TailFilter.TRUSTED_DATES_OLDEST:
             self.skipped_too_short += 1
             return series_in
