@@ -81,12 +81,28 @@ class DivisionMethod(Method):
         # region/state and date.
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
         assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
-        assert dataset.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-        locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
-        numerator_provenance = dataset.provenance.loc[locations, self._numerator]
-        denominator_provenance = dataset.provenance.loc[locations, self._denominator]
-        provenance = numerator_provenance.str.cat(denominator_provenance.str, sep=";", join="outer")
+        # Drop all-NA timeseries now, as done in from_timeseries_wide_dates_df. This makes sure
+        # `locations` is used to build provenance information for only timeseries in the returned
+        # MultiRegionDataset.
+        wide_date_df = wide_date_df.dropna("rows", "all")
         _append_variable_index_level(wide_date_df, CommonFields.TEST_POSITIVITY)
+        locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
+        assert dataset.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        numerator_provenance = dataset.provenance.loc[locations, [self._numerator]]
+        denominator_provenance = dataset.provenance.loc[locations, [self._denominator]]
+
+        provenance = (
+            self._name
+            + "("
+            + numerator_provenance.str.cat(denominator_provenance, sep=",", join="outer")
+            + ")"
+        )
+        # Make sure every timeseries has something in `provenance`.
+        provenance_index = pd.MultiIndex.from_product(
+            [locations, [CommonFields.TEST_POSITIVITY]],
+            names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
+        )
+        provenance = provenance.reindex(provenance_index, fill_value=f"{self._name}()")
         return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_series(
             provenance
         )
