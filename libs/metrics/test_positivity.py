@@ -132,16 +132,16 @@ class PassThruMethod(Method):
         wide_date_df = df.loc[self._column, :]
         # Optional optimization: The following likely adds the variable/field/column name back in
         # to the index which was just taken out. Consider skipping reindexing.
+        assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
         _append_variable_index_level(wide_date_df, CommonFields.TEST_POSITIVITY)
 
-        assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
-        assert dataset.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-        provenance = dataset.provenance.loc[
-            wide_date_df.get_level_values(CommonFields.LOCATION_ID), self._column
-        ]
+        # assert dataset.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        # provenance = dataset.provenance.loc[
+        #     wide_date_df.index.get_level_values(CommonFields.LOCATION_ID), self._column
+        # ]
 
-        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_series(
-            provenance
+        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_all(
+            self.name
         )
 
 
