@@ -196,17 +196,9 @@ def calculate_case_density(
 
 
 def calculate_test_positivity(
-    region_dataset: OneRegionTimeseriesDataset, smooth: int = 7, lag_lookback: int = 7
+    region_dataset: OneRegionTimeseriesDataset, lag_lookback: int = 7
 ) -> pd.Series:
-    """Calculates positive test rate.
-
-    Args:
-        positive_tests: Number of cumulative positive tests.
-        negative_tests: Number of cumulative negative tests.
-
-    Returns:
-        Positive test rate.
-    """
+    """Calculates positive test rate from combined data."""
     data = region_dataset.date_indexed
     positive_tests = series_utils.interpolate_stalled_and_missing_values(
         data[CommonFields.POSITIVE_TESTS]
