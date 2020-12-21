@@ -62,8 +62,8 @@ def test_basic():
     ).add_provenance_csv(
         io.StringIO(
             "location_id,variable,provenance\n"
-            "iso1:us#iso2:as,test_positivity,method2()\n"
-            "iso1:us#iso2:tx,test_positivity,method1()\n"
+            "iso1:us#iso2:as,test_positivity,method2\n"
+            "iso1:us#iso2:tx,test_positivity,method1\n"
         )
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
@@ -71,10 +71,10 @@ def test_basic():
     positivity_provenance = all_methods.test_positivity.provenance
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method2()"
+        CommonFields.TEST_POSITIVITY: "method2"
     }
     assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method1()"
+        CommonFields.TEST_POSITIVITY: "method1"
     }
 
 
@@ -119,25 +119,25 @@ def test_recent_days():
     ).add_provenance_csv(
         io.StringIO(
             "location_id,variable,provenance\n"
-            "iso1:us#iso2:us-as,test_positivity,method2()\n"
-            "iso1:us#iso2:us-tx,test_positivity,method1()\n"
+            "iso1:us#iso2:us-as,test_positivity,method2\n"
+            "iso1:us#iso2:us-tx,test_positivity,method1\n"
         )
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
     assert all_methods.test_positivity.get_one_region(Region.from_state("AS")).provenance == {
-        CommonFields.TEST_POSITIVITY: "method2()"
+        CommonFields.TEST_POSITIVITY: "method2"
     }
     assert all_methods.test_positivity.get_one_region(Region.from_state("TX")).provenance == {
-        CommonFields.TEST_POSITIVITY: "method1()"
+        CommonFields.TEST_POSITIVITY: "method1"
     }
 
     all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=3)
     positivity_provenance = all_methods.test_positivity.provenance
     assert positivity_provenance.loc["iso1:us#iso2:us-as"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method1()"
+        CommonFields.TEST_POSITIVITY: "method1"
     }
     assert positivity_provenance.loc["iso1:us#iso2:us-tx"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method1()"
+        CommonFields.TEST_POSITIVITY: "method1"
     }
 
 
@@ -162,7 +162,7 @@ def test_missing_column_for_one_method():
         AllMethods.run(ts, methods, diff_days=1, recent_days=4)
         .test_positivity.provenance.loc["iso1:us#iso2:tx"]
         .at[CommonFields.TEST_POSITIVITY]
-        == "method1()"
+        == "method1"
     )
 
 
@@ -273,8 +273,8 @@ def test_provenance():
     ).add_provenance_csv(
         io.StringIO(
             "location_id,variable,provenance\n"
-            "iso1:us#iso2:as,test_positivity,method2()\n"
-            "iso1:us#iso2:tx,test_positivity,method1()\n"
+            "iso1:us#iso2:as,test_positivity,method2\n"
+            "iso1:us#iso2:tx,test_positivity,method1\n"
         )
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
@@ -282,8 +282,8 @@ def test_provenance():
     positivity_provenance = all_methods.test_positivity.provenance
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method2()"
+        CommonFields.TEST_POSITIVITY: "method2"
     }
     assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method1()"
+        CommonFields.TEST_POSITIVITY: "method1"
     }
