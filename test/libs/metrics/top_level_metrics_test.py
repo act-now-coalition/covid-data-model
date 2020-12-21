@@ -1,20 +1,28 @@
 from typing import List
 import dataclasses
+from typing import Mapping
+from typing import Sequence
 
+import more_itertools
 import numpy as np
 import pandas as pd
 import pytest
 import structlog
+from covidactnow.datapublic.common_fields import FieldName
+from covidactnow.datapublic.common_fields import PdFields
 from freezegun import freeze_time
 from covidactnow.datapublic.common_fields import CommonFields
 
 from api import can_api_v2_definition
+from libs.datasets import timeseries
 from libs.metrics import top_level_metrics
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
 
 from test.dataset_utils_test import read_csv_and_index_fips_date
+from test.libs.datasets.timeseries_test import DEFAULT_REGION
+
 
 # Columns used for building input dataframes in tests. It covers the fields
 # required to run top level metrics without error.
@@ -29,6 +37,41 @@ INPUT_COLUMNS = [
     "icu_beds",
     "current_icu_total",
 ]
+
+
+def build_dataset(
+    metrics: Mapping[Region, Mapping[FieldName, Sequence[float]]], start_date="2020-04-01",
+) -> timeseries.MultiRegionDataset:
+    """Returns a dataset for multiple regions and metrics. Each sequence of values represents a
+    timeseries metric with identical length."""
+    d = {
+        (region.location_id, var): metrics[region][var]
+        for region in metrics.keys()
+        for var in metrics[region].keys()
+    }
+
+    lengths = set(len(seq) for seq in d.values())
+    dates = pd.date_range(
+        start_date, periods=more_itertools.one(lengths), freq="D", name=CommonFields.DATE
+    )
+
+    index = pd.MultiIndex.from_tuples(
+        d.keys(), names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
+    )
+
+    df = pd.DataFrame(list(d.values()), index=index, columns=dates)
+
+    return timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
+
+
+def build_one_region_dataset(
+    metrics: Mapping[FieldName, Sequence[float]],
+    region: Region = DEFAULT_REGION,
+    start_date="2020-08-25",
+) -> timeseries.OneRegionTimeseriesDataset:
+    """Returns a dataset for one region with given timeseries metrics, each having the same
+    length."""
+    return build_dataset({region: metrics}, start_date).get_one_region(region)
 
 
 def _build_timeseries_dataframe(
@@ -83,9 +126,9 @@ def _build_metrics_df(fips, start_date=None, dates=None, **metrics_data) -> pd.D
     )
 
 
-def _series_with_date_index(data, date: str = "2020-08-25", **series_kwargs):
-    date_series = pd.date_range(date, periods=len(data), freq="D")
-    return pd.Series(data, index=date_series, **series_kwargs)
+def _series_with_date_index(data, date: str = "2020-08-25"):
+    date_series = pd.date_range(date, periods=len(data), freq="D", name=CommonFields.DATE)
+    return pd.Series(data, index=date_series, dtype="float")
 
 
 def _fips_csv_to_one_region(
@@ -123,7 +166,7 @@ def test_calculate_case_density():
     )
 
     pd.testing.assert_series_equal(
-        density, _series_with_date_index([0.0, 0.0, 1.0, 3.0, 5.0], dtype="float"),
+        density, _series_with_date_index([0.0, 0.0, 1.0, 3.0, 5.0]),
     )
 
 
@@ -131,13 +174,11 @@ def test_calculate_test_positivity():
     """
     It should use smoothed case data to calculate positive test rate.
     """
-
-    positive_tests = _series_with_date_index([0, 1, 3, 6])
-    negative_tests = _series_with_date_index([0, 0, 1, 3])
-    positive_rate = top_level_metrics.calculate_test_positivity(
-        positive_tests, negative_tests, smooth=2, lag_lookback=1
+    both = build_one_region_dataset(
+        {CommonFields.POSITIVE_TESTS: [0, 1, 3, 6], CommonFields.NEGATIVE_TESTS: [0, 0, 1, 3]}
     )
-    expected = _series_with_date_index([np.nan, 1, 0.75, 2 / 3], dtype="float64")
+    positive_rate = top_level_metrics.calculate_test_positivity(both, lag_lookback=1)
+    expected = _series_with_date_index([np.nan, 1, 0.75, 2 / 3])
     pd.testing.assert_series_equal(positive_rate, expected)
 
 
@@ -145,11 +186,10 @@ def test_calculate_test_positivity_lagging():
     """
     It should return an empty series if there is missing negative case data.
     """
-    positive_tests = _series_with_date_index([0, 1, 2, 4, 8])
-    negative_tests = _series_with_date_index([0, 0, 1, 2, 2])
-    positive_rate = top_level_metrics.calculate_test_positivity(
-        positive_tests, negative_tests, smooth=2, lag_lookback=1
+    both = build_one_region_dataset(
+        {CommonFields.POSITIVE_TESTS: [0, 1, 2, 4, 8], CommonFields.NEGATIVE_TESTS: [0, 0, 1, 2, 2]}
     )
+    positive_rate = top_level_metrics.calculate_test_positivity(both, lag_lookback=1)
     pd.testing.assert_series_equal(positive_rate, pd.Series([], dtype="float64"))
 
 
@@ -157,10 +197,11 @@ def test_calculate_test_positivity_extra_day():
     """
     It should return an empty series if there is missing negative case data.
     """
-    positive_tests = _series_with_date_index([0, 4, np.nan])
-    negative_tests = _series_with_date_index([0, 4, np.nan])
-    positive_rate = top_level_metrics.calculate_test_positivity(positive_tests, negative_tests)
-    expected = _series_with_date_index([np.nan, 0.5], dtype="float64")
+    both = build_one_region_dataset(
+        {CommonFields.POSITIVE_TESTS: [0, 4, np.nan], CommonFields.NEGATIVE_TESTS: [0, 4, np.nan]}
+    )
+    positive_rate = top_level_metrics.calculate_test_positivity(both)
+    expected = _series_with_date_index([np.nan, 0.5])
     pd.testing.assert_series_equal(positive_rate, expected)
 
 

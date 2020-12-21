@@ -145,20 +145,12 @@ def calculate_or_copy_test_positivity(
     ) and has_data_in_past_10_days(data[CommonFields.NEGATIVE_TESTS])
     test_positivity = common_df.get_timeseries(data, CommonFields.TEST_POSITIVITY, EMPTY_TS)
     if positive_negative_recent or not test_positivity.notna().any():
-        cumulative_positive_tests = series_utils.interpolate_stalled_and_missing_values(
-            data[CommonFields.POSITIVE_TESTS]
-        )
-        cumulative_negative_tests = series_utils.interpolate_stalled_and_missing_values(
-            data[CommonFields.NEGATIVE_TESTS]
-        )
         method = _lookup_test_positivity_method(
             ts.provenance.get(CommonFields.POSITIVE_TESTS),
             ts.provenance.get(CommonFields.NEGATIVE_TESTS),
             log,
         )
-        test_positivity = calculate_test_positivity(
-            cumulative_positive_tests, cumulative_negative_tests
-        )
+        test_positivity = calculate_test_positivity(ts)
     else:
         provenance = ts.provenance.get(CommonFields.TEST_POSITIVITY)
         method = TestPositivityRatioMethod.get(provenance)
@@ -204,7 +196,7 @@ def calculate_case_density(
 
 
 def calculate_test_positivity(
-    positive_tests: pd.Series, negative_tests: pd.Series, smooth: int = 7, lag_lookback: int = 7
+    region_dataset: OneRegionTimeseriesDataset, smooth: int = 7, lag_lookback: int = 7
 ) -> pd.Series:
     """Calculates positive test rate.
 
@@ -215,6 +207,14 @@ def calculate_test_positivity(
     Returns:
         Positive test rate.
     """
+    data = region_dataset.date_indexed
+    positive_tests = series_utils.interpolate_stalled_and_missing_values(
+        data[CommonFields.POSITIVE_TESTS]
+    )
+    negative_tests = series_utils.interpolate_stalled_and_missing_values(
+        data[CommonFields.NEGATIVE_TESTS]
+    )
+
     daily_negative_tests = negative_tests.diff()
     daily_positive_tests = positive_tests.diff()
     positive_smoothed = series_utils.smooth_with_rolling_average(daily_positive_tests)
