@@ -44,16 +44,17 @@ def build_dataset(
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset for multiple regions and metrics. Each sequence of values represents a
     timeseries metric with identical length."""
+    # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
+    # sequences in metrics.
     d = {
-        (region.location_id, var): metrics[region][var]
+        (region.location_id, variable): metrics[region][variable]
         for region in metrics.keys()
-        for var in metrics[region].keys()
+        for variable in metrics[region].keys()
     }
 
-    lengths = set(len(seq) for seq in d.values())
-    dates = pd.date_range(
-        start_date, periods=more_itertools.one(lengths), freq="D", name=CommonFields.DATE
-    )
+    # Make sure there is only one len among all of d.values()
+    sequence_lengths = more_itertools.one(len(seq) for seq in d.values())
+    dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
 
     index = pd.MultiIndex.from_tuples(
         d.keys(), names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
