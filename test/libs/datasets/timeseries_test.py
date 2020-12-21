@@ -29,9 +29,9 @@ from test.dataset_utils_test import read_csv_and_index_fips_date
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
+# This is a totally bogus fips/region/location that we've been using as a default in some test
+# cases. It is factored out here in an attempt to reduce how much it is hard-coded into our source.
 DEFAULT_FIPS = "97222"
-
-
 DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
 
 

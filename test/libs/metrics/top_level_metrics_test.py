@@ -1,6 +1,8 @@
+from typing import Any
 from typing import List
 import dataclasses
 from typing import Mapping
+from typing import Optional
 from typing import Sequence
 
 import more_itertools
@@ -27,75 +29,102 @@ from test.libs.datasets.timeseries_test import DEFAULT_REGION
 # Columns used for building input dataframes in tests. It covers the fields
 # required to run top level metrics without error.
 INPUT_COLUMNS = [
-    "new_cases",
-    "cases",
-    "test_positivity",
-    "positive_tests",
-    "negative_tests",
-    "contact_tracers_count",
-    "current_icu",
-    "icu_beds",
-    "current_icu_total",
+    CommonFields.NEW_CASES,
+    CommonFields.CASES,
+    CommonFields.TEST_POSITIVITY,
+    CommonFields.POSITIVE_TESTS,
+    CommonFields.NEGATIVE_TESTS,
+    CommonFields.CONTACT_TRACERS_COUNT,
+    CommonFields.CURRENT_ICU,
+    CommonFields.ICU_BEDS,
+    CommonFields.CURRENT_ICU_TOTAL,
 ]
 
 
 def build_dataset(
-    metrics: Mapping[Region, Mapping[FieldName, Sequence[float]]], start_date="2020-04-01",
+    metrics: Mapping[Region, Mapping[FieldName, Sequence[float]]], *, start_date="2020-04-01",
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset for multiple regions and metrics. Each sequence of values represents a
-    timeseries metric with identical length."""
+    timeseries metric with identical length. Timeseries without any real values are dropped.
+    """
     # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
     # sequences in metrics.
-    d = {
+    loc_var_seq = {
         (region.location_id, variable): metrics[region][variable]
         for region in metrics.keys()
         for variable in metrics[region].keys()
     }
 
-    # Make sure there is only one len among all of d.values()
-    sequence_lengths = more_itertools.one(set(len(seq) for seq in d.values()))
+    # Make sure there is only one len among all of loc_var_seq.values(). Make a DatetimeIndex
+    # with that many dates.
+    sequence_lengths = more_itertools.one(set(len(seq) for seq in loc_var_seq.values()))
     dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
 
     index = pd.MultiIndex.from_tuples(
-        d.keys(), names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
+        loc_var_seq.keys(), names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
     )
 
-    df = pd.DataFrame(list(d.values()), index=index, columns=dates)
+    df = pd.DataFrame(list(loc_var_seq.values()), index=index, columns=dates)
 
     return timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
 
 
 def build_one_region_dataset(
     metrics: Mapping[FieldName, Sequence[float]],
+    *,
     region: Region = DEFAULT_REGION,
     start_date="2020-08-25",
+    timeseries_columns: Optional[Sequence[FieldName]] = None,
+    latest_override: Optional[Mapping[FieldName, Any]] = None,
 ) -> timeseries.OneRegionTimeseriesDataset:
     """Returns a dataset for one region with given timeseries metrics, each having the same
-    length."""
-    return build_dataset({region: metrics}, start_date).get_one_region(region)
+    length.
+
+    Args:
+        timeseries_columns: Columns that will exist in the returned dataset, even if all NA
+        latest_override: values added to the returned `OneRegionTimeseriesDataset.latest`
+    """
+    one_region = build_dataset({region: metrics}, start_date=start_date).get_one_region(region)
+    if timeseries_columns:
+        new_columns = [col for col in timeseries_columns if col not in one_region.data.columns]
+        new_data = one_region.data.reindex(columns=[*one_region.data.columns, *new_columns])
+        one_region = dataclasses.replace(one_region, data=new_data)
+    if latest_override:
+        new_latest = {**one_region.latest, **latest_override}
+        one_region = dataclasses.replace(one_region, latest=new_latest)
+    return one_region
 
 
-def _build_timeseries_dataframe(
+def _build_metrics_df(
     fips: str,
-    all_columns: List[str],
-    start_date: str = None,
-    dates: List[str] = None,
-    **column_data,
+    *,
+    start_date: Optional[str] = None,
+    dates: Optional[List[str]] = None,
+    **metrics_data,
 ) -> pd.DataFrame:
-    """Build a timeseries dataframe with fips, date and specified columns.
+    """Builds a dataframe that has same structure as those built by
+    `top_level_metrics.calculate_metrics_for_timeseries`
+
+    Check out build_dataset if you want a MultiRegionDataset.
 
     Args:
         fips: Fips code for region.
-        all_columns: All columns to be included in output dataframe.
         start_date: Optional start date.
         dates: Optional list of dates to use for rows, length of dates must match
             length of data in column_data.
         column_data: Column data with values.  Names of variables should match columns
             in `all_columns`. All lists must be the same length.
-
-    Returns: DataFrame.
     """
-    data = {column: column_data.get(column, np.nan) for column in all_columns}
+    metrics = [
+        "caseDensity",
+        "testPositivityRatio",
+        "contactTracerCapacityRatio",
+        "infectionRate",
+        "infectionRateCI90",
+        "icuHeadroomRatio",
+        "icuCapacityRatio",
+    ]
+    data = {column: metrics_data.get(column, np.nan) for column in metrics}
 
     max_len = max(len(value) for value in data.values() if isinstance(value, list))
 
@@ -109,24 +138,6 @@ def _build_timeseries_dataframe(
     return pd.DataFrame({"date": dates, "fips": fips, **data})
 
 
-def _build_metrics_df(fips, start_date=None, dates=None, **metrics_data) -> pd.DataFrame:
-    """Builds a dataframe that has same structure as those built by
-    `top_level_metrics.calculate_metrics_for_timeseries`
-    """
-    metrics = [
-        "caseDensity",
-        "testPositivityRatio",
-        "contactTracerCapacityRatio",
-        "infectionRate",
-        "infectionRateCI90",
-        "icuHeadroomRatio",
-        "icuCapacityRatio",
-    ]
-    return _build_timeseries_dataframe(
-        fips, metrics, start_date=start_date, dates=dates, **metrics_data
-    )
-
-
 def _series_with_date_index(data, date: str = "2020-08-25"):
     date_series = pd.date_range(date, periods=len(data), freq="D", name=CommonFields.DATE)
     return pd.Series(data, index=date_series, dtype="float")
@@ -136,15 +147,6 @@ def _fips_csv_to_one_region(
     csv_str: str, region: Region, latest=None
 ) -> OneRegionTimeseriesDataset:
     df = read_csv_and_index_fips_date(csv_str).reset_index()
-    # from_timeseries_and_latest adds the location_id column needed by get_one_region
-    dataset = MultiRegionDataset.from_fips_timeseries_df(df).get_one_region(region)
-    if latest:
-        return dataclasses.replace(dataset, latest=latest)
-    else:
-        return dataset
-
-
-def _fips_df_to_one_region(df, region: Region, latest=None) -> OneRegionTimeseriesDataset:
     # from_timeseries_and_latest adds the location_id column needed by get_one_region
     dataset = MultiRegionDataset.from_fips_timeseries_df(df).get_one_region(region)
     if latest:
@@ -544,10 +546,13 @@ def test_calculate_icu_capacity():
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
     }
-    data = _build_timeseries_dataframe(
-        "36", INPUT_COLUMNS, start_date="2020-12-18", icu_beds=[10, 20], current_icu_total=[10, 15]
+    one_region = build_one_region_dataset(
+        {CommonFields.ICU_BEDS: [10, 20], CommonFields.CURRENT_ICU_TOTAL: [10, 15]},
+        region=region,
+        start_date="2020-12-18",
+        timeseries_columns=INPUT_COLUMNS,
+        latest_override=latest,
     )
-    one_region = _fips_df_to_one_region(data, region, latest=latest)
 
     results, metrics = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, None, structlog.get_logger()

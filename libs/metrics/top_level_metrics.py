@@ -133,11 +133,11 @@ def _lookup_test_positivity_method(
 
 
 def calculate_or_copy_test_positivity(
-    ts: OneRegionTimeseriesDataset, log,
+    dataset_in: OneRegionTimeseriesDataset, log,
 ) -> Tuple[pd.Series, TestPositivityRatioDetails]:
-    # TODO(tom): Move all these calculations to test_positivity.AllMethods or something applied to each
-    # datasource with test metrics.
-    data = ts.date_indexed
+    # TODO(tom): Move all these calculations to test_positivity.AllMethods or something applied to
+    #  each datasource with test metrics.
+    data = dataset_in.date_indexed
     # Use POSITIVE_TESTS and NEGATIVE_TEST if they are recent or TEST_POSITIVITY is not available
     # for this region.
     positive_negative_recent = has_data_in_past_10_days(
@@ -146,13 +146,13 @@ def calculate_or_copy_test_positivity(
     test_positivity = common_df.get_timeseries(data, CommonFields.TEST_POSITIVITY, EMPTY_TS)
     if positive_negative_recent or not test_positivity.notna().any():
         method = _lookup_test_positivity_method(
-            ts.provenance.get(CommonFields.POSITIVE_TESTS),
-            ts.provenance.get(CommonFields.NEGATIVE_TESTS),
+            dataset_in.provenance.get(CommonFields.POSITIVE_TESTS),
+            dataset_in.provenance.get(CommonFields.NEGATIVE_TESTS),
             log,
         )
-        test_positivity = calculate_test_positivity(ts)
+        test_positivity = calculate_test_positivity(dataset_in)
     else:
-        provenance = ts.provenance.get(CommonFields.TEST_POSITIVITY)
+        provenance = dataset_in.provenance.get(CommonFields.TEST_POSITIVITY)
         method = TestPositivityRatioMethod.get(provenance)
         if method is None:
             log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
