@@ -29,6 +29,12 @@ from test.dataset_utils_test import read_csv_and_index_fips_date
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
+# This is a totally bogus fips/region/location that we've been using as a default in some test
+# cases. It is factored out here in an attempt to reduce how much it is hard-coded into our source.
+DEFAULT_FIPS = "97222"
+DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
+
+
 @pytest.mark.parametrize("include_na_at_end", [False, True])
 def test_remove_padded_nans(include_na_at_end):
     rows = [
@@ -893,7 +899,7 @@ def test_merge_provenance():
 def _build_one_column_dataset(
     column,
     values: Union[Sequence[float], Mapping[Region, Sequence[float]]],
-    location_id="iso1:us#fips:97222",
+    location_id=DEFAULT_REGION.location_id,
     start_date="2020-08-25",
 ) -> timeseries.MultiRegionDataset:
     if isinstance(values, Mapping):
