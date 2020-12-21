@@ -53,7 +53,7 @@ def build_dataset(
     }
 
     # Make sure there is only one len among all of d.values()
-    sequence_lengths = more_itertools.one(len(seq) for seq in d.values())
+    sequence_lengths = more_itertools.one(set(len(seq) for seq in d.values()))
     dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
 
     index = pd.MultiIndex.from_tuples(
