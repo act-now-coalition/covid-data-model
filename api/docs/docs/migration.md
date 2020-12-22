@@ -9,7 +9,7 @@ Lots has changed in the COVID data landscape since we create the first version o
 Our API largely was focused around interventions taken at the state level and the API structure reflected that.
 
 Additionally, the data reported and collected has evolved. When we first launched our API few states were reporting
-hospitalizations and even fewer reporting test data. 
+hospitalizations and even fewer reporting test data.
 
 :::note
 
@@ -71,7 +71,7 @@ Here are examples of API endpoint changes:
 ### Projections deprecated
 
 The projections and projections timeseries are not included in the new API.
-If you still need access to our intervention projection models, please use the [V1 API](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md). 
+If you still need access to our intervention projection models, please use the [V1 API](https://github.com/covid-projections/covid-data-model/blob/main/api/README.V1.md).
 
 As our projection models evolve, we are planning on adding projections back in, but they may look
 different than the old format.

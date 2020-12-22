@@ -55,7 +55,7 @@ Make sure you are in your virtualenv and run:
 make setup-dev
 ```
 
-or manually run the commands in [our Makefile](https://github.com/covid-projections/covid-data-model/blob/master/Makefile).
+or manually run the commands in [our Makefile](https://github.com/covid-projections/covid-data-model/blob/main/Makefile).
 
 
 ### Auto-formatting
@@ -78,7 +78,7 @@ mkdir -p results/test/
 ```
 
 ## Run Just Api Generateion
-Grab the results of a snapshot's model output (either from the s3 bucket or from a githubaction artifacts). 
+Grab the results of a snapshot's model output (either from the s3 bucket or from a githubaction artifacts).
 Move those files to results/ folder (or folder of your choice)
 
 ```bash

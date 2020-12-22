@@ -2,7 +2,7 @@
 **NOTE**
 
 Docs site is a work in progress.  For Current API Documentation, refer to
-[API V1 Docs](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md)
+[API V1 Docs](https://github.com/covid-projections/covid-data-model/blob/main/api/README.V1.md)
 
 ---
 

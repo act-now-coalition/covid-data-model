@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       sentry_environment:
-        description: 'Sentry environment of build. Should be "production" on master build and "staging" for other branches.'
+        description: 'Sentry environment of build. Should be "production" on main build and "staging" for other branches.'
         required: true
 
 env:
@@ -130,12 +130,12 @@ jobs:
         # automatically cleaned up.
         rm -r /data/api-results-${{env.SNAPSHOT_ID}}
 
-    - name: Trigger website PR generation if master branch build
+    - name: Trigger website PR generation if main branch build
       env:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
 
-    - name: Trigger Label API if master branch build
+    - name: Trigger Label API if main branch build
       env:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: ./covid-data-model/tools/maybe-trigger-label-api.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}}
