@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-
+import pandas as pd
 from api.can_api_v2_definition import (
     Actuals,
     ActualsTimeseriesRow,
@@ -11,6 +11,7 @@ from api.can_api_v2_definition import (
     RegionSummary,
     RegionSummaryWithTimeseries,
     RegionTimeseriesRowWithHeader,
+    RiskLevelTimeseriesRow,
 )
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -74,7 +75,10 @@ def build_region_summary(
 
 
 def build_region_timeseries(
-    region_summary: RegionSummary, timeseries: OneRegionTimeseriesDataset, metrics_timeseries,
+    region_summary: RegionSummary,
+    timeseries: OneRegionTimeseriesDataset,
+    metrics_timeseries,
+    risk_level_timeseries: pd.DataFrame,
 ) -> RegionSummaryWithTimeseries:
     actuals_timeseries = []
 
@@ -85,11 +89,16 @@ def build_region_timeseries(
         timeseries_row = ActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
 
+    risk_level_rows = [
+        RiskLevelTimeseriesRow(**row) for row in risk_level_timeseries.to_dict(orient="records")
+    ]
+
     region_summary_data = {key: getattr(region_summary, key) for (key, _) in region_summary}
     return RegionSummaryWithTimeseries(
         **region_summary_data,
         actualsTimeseries=actuals_timeseries,
-        metricsTimeseries=metrics_timeseries
+        metricsTimeseries=metrics_timeseries,
+        riskLevelsTimeseries=risk_level_rows,
     )
 
 

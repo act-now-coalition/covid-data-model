@@ -16,6 +16,7 @@ from api.can_api_v2_definition import AggregateRegionSummaryWithTimeseries
 from api.can_api_v2_definition import Metrics
 from api.can_api_v2_definition import MetricsTimeseriesRow
 from api.can_api_v2_definition import RegionSummaryWithTimeseries
+from api.can_api_v2_definition import RiskLevelTimeseriesRow
 from libs import dataset_deployer
 from libs.metrics import top_level_metrics
 from libs.metrics import top_level_metric_risk_levels
@@ -129,15 +130,12 @@ def generate_metrics_and_latest(
         Tuple of MetricsTimeseriesRows for all days and the metrics overview.
     """
     if timeseries.empty:
-        return [], Metrics.empty()
+        return pd.DataFrame([]), Metrics.empty()
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
         timeseries, rt_data, icu_data, log
     )
-    metrics_timeseries = metrics_results.to_dict(orient="records")
-    metrics_for_fips = [MetricsTimeseriesRow(**metric_row) for metric_row in metrics_timeseries]
-
-    return metrics_for_fips, latest
+    return metrics_results, latest
 
 
 def build_timeseries_for_region(
@@ -155,15 +153,22 @@ def build_timeseries_for_region(
 
     try:
         fips_timeseries = regional_input.timeseries
-        metrics_timeseries, metrics_latest = generate_metrics_and_latest(
+        metrics_results, metrics_latest = generate_metrics_and_latest(
             fips_timeseries, regional_input.rt_data, regional_input.icu_data, log
+        )
+        metrics_rows = [
+            MetricsTimeseriesRow(**metric_row)
+            for metric_row in metrics_results.to_dict(orient="records")
+        ]
+        risk_timeseries = top_level_metric_risk_levels.calculate_risk_level_timeseries(
+            metrics_results
         )
         risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(metrics_latest)
         region_summary = build_api_v2.build_region_summary(
             fips_latest, metrics_latest, risk_levels, regional_input.region
         )
         region_timeseries = build_api_v2.build_region_timeseries(
-            region_summary, fips_timeseries, metrics_timeseries
+            region_summary, fips_timeseries, metrics_rows, risk_timeseries
         )
     except Exception:
         log.exception(f"Failed to build timeseries for fips.")
