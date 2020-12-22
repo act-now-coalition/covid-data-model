@@ -1,9 +1,11 @@
+from collections import UserList
 from typing import Any
 from typing import List
 import dataclasses
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Union
 
 import more_itertools
 import numpy as np
@@ -41,11 +43,22 @@ INPUT_COLUMNS = [
 ]
 
 
+class TimeseriesLiteral(UserList):
+    """Represents a timeseries literal, a sequence of floats and provenance string."""
+
+    def __init__(self, ts_list, *, provenance=""):
+        super().__init__(ts_list)
+        self.provenance = provenance
+
+
 def build_dataset(
-    metrics: Mapping[Region, Mapping[FieldName, Sequence[float]]], *, start_date="2020-04-01",
+    metrics: Mapping[Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]]],
+    *,
+    start_date="2020-04-01",
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset for multiple regions and metrics. Each sequence of values represents a
-    timeseries metric with identical length. Timeseries without any real values are dropped.
+    timeseries metric with identical length. provenance information can be set for a metric by
+    using a TimeseriesLiteral. Timeseries without any real values are dropped.
     """
     # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
     # sequences in metrics.
@@ -66,7 +79,26 @@ def build_dataset(
 
     df = pd.DataFrame(list(loc_var_seq.values()), index=index, columns=dates)
 
-    return timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
+    dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
+
+    loc_var_provenance = {
+        key: ts_lit.provenance
+        for key, ts_lit in loc_var_seq.items()
+        if isinstance(ts_lit, TimeseriesLiteral)
+    }
+    if loc_var_provenance:
+        provenance_index = pd.MultiIndex.from_tuples(
+            loc_var_provenance.keys(), names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        )
+        provenance_series = pd.Series(
+            list(loc_var_provenance.values()),
+            dtype="str",
+            index=provenance_index,
+            name=PdFields.PROVENANCE,
+        )
+        dataset = dataset.add_provenance_series(provenance_series)
+
+    return dataset
 
 
 def build_one_region_dataset(

@@ -36,7 +36,7 @@ class Method(ABC):
         pass
 
     @abstractmethod
-    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> MultiRegionDataset:
+    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
         """Calculate a DataFrame with LOCATION_ID index and DATE columns.
 
         Args:
@@ -51,8 +51,50 @@ class Method(ABC):
 def _append_variable_index_level(df: pd.DataFrame, field_name: FieldName) -> None:
     """Add level `VARIABLE` to df.index with constant value `field_name`, in-place"""
     assert df.index.names == [CommonFields.LOCATION_ID]
+    # From https://stackoverflow.com/a/40636392
     df.index = pd.MultiIndex.from_product(
         [df.index, [field_name]], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
+    )
+
+
+def _make_output_dataset(
+    dataset_in: MultiRegionDataset,
+    default_provenance: str,
+    wide_date_df: pd.DataFrame,
+    output_metric: FieldName,
+) -> MultiRegionDataset:
+    """Returns a dataset with `wide_date_df` in a column named `output_metric` and provenance
+    information copied from `dataset_in`.
+
+    Args:
+        dataset_in: original MultiRegionDataset. TODO(tom): copy provenance information from this.
+        default_provenance: value to put in provenance when no other value is available
+        wide_date_df: the timeseries output, copied to the returned dataset
+        output_metric: wide_date_df is copied to this metric/column in the returned dataset
+    """
+    assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
+    # Drop all-NA timeseries now, as done in from_timeseries_wide_dates_df. This makes sure
+    # `locations` is used to build provenance information for only timeseries in the returned
+    # MultiRegionDataset.
+    wide_date_df = wide_date_df.dropna("rows", "all")
+    locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
+    _append_variable_index_level(wide_date_df, output_metric)
+
+    # TODO(tom): Add support for copying per-location provenance information from dataset_in.
+    #  Something like:
+    # assert dataset.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    # provenance = dataset.provenance.loc[locations, self._column]
+    assert dataset_in.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+
+    # Make sure every timeseries has something in `provenance`.
+    provenance_index = pd.MultiIndex.from_product(
+        [locations, [output_metric]], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
+    )
+    provenance = pd.Series([], name=PdFields.PROVENANCE, dtype="object").reindex(
+        provenance_index, fill_value=default_provenance
+    )
+    return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_series(
+        provenance
     )
 
 
@@ -72,17 +114,19 @@ class DivisionMethod(Method):
     def columns(self) -> Set[FieldName]:
         return {self._numerator, self._denominator}
 
-    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> MultiRegionDataset:
+    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
+        delta_df = (
+            dataset.timeseries_wide_dates()
+            .reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
+            .diff(periods=diff_days, axis=1)
+        )
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
-        _append_variable_index_level(wide_date_df, CommonFields.TEST_POSITIVITY)
-        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_all(
-            self._name
-        )
+        return _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
 
 
 @dataclasses.dataclass
@@ -100,7 +144,10 @@ class PassThruMethod(Method):
     def columns(self) -> Set[FieldName]:
         return {self._column}
 
-    def calculate(self, df: pd.DataFrame, delta_df: pd.DataFrame) -> MultiRegionDataset:
+    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
+        df = dataset.timeseries_wide_dates().reorder_levels(
+            [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+        )
         assert df.columns.names == [CommonFields.DATE]
         assert df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # df has the field name as the first level of the index. delta_df.loc[field, :] returns a
@@ -108,10 +155,7 @@ class PassThruMethod(Method):
         wide_date_df = df.loc[self._column, :]
         # Optional optimization: The following likely adds the variable/field/column name back in
         # to the index which was just taken out. Consider skipping reindexing.
-        _append_variable_index_level(wide_date_df, CommonFields.TEST_POSITIVITY)
-        return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_all(
-            self._name
-        )
+        return _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
 
 
 TEST_POSITIVITY_METHODS = (
@@ -168,9 +212,7 @@ class AllMethods:
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()
 
-        input_wide = dataset_in.timeseries_wide_dates().reorder_levels(
-            [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-        )
+        input_wide = dataset_in.timeseries_wide_dates()
         if input_wide.empty:
             raise NoRealTimeseriesValuesException()
         dates = input_wide.columns.get_level_values(CommonFields.DATE)
@@ -185,12 +227,8 @@ class AllMethods:
         if not methods_with_data:
             raise NoColumnsWithDataException()
 
-        # This calculates the difference only when the cumulative value is a real value `diff_days` apart.
-        # It looks like our input data has few or no holes so this works well enough.
-        diff_df = input_wide.diff(periods=diff_days, axis=1)
-
         calculated_dataset_map = {
-            timeseries.DatasetName(method.name): method.calculate(input_wide, diff_df)
+            timeseries.DatasetName(method.name): method.calculate(dataset_in, diff_days)
             for method in methods_with_data
         }
         calculated_dataset_recent_map = {

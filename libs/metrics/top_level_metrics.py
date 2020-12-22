@@ -155,7 +155,8 @@ def calculate_or_copy_test_positivity(
         provenance = dataset_in.provenance.get(CommonFields.TEST_POSITIVITY)
         method = TestPositivityRatioMethod.get(provenance)
         if method is None:
-            log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
+            if provenance is not None:
+                log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
             method = TestPositivityRatioMethod.OTHER
     return test_positivity, TestPositivityRatioDetails(source=method)
 

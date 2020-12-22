@@ -1,4 +1,5 @@
 import io
+
 import pandas as pd
 import pytest
 from covidactnow.datapublic import common_df
@@ -11,10 +12,18 @@ from libs.metrics.test_positivity import AllMethods
 from libs.metrics.test_positivity import DivisionMethod
 from libs.metrics import test_positivity
 from test.libs.datasets.timeseries_test import assert_dataset_like
+from test.libs.metrics import top_level_metrics_test
+from test.libs.metrics.top_level_metrics_test import TimeseriesLiteral
+
+
+# turns all warnings into errors for this module
+pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
 def _parse_wide_dates(csv_str: str) -> pd.DataFrame:
     """Parses a string with columns for region, variable/provenance followed by dates."""
+    # TODO(tom): At places where this is used try to replace DataFrame with MultiRegionDataset,
+    #  then delete this function.
     df = pd.read_csv(io.StringIO(csv_str))
     df = df.set_index(list(df.columns[0:2]))
     df.columns = pd.to_datetime(df.columns)
@@ -35,6 +44,7 @@ def test_basic():
             "iso1:us#iso2:tx,2020-04-04,4,40,400\n"
         )
     )
+
     methods = [
         DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
@@ -63,15 +73,6 @@ def test_basic():
         )
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
-
-    positivity_provenance = all_methods.test_positivity.provenance
-    # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
-    assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method2"
-    }
-    assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method1"
-    }
 
 
 def test_recent_days():
@@ -223,3 +224,41 @@ def test_all_columns_na():
     ]
     with pytest.raises(test_positivity.NoRealTimeseriesValuesException):
         AllMethods.run(ts, methods, diff_days=1, recent_days=1)
+
+
+def test_provenance():
+    region_as = Region.from_state("AS")
+    region_tx = Region.from_state("TX")
+    metrics_as = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([0, 2, 4, 6], provenance="pt_src1"),
+        CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+    }
+    metrics_tx = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], provenance="pt_src2"),
+        CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
+        CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+    }
+    dataset_in = top_level_metrics_test.build_dataset(
+        {region_as: metrics_as, region_tx: metrics_tx}
+    )
+
+    methods = [
+        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
+        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+    ]
+    all_methods = AllMethods.run(dataset_in, methods, 3, 14)
+
+    expected_df = _parse_wide_dates(
+        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
+        "iso1:us#iso2:us-as,method2,,,,0.02\n"
+        "iso1:us#iso2:us-tx,method1,,,,0.1\n"
+        "iso1:us#iso2:us-tx,method2,,,,0.01\n"
+    )
+    pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
+
+    expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")}
+    expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")}
+    expected_positivity = top_level_metrics_test.build_dataset(
+        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04",
+    )
+    assert_dataset_like(all_methods.test_positivity, expected_positivity)

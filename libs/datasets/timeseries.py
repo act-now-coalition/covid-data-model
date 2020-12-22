@@ -292,6 +292,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
             .sort_index()
         )
 
+    @lru_cache(maxsize=None)
     def timeseries_wide_dates(self) -> pd.DataFrame:
         """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
         if self.timeseries.empty:
