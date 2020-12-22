@@ -269,9 +269,16 @@ class AllMethods:
         return list(set(chain.from_iterable(method.columns for method in methods)))
 
     def write(self, csv_path: pathlib.Path):
-        self.all_methods_timeseries.dropna("columns", "all").sort_index().to_csv(
-            csv_path, date_format="%Y-%m-%d", index=True, float_format="%.05g",
-        )
+        # TODO(tom): Change all_method_timeseries to be something like Mapping[DatasetName,
+        #  MultiRegionDataset] and use shared code to write it.
+        df = self.all_methods_timeseries.dropna("columns", "all")
+        start_date = df.columns.min()
+        end_date = df.columns.max()
+        date_range = pd.date_range(start=start_date, end=end_date)
+        df = df.reindex(columns=date_range).rename_axis(None, axis="columns")
+        df.columns = df.columns.strftime("%Y-%m-%d")
+
+        df.sort_index().to_csv(csv_path, index=True, float_format="%.05g")
 
 
 def run_and_maybe_join_columns(
