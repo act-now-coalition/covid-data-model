@@ -114,12 +114,13 @@ jobs:
         cp -r /data/api-results-${{env.SNAPSHOT_ID}}/ ./tmp/data/
 
     - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
-      uses: jakejarvis/s3-sync-action@master
+      uses: ghop02/s3-sync-action@master
       with:
         args: --acl public-read --follow-symlinks
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_MAX_CONCURRENT_REQUESTS: 100
         SOURCE_DIR: './tmp/data/api-results-${{env.SNAPSHOT_ID}}/'
         DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}/'
 
