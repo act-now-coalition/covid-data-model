@@ -74,15 +74,6 @@ def test_basic():
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
 
-    positivity_provenance = all_methods.test_positivity.provenance
-    # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
-    assert positivity_provenance.loc["iso1:us#iso2:as"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method2"
-    }
-    assert positivity_provenance.loc["iso1:us#iso2:tx"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method1"
-    }
-
 
 def test_recent_days():
     ts = timeseries.MultiRegionDataset.from_csv(
@@ -274,12 +265,3 @@ def test_provenance():
         start_date="2020-04-04",
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
-
-    positivity_provenance = all_methods.test_positivity.provenance
-    # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
-    assert positivity_provenance.loc["iso1:us#iso2:us-as"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method2"
-    }
-    assert positivity_provenance.loc["iso1:us#iso2:us-tx"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method1"
-    }
