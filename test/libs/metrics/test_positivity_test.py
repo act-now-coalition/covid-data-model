@@ -13,7 +13,7 @@ from libs.metrics.test_positivity import DivisionMethod
 from libs.metrics import test_positivity
 from test.libs.datasets.timeseries_test import assert_dataset_like
 from test.libs.metrics import top_level_metrics_test
-from test.libs.metrics.top_level_metrics_test import TimeseriesLit
+from test.libs.metrics.top_level_metrics_test import TimeseriesLiteral
 
 
 # turns all warnings into errors for this module
@@ -230,11 +230,11 @@ def test_provenance():
     region_as = Region.from_state("AS")
     region_tx = Region.from_state("TX")
     metrics_as = {
-        CommonFields.POSITIVE_TESTS: TimeseriesLit([0, 2, 4, 6], provenance="pt_src1"),
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([0, 2, 4, 6], provenance="pt_src1"),
         CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
     }
     metrics_tx = {
-        CommonFields.POSITIVE_TESTS: TimeseriesLit([1, 2, 3, 4], provenance="pt_src2"),
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], provenance="pt_src2"),
         CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
         CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
     }
@@ -256,11 +256,9 @@ def test_provenance():
     )
     pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
 
+    expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")}
+    expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")}
     expected_positivity = top_level_metrics_test.build_dataset(
-        {
-            region_as: {CommonFields.TEST_POSITIVITY: TimeseriesLit([0.02], provenance="method2")},
-            region_tx: {CommonFields.TEST_POSITIVITY: TimeseriesLit([0.1], provenance="method1")},
-        },
-        start_date="2020-04-04",
+        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04",
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)

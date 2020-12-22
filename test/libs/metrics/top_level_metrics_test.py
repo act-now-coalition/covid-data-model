@@ -43,7 +43,7 @@ INPUT_COLUMNS = [
 ]
 
 
-class TimeseriesLit(UserList):
+class TimeseriesLiteral(UserList):
     """Represents a timeseries literal, a sequence of floats and provenance string."""
 
     def __init__(self, ts_list, *, provenance=""):
@@ -52,13 +52,13 @@ class TimeseriesLit(UserList):
 
 
 def build_dataset(
-    metrics: Mapping[Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLit]]],
+    metrics: Mapping[Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]]],
     *,
     start_date="2020-04-01",
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset for multiple regions and metrics. Each sequence of values represents a
     timeseries metric with identical length. provenance information can be set for a metric by
-    using a TimeseriesLit. Timeseries without any real values are dropped.
+    using a TimeseriesLiteral. Timeseries without any real values are dropped.
     """
     # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
     # sequences in metrics.
@@ -84,7 +84,7 @@ def build_dataset(
     loc_var_provenance = {
         key: ts_lit.provenance
         for key, ts_lit in loc_var_seq.items()
-        if isinstance(ts_lit, TimeseriesLit)
+        if isinstance(ts_lit, TimeseriesLiteral)
     }
     if loc_var_provenance:
         provenance_index = pd.MultiIndex.from_tuples(

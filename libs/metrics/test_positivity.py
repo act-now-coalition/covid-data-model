@@ -51,24 +51,26 @@ class Method(ABC):
 def _append_variable_index_level(df: pd.DataFrame, field_name: FieldName) -> None:
     """Add level `VARIABLE` to df.index with constant value `field_name`, in-place"""
     assert df.index.names == [CommonFields.LOCATION_ID]
+    # From https://stackoverflow.com/a/40636392
     df.index = pd.MultiIndex.from_product(
         [df.index, [field_name]], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
     )
 
 
-def _make_result_dataset(
+def _make_output_dataset(
     dataset_in: MultiRegionDataset,
     default_provenance: str,
     wide_date_df: pd.DataFrame,
-    result_metric: FieldName,
+    output_metric: FieldName,
 ) -> MultiRegionDataset:
-    """Makes a dataset holding the results stored in wide_date_df.
+    """Returns a dataset with `wide_date_df` in a column named `output_metric` and provenance
+    information copied from `dataset_in`.
 
     Args:
-        dataset_in: original MultiRegionDataset used as the source for the calculation
+        dataset_in: original MultiRegionDataset. TODO(tom): copy provenance information from this.
         default_provenance: value to put in provenance when no other value is available
-        wide_date_df: the timeseries results
-        result_metric: metric/column name that will hold wide_date_df in the dataset
+        wide_date_df: the timeseries output, copied to the returned dataset
+        output_metric: wide_date_df is copied to this metric/column in the returned dataset
     """
     assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
     # Drop all-NA timeseries now, as done in from_timeseries_wide_dates_df. This makes sure
@@ -76,7 +78,7 @@ def _make_result_dataset(
     # MultiRegionDataset.
     wide_date_df = wide_date_df.dropna("rows", "all")
     locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
-    _append_variable_index_level(wide_date_df, result_metric)
+    _append_variable_index_level(wide_date_df, output_metric)
 
     # TODO(tom): Add support for copying per-location provenance information from dataset_in.
     #  Something like:
@@ -86,7 +88,7 @@ def _make_result_dataset(
 
     # Make sure every timeseries has something in `provenance`.
     provenance_index = pd.MultiIndex.from_product(
-        [locations, [result_metric]], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
+        [locations, [output_metric]], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
     )
     provenance = pd.Series([], name=PdFields.PROVENANCE, dtype="object").reindex(
         provenance_index, fill_value=default_provenance
@@ -124,7 +126,7 @@ class DivisionMethod(Method):
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
-        return _make_result_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
+        return _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
 
 
 @dataclasses.dataclass
@@ -153,7 +155,7 @@ class PassThruMethod(Method):
         wide_date_df = df.loc[self._column, :]
         # Optional optimization: The following likely adds the variable/field/column name back in
         # to the index which was just taken out. Consider skipping reindexing.
-        return _make_result_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
+        return _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
 
 
 TEST_POSITIVITY_METHODS = (
