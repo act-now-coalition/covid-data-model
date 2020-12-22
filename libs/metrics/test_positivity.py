@@ -48,6 +48,11 @@ class Method(ABC):
         pass
 
 
+@dataclasses.dataclass
+class MethodDefaultAttributes:
+    recent_days: int = 14
+
+
 def _append_variable_index_level(df: pd.DataFrame, field_name: FieldName) -> None:
     """Add level `VARIABLE` to df.index with constant value `field_name`, in-place"""
     assert df.index.names == [CommonFields.LOCATION_ID]
@@ -99,7 +104,7 @@ def _make_output_dataset(
 
 
 @dataclasses.dataclass
-class DivisionMethod(Method):
+class DivisionMethod(MethodDefaultAttributes, Method):
     """A method of calculating test positivity by dividing a numerator by a denominator"""
 
     _name: str
@@ -126,11 +131,12 @@ class DivisionMethod(Method):
         # DataFrame without the field label so operators such as `/` are calculated for each
         # region/state and date.
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
+
         return _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
 
 
 @dataclasses.dataclass
-class PassThruMethod(Method):
+class PassThruMethod(MethodDefaultAttributes, Method):
     """A method of calculating test positivity by passing through a column directly"""
 
     _name: str
@@ -155,6 +161,7 @@ class PassThruMethod(Method):
         wide_date_df = df.loc[self._column, :]
         # Optional optimization: The following likely adds the variable/field/column name back in
         # to the index which was just taken out. Consider skipping reindexing.
+
         return _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
 
 
@@ -203,7 +210,6 @@ class AllMethods:
         dataset_in: MultiRegionDataset,
         methods: Sequence[Method] = TEST_POSITIVITY_METHODS,
         diff_days: int = 7,
-        recent_days: int = 14,
     ) -> "AllMethods":
         """Runs `methods` on `dataset_in` and returns the results or raises a TestPositivityException."""
         relevant_columns = AllMethods._list_columns(
@@ -216,10 +222,7 @@ class AllMethods:
         if input_wide.empty:
             raise NoRealTimeseriesValuesException()
         dates = input_wide.columns.get_level_values(CommonFields.DATE)
-        # The oldest date that is considered recent/not-stale. If recent_days is 1 then this is
-        # the most recent day in the input.
-        assert recent_days >= 1
-        recent_date_cutoff = dates.max() + pd.to_timedelta(1 - recent_days, "D")
+        most_recent_date = dates.max()
 
         methods_with_data = AllMethods._methods_with_columns_available(
             methods, input_wide.index.get_level_values(PdFields.VARIABLE).unique()
@@ -227,12 +230,17 @@ class AllMethods:
         if not methods_with_data:
             raise NoColumnsWithDataException()
 
+        method_map = {timeseries.DatasetName(method.name): method for method in methods_with_data}
         calculated_dataset_map = {
-            timeseries.DatasetName(method.name): method.calculate(dataset_in, diff_days)
-            for method in methods_with_data
+            method_name: method.calculate(dataset_in, diff_days)
+            for method_name, method in method_map.items()
+        }
+        method_recent_date_cutoff = {
+            method_name: most_recent_date + pd.to_timedelta(1 - method.recent_days, "D")
+            for method_name, method in method_map.items()
         }
         calculated_dataset_recent_map = {
-            name: ds.drop_stale_timeseries(recent_date_cutoff)
+            name: ds.drop_stale_timeseries(method_recent_date_cutoff[name])
             for name, ds in calculated_dataset_map.items()
         }
         # Make a dataset object with one metric, containing for each region the timeseries

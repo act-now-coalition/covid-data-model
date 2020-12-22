@@ -1,4 +1,7 @@
+import dataclasses
 import io
+from typing import List
+from typing import Union
 
 import pandas as pd
 import pytest
@@ -10,6 +13,7 @@ from libs.datasets import timeseries
 from libs.pipeline import Region
 from libs.metrics.test_positivity import AllMethods
 from libs.metrics.test_positivity import DivisionMethod
+from libs.metrics.test_positivity import PassThruMethod
 from libs.metrics import test_positivity
 from test.libs.datasets.timeseries_test import assert_dataset_like
 from test.libs.metrics import top_level_metrics_test
@@ -28,6 +32,12 @@ def _parse_wide_dates(csv_str: str) -> pd.DataFrame:
     df = df.set_index(list(df.columns[0:2]))
     df.columns = pd.to_datetime(df.columns)
     return df
+
+
+def _replace_methods_attribute(
+    methods: List[Union[DivisionMethod, PassThruMethod]], **kwargs
+) -> List[Union[DivisionMethod, PassThruMethod]]:
+    return [dataclasses.replace(method, **kwargs) for method in methods]
 
 
 def test_basic():
@@ -49,7 +59,7 @@ def test_basic():
         DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
-    all_methods = AllMethods.run(ts, methods, 3, 14)
+    all_methods = AllMethods.run(ts, methods, 3)
 
     expected_df = _parse_wide_dates(
         "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
@@ -93,7 +103,8 @@ def test_recent_days():
         DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
-    all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=2)
+    methods = _replace_methods_attribute(methods, recent_days=2)
+    all_methods = AllMethods.run(ts, methods, diff_days=1)
 
     expected_all = _parse_wide_dates(
         "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
@@ -128,7 +139,8 @@ def test_recent_days():
         CommonFields.TEST_POSITIVITY: "method1"
     }
 
-    all_methods = AllMethods.run(ts, methods, diff_days=1, recent_days=3)
+    methods = _replace_methods_attribute(methods, recent_days=3)
+    all_methods = AllMethods.run(ts, methods, diff_days=1)
     positivity_provenance = all_methods.test_positivity.provenance
     assert positivity_provenance.loc["iso1:us#iso2:us-as"].to_dict() == {
         CommonFields.TEST_POSITIVITY: "method1"
@@ -155,8 +167,9 @@ def test_missing_column_for_one_method():
             "method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL
         ),
     ]
+    methods = _replace_methods_attribute(methods, recent_days=4)
     assert (
-        AllMethods.run(ts, methods, diff_days=1, recent_days=4)
+        AllMethods.run(ts, methods, diff_days=1)
         .test_positivity.provenance.loc["iso1:us#iso2:tx"]
         .at[CommonFields.TEST_POSITIVITY]
         == "method1"
@@ -180,8 +193,9 @@ def test_missing_columns_for_all_tests():
             "method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL
         ),
     ]
+    methods = _replace_methods_attribute(methods, recent_days=4)
     with pytest.raises(test_positivity.NoMethodsWithRelevantColumns):
-        AllMethods.run(ts, methods, diff_days=1, recent_days=4)
+        AllMethods.run(ts, methods, diff_days=1)
 
 
 def test_column_present_with_no_data():
@@ -199,10 +213,12 @@ def test_column_present_with_no_data():
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
     ts = timeseries.MultiRegionDataset.from_geodata_timeseries_df(ts_df)
     methods = [
-        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod(
+            "method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS, recent_days=1
+        ),
     ]
     with pytest.raises(test_positivity.NoColumnsWithDataException):
-        AllMethods.run(ts, methods, diff_days=1, recent_days=1)
+        AllMethods.run(ts, methods, diff_days=1)
 
 
 def test_all_columns_na():
@@ -220,10 +236,12 @@ def test_all_columns_na():
     ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
     ts = timeseries.MultiRegionDataset.from_geodata_timeseries_df(ts_df)
     methods = [
-        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod(
+            "method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS, recent_days=1
+        ),
     ]
     with pytest.raises(test_positivity.NoRealTimeseriesValuesException):
-        AllMethods.run(ts, methods, diff_days=1, recent_days=1)
+        AllMethods.run(ts, methods, diff_days=1)
 
 
 def test_provenance():
@@ -246,7 +264,7 @@ def test_provenance():
         DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
         DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
     ]
-    all_methods = AllMethods.run(dataset_in, methods, 3, 14)
+    all_methods = AllMethods.run(dataset_in, methods, 3)
 
     expected_df = _parse_wide_dates(
         "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
