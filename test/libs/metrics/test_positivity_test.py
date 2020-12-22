@@ -229,18 +229,17 @@ def test_all_columns_na():
 def test_provenance():
     region_as = Region.from_state("AS")
     region_tx = Region.from_state("TX")
+    metrics_as = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLit([0, 2, 4, 6], provenance="pt_src1"),
+        CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+    }
+    metrics_tx = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLit([1, 2, 3, 4], provenance="pt_src2"),
+        CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
+        CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+    }
     dataset_in = top_level_metrics_test.build_dataset(
-        {
-            region_as: {
-                CommonFields.POSITIVE_TESTS: TimeseriesLit([0, 2, 4, 6], provenance="pt_src1"),
-                CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
-            },
-            region_tx: {
-                CommonFields.POSITIVE_TESTS: TimeseriesLit([1, 2, 3, 4], provenance="pt_src2"),
-                CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
-                CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
-            },
-        }
+        {region_as: metrics_as, region_tx: metrics_tx}
     )
 
     methods = [
