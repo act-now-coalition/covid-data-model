@@ -311,16 +311,6 @@ class MultiRegionDataset(SaveableDatasetInterface):
         )
         return timeseries_wide
 
-    def timeseries_wide_dates_variable_first(self) -> pd.DataFrame:
-        return self.timeseries_wide_dates().reorder_levels(
-            [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-        )
-
-    def timeseries_wide_dates_variable_first_diff(self, *, periods: int) -> pd.DataFrame:
-        # This calculates the difference only when the cumulative value is a real value `diff_days` apart.
-        # This only works on input data that has few or no holes.
-        return self.timeseries_wide_dates_variable_first().diff(periods=periods, axis=1)
-
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
         if self.timeseries.columns.empty:

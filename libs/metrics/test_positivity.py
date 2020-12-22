@@ -113,7 +113,11 @@ class DivisionMethod(Method):
         return {self._numerator, self._denominator}
 
     def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
-        delta_df = dataset.timeseries_wide_dates_variable_first_diff(periods=diff_days)
+        delta_df = (
+            dataset.timeseries_wide_dates()
+            .reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
+            .diff(periods=diff_days, axis=1)
+        )
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
@@ -139,7 +143,9 @@ class PassThruMethod(Method):
         return {self._column}
 
     def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
-        df = dataset.timeseries_wide_dates_variable_first()
+        df = dataset.timeseries_wide_dates().reorder_levels(
+            [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+        )
         assert df.columns.names == [CommonFields.DATE]
         assert df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # df has the field name as the first level of the index. delta_df.loc[field, :] returns a
@@ -204,7 +210,7 @@ class AllMethods:
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()
 
-        input_wide = dataset_in.timeseries_wide_dates_variable_first()
+        input_wide = dataset_in.timeseries_wide_dates()
         if input_wide.empty:
             raise NoRealTimeseriesValuesException()
         dates = input_wide.columns.get_level_values(CommonFields.DATE)
