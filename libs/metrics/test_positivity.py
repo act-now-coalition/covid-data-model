@@ -22,8 +22,13 @@ from libs.datasets.timeseries import MultiRegionDataset
 _log = structlog.get_logger()
 
 
+@dataclasses.dataclass
 class Method(ABC):
     """A method of calculating test positivity"""
+
+    # This method needs a timeseries to have at least one real value within recent_days for it to
+    # be considered recent / not stale. Stale timeseries are dropped.
+    recent_days: int = 14
 
     @property
     @abstractmethod
@@ -46,11 +51,6 @@ class Method(ABC):
                 index. Values are 7-day deltas. Must contain at least one real value for each of self.columns.
         """
         pass
-
-
-@dataclasses.dataclass
-class MethodDefaultAttributes:
-    recent_days: int = 14
 
 
 def _append_variable_index_level(df: pd.DataFrame, field_name: FieldName) -> None:
@@ -104,12 +104,21 @@ def _make_output_dataset(
 
 
 @dataclasses.dataclass
-class DivisionMethod(MethodDefaultAttributes, Method):
-    """A method of calculating test positivity by dividing a numerator by a denominator"""
+class _DivisionMethodAttributes:
+    """Non-default attributes of DivisionMethod, extracted to avoid TypeError.
+
+    The problem and this somewhat ugly solution are described at
+    https://stackoverflow.com/q/51575931
+    """
 
     _name: str
     _numerator: FieldName
     _denominator: FieldName
+
+
+@dataclasses.dataclass
+class DivisionMethod(Method, _DivisionMethodAttributes):
+    """A method of calculating test positivity by dividing a numerator by a denominator"""
 
     @property
     def name(self) -> str:
@@ -136,11 +145,20 @@ class DivisionMethod(MethodDefaultAttributes, Method):
 
 
 @dataclasses.dataclass
-class PassThruMethod(MethodDefaultAttributes, Method):
-    """A method of calculating test positivity by passing through a column directly"""
+class _PassThruMethodAttributes:
+    """Non-default attributes of PassThruMethod, extracted to avoid TypeError.
+
+    The problem and this somewhat ugly solution are described at
+    https://stackoverflow.com/q/51575931
+    """
 
     _name: str
     _column: FieldName
+
+
+@dataclasses.dataclass
+class PassThruMethod(Method, _PassThruMethodAttributes):
+    """A method of calculating test positivity by passing through a column directly"""
 
     @property
     def name(self) -> str:
