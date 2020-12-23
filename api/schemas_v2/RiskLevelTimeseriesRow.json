@@ -1,0 +1,34 @@
+{
+  "title": "RiskLevelTimeseriesRow",
+  "description": "Timeseries data for risk levels. Currently only surfacing overall risk level for region.",
+  "type": "object",
+  "properties": {
+    "date": {
+      "title": "Date",
+      "description": "Date of timeseries data point",
+      "type": "string",
+      "format": "date"
+    },
+    "overall": {
+      "$ref": "#/definitions/RiskLevel"
+    }
+  },
+  "required": [
+    "date",
+    "overall"
+  ],
+  "definitions": {
+    "RiskLevel": {
+      "title": "RiskLevel",
+      "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown\n *Extreme* - Severe outbreak",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}
