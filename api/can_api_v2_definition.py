@@ -210,6 +210,8 @@ class RiskLevels(base_model.APIBaseModel):
     icuCapacityRatio: RiskLevel = pydantic.Field(..., description="ICU capacity ratio risk level.")
 
 
+# Additional class used for bulk timeseries where we are not including all risk levels
+# right now, only the overall risk level.
 class RiskLevelsRow(base_model.APIBaseModel):
     overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region.")
 
