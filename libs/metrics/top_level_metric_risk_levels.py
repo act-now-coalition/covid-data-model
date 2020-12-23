@@ -152,7 +152,9 @@ def calculate_risk_level_from_row(row: pd.Series):
     return top_level_risk_level(case_density_level, test_positivity_level, infection_rate_level)
 
 
-def calculate_risk_level_timeseries(metrics_df: pd.DataFrame,):
+def calculate_risk_level_timeseries(
+    metrics_df: pd.DataFrame, metric_max_lookback=top_level_metrics.MAX_METRIC_LOOKBACK_DAYS
+):
     metrics_df = metrics_df.copy()
     # Shift infection rate to align with infection rate delay
     infection_rate = metrics_df[MetricsFields.INFECTION_RATE].shift(
@@ -160,6 +162,11 @@ def calculate_risk_level_timeseries(metrics_df: pd.DataFrame,):
     )
     metrics_df[MetricsFields.INFECTION_RATE] = infection_rate
     metrics_df = metrics_df.set_index([CommonFields.DATE, CommonFields.FIPS])
+
+    # We use the last available data within `MAX_METRIC_LOOKBACK_DAYS` to cacluate
+    # the risk. Propagate the last value forward that many days so calculation for a given
+    # day is the same as `top_level_metrics.calculate_latest_metrics`
+    metrics_df.ffill(limit=metric_max_lookback - 1, inplace=True)
 
     series = metrics_df.apply(calculate_risk_level_from_row, axis=1)
     series.name = "overall"

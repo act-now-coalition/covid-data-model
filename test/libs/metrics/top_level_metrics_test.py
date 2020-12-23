@@ -95,7 +95,7 @@ def build_one_region_dataset(
     return one_region
 
 
-def _build_metrics_df(
+def build_metrics_df(
     fips: str,
     *,
     start_date: Optional[str] = None,
