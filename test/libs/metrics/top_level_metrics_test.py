@@ -229,7 +229,7 @@ def test_top_level_metrics_basic():
         one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
     )
 
-    expected = _build_metrics_df(
+    expected = build_metrics_df(
         "36",
         start_date="2020-08-17",
         caseDensity=[10, 10, None, None],
@@ -261,7 +261,7 @@ def test_top_level_metrics_incomplete_latest():
         one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
     )
 
-    expected = _build_metrics_df(
+    expected = build_metrics_df(
         "36",
         start_date="2020-08-17",
         caseDensity=[10, 10, 10, 10],
@@ -292,7 +292,7 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
         one_region, None, None, structlog.get_logger()
     )
 
-    expected = _build_metrics_df(
+    expected = build_metrics_df(
         "36",
         start_date="2020-08-17",
         caseDensity=[10.0, 10.0, 10.0, 10.0],
@@ -322,7 +322,7 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
         one_region, None, None, structlog.get_logger()
     )
 
-    expected = _build_metrics_df(
+    expected = build_metrics_df(
         "36",
         start_date="2020-08-17",
         caseDensity=[10, 10, 10, 10],
@@ -356,7 +356,7 @@ def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tes
     if pos_neg_tests_recent:
         freeze_date = "2020-08-21"
         # positive_tests and negative_tests are used
-        expected = _build_metrics_df(
+        expected = build_metrics_df(
             "36",
             start_date="2020-08-10",
             caseDensity=[10, 10, 10, 10, 10, 10],
@@ -367,7 +367,7 @@ def test_top_level_metrics_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tes
     else:
         freeze_date = "2020-08-22"
         # positive_tests and negative_tests no longer recent so test_positivity is copied to output.
-        expected = _build_metrics_df(
+        expected = build_metrics_df(
             "36",
             start_date="2020-08-10",
             caseDensity=[10, 10, 10, 10, 10, 10],
@@ -415,7 +415,7 @@ def test_top_level_metrics_with_rt():
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, rt_data, None, structlog.get_logger()
     )
-    expected = _build_metrics_df(
+    expected = build_metrics_df(
         "36",
         start_date="2020-08-17",
         caseDensity=[0, 5, None, None],
@@ -450,7 +450,7 @@ def test_calculate_contact_tracers_no_tracers():
 def test_calculate_latest_rt():
     prev_rt = 1.0
     prev_rt_ci90 = 0.2
-    data = _build_metrics_df(
+    data = build_metrics_df(
         "36",
         dates=["2020-08-13", "2020-08-20"],
         caseDensity=[10, 10],
@@ -467,7 +467,7 @@ def test_calculate_latest_rt():
 def test_lookback_days():
     prev_rt = 1.0
     prev_rt_ci90 = 0.2
-    data = _build_metrics_df(
+    data = build_metrics_df(
         "36",
         dates=["2020-08-12", "2020-08-13", "2020-08-28"],
         caseDensity=[10, 10, None],
@@ -485,7 +485,7 @@ def test_lookback_days():
 
 
 def test_calculate_latest_rt_no_previous_row():
-    data = _build_metrics_df(
+    data = build_metrics_df(
         "36",
         start_date="2020-08-20",
         caseDensity=[10],
@@ -500,7 +500,7 @@ def test_calculate_latest_rt_no_previous_row():
 
 
 def test_calculate_latest_rt_no_rt():
-    data = _build_metrics_df(
+    data = build_metrics_df(
         "36",
         start_date="2020-08-20",
         caseDensity=[10],
@@ -515,7 +515,7 @@ def test_calculate_latest_rt_no_rt():
 def test_calculate_latest_different_latest_days():
     prev_rt = 1.0
     prev_rt_ci90 = 0.2
-    data = _build_metrics_df(
+    data = build_metrics_df(
         "36",
         dates=["2020-08-13", "2020-08-20"],
         caseDensity=[10, None],
@@ -557,7 +557,7 @@ def test_calculate_icu_capacity():
     results, metrics = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, None, structlog.get_logger()
     )
-    expected = _build_metrics_df("36", start_date="2020-12-18", icuCapacityRatio=[1.0, 0.75],)
+    expected = build_metrics_df("36", start_date="2020-12-18", icuCapacityRatio=[1.0, 0.75],)
     positivity_method = can_api_v2_definition.TestPositivityRatioDetails(
         source=can_api_v2_definition.TestPositivityRatioMethod.OTHER
     )
