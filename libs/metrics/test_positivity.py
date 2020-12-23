@@ -15,6 +15,7 @@ import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields, FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from libs import series_utils
+from typing_extensions import final
 
 from libs.datasets import timeseries
 
@@ -22,6 +23,17 @@ from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 _log = structlog.get_logger()
+
+
+@final
+@dataclasses.dataclass(frozen=True)
+class MethodOutput:
+    """The values returned by Method.caluclate."""
+
+    # A dataset containing all computed outputs. This is used for debugging.
+    all: MultiRegionDataset
+    # A dataset containing only data considered recent according to the parameters of the method.
+    recent: MultiRegionDataset
 
 
 @dataclasses.dataclass
@@ -43,7 +55,9 @@ class Method(ABC):
         pass
 
     @abstractmethod
-    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
+    def calculate(
+        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date
+    ) -> MethodOutput:
         """Calculate a DataFrame with LOCATION_ID index and DATE columns.
 
         Args:
@@ -53,6 +67,12 @@ class Method(ABC):
                 index. Values are 7-day deltas. Must contain at least one real value for each of self.columns.
         """
         pass
+
+    def _filter_recent(self, all: MultiRegionDataset, most_recent_date) -> MethodOutput:
+        """Filters the output for all regions, returning output for all regions and only those
+        with recent data."""
+        recent_date_cutoff = most_recent_date + pd.to_timedelta(1 - self.recent_days, "D")
+        return MethodOutput(all=all, recent=all.drop_stale_timeseries(recent_date_cutoff))
 
 
 def _append_variable_index_level(df: Union[pd.DataFrame, pd.Series], field_name: FieldName) -> None:
@@ -139,7 +159,9 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
     def columns(self) -> Set[FieldName]:
         return {self._numerator, self._denominator}
 
-    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
+    def calculate(
+        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date
+    ) -> MethodOutput:
         delta_df = (
             dataset.timeseries_wide_dates()
             .reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
@@ -152,7 +174,10 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
         # region/state and date.
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
 
-        return _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
+        return self._filter_recent(
+            _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY),
+            most_recent_date,
+        )
 
 
 @dataclasses.dataclass
@@ -179,7 +204,9 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
     def columns(self) -> Set[FieldName]:
         return {self._column}
 
-    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
+    def calculate(
+        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date
+    ) -> MethodOutput:
         df = dataset.timeseries_wide_dates().reorder_levels(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         )
@@ -191,7 +218,10 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
         # Optional optimization: The following likely adds the variable/field/column name back in
         # to the index which was just taken out. Consider skipping reindexing.
 
-        return _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
+        return self._filter_recent(
+            _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY),
+            most_recent_date,
+        )
 
 
 class OldMethod(Method):
@@ -203,23 +233,44 @@ class OldMethod(Method):
     def columns(self) -> Set[FieldName]:
         return {CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS}
 
-    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
+    def calculate(
+        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date
+    ) -> MethodOutput:
+
         positivity_time_series = {}
+        recent_region = set()
         for region, regional_data in dataset.iter_one_regions():
+            data = regional_data.date_indexed
+            positive_negative_recent = self._has_recent_data(
+                data[CommonFields.POSITIVE_TESTS]
+            ) and self._has_recent_data(data[CommonFields.NEGATIVE_TESTS])
             series = calculate_test_positivity(regional_data)
             if not series.empty:
                 positivity_time_series[region.location_id] = series
+                if positive_negative_recent:
+                    recent_region.add(region)
 
+        # Convert dict[location_id, Series] to rows with key as index and value as the row data.
         # See https://stackoverflow.com/a/21005134
         wide_date_df = pd.concat(positivity_time_series, axis=1).T.rename_axis(
             index=CommonFields.LOCATION_ID, columns=CommonFields.DATE
         )
-        return _make_output_dataset(
+
+        ds_all = _make_output_dataset(
             dataset,
             self.name,
             wide_date_df,
             CommonFields.TEST_POSITIVITY,
             source_columns=[CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS],
+        )
+
+        ds_recent = ds_all.get_regions_subset(recent_region)
+
+        return MethodOutput(all=ds_all, recent=ds_recent)
+
+    def _has_recent_data(self, series: pd.Series) -> bool:
+        return series_utils.has_recent_data(
+            series, days_back=self.recent_days, required_non_null_datapoints=1
         )
 
 
@@ -291,28 +342,38 @@ class AllMethods:
 
         method_map = {timeseries.DatasetName(method.name): method for method in methods_with_data}
         calculated_dataset_map = {
-            method_name: method.calculate(dataset_in, diff_days)
-            for method_name, method in method_map.items()
-        }
-        method_recent_date_cutoff = {
-            method_name: most_recent_date + pd.to_timedelta(1 - method.recent_days, "D")
+            method_name: method.calculate(dataset_in, diff_days, most_recent_date)
             for method_name, method in method_map.items()
         }
         calculated_dataset_recent_map = {
-            name: ds.drop_stale_timeseries(method_recent_date_cutoff[name])
-            for name, ds in calculated_dataset_map.items()
+            name: method_output.recent for name, method_output in calculated_dataset_map.items()
         }
+        old_method_output: Optional[MethodOutput] = calculated_dataset_map.get(
+            timeseries.DatasetName("OldMethod")
+        )
+        print(old_method_output)
+        if old_method_output is not None:
+            all_regions = {r for r, _ in old_method_output.all.iter_one_regions()}
+            recent_regions = {r for r, _ in old_method_output.recent.iter_one_regions()}
+            print(
+                f"all region count: {len(all_regions)}  recent region count: {len(recent_regions)}"
+            )
+            print(f"stale regions: {all_regions - recent_regions}")
+            calculated_dataset_recent_map[
+                timeseries.DatasetName("OldMethodAll")
+            ] = old_method_output.all
+
         # Make a dataset object with one metric, containing for each region the timeseries
         # from the highest priority dataset that has recent data.
         test_positivity = timeseries.combined_datasets(
             calculated_dataset_recent_map,
-            {CommonFields.TEST_POSITIVITY: list(calculated_dataset_map.keys())},
+            {CommonFields.TEST_POSITIVITY: list(calculated_dataset_recent_map.keys())},
             {},
         )
         # For debugging create a DataFrame with the calculated timeseries of all methods, including
         # timeseries that are not recent.
         all_datasets_df = pd.concat(
-            {name: ds.timeseries_wide_dates() for name, ds in calculated_dataset_map.items()},
+            {name: ds.all.timeseries_wide_dates() for name, ds in calculated_dataset_map.items()},
             names=[PdFields.DATASET, CommonFields.LOCATION_ID, PdFields.VARIABLE],
         )
         all_methods = (

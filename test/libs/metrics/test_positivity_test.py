@@ -8,6 +8,7 @@ import pytest
 from covidactnow.datapublic import common_df
 
 from covidactnow.datapublic.common_fields import CommonFields
+from freezegun import freeze_time
 
 from libs.datasets import timeseries
 from libs.pipeline import Region
@@ -298,7 +299,10 @@ def test_default_methods():
     }
     dataset_in = top_level_metrics_test.build_dataset({region_as: metrics_as})
 
-    all_methods = AllMethods.run(dataset_in, diff_days=1)
+    # TODO(tom): Once test positivity code seems stable remove call to datetime.today() in
+    #  has_recent_data and remove this freeze_time.
+    with freeze_time("2020-04-14"):
+        all_methods = AllMethods.run(dataset_in, diff_days=1)
 
     expected_as = {
         CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
