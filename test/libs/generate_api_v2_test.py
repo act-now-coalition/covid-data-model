@@ -83,12 +83,13 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_datase
         nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset, structlog.get_logger()
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
+    risk_timeseries = top_level_metric_risk_levels.calculate_risk_level_timeseries(metrics_series)
 
     region_summary = build_api_v2.build_region_summary(
         nyc_latest, latest_metric, risk_levels, nyc_region
     )
     region_timeseries = build_api_v2.build_region_timeseries(
-        region_summary, nyc_timeseries, metrics_series
+        region_summary, nyc_timeseries, metrics_series, risk_timeseries
     )
 
     summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels, nyc_region)
