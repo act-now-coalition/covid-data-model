@@ -280,3 +280,40 @@ def test_provenance():
         {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04",
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
+
+
+def test_default_methods():
+    region_as = Region.from_state("AS")
+    region_tx = Region.from_state("TX")
+    metrics_as = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([0, 1, 2, 3, 4, 5, 6, 7], provenance="src1"),
+        CommonFields.NEGATIVE_TESTS: TimeseriesLiteral(
+            [10, 19, 28, 37, 46, 55, 64, 73], provenance="src2"
+        ),
+    }
+    metrics_tx = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], provenance="pt_src2"),
+        CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
+        CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+    }
+    dataset_in = top_level_metrics_test.build_dataset({region_as: metrics_as})
+
+    all_methods = AllMethods.run(dataset_in, diff_days=1)
+
+    expected_as = {
+        CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
+            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], provenance="OldMethod(src1," "src2)"
+        )
+    }
+    expected_positivity = top_level_metrics_test.build_dataset(
+        {region_as: expected_as}, start_date="2020-04-02",
+    )
+    assert_dataset_like(all_methods.test_positivity, expected_positivity)
+
+    expected_df = _parse_wide_dates(
+        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
+        "iso1:us#iso2:us-as,method2,,,,0.02\n"
+        "iso1:us#iso2:us-tx,method1,,,,0.1\n"
+        "iso1:us#iso2:us-tx,method2,,,,0.01\n"
+    )
+    pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)

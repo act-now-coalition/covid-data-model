@@ -4,20 +4,22 @@ import pathlib
 from itertools import chain
 from typing import Iterable
 from typing import List
+from typing import Optional
 from typing import Sequence
 from typing import Set
+from typing import Union
 
 import structlog
 
 import pandas as pd
-
 from covidactnow.datapublic.common_fields import CommonFields, FieldName
 from covidactnow.datapublic.common_fields import PdFields
+from libs import series_utils
 
 from libs.datasets import timeseries
 
 from libs.datasets.timeseries import MultiRegionDataset
-
+from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 _log = structlog.get_logger()
 
@@ -53,7 +55,7 @@ class Method(ABC):
         pass
 
 
-def _append_variable_index_level(df: pd.DataFrame, field_name: FieldName) -> None:
+def _append_variable_index_level(df: Union[pd.DataFrame, pd.Series], field_name: FieldName) -> None:
     """Add level `VARIABLE` to df.index with constant value `field_name`, in-place"""
     assert df.index.names == [CommonFields.LOCATION_ID]
     # From https://stackoverflow.com/a/40636392
@@ -67,6 +69,8 @@ def _make_output_dataset(
     default_provenance: str,
     wide_date_df: pd.DataFrame,
     output_metric: FieldName,
+    *,
+    source_columns: Optional[List[FieldName]] = None,
 ) -> MultiRegionDataset:
     """Returns a dataset with `wide_date_df` in a column named `output_metric` and provenance
     information copied from `dataset_in`.
@@ -85,19 +89,26 @@ def _make_output_dataset(
     locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
     _append_variable_index_level(wide_date_df, output_metric)
 
-    # TODO(tom): Add support for copying per-location provenance information from dataset_in.
-    #  Something like:
-    # assert dataset.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-    # provenance = dataset.provenance.loc[locations, self._column]
     assert dataset_in.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    if source_columns:
+        # unstack before getting source_columns so that order of the columns passed to apply matches
+        # source_columns.
+        provenance = (
+            dataset_in.provenance.unstack(PdFields.VARIABLE)
+            .loc[locations, source_columns]
+            # .apply(lambda s: f"{default_provenance}({','.join(s.drop_duplicates())})", axis=1)
+            .apply(lambda s: ",".join(s.drop_duplicates()), axis=1)
+            .rename(PdFields.PROVENANCE)
+        )
+        _append_variable_index_level(provenance, output_metric)
+    else:
+        provenance = pd.Series([], name=PdFields.PROVENANCE, dtype="object")
 
     # Make sure every timeseries has something in `provenance`.
     provenance_index = pd.MultiIndex.from_product(
         [locations, [output_metric]], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
     )
-    provenance = pd.Series([], name=PdFields.PROVENANCE, dtype="object").reindex(
-        provenance_index, fill_value=default_provenance
-    )
+    provenance = provenance.reindex(provenance_index, fill_value=default_provenance)
     return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_series(
         provenance
     )
@@ -183,9 +194,39 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
         return _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY)
 
 
+class OldMethod(Method):
+    @property
+    def name(self) -> str:
+        return "OldMethod"
+
+    @property
+    def columns(self) -> Set[FieldName]:
+        return {CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS}
+
+    def calculate(self, dataset: MultiRegionDataset, diff_days: int) -> MultiRegionDataset:
+        positivity_time_series = {}
+        for region, regional_data in dataset.iter_one_regions():
+            series = calculate_test_positivity(regional_data)
+            if not series.empty:
+                positivity_time_series[region.location_id] = series
+
+        # See https://stackoverflow.com/a/21005134
+        wide_date_df = pd.concat(positivity_time_series, axis=1).T.rename_axis(
+            index=CommonFields.LOCATION_ID, columns=CommonFields.DATE
+        )
+        return _make_output_dataset(
+            dataset,
+            self.name,
+            wide_date_df,
+            CommonFields.TEST_POSITIVITY,
+            source_columns=[CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS],
+        )
+
+
 TEST_POSITIVITY_METHODS = (
     # HACK: For now we assume TEST_POSITIVITY_7D came from CDC numbers while
     # TEST_POSITIVITY_14D came from CMS.
+    OldMethod(recent_days=10),
     PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
     PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY_14D),
     DivisionMethod(
@@ -318,3 +359,30 @@ def run_and_maybe_join_columns(
         return mrts
 
     return mrts.join_columns(test_positivity_results.test_positivity)
+
+
+def calculate_test_positivity(
+    region_dataset: OneRegionTimeseriesDataset, lag_lookback: int = 7
+) -> pd.Series:
+    """Calculates positive test rate from combined data."""
+    data = region_dataset.date_indexed
+    positive_tests = series_utils.interpolate_stalled_and_missing_values(
+        data[CommonFields.POSITIVE_TESTS]
+    )
+    negative_tests = series_utils.interpolate_stalled_and_missing_values(
+        data[CommonFields.NEGATIVE_TESTS]
+    )
+
+    daily_negative_tests = negative_tests.diff()
+    daily_positive_tests = positive_tests.diff()
+    positive_smoothed = series_utils.smooth_with_rolling_average(daily_positive_tests)
+    negative_smoothed = series_utils.smooth_with_rolling_average(
+        daily_negative_tests, include_trailing_zeros=False
+    )
+    last_n_positive = positive_smoothed[-lag_lookback:]
+    last_n_negative = negative_smoothed[-lag_lookback:]
+
+    if any(last_n_positive) and last_n_negative.isna().all():
+        return pd.Series([], dtype="float64")
+
+    return positive_smoothed / (negative_smoothed + positive_smoothed)

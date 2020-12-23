@@ -17,6 +17,7 @@ from covidactnow.datapublic.common_fields import PdFields
 from freezegun import freeze_time
 from covidactnow.datapublic.common_fields import CommonFields
 
+import libs.metrics.test_positivity
 from api import can_api_v2_definition
 from libs.datasets import timeseries
 from libs.metrics import top_level_metrics
@@ -212,7 +213,7 @@ def test_calculate_test_positivity():
     both = build_one_region_dataset(
         {CommonFields.POSITIVE_TESTS: [0, 1, 3, 6], CommonFields.NEGATIVE_TESTS: [0, 0, 1, 3]}
     )
-    positive_rate = top_level_metrics.calculate_test_positivity(both, lag_lookback=1)
+    positive_rate = libs.metrics.test_positivity.calculate_test_positivity(both, lag_lookback=1)
     expected = _series_with_date_index([np.nan, 1, 0.75, 2 / 3])
     pd.testing.assert_series_equal(positive_rate, expected)
 
@@ -224,7 +225,7 @@ def test_calculate_test_positivity_lagging():
     both = build_one_region_dataset(
         {CommonFields.POSITIVE_TESTS: [0, 1, 2, 4, 8], CommonFields.NEGATIVE_TESTS: [0, 0, 1, 2, 2]}
     )
-    positive_rate = top_level_metrics.calculate_test_positivity(both, lag_lookback=1)
+    positive_rate = libs.metrics.test_positivity.calculate_test_positivity(both, lag_lookback=1)
     pd.testing.assert_series_equal(positive_rate, pd.Series([], dtype="float64"))
 
 
@@ -235,7 +236,7 @@ def test_calculate_test_positivity_extra_day():
     both = build_one_region_dataset(
         {CommonFields.POSITIVE_TESTS: [0, 4, np.nan], CommonFields.NEGATIVE_TESTS: [0, 4, np.nan]}
     )
-    positive_rate = top_level_metrics.calculate_test_positivity(both)
+    positive_rate = libs.metrics.test_positivity.calculate_test_positivity(both)
     expected = _series_with_date_index([np.nan, 0.5])
     pd.testing.assert_series_equal(positive_rate, expected)
 
