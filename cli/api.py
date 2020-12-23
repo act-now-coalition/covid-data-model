@@ -106,9 +106,7 @@ def generate_test_positivity(
     positivity_time_series = {}
     source_map = {}
     for region, regional_data in joined_dataset.iter_one_regions():
-        pos_series, details = top_level_metrics.calculate_or_copy_test_positivity(
-            regional_data, log
-        )
+        pos_series, details = top_level_metrics.copy_test_positivity(regional_data, log)
         positivity_time_series[region.location_id] = pos_series
         source_map[region.location_id] = details.source.value
     write_positivity(output_dir / final_result, positivity_time_series, source_map)

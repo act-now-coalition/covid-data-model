@@ -275,9 +275,9 @@ class OldMethod(Method):
 
 
 TEST_POSITIVITY_METHODS = (
+    OldMethod(recent_days=10),
     # HACK: For now we assume TEST_POSITIVITY_7D came from CDC numbers while
     # TEST_POSITIVITY_14D came from CMS.
-    OldMethod(recent_days=10),
     PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
     PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY_14D),
     DivisionMethod(
@@ -351,14 +351,7 @@ class AllMethods:
         old_method_output: Optional[MethodOutput] = calculated_dataset_map.get(
             timeseries.DatasetName("OldMethod")
         )
-        print(old_method_output)
         if old_method_output is not None:
-            all_regions = {r for r, _ in old_method_output.all.iter_one_regions()}
-            recent_regions = {r for r, _ in old_method_output.recent.iter_one_regions()}
-            print(
-                f"all region count: {len(all_regions)}  recent region count: {len(recent_regions)}"
-            )
-            print(f"stale regions: {all_regions - recent_regions}")
             calculated_dataset_recent_map[
                 timeseries.DatasetName("OldMethodAll")
             ] = old_method_output.all

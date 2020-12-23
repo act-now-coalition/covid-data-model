@@ -79,7 +79,7 @@ def calculate_metrics_for_timeseries(
     new_cases = data[CommonFields.NEW_CASES]
     case_density = calculate_case_density(new_cases, population)
 
-    test_positivity, test_positivity_details = calculate_or_copy_test_positivity(timeseries, log)
+    test_positivity, test_positivity_details = copy_test_positivity(timeseries, log)
 
     contact_tracer_capacity = calculate_contact_tracers(
         new_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
@@ -133,29 +133,17 @@ def _lookup_test_positivity_method(
     return method
 
 
-def calculate_or_copy_test_positivity(
+def copy_test_positivity(
     dataset_in: OneRegionTimeseriesDataset, log,
 ) -> Tuple[pd.Series, TestPositivityRatioDetails]:
-    # TODO(tom): Move all these calculations to test_positivity.AllMethods or something applied to
-    #  each datasource with test metrics.
     data = dataset_in.date_indexed
-    # Use POSITIVE_TESTS and NEGATIVE_TEST if TEST_POSITIVITY is not available
-    # for this region.
     test_positivity = common_df.get_timeseries(data, CommonFields.TEST_POSITIVITY, EMPTY_TS)
-    if not test_positivity.notna().any():
-        method = _lookup_test_positivity_method(
-            dataset_in.provenance.get(CommonFields.POSITIVE_TESTS),
-            dataset_in.provenance.get(CommonFields.NEGATIVE_TESTS),
-            log,
-        )
-        test_positivity = calculate_test_positivity(dataset_in)
-    else:
-        provenance = dataset_in.provenance.get(CommonFields.TEST_POSITIVITY)
-        method = TestPositivityRatioMethod.get(provenance)
-        if method is None:
-            if provenance is not None:
-                log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
-            method = TestPositivityRatioMethod.OTHER
+    provenance = dataset_in.provenance.get(CommonFields.TEST_POSITIVITY)
+    method = TestPositivityRatioMethod.get(provenance)
+    if method is None:
+        if provenance is not None:
+            log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
+        method = TestPositivityRatioMethod.OTHER
     return test_positivity, TestPositivityRatioDetails(source=method)
 
 
