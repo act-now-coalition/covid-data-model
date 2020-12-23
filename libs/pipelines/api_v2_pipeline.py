@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 import pathlib
 import time
-
+import pandas as pd
 import pydantic
 import structlog
 
@@ -14,9 +14,7 @@ from libs.pipelines.api_v2_paths import FileType
 from api.can_api_v2_definition import AggregateRegionSummary
 from api.can_api_v2_definition import AggregateRegionSummaryWithTimeseries
 from api.can_api_v2_definition import Metrics
-from api.can_api_v2_definition import MetricsTimeseriesRow
 from api.can_api_v2_definition import RegionSummaryWithTimeseries
-from api.can_api_v2_definition import RiskLevelTimeseriesRow
 from libs import dataset_deployer
 from libs.metrics import top_level_metrics
 from libs.metrics import top_level_metric_risk_levels
@@ -116,7 +114,7 @@ def generate_metrics_and_latest(
     rt_data: Optional[OneRegionTimeseriesDataset],
     icu_data: Optional[OneRegionTimeseriesDataset],
     log,
-) -> [List[MetricsTimeseriesRow], Optional[Metrics]]:
+) -> [pd.DataFrame, Metrics]:
     """
     Build metrics with timeseries.
 
