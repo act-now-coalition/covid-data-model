@@ -8,6 +8,7 @@ from api.can_api_v2_definition import (
     AggregateRegionSummary,
     Metrics,
     RiskLevels,
+    RiskLevelsRow,
     RegionSummary,
     RegionSummaryWithTimeseries,
     RegionTimeseriesRowWithHeader,
@@ -125,12 +126,19 @@ def build_bulk_flattened_timeseries(
         }
         actuals_by_date = {row.date: row for row in region_timeseries.actualsTimeseries}
         metrics_by_date = {row.date: row for row in region_timeseries.metricsTimeseries}
+        risk_levels_by_date = {row.date: row for row in region_timeseries.riskLevelsTimeseries}
         dates = sorted({*metrics_by_date.keys(), *actuals_by_date.keys()})
         for date in dates:
+            risk_levels = risk_levels_by_date.get(date)
+            risk_levels_row = None
+            if risk_levels:
+                risk_levels_row = RiskLevelsRow(overall=risk_levels.overall)
+
             data = {
                 "date": date,
                 "actuals": actuals_by_date.get(date),
                 "metrics": metrics_by_date.get(date),
+                "riskLevels": risk_levels_row,
             }
             data.update(summary_data)
             row = RegionTimeseriesRowWithHeader(**data)
