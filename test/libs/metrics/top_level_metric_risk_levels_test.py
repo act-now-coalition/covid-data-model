@@ -44,8 +44,6 @@ def test_top_level_risk_level_case_density_override(case_density_level, expected
     top_level_risk = top_level_metric_risk_levels.top_level_risk_level(
         case_density_level=expected,
         test_positivity_level=RiskLevel.CRITICAL,
-        contact_tracing_level=RiskLevel.MEDIUM,
-        icu_headroom_level=RiskLevel.MEDIUM,
         infection_rate_level=RiskLevel.LOW,
     )
 

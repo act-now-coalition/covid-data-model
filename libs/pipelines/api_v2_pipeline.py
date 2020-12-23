@@ -156,10 +156,6 @@ def build_timeseries_for_region(
         metrics_results, metrics_latest = generate_metrics_and_latest(
             fips_timeseries, regional_input.rt_data, regional_input.icu_data, log
         )
-        metrics_rows = [
-            MetricsTimeseriesRow(**metric_row)
-            for metric_row in metrics_results.to_dict(orient="records")
-        ]
         risk_timeseries = top_level_metric_risk_levels.calculate_risk_level_timeseries(
             metrics_results
         )
@@ -168,7 +164,7 @@ def build_timeseries_for_region(
             fips_latest, metrics_latest, risk_levels, regional_input.region
         )
         region_timeseries = build_api_v2.build_region_timeseries(
-            region_summary, fips_timeseries, metrics_rows, risk_timeseries
+            region_summary, fips_timeseries, metrics_results, risk_timeseries
         )
     except Exception:
         log.exception(f"Failed to build timeseries for fips.")
