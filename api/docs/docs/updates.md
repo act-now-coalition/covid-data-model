@@ -7,6 +7,21 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### View entire timeseries of risk levels for all regions
+_Added on 2020-12-22_
+
+You can now view the history of a region's overall risk level in all timeseries endpoints under the
+key `riskLevelsTimeseries`.
+
+### Overall risk level now based on 3 key metrics
+_Added on 2020-12-22_
+
+The overall risk level is now based on `caseDensity`, `testPositivityRatio`, and `infectionRate`.
+Learn more about the [changes we made](https://covidactnow.org/faq#december-risk-levels-change).
+
+We will be continuing to calculate all metrics and have no plans of removing
+`contactTracingCapacityRatio`, `icuCapacityRatio`, or `icuHeadroomRatio` at this time.
+
 ### Link to Covid Act Now website
 _Added on 2020-12-03_
 

@@ -988,7 +988,8 @@
           "contactTracerCapacityRatio",
           "infectionRate",
           "infectionRateCI90",
-          "icuHeadroomRatio"
+          "icuHeadroomRatio",
+          "icuCapacityRatio"
         ],
         "type": "object",
         "properties": {
@@ -1068,6 +1069,17 @@
           },
           "icuHeadroomDetails": {
             "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+          },
+          "icuCapacityRatio": {
+            "title": "Icucapacityratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "description": "Calculated metrics data based on known actuals."
@@ -1176,7 +1188,8 @@
           "country",
           "state",
           "county",
-          "cbsa"
+          "cbsa",
+          "place"
         ],
         "description": "An enumeration."
       },
@@ -1200,7 +1213,8 @@
           "caseDensity",
           "contactTracerCapacityRatio",
           "infectionRate",
-          "icuHeadroomRatio"
+          "icuHeadroomRatio",
+          "icuCapacityRatio"
         ],
         "type": "object",
         "properties": {
@@ -1220,6 +1234,9 @@
             "$ref": "#/components/schemas/RiskLevel"
           },
           "icuHeadroomRatio": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "icuCapacityRatio": {
             "$ref": "#/components/schemas/RiskLevel"
           }
         },
@@ -1370,6 +1387,7 @@
           "infectionRate",
           "infectionRateCI90",
           "icuHeadroomRatio",
+          "icuCapacityRatio",
           "date"
         ],
         "type": "object",
@@ -1450,6 +1468,17 @@
           },
           "icuHeadroomDetails": {
             "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+          },
+          "icuCapacityRatio": {
+            "title": "Icucapacityratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "date": {
             "title": "Date",
@@ -1574,6 +1603,26 @@
         },
         "description": "Actual data for a specific day."
       },
+      "RiskLevelTimeseriesRow": {
+        "title": "RiskLevelTimeseriesRow",
+        "required": [
+          "date",
+          "overall"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string",
+            "description": "Date of timeseries data point",
+            "format": "date"
+          },
+          "overall": {
+            "$ref": "#/components/schemas/RiskLevel"
+          }
+        },
+        "description": "Timeseries data for risk levels. Currently only surfacing overall risk level for region."
+      },
       "RegionSummaryWithTimeseries": {
         "title": "RegionSummaryWithTimeseries",
         "required": [
@@ -1591,7 +1640,8 @@
           "actuals",
           "lastUpdatedDate",
           "url",
-          "actualsTimeseries"
+          "actualsTimeseries",
+          "riskLevelsTimeseries"
         ],
         "type": "object",
         "properties": {
@@ -1712,6 +1762,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ActualsTimeseriesRow"
+            }
+          },
+          "riskLevelsTimeseries": {
+            "title": "Risklevelstimeseries",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RiskLevelTimeseriesRow"
             }
           }
         },

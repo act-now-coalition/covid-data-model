@@ -1,6 +1,11 @@
-import math
 from typing import List, Optional
+import math
+import numpy as np
+import pandas as pd
 
+from covidactnow.datapublic.common_fields import CommonFields
+from libs.metrics.top_level_metrics import MetricsFields
+from libs.metrics import top_level_metrics
 from api import can_api_v2_definition
 
 RiskLevel = can_api_v2_definition.RiskLevel
@@ -27,7 +32,7 @@ def calc_risk_level(value: Optional[float], thresholds: List[float]) -> RiskLeve
     if value is None:
         return RiskLevel.UNKNOWN
 
-    if math.isinf(value):
+    if math.isinf(value) or np.isnan(value):
         return RiskLevel.UNKNOWN
 
     if value <= level_low:
@@ -87,8 +92,6 @@ def infection_rate_risk_level(value: float) -> RiskLevel:
 def top_level_risk_level(
     case_density_level: RiskLevel,
     test_positivity_level: RiskLevel,
-    contact_tracing_level: RiskLevel,
-    icu_headroom_level: RiskLevel,
     infection_rate_level: RiskLevel,
 ) -> RiskLevel:
     """Calculate the overall risk for a region based on metric risk levels."""
@@ -97,8 +100,6 @@ def top_level_risk_level(
 
     level_list = [
         infection_rate_level,
-        contact_tracing_level,
-        icu_headroom_level,
         test_positivity_level,
         case_density_level,
     ]
@@ -128,11 +129,7 @@ def calculate_risk_level_from_metrics(
     icu_capacity_ratio_level = icu_capacity_ratio_risk_level(metrics.icuCapacityRatio)
 
     overall_level = top_level_risk_level(
-        case_density_level,
-        test_positivity_level,
-        contact_tracing_level,
-        icu_headroom_level,
-        infection_rate_level,
+        case_density_level, test_positivity_level, infection_rate_level,
     )
     levels = can_api_v2_definition.RiskLevels(
         overall=overall_level,
@@ -144,3 +141,33 @@ def calculate_risk_level_from_metrics(
         icuCapacityRatio=icu_capacity_ratio_level,
     )
     return levels
+
+
+def calculate_risk_level_from_row(row: pd.Series):
+
+    case_density_level = case_density_risk_level(row[MetricsFields.CASE_DENSITY_RATIO])
+    test_positivity_level = test_positivity_risk_level(row[MetricsFields.TEST_POSITIVITY])
+    infection_rate_level = infection_rate_risk_level(row[MetricsFields.INFECTION_RATE])
+
+    return top_level_risk_level(case_density_level, test_positivity_level, infection_rate_level)
+
+
+def calculate_risk_level_timeseries(
+    metrics_df: pd.DataFrame, metric_max_lookback=top_level_metrics.MAX_METRIC_LOOKBACK_DAYS
+):
+    metrics_df = metrics_df.copy()
+    # Shift infection rate to align with infection rate delay
+    infection_rate = metrics_df[MetricsFields.INFECTION_RATE].shift(
+        top_level_metrics.RT_TRUNCATION_DAYS
+    )
+    metrics_df[MetricsFields.INFECTION_RATE] = infection_rate
+    metrics_df = metrics_df.set_index([CommonFields.DATE, CommonFields.FIPS])
+
+    # We use the last available data within `MAX_METRIC_LOOKBACK_DAYS` to cacluate
+    # the risk. Propagate the last value forward that many days so calculation for a given
+    # day is the same as `top_level_metrics.calculate_latest_metrics`
+    metrics_df.ffill(limit=metric_max_lookback - 1, inplace=True)
+
+    series = metrics_df.apply(calculate_risk_level_from_row, axis=1)
+    series.name = "overall"
+    return series.reset_index()

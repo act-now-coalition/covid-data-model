@@ -121,6 +121,13 @@
       "items": {
         "$ref": "#/definitions/ActualsTimeseriesRow"
       }
+    },
+    "riskLevelsTimeseries": {
+      "title": "Risklevelstimeseries",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/RiskLevelTimeseriesRow"
+      }
     }
   },
   "required": [
@@ -138,7 +145,8 @@
     "actuals",
     "lastUpdatedDate",
     "url",
-    "actualsTimeseries"
+    "actualsTimeseries",
+    "riskLevelsTimeseries"
   ],
   "definitions": {
     "AggregationLevel": {
@@ -361,6 +369,9 @@
         },
         "icuHeadroomRatio": {
           "$ref": "#/definitions/RiskLevel"
+        },
+        "icuCapacityRatio": {
+          "$ref": "#/definitions/RiskLevel"
         }
       },
       "required": [
@@ -369,7 +380,8 @@
         "caseDensity",
         "contactTracerCapacityRatio",
         "infectionRate",
-        "icuHeadroomRatio"
+        "icuHeadroomRatio",
+        "icuCapacityRatio"
       ]
     },
     "HospitalResourceUtilization": {
@@ -763,6 +775,26 @@
         "icuBeds",
         "newCases",
         "date"
+      ]
+    },
+    "RiskLevelTimeseriesRow": {
+      "title": "RiskLevelTimeseriesRow",
+      "description": "Timeseries data for risk levels. Currently only surfacing overall risk level for region.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "title": "Date",
+          "description": "Date of timeseries data point",
+          "type": "string",
+          "format": "date"
+        },
+        "overall": {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      },
+      "required": [
+        "date",
+        "overall"
       ]
     }
   }
