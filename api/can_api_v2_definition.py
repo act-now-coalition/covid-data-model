@@ -210,11 +210,14 @@ class RiskLevels(base_model.APIBaseModel):
     icuCapacityRatio: RiskLevel = pydantic.Field(..., description="ICU capacity ratio risk level.")
 
 
-class RiskLevelTimeseriesRow(base_model.APIBaseModel):
+class RiskLevelsRow(base_model.APIBaseModel):
+    overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region.")
+
+
+class RiskLevelTimeseriesRow(RiskLevelsRow):
     """Timeseries data for risk levels. Currently only surfacing overall risk level for region."""
 
     date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
-    overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region.")
 
 
 class MetricsTimeseriesRow(Metrics):
@@ -316,6 +319,9 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     )
     actuals: Optional[Actuals] = pydantic.Field(..., description="Actuals for given day")
     metrics: Optional[Metrics] = pydantic.Field(..., description="Metrics for given day")
+    riskLevels: Optional[RiskLevelsRow] = pydantic.Field(
+        ..., description="Risk Levels for given day"
+    )
 
 
 class AggregateFlattenedTimeseries(base_model.APIBaseModel):
