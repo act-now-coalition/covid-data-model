@@ -367,6 +367,10 @@ class AllMethods:
         calculated_dataset_recent_map = {
             name: method_output.recent for name, method_output in calculated_dataset_map.items()
         }
+        # HACK: If OldMethod is in the output map (which has Method.recent) then add it again at
+        # the end of the map using Method.all. Remember that dict entries remain in the order
+        # inserted. This makes OldMethod the final fallback for a location if no other Method has
+        # a timeseries for it.
         old_method_output: Optional[MethodOutput] = calculated_dataset_map.get(
             timeseries.DatasetName("OldMethod")
         )
