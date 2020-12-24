@@ -13,7 +13,6 @@ from libs import series_utils
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.metrics import icu_headroom
 from libs.metrics import icu_capacity
-from libs.metrics.test_positivity import calculate_test_positivity
 
 Metrics = can_api_v2_definition.Metrics
 ICUHeadroomMetricDetails = can_api_v2_definition.ICUHeadroomMetricDetails

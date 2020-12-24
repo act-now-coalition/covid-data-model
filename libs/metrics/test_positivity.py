@@ -46,7 +46,7 @@ class Method(ABC):
 
     @property
     @abstractmethod
-    def name(self) -> str:
+    def name(self) -> timeseries.DatasetName:
         pass
 
     @property
@@ -152,7 +152,7 @@ class _DivisionMethodAttributes:
     https://stackoverflow.com/q/51575931
     """
 
-    _name: str
+    _name: timeseries.DatasetName
     _numerator: FieldName
     _denominator: FieldName
 
@@ -162,7 +162,7 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
     """A method of calculating test positivity by dividing a numerator by a denominator"""
 
     @property
-    def name(self) -> str:
+    def name(self) -> timeseries.DatasetName:
         return self._name
 
     @property
@@ -198,7 +198,7 @@ class _PassThruMethodAttributes:
     https://stackoverflow.com/q/51575931
     """
 
-    _name: str
+    _name: timeseries.DatasetName
     _column: FieldName
 
 
@@ -207,7 +207,7 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
     """A method of calculating test positivity by passing through a column directly"""
 
     @property
-    def name(self) -> str:
+    def name(self) -> timeseries.DatasetName:
         return self._name
 
     @property
@@ -238,8 +238,8 @@ class OldMethod(Method):
     """A method of calculating test positivity using smoothed POSITIVE_TEST and NEGATIVE_TESTS."""
 
     @property
-    def name(self) -> str:
-        return "OldMethod"
+    def name(self) -> timeseries.DatasetName:
+        return timeseries.DatasetName("OldMethod")
 
     @property
     def columns(self) -> Set[FieldName]:
@@ -359,7 +359,7 @@ class AllMethods:
         if not methods_with_data:
             raise NoColumnsWithDataException()
 
-        method_map = {timeseries.DatasetName(method.name): method for method in methods_with_data}
+        method_map = {method.name: method for method in methods_with_data}
         calculated_dataset_map = {
             method_name: method.calculate(dataset_in, diff_days, most_recent_date)
             for method_name, method in method_map.items()

@@ -10,11 +10,9 @@ from typing import Union
 import more_itertools
 import numpy as np
 import pandas as pd
-import pytest
 import structlog
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
-from freezegun import freeze_time
 from covidactnow.datapublic.common_fields import CommonFields
 
 import libs.metrics.test_positivity
@@ -56,6 +54,7 @@ def build_dataset(
     metrics: Mapping[Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]]],
     *,
     start_date="2020-04-01",
+    timeseries_columns: Optional[Sequence[FieldName]] = None,
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset for multiple regions and metrics. Each sequence of values represents a
     timeseries metric with identical length. provenance information can be set for a metric by
@@ -85,6 +84,9 @@ def build_dataset(
     )
 
     dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
+    if timeseries_columns:
+        new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
+        dataset = dataclasses.replace(dataset, timeseries=new_timeseries)
 
     loc_var_provenance = {
         key: ts_lit.provenance
@@ -123,13 +125,18 @@ def build_one_region_dataset(
     """
     one_region = build_dataset({region: metrics}, start_date=start_date).get_one_region(region)
     if timeseries_columns:
-        new_columns = [col for col in timeseries_columns if col not in one_region.data.columns]
-        new_data = one_region.data.reindex(columns=[*one_region.data.columns, *new_columns])
+        new_data = _add_missing_columns(one_region.data, timeseries_columns)
         one_region = dataclasses.replace(one_region, data=new_data)
     if latest_override:
         new_latest = {**one_region.latest, **latest_override}
         one_region = dataclasses.replace(one_region, latest=new_latest)
     return one_region
+
+
+def _add_missing_columns(df: pd.DataFrame, timeseries_columns: Sequence[str]):
+    """Returns a copy of df with any columns not in timeseries_columns appended."""
+    new_columns = [col for col in timeseries_columns if col not in df.columns]
+    return df.reindex(columns=[*df.columns, *new_columns])
 
 
 def build_metrics_df(

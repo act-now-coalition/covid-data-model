@@ -11,6 +11,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from freezegun import freeze_time
 
 from libs.datasets import timeseries
+from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from libs.metrics.test_positivity import AllMethods
 from libs.metrics.test_positivity import DivisionMethod
@@ -57,8 +58,12 @@ def test_basic():
     )
 
     methods = [
-        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
-        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod(
+            DatasetName("method1"), CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS
+        ),
+        DivisionMethod(
+            DatasetName("method2"), CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS
+        ),
     ]
     all_methods = AllMethods.run(ts, methods, 3)
 
@@ -101,8 +106,12 @@ def test_recent_days():
         )
     )
     methods = [
-        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
-        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod(
+            DatasetName("method1"), CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS
+        ),
+        DivisionMethod(
+            DatasetName("method2"), CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS
+        ),
     ]
     methods = _replace_methods_attribute(methods, recent_days=2)
     all_methods = AllMethods.run(ts, methods, diff_days=1)
@@ -162,10 +171,16 @@ def test_missing_column_for_one_method():
         )
     )
     methods = [
-        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
-        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
         DivisionMethod(
-            "method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL
+            DatasetName("method1"), CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS
+        ),
+        DivisionMethod(
+            DatasetName("method2"), CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS
+        ),
+        DivisionMethod(
+            DatasetName("method3"),
+            CommonFields.POSITIVE_TESTS,
+            CommonFields.TOTAL_TESTS_PEOPLE_VIRAL,
         ),
     ]
     methods = _replace_methods_attribute(methods, recent_days=4)
@@ -188,10 +203,16 @@ def test_missing_columns_for_all_tests():
         )
     )
     methods = [
-        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
-        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
         DivisionMethod(
-            "method3", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS_PEOPLE_VIRAL
+            DatasetName("method1"), CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS
+        ),
+        DivisionMethod(
+            DatasetName("method2"), CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS
+        ),
+        DivisionMethod(
+            DatasetName("method3"),
+            CommonFields.POSITIVE_TESTS,
+            CommonFields.TOTAL_TESTS_PEOPLE_VIRAL,
         ),
     ]
     methods = _replace_methods_attribute(methods, recent_days=4)
@@ -200,26 +221,19 @@ def test_missing_columns_for_all_tests():
 
 
 def test_column_present_with_no_data():
-    # MultiRegionDataset.from_csv drops columns with no real values so make a DataFrame
-    # to pass to from_timeseries_df.
-    ts_df = common_df.read_csv(
-        io.StringIO(
-            "location_id,date,positive_tests,total_tests\n"
-            "iso1:us#iso2:tx,2020-04-01,,100\n"
-            "iso1:us#iso2:tx,2020-04-02,,200\n"
-            "iso1:us#iso2:tx,2020-04-04,,400\n"
-        ),
-        set_index=False,
+    region_tx = Region.from_state("TX")
+    ds = top_level_metrics_test.build_dataset(
+        {region_tx: {CommonFields.TOTAL_TESTS: [100, 200, 400]}},
+        timeseries_columns=[CommonFields.POSITIVE_TESTS],
     )
-    ts_df[CommonFields.POSITIVE_TESTS] = pd.NA
-    ts = timeseries.MultiRegionDataset.from_geodata_timeseries_df(ts_df)
-    methods = [
-        DivisionMethod(
-            "method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS, recent_days=1
-        ),
-    ]
+    method = DivisionMethod(
+        DatasetName("method2"),
+        CommonFields.POSITIVE_TESTS,
+        CommonFields.TOTAL_TESTS,
+        recent_days=1,
+    )
     with pytest.raises(test_positivity.NoColumnsWithDataException):
-        AllMethods.run(ts, methods, diff_days=1)
+        AllMethods.run(ds, [method], diff_days=1)
 
 
 def test_all_columns_na():
@@ -238,7 +252,10 @@ def test_all_columns_na():
     ts = timeseries.MultiRegionDataset.from_geodata_timeseries_df(ts_df)
     methods = [
         DivisionMethod(
-            "method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS, recent_days=1
+            DatasetName("method2"),
+            CommonFields.POSITIVE_TESTS,
+            CommonFields.TOTAL_TESTS,
+            recent_days=1,
         ),
     ]
     with pytest.raises(test_positivity.NoRealTimeseriesValuesException):
@@ -262,8 +279,12 @@ def test_provenance():
     )
 
     methods = [
-        DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
-        DivisionMethod("method2", CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS),
+        DivisionMethod(
+            DatasetName("method1"), CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS
+        ),
+        DivisionMethod(
+            DatasetName("method2"), CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS
+        ),
     ]
     all_methods = AllMethods.run(dataset_in, methods, 3)
 
