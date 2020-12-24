@@ -1,7 +1,6 @@
 import dataclasses
 import io
 from typing import List
-from typing import Union
 
 import pandas as pd
 import pytest
@@ -12,14 +11,14 @@ from freezegun import freeze_time
 
 from libs.datasets import timeseries
 from libs.datasets.timeseries import DatasetName
-from libs.pipeline import Region
+from libs.metrics.test_positivity import Method
 from libs.metrics.test_positivity import AllMethods
 from libs.metrics.test_positivity import DivisionMethod
-from libs.metrics.test_positivity import PassThruMethod
 from libs.metrics import test_positivity
 from test.libs.datasets.timeseries_test import assert_dataset_like
 from test.libs.metrics import top_level_metrics_test
 from test.libs.metrics.top_level_metrics_test import TimeseriesLiteral
+from libs.pipeline import Region
 
 
 # turns all warnings into errors for this module
@@ -36,9 +35,8 @@ def _parse_wide_dates(csv_str: str) -> pd.DataFrame:
     return df
 
 
-def _replace_methods_attribute(
-    methods: List[Union[DivisionMethod, PassThruMethod]], **kwargs
-) -> List[Union[DivisionMethod, PassThruMethod]]:
+def _replace_methods_attribute(methods: List[Method], **kwargs) -> List[Method]:
+    """Returns a copy of the passed methods with attributes replaced according to kwargs."""
     return [dataclasses.replace(method, **kwargs) for method in methods]
 
 
