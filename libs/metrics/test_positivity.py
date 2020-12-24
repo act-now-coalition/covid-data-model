@@ -65,12 +65,17 @@ class Method(ABC):
                 index. Must contain at least one real value for each of self.columns.
             delta_df: DataFrame with rows having MultiIndex of [VARIABLE, LOCATION_ID] and columns with DATE
                 index. Values are 7-day deltas. Must contain at least one real value for each of self.columns.
+            most_recent_date: The most recent date in dataset. Timeseries with a real value for
+                at least one of the dates within recent_days of this are considered recent.
         """
         pass
 
     def _filter_recent(self, all: MultiRegionDataset, most_recent_date) -> MethodOutput:
         """Filters the output for all regions, returning output for all regions and only those
         with recent data."""
+        assert self.recent_days >= 1
+        # The oldest date that is considered recent/not-stale. If recent_days is 1 then this is
+        # the most recent day in the input.
         recent_date_cutoff = most_recent_date + pd.to_timedelta(1 - self.recent_days, "D")
         return MethodOutput(all=all, recent=all.drop_stale_timeseries(recent_date_cutoff))
 
@@ -111,14 +116,19 @@ def _make_output_dataset(
 
     assert dataset_in.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
     if source_columns:
-        # unstack before getting source_columns so that order of the columns passed to apply matches
-        # source_columns.
+        # Make a DataFrame of the provenance with location_id index and column for each of
+        # source_columns. The columns are in an arbitrary order.
+        provenance_unsorted_columns = dataset_in.provenance.loc[locations, source_columns].unstack(
+            PdFields.VARIABLE
+        )
         provenance = (
-            dataset_in.provenance.unstack(PdFields.VARIABLE)
-            .loc[locations, source_columns]
-            # .apply(lambda s: f"{default_provenance}({','.join(s.drop_duplicates())})", axis=1)
-            .apply(lambda s: ",".join(s.drop_duplicates()), axis=1)
-            .rename(PdFields.PROVENANCE)
+            provenance_unsorted_columns
+            # TODO(tom): remove the hack that derives provenance from the field name and use
+            #  something like the following to produce a more complete provenance per location.
+            #  Maybe make this a method of the class Method and use self.columns instead of
+            #  source_columns.
+            # .apply(lambda s: f"{default_provenance}({','.join(s)})", axis=1)
+            .apply(lambda s: ",".join(s.drop_duplicates()), axis=1).rename(PdFields.PROVENANCE)
         )
         _append_variable_index_level(provenance, output_metric)
     else:
@@ -225,6 +235,8 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
 
 
 class OldMethod(Method):
+    """A method of calculating test positivity using smoothed POSITIVE_TEST and NEGATIVE_TESTS."""
+
     @property
     def name(self) -> str:
         return "OldMethod"
@@ -238,6 +250,10 @@ class OldMethod(Method):
     ) -> MethodOutput:
 
         positivity_time_series = {}
+        # To replicate the behavior of the old code, a region is considered to have recent
+        # positivity when the input timeseries (POSITIVE_TESTS and NEGATIVE_TESTS) are recent. The
+        # other subclasses of `Method` filter based on the most recent real value in the output
+        # timeseries.
         recent_region = set()
         for region, regional_data in dataset.iter_one_regions():
             data = regional_data.date_indexed
@@ -256,6 +272,7 @@ class OldMethod(Method):
             index=CommonFields.LOCATION_ID, columns=CommonFields.DATE
         )
 
+        # Make a dataset with TEST_POSITIVITY for every region where the calculation finished.
         ds_all = _make_output_dataset(
             dataset,
             self.name,
@@ -263,12 +280,14 @@ class OldMethod(Method):
             CommonFields.TEST_POSITIVITY,
             source_columns=[CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS],
         )
-
+        # Make a dataset with the subset of regions having recent input timeseries.
         ds_recent = ds_all.get_regions_subset(recent_region)
-
         return MethodOutput(all=ds_all, recent=ds_recent)
 
     def _has_recent_data(self, series: pd.Series) -> bool:
+        """Returns True iff series has recent data relative to today().
+        TODO(tom): Replace with something that uses most_recent_date instead of a global clock.
+        """
         return series_utils.has_recent_data(
             series, days_back=self.recent_days, required_non_null_datapoints=1
         )

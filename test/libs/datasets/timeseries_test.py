@@ -305,6 +305,7 @@ def assert_dataset_like(
     drop_na_timeseries=False,
     drop_na_latest=False,
     drop_na_dates=False,
+    check_less_precise=False,
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
     ts1 = _timeseries_sorted_by_location_date(
@@ -313,15 +314,21 @@ def assert_dataset_like(
     ts2 = _timeseries_sorted_by_location_date(
         ds2, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
     )
-    pd.testing.assert_frame_equal(ts1, ts2, check_like=True, check_dtype=False)
+    pd.testing.assert_frame_equal(
+        ts1, ts2, check_like=True, check_dtype=False, check_less_precise=check_less_precise
+    )
     latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
     latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
-    pd.testing.assert_frame_equal(latest1, latest2, check_like=True, check_dtype=False)
+    pd.testing.assert_frame_equal(
+        latest1, latest2, check_like=True, check_dtype=False, check_less_precise=check_less_precise
+    )
     # Somehow test/libs/datasets/combined_dataset_utils_test.py::test_update_and_load has
     # two provenance Series that are empty but assert_series_equal fails with message
     # 'Attribute "inferred_type" are different'. Don't call it when both series are empty.
     if not (ds1.provenance.empty and ds2.provenance.empty):
-        pd.testing.assert_series_equal(ds1.provenance, ds2.provenance)
+        pd.testing.assert_series_equal(
+            ds1.provenance, ds2.provenance, check_less_precise=check_less_precise
+        )
 
 
 def test_append_regions():
