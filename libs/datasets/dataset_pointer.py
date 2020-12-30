@@ -6,7 +6,7 @@ import structlog
 import pydantic
 
 from libs import git_lfs_object_helpers
-from libs.datasets.dataset_base import SaveableDatasetInterface
+from libs.datasets import timeseries
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets import dataset_utils
 from libs.github_utils import GitSummary
@@ -34,18 +34,14 @@ class DatasetPointer(pydantic.BaseModel):
     # When local file was saved.
     updated_at: datetime.datetime
 
-    @property
-    def filename(self) -> str:
-        return self.path.filename
-
-    def save_dataset(self, dataset: SaveableDatasetInterface) -> pathlib.Path:
+    def save_dataset(self, dataset: timeseries.MultiRegionDataset) -> pathlib.Path:
         dataset.to_csv(self.path)
         _logger.info("Successfully saved dataset", path=str(self.path))
         return self.path
 
     def load_dataset(
         self, before: str = None, previous_commit: bool = False, commit: str = None
-    ) -> SaveableDatasetInterface:
+    ) -> timeseries.MultiRegionDataset:
         """Load dataset from file specified by pointer.
 
         If options are specified, will load from git history of the file.
