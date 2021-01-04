@@ -5,7 +5,7 @@
 This work supports https://covidactnow.org/.
 
 Check It Out via Jupyter:
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/covid-projections/covid-data-model/master)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/covid-projections/covid-data-model/main)
 
 
 ## Resources

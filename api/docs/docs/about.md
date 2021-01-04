@@ -9,7 +9,7 @@ slug: /
 Welcome to the documentation for the Covid Act Now API.
 
 These docs describe version 2 of the API.
-Documentation for the previous version of the API is available [here](https://github.com/covid-projections/covid-data-model/blob/master/api/README.V1.md).
+Documentation for the previous version of the API is available [here](https://github.com/covid-projections/covid-data-model/blob/main/api/README.V1.md).
 
 The API provides the same data that powers [Covid Act Now](https://covidactnow.org)
 but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools.

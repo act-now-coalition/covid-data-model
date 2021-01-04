@@ -20,7 +20,7 @@ execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
        -H "Accept: application/vnd.github.v3+json" \
       --request POST \
-      --data "{ \"ref\": \"master\" }" \
+      --data "{ \"ref\": \"main\" }" \
       https://api.github.com/repos/covid-projections/covid-data-model/actions/workflows/update_repo_datasets.yml/dispatches
 
   echo "Updating combined datasets. Go to https://github.com/covid-projections/covid-data-model/actions to monitor progress."
