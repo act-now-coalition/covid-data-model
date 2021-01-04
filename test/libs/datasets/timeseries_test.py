@@ -897,11 +897,9 @@ def test_remove_outliers():
     dataset = timeseries.drop_new_case_outliers(dataset)
 
     # Expected result is the same series with the last value removed
-    values = [10.0] * 7 + [None]
-    expected = test_helpers.build_default_region_dataset(
-        {CommonFields.NEW_CASES: values}, dropna=False
-    )
-    assert_dataset_like(dataset, expected)
+    values = [10.0] * 7
+    expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
+    assert_dataset_like(dataset, expected, drop_na_dates=True)
 
 
 def test_remove_outliers_threshold():
@@ -915,11 +913,9 @@ def test_remove_outliers_threshold():
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=29)
 
     # Expected result is the same series with the last value removed
-    values = [1.0] * 7 + [None]
-    expected = test_helpers.build_default_region_dataset(
-        {CommonFields.NEW_CASES: values}, dropna=False
-    )
-    assert_dataset_like(result, expected)
+    values = [1.0] * 7
+    expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
+    assert_dataset_like(result, expected, drop_na_dates=True)
 
 
 def test_not_removing_short_series():

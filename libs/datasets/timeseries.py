@@ -336,22 +336,15 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return dataclasses.replace(self, static=static_copy)
 
     @staticmethod
-    def from_timeseries_wide_dates_df(
-        timeseries_wide_dates: pd.DataFrame, *, dropna=True
-    ) -> "MultiRegionDataset":
-        """Make a new dataset from a DataFrame as returned by timeseries_wide_dates.
-        Args:
-            dropna: By default NA values are dropped. Some tests depend on these being preserved
-            but try to make new code work without depending on the presence of NA values because
-            transforming data is easier when they can be added and removed.
-        """
+    def from_timeseries_wide_dates_df(timeseries_wide_dates: pd.DataFrame) -> "MultiRegionDataset":
+        """Make a new dataset from a DataFrame as returned by timeseries_wide_dates."""
         assert timeseries_wide_dates.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
         assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
         timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
             timeseries_wide_dates.columns
         )
         timeseries_wide_variables = (
-            timeseries_wide_dates.stack(dropna=dropna).unstack(PdFields.VARIABLE).sort_index()
+            timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
         )
         return MultiRegionDataset(timeseries=timeseries_wide_variables)
 
