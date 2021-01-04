@@ -22,6 +22,7 @@ from libs.datasets.timeseries import AnnotationField
 from libs.datasets.timeseries import AnnotationType
 from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
+from test import test_helpers
 from test.dataset_utils_test import read_csv_and_index_fips
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
@@ -924,12 +925,12 @@ def _build_one_column_dataset(
 
 def test_remove_outliers():
     values = [10.0] * 7 + [1000.0]
-    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
+    dataset = test_helpers.build_dataset({DEFAULT_REGION: {CommonFields.NEW_CASES: values}})
     dataset = timeseries.drop_new_case_outliers(dataset)
 
     # Expected result is the same series with the last value removed
     values = [10.0] * 7 + [None]
-    expected = _build_one_column_dataset(CommonFields.NEW_CASES, values)
+    expected = test_helpers.build_dataset({DEFAULT_REGION: {CommonFields.NEW_CASES: values}})
     assert_dataset_like(dataset, expected)
 
 
