@@ -1,5 +1,13 @@
 # Setting up dev environment for covid-data-model
 
+# Notes
+* We recently changed our default branch from `master` to `main`. If you have the repo checked out locally, you can update with the following:
+  ```bash
+  $ git branch --unset-upstream
+  $ git branch -u origin/main
+  ```
+  or simply checkout main `git checkout main`.
+
 ## Copy the source data
 
 Copy the source data from the `covid-data-public` repo to a sibling of your local `covid-data-model` directory. git-lfs must be
@@ -55,7 +63,7 @@ Make sure you are in your virtualenv and run:
 make setup-dev
 ```
 
-or manually run the commands in [our Makefile](https://github.com/covid-projections/covid-data-model/blob/master/Makefile).
+or manually run the commands in [our Makefile](https://github.com/covid-projections/covid-data-model/blob/main/Makefile).
 
 
 ### Auto-formatting
@@ -78,7 +86,7 @@ mkdir -p results/test/
 ```
 
 ## Run Just Api Generateion
-Grab the results of a snapshot's model output (either from the s3 bucket or from a githubaction artifacts). 
+Grab the results of a snapshot's model output (either from the s3 bucket or from a githubaction artifacts).
 Move those files to results/ folder (or folder of your choice)
 
 ```bash

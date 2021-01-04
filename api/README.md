@@ -201,7 +201,7 @@ see the [JSON Schema](schema/CANPredictionAPIRow.json)
       * *dirty* (boolean) - Whether there were any uncommitted / untracked files
         in the repo (usually false).
     * *covid-data-model*
-      * *branch* (string) - Branch name (usually "master").
+      * *branch* (string) - Branch name (usually "main").
       * *hash* (string) - Commit hash that branch was synced to.
       * *dirty* (boolean) - Whether there were any uncommitted / untracked
         files in the repo (usually false).

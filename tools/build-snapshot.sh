@@ -23,8 +23,8 @@ prepare () {
   fi
 
   # Set the sentry environment to allow quieting of alerts on
-  # non-master branches.
-  if [[ $BRANCH == "master" ]]; then
+  # non-main branches.
+  if [[ $BRANCH == "main" ]]; then
       SENTRY_ENVIRONMENT="production"
   else
       SENTRY_ENVIRONMENT="staging"

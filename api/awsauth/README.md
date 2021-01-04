@@ -49,7 +49,7 @@ EMAIL_BLOCKLIST=[]
 ```
 
 `pydantic` uses the `python-dotenv` package to instantiate an
-[EnvConstants](https://github.com/covid-projections/covid-data-model/blob/master/api/awsauth/awsauth/config.py#L4)
+[EnvConstants](https://github.com/covid-projections/covid-data-model/blob/main/api/awsauth/awsauth/config.py#L4)
 object with the contents of the .env file.  Refer to the class for the most up to
 date variables.
 
