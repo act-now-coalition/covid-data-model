@@ -1,5 +1,13 @@
 # Setting up dev environment for covid-data-model
 
+# Notes
+* We recently changed our default branch from `master` to `main`. If you have the repo checked out locally, you can update with the following:
+  ```bash
+  $ git branch --unset-upstream
+  $ git branch -u origin/main
+  ```
+  or simply checkout main `git checkout main`.
+
 ## Copy the source data
 
 Copy the source data from the `covid-data-public` repo to a sibling of your local `covid-data-model` directory. git-lfs must be
