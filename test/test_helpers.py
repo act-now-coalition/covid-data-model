@@ -85,6 +85,13 @@ def build_dataset(
     return dataset
 
 
+def build_default_region_dataset(
+    metrics: Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]], *, dropna=True,
+) -> timeseries.MultiRegionDataset:
+    """Returns a `MultiRegionDataset` containing metrics in one region, `DEFAULT_REGION`"""
+    return build_dataset({DEFAULT_REGION: metrics}, dropna=dropna)
+
+
 def build_one_region_dataset(
     metrics: Mapping[FieldName, Sequence[float]],
     *,
@@ -93,7 +100,7 @@ def build_one_region_dataset(
     timeseries_columns: Optional[Sequence[FieldName]] = None,
     latest_override: Optional[Mapping[FieldName, Any]] = None,
 ) -> timeseries.OneRegionTimeseriesDataset:
-    """Returns a dataset for one region with given timeseries metrics, each having the same
+    """Returns a `OneRegionTimeseriesDataset` with given timeseries metrics, each having the same
     length.
 
     Args:
