@@ -8,6 +8,7 @@ from typing import Union
 
 import more_itertools
 import pandas as pd
+import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
@@ -36,6 +37,7 @@ def build_dataset(
     metrics: Mapping[Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]]],
     *,
     start_date="2020-04-01",
+    dropna=True,
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset for multiple regions and metrics. Each sequence of values represents a
     timeseries metric with identical length. provenance information can be set for a metric by
@@ -59,8 +61,9 @@ def build_dataset(
     )
 
     df = pd.DataFrame(list(loc_var_seq.values()), index=index, columns=dates)
+    df = df.fillna(np.nan).apply(pd.to_numeric)
 
-    dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
+    dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df, dropna=dropna)
 
     loc_var_provenance = {
         key: ts_lit.provenance
