@@ -9,6 +9,7 @@ from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from freezegun import freeze_time
 
+from test import test_helpers
 from libs.datasets import timeseries
 from libs.datasets.timeseries import DatasetName
 from libs.metrics.test_positivity import Method
@@ -16,8 +17,7 @@ from libs.metrics.test_positivity import AllMethods
 from libs.metrics.test_positivity import DivisionMethod
 from libs.metrics import test_positivity
 from test.libs.datasets.timeseries_test import assert_dataset_like
-from test.libs.metrics import top_level_metrics_test
-from test.libs.metrics.top_level_metrics_test import TimeseriesLiteral
+from test.test_helpers import TimeseriesLiteral
 from libs.pipeline import Region
 
 
@@ -220,7 +220,7 @@ def test_missing_columns_for_all_tests():
 
 def test_column_present_with_no_data():
     region_tx = Region.from_state("TX")
-    ds = top_level_metrics_test.build_dataset(
+    ds = test_helpers.build_dataset(
         {region_tx: {CommonFields.TOTAL_TESTS: [100, 200, 400]}},
         timeseries_columns=[CommonFields.POSITIVE_TESTS],
     )
@@ -272,9 +272,7 @@ def test_provenance():
         CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
         CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
     }
-    dataset_in = top_level_metrics_test.build_dataset(
-        {region_as: metrics_as, region_tx: metrics_tx}
-    )
+    dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
 
     methods = [
         DivisionMethod(
@@ -296,8 +294,8 @@ def test_provenance():
 
     expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")}
     expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")}
-    expected_positivity = top_level_metrics_test.build_dataset(
-        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04",
+    expected_positivity = test_helpers.build_dataset(
+        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
 
@@ -317,9 +315,7 @@ def test_default_positivity_methods():
         CommonFields.POSITIVE_TESTS_VIRAL: [2, 4, 6, 8, 10, 12, 14, 16],
         CommonFields.TOTAL_TESTS_VIRAL: [10, 20, 30, 40, 50, 60, 70, 80],
     }
-    dataset_in = top_level_metrics_test.build_dataset(
-        {region_as: metrics_as, region_tx: metrics_tx}
-    )
+    dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
 
     # TODO(tom): Once test positivity code seems stable remove call to datetime.today() in
     #  has_recent_data and remove this freeze_time.
@@ -336,7 +332,7 @@ def test_default_positivity_methods():
             [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2], provenance="positiveTestsViral_totalTestsViral"
         )
     }
-    expected_positivity = top_level_metrics_test.build_dataset(
+    expected_positivity = test_helpers.build_dataset(
         {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-02",
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
@@ -344,7 +340,7 @@ def test_default_positivity_methods():
 
 @pytest.mark.parametrize("pos_neg_tests_recent", [False, True])
 def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
-    region = top_level_metrics_test.DEFAULT_REGION
+    region = test_helpers.DEFAULT_REGION
     # positive_tests and negative_tests appear on 8/10 and 8/11. They will be used when
     # that is within 10 days of 'today'.
     timeseries_csv = io.StringIO(
@@ -357,7 +353,7 @@ def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
         "2020-08-15,              0.07,              ,              \n"
     )
     df = pd.read_csv(timeseries_csv, skipinitialspace=True)
-    dataset_in = top_level_metrics_test.build_dataset(
+    dataset_in = test_helpers.build_dataset(
         {region: df.drop(columns="date").to_dict("list")}, start_date=df[CommonFields.DATE].min(),
     )
 
@@ -369,9 +365,7 @@ def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
                 [pd.NA, 0.0909, pd.NA, pd.NA, pd.NA, pd.NA], provenance="SmoothedTests"
             )
         }
-        expected = top_level_metrics_test.build_dataset(
-            {region: expected_metrics}, start_date="2020-08-10",
-        )
+        expected = test_helpers.build_dataset({region: expected_metrics}, start_date="2020-08-10",)
 
     else:
         freeze_date = "2020-08-22"
@@ -382,9 +376,7 @@ def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
                 [0.02, 0.03, 0.04, 0.05, 0.06, 0.07], provenance="CDCTesting"
             )
         }
-        expected = top_level_metrics_test.build_dataset(
-            {region: expected_metrics}, start_date="2020-08-10",
-        )
+        expected = test_helpers.build_dataset({region: expected_metrics}, start_date="2020-08-10",)
 
     with freeze_time(freeze_date):
         all_methods = AllMethods.run(dataset_in)

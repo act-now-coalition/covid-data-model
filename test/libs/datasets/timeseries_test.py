@@ -1,8 +1,5 @@
 import io
 import pathlib
-from typing import Mapping
-from typing import Sequence
-from typing import Union
 
 import pytest
 import pandas as pd
@@ -22,17 +19,12 @@ from libs.datasets.timeseries import AnnotationField
 from libs.datasets.timeseries import AnnotationType
 from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
+from test import test_helpers
 from test.dataset_utils_test import read_csv_and_index_fips
 from test.dataset_utils_test import read_csv_and_index_fips_date
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
-
-
-# This is a totally bogus fips/region/location that we've been using as a default in some test
-# cases. It is factored out here in an attempt to reduce how much it is hard-coded into our source.
-DEFAULT_FIPS = "97222"
-DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
 
 
 @pytest.mark.parametrize("include_na_at_end", [False, True])
@@ -903,46 +895,20 @@ def test_merge_provenance():
         )
 
 
-def _build_one_column_dataset(
-    column,
-    values: Union[Sequence[float], Mapping[Region, Sequence[float]]],
-    location_id=DEFAULT_REGION.location_id,
-    start_date="2020-08-25",
-) -> timeseries.MultiRegionDataset:
-    if isinstance(values, Mapping):
-        # Multiple regions passed in a Mapping. Build a new empty dataset and append result of
-        # recursive call for each region.
-        dataset = timeseries.MultiRegionDataset.new_without_timeseries()
-        for region, region_values in values.items():
-            dataset = dataset.append_regions(
-                _build_one_column_dataset(column, region_values, region.location_id, start_date)
-            )
-        return dataset
-
-    dates = pd.date_range(start_date, periods=len(values), freq="D")
-    ts_rows = []
-
-    for i, value in enumerate(values):
-        ts_rows.append({CommonFields.LOCATION_ID: location_id, "date": dates[i], column: value})
-    timeseries_df = pd.DataFrame(ts_rows)
-
-    return timeseries.MultiRegionDataset.from_geodata_timeseries_df(timeseries_df)
-
-
 def test_remove_outliers():
     values = [10.0] * 7 + [1000.0]
-    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
+    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
     dataset = timeseries.drop_new_case_outliers(dataset)
 
     # Expected result is the same series with the last value removed
-    values = [10.0] * 7 + [None]
-    expected = _build_one_column_dataset(CommonFields.NEW_CASES, values)
-    assert_dataset_like(dataset, expected)
+    values = [10.0] * 7
+    expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
+    assert_dataset_like(dataset, expected, drop_na_dates=True)
 
 
 def test_remove_outliers_threshold():
     values = [1.0] * 7 + [30.0]
-    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
+    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
@@ -951,14 +917,14 @@ def test_remove_outliers_threshold():
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=29)
 
     # Expected result is the same series with the last value removed
-    values = [1.0] * 7 + [None]
-    expected = _build_one_column_dataset(CommonFields.NEW_CASES, values)
-    assert_dataset_like(result, expected)
+    values = [1.0] * 7
+    expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
+    assert_dataset_like(result, expected, drop_na_dates=True)
 
 
 def test_not_removing_short_series():
     values = [None] * 7 + [1, 1, 300]
-    dataset = _build_one_column_dataset(CommonFields.NEW_CASES, values)
+    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
@@ -989,7 +955,7 @@ def test_tail_filter_stalled_timeseries():
     values_stalled = values_increasing + [values_increasing[-1]] * 4
     assert len(values_stalled) == 28
 
-    ds_in = _build_one_column_dataset(CommonFields.NEW_CASES, values_stalled)
+    ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values_stalled})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
     _assert_tail_filter_counts(tail_filter, truncated=1)
     assert tail_filter.annotations == [
@@ -997,16 +963,18 @@ def test_tail_filter_stalled_timeseries():
             AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
             AnnotationField.VARIABLE: CommonFields.NEW_CASES,
             AnnotationField.LOCATION_ID: "iso1:us#fips:97222",
-            AnnotationField.DATE: pd.to_datetime("2020-09-17"),
+            AnnotationField.DATE: pd.to_datetime("2020-04-24"),
             AnnotationField.COMMENT: "Removed 4 observations that look suspicious compared to "
             "mean diff of 1000.0 a few weeks ago.",
         }
     ]
-    ds_expected = _build_one_column_dataset(CommonFields.NEW_CASES, values_increasing)
+    ds_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.NEW_CASES: values_increasing}
+    )
     assert_dataset_like(ds_out, ds_expected)
 
     # Try again with one day less, not enough for the filter so it returns the data unmodified.
-    ds_in = _build_one_column_dataset(CommonFields.NEW_CASES, values_stalled[:-1])
+    ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values_stalled[:-1]})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
     _assert_tail_filter_counts(tail_filter, skipped_too_short=1)
     assert tail_filter.annotations == []
@@ -1019,7 +987,7 @@ def test_tail_filter_mean_nan():
     values = [100_000] + [float("NaN")] * 14 + list(range(100_000, 114_000, 1_000))
     assert len(values) == 29
 
-    ds_in = _build_one_column_dataset(CommonFields.NEW_CASES, values)
+    ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
     _assert_tail_filter_counts(tail_filter, skipped_na_mean=1)
     assert tail_filter.annotations == []
@@ -1031,17 +999,21 @@ def test_tail_filter_two_series():
     # relative to the most recent date of any timeseries but maybe it should be per-timeseries.
     pos_tests = list(range(100_000, 128_000, 1_000))
     tot_tests = list(range(1_000_000, 1_280_000, 10_000))
-    pos_tests_stalled = pos_tests + [pos_tests[-1]] * 3
+    # Pad positive tests with two 'None's so the timeseries are the same length.
+    pos_tests_stalled = pos_tests + [pos_tests[-1]] * 3 + [None] * 2
     tot_tests_stalled = tot_tests + [tot_tests[-1]] * 5
 
-    ds_in = _build_one_column_dataset(CommonFields.POSITIVE_TESTS, pos_tests_stalled).join_columns(
-        _build_one_column_dataset(CommonFields.TOTAL_TESTS, tot_tests_stalled)
+    ds_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.POSITIVE_TESTS: pos_tests_stalled,
+            CommonFields.TOTAL_TESTS: tot_tests_stalled,
+        }
     )
     tail_filter, ds_out = timeseries.TailFilter.run(
         ds_in, [CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS]
     )
-    ds_expected = _build_one_column_dataset(CommonFields.POSITIVE_TESTS, pos_tests).join_columns(
-        _build_one_column_dataset(CommonFields.TOTAL_TESTS, tot_tests)
+    ds_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.POSITIVE_TESTS: pos_tests, CommonFields.TOTAL_TESTS: tot_tests}
     )
     _assert_tail_filter_counts(tail_filter, truncated=2)
     assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
@@ -1054,9 +1026,9 @@ def test_tail_filter_diff_goes_negative():
     values = list(range(100_000, 128_000, 1_000)) + [126_000, 127_000, 127_000]
     assert len(values) == 31
 
-    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: values})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
-    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[:-1])
+    ds_expected = test_helpers.build_default_region_dataset({CommonFields.CASES: values[:-1]})
     _assert_tail_filter_counts(tail_filter, truncated=1)
     assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
     # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
@@ -1066,7 +1038,7 @@ def test_tail_filter_zero_diff():
     # Make sure constant value timeseries is not truncated.
     values = [100_000] * 28
 
-    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: values})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
     _assert_tail_filter_counts(tail_filter, all_good=1)
     assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
@@ -1079,7 +1051,7 @@ def test_tail_filter_small_diff(stall_count: int):
     # slowly is not dropped.
     values = list(range(1_000, 1_030)) + [1_029] * stall_count
 
-    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: values})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
     _assert_tail_filter_counts(tail_filter, all_good=1)
     assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
@@ -1104,10 +1076,12 @@ def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationTyp
     values = list(range(100_000, 128_000, 1_000)) + [127_000] * stall_count
     assert len(values) == 28 + stall_count
 
-    ds_in = _build_one_column_dataset(CommonFields.CASES, values)
+    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: values})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
     # There are never more than 13 stalled observations removed.
-    ds_expected = _build_one_column_dataset(CommonFields.CASES, values[: -min(stall_count, 14)])
+    ds_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: values[: -min(stall_count, 14)]}
+    )
     if annotation_type is AnnotationType.CUMULATIVE_TAIL_TRUNCATED:
         _assert_tail_filter_counts(tail_filter, truncated=1)
     elif annotation_type is AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED:

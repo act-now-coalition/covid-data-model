@@ -1,30 +1,22 @@
-from collections import UserList
-from typing import Any
 from typing import List
 import dataclasses
-from typing import Mapping
 from typing import Optional
-from typing import Sequence
-from typing import Union
 
-import more_itertools
 import numpy as np
 import pandas as pd
 import structlog
-from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import PdFields
 from covidactnow.datapublic.common_fields import CommonFields
 
 import libs.metrics.test_positivity
 from api import can_api_v2_definition
-from libs.datasets import timeseries
 from libs.metrics import top_level_metrics
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
 
 from test.dataset_utils_test import read_csv_and_index_fips_date
-from test.libs.datasets.timeseries_test import DEFAULT_REGION
+from test.test_helpers import DEFAULT_REGION
+from test.test_helpers import build_one_region_dataset
 
 
 # Columns used for building input dataframes in tests. It covers the fields
@@ -42,103 +34,6 @@ INPUT_COLUMNS = [
 ]
 
 
-class TimeseriesLiteral(UserList):
-    """Represents a timeseries literal, a sequence of floats and provenance string."""
-
-    def __init__(self, ts_list, *, provenance=""):
-        super().__init__(ts_list)
-        self.provenance = provenance
-
-
-def build_dataset(
-    metrics: Mapping[Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]]],
-    *,
-    start_date="2020-04-01",
-    timeseries_columns: Optional[Sequence[FieldName]] = None,
-) -> timeseries.MultiRegionDataset:
-    """Returns a dataset for multiple regions and metrics. Each sequence of values represents a
-    timeseries metric with identical length. provenance information can be set for a metric by
-    using a TimeseriesLiteral. Timeseries without any real values are dropped.
-    """
-    # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
-    # sequences in metrics.
-    loc_var_seq = {
-        (region.location_id, variable): metrics[region][variable]
-        for region in metrics.keys()
-        for variable in metrics[region].keys()
-    }
-
-    # Make sure there is only one len among all of loc_var_seq.values(). Make a DatetimeIndex
-    # with that many dates.
-    sequence_lengths = more_itertools.one(set(len(seq) for seq in loc_var_seq.values()))
-    dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
-
-    index = pd.MultiIndex.from_tuples(
-        loc_var_seq.keys(), names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
-    )
-
-    df = (
-        pd.DataFrame(list(loc_var_seq.values()), index=index, columns=dates)
-        .fillna(np.nan)
-        .apply(pd.to_numeric)
-    )
-
-    dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
-    if timeseries_columns:
-        new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
-        dataset = dataclasses.replace(dataset, timeseries=new_timeseries)
-
-    loc_var_provenance = {
-        key: ts_lit.provenance
-        for key, ts_lit in loc_var_seq.items()
-        if isinstance(ts_lit, TimeseriesLiteral)
-    }
-    if loc_var_provenance:
-        provenance_index = pd.MultiIndex.from_tuples(
-            loc_var_provenance.keys(), names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]
-        )
-        provenance_series = pd.Series(
-            list(loc_var_provenance.values()),
-            dtype="str",
-            index=provenance_index,
-            name=PdFields.PROVENANCE,
-        )
-        dataset = dataset.add_provenance_series(provenance_series)
-
-    return dataset
-
-
-def build_one_region_dataset(
-    metrics: Mapping[FieldName, Sequence[float]],
-    *,
-    region: Region = DEFAULT_REGION,
-    start_date="2020-08-25",
-    timeseries_columns: Optional[Sequence[FieldName]] = None,
-    latest_override: Optional[Mapping[FieldName, Any]] = None,
-) -> timeseries.OneRegionTimeseriesDataset:
-    """Returns a dataset for one region with given timeseries metrics, each having the same
-    length.
-
-    Args:
-        timeseries_columns: Columns that will exist in the returned dataset, even if all NA
-        latest_override: values added to the returned `OneRegionTimeseriesDataset.latest`
-    """
-    one_region = build_dataset({region: metrics}, start_date=start_date).get_one_region(region)
-    if timeseries_columns:
-        new_data = _add_missing_columns(one_region.data, timeseries_columns)
-        one_region = dataclasses.replace(one_region, data=new_data)
-    if latest_override:
-        new_latest = {**one_region.latest, **latest_override}
-        one_region = dataclasses.replace(one_region, latest=new_latest)
-    return one_region
-
-
-def _add_missing_columns(df: pd.DataFrame, timeseries_columns: Sequence[str]):
-    """Returns a copy of df with any columns not in timeseries_columns appended."""
-    new_columns = [col for col in timeseries_columns if col not in df.columns]
-    return df.reindex(columns=[*df.columns, *new_columns])
-
-
 def build_metrics_df(
     fips: str,
     *,
@@ -149,7 +44,7 @@ def build_metrics_df(
     """Builds a dataframe that has same structure as those built by
     `top_level_metrics.calculate_metrics_for_timeseries`
 
-    Check out build_dataset if you want a MultiRegionDataset.
+    Check out test_helpers.build_dataset if you want a MultiRegionDataset.
 
     Args:
         fips: Fips code for region.
