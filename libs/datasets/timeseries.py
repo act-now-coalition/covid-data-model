@@ -43,16 +43,24 @@ _log = structlog.get_logger()
 
 
 @enum.unique
-class AnnotationField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
+class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     VARIABLE = PdFields.VARIABLE
     LOCATION_ID = CommonFields.LOCATION_ID
     DATE = CommonFields.DATE
-    TYPE = "annotation_type"
+    TYPE = "tag_type"
     COMMENT = "comment"
 
 
+TAG_INDEX_FIELDS = [
+    CommonFields.LOCATION_ID,
+    PdFields.VARIABLE,
+    TagField.TYPE,
+    TagField.DATE,
+]
+
+
 @enum.unique
-class AnnotationType(GetByValueMixin, ValueAsStrMixin, enum.Enum):
+class TagType(GetByValueMixin, ValueAsStrMixin, enum.Enum):
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
     PROVENANCE = PdFields.PROVENANCE
@@ -216,21 +224,13 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     return wide
 
 
-# An empty pd.Series with the structure expected for the annotation attribute. Use this when a
-# dataset does not have any annotations.
-_EMPTY_ANNOTATION_SERIES = pd.Series(
+# An empty pd.Series with the structure expected for the tag attribute. Use this when a
+# dataset does not have any tags.
+_EMPTY_TAG_SERIES = pd.Series(
     [],
-    name=AnnotationField.COMMENT,
+    name=TagField.COMMENT,
     dtype="str",
-    index=pd.MultiIndex.from_tuples(
-        [],
-        names=[
-            CommonFields.LOCATION_ID,
-            PdFields.VARIABLE,
-            AnnotationField.TYPE,
-            AnnotationField.DATE,
-        ],
-    ),
+    index=pd.MultiIndex.from_tuples([], names=TAG_INDEX_FIELDS,),
 )
 
 
@@ -282,16 +282,15 @@ class MultiRegionDataset(SaveableDatasetInterface):
     # considered constant, such as population and hospital beds.
     static: pd.DataFrame = _EMPTY_REGIONAL_ATTRIBUTES_DF
 
-    # Has index with levels LOCATION_ID, VARIABLE, TYPE, DATE
-    annotation: pd.Series = _EMPTY_ANNOTATION_SERIES
+    # A Series of str values having index with levels LOCATION_ID, VARIABLE, TYPE, DATE
+    tag: pd.Series = _EMPTY_TAG_SERIES
 
     @cached_property
     def provenance(self) -> pd.DataFrame:
         # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and VARIABLE.
-        provenance = self.annotation.loc[
-            self.annotation.index.get_level_values(AnnotationField.TYPE)
-            == AnnotationType.PROVENANCE
-        ].droplevel([AnnotationField.TYPE, AnnotationField.DATE])
+        provenance = self.tag.loc[
+            self.tag.index.get_level_values(TagField.TYPE) == TagType.PROVENANCE
+        ].droplevel([TagField.TYPE, TagField.DATE])
         return provenance
 
     @cached_property
@@ -445,18 +444,14 @@ class MultiRegionDataset(SaveableDatasetInterface):
         assert provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
 
         new_index_df = provenance.index.to_frame()
-        new_index_df[AnnotationField.TYPE] = AnnotationType.PROVENANCE
-        new_index_df[AnnotationField.DATE] = pd.NaT
-        annotation_additions = provenance.copy()
-        annotation_additions.index = pd.MultiIndex.from_frame(new_index_df)
+        new_index_df[TagField.TYPE] = TagType.PROVENANCE
+        new_index_df[TagField.DATE] = pd.NaT
+        tag_additions = provenance.copy()
+        tag_additions.index = pd.MultiIndex.from_frame(new_index_df)
         # Make a sorted series. The order doesn't matter and sorting makes the order depend only on
         # what is represented, not the order it appears in the input.
-        annotation = (
-            pd.concat([self.annotation, annotation_additions])
-            .sort_index()
-            .rename(AnnotationField.COMMENT)
-        )
-        return dataclasses.replace(self, annotation=annotation)
+        tag = pd.concat([self.tag, tag_additions]).sort_index().rename(TagField.COMMENT)
+        return dataclasses.replace(self, tag=tag)
 
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
@@ -525,21 +520,21 @@ class MultiRegionDataset(SaveableDatasetInterface):
         assert self.static.index.is_unique
         assert self.static.index.is_monotonic_increasing
 
-        assert isinstance(self.annotation, pd.Series)
-        assert self.annotation.index.names == [
-            CommonFields.LOCATION_ID,
-            PdFields.VARIABLE,
-            AnnotationField.TYPE,
-            AnnotationField.DATE,
-        ]
-        assert self.annotation.index.is_monotonic_increasing
-        assert self.annotation.name == AnnotationField.COMMENT
-        # Check that all annotation location_id are in timeseries location_id
+        assert isinstance(self.tag, pd.Series)
+        assert self.tag.index.names == TAG_INDEX_FIELDS
+        # TODO(tom): Work out why is_monotonic_increasing is false (just for index with NaT
+        #  and real date values?) after calling sort_index(). It may be related to
+        #  https://github.com/pandas-dev/pandas/issues/35992 which is fixed in pandas 1.2.0
+        # assert self.tag.index.is_monotonic_increasing
+        assert self.tag.name == TagField.COMMENT
+        # Check that all tag location_id are in timeseries location_id
         assert (
-            self.annotation.index.get_level_values(CommonFields.LOCATION_ID)
+            self.tag.index.get_level_values(TagField.LOCATION_ID)
             .difference(self.timeseries.index.get_level_values(CommonFields.LOCATION_ID))
             .empty
         )
+        # Make sure the date column contains only timestamps and NaT
+        pd.to_datetime(self.tag.index.get_level_values(TagField.DATE))
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         common_location_id = self.static.index.intersection(other.static.index)
@@ -547,10 +542,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
             raise ValueError("Do not use append_regions with duplicate location_id")
         timeseries_df = pd.concat([self.timeseries, other.timeseries]).sort_index()
         static_df = pd.concat([self.static, other.static]).sort_index()
-        annotation = pd.concat([self.annotation, other.annotation]).sort_index()
-        return MultiRegionDataset(
-            timeseries=timeseries_df, static=static_df, annotation=annotation,
-        )
+        tag = pd.concat([self.tag, other.tag]).sort_index()
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag,)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
@@ -598,13 +591,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
             location_ids
         )
         static_df = self.static.loc[static_mask, :]
-        annotation_mask = self.annotation.index.get_level_values(CommonFields.LOCATION_ID).isin(
-            location_ids
-        )
-        annotation = self.annotation.loc[annotation_mask, :]
-        return MultiRegionDataset(
-            timeseries=timeseries_df, static=static_df, annotation=annotation,
-        )
+        tag_mask = self.tag.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
+        tag = self.tag.loc[tag_mask, :]
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag,)
 
     def remove_regions(self, regions: Collection[Region]) -> "MultiRegionDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
@@ -619,13 +608,9 @@ class MultiRegionDataset(SaveableDatasetInterface):
             location_ids
         )
         static_df = self.static.loc[~static_mask, :]
-        annotation_mask = self.annotation.index.get_level_values(CommonFields.LOCATION_ID).isin(
-            location_ids
-        )
-        annotation = self.annotation.loc[~annotation_mask, :]
-        return MultiRegionDataset(
-            timeseries=timeseries_df, static=static_df, annotation=annotation,
-        )
+        tag_mask = self.tag.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
+        tag = self.tag.loc[~tag_mask, :]
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag,)
 
     def get_subset(
         self,
@@ -668,7 +653,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         return self.timeseries.groupby(CommonFields.LOCATION_ID)
 
     def timeseries_rows(self) -> pd.DataFrame:
-        """Returns a DataFrame containing timeseries values and annotation, suitable for writing
+        """Returns a DataFrame containing timeseries values and tag, suitable for writing
         to a CSV."""
         wide_dates = self.timeseries_wide_dates()
         # Format as a string here because to_csv includes a full timestamp.
@@ -692,14 +677,12 @@ class MultiRegionDataset(SaveableDatasetInterface):
             .reindex(columns=self.timeseries.columns)
             .sort_index()
         )
-        # Only keep annotation information for timeseries in the new timeseries_wide_dates.
-        annotation_mask = self.annotation.reset_index(
-            [AnnotationField.TYPE, AnnotationField.DATE], drop=True
-        ).index.isin(timeseries_wide_dates.index)
-        annotation = self.annotation.loc[annotation_mask]
-        return dataclasses.replace(
-            self, timeseries=timeseries_wide_variables, annotation=annotation
+        # Only keep tag information for timeseries in the new timeseries_wide_dates.
+        tag_mask = self.tag.reset_index([TagField.TYPE, TagField.DATE], drop=True).index.isin(
+            timeseries_wide_dates.index
         )
+        tag = self.tag.loc[tag_mask]
+        return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
 
     def to_csv(self, path: pathlib.Path, write_timeseries_latest_values=False):
         """Persists timeseries to CSV.
@@ -733,12 +716,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
         """Drops the specified column from the timeseries if it exists"""
         timeseries_df = self.timeseries.drop(column, axis="columns", errors="ignore")
         static_df = self.static.drop(column, axis="columns", errors="ignore")
-        annotation = self.annotation[
-            self.annotation.index.get_level_values(PdFields.VARIABLE) != column
-        ]
-        return MultiRegionDataset(
-            timeseries=timeseries_df, static=static_df, annotation=annotation,
-        )
+        tag = self.tag[self.tag.index.get_level_values(PdFields.VARIABLE) != column]
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag,)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         """Joins the timeseries columns in `other` with those in `self`.
@@ -757,10 +736,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
             # columns to be joined need to be disjoint
             raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
         combined_df = pd.concat([self.timeseries, other.timeseries], axis=1)
-        combined_annotation = pd.concat([self.annotation, other.annotation]).sort_index()
-        return MultiRegionDataset(
-            timeseries=combined_df, static=self.static, annotation=combined_annotation,
-        )
+        combined_tag = pd.concat([self.tag, other.tag]).sort_index()
+        return MultiRegionDataset(timeseries=combined_df, static=self.static, tag=combined_tag,)
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
@@ -1170,13 +1147,13 @@ def combined_datasets(
     """
     datasets_wide = _to_datasets_wide_dates_map(datasets)
     # TODO(tom): Consider how to factor out the timeseries and static processing. For example,
-    #  create rows with the entire timeseries and annotations then use groupby(location_id).first().
+    #  create rows with the entire timeseries and tags then use groupby(location_id).first().
     #  Or maybe do something with groupby(location_id).apply if it is fast enough.
     # A list of "wide date" DataFrame (VARIABLE, LOCATION_ID index and DATE columns) that
     # will be concat-ed.
     timeseries_dfs = []
     # A list of Series that will be concat-ed
-    annotation_series = []
+    tag_series = []
     for field, dataset_names in timeseries_field_dataset_source.items():
         # Iterate through the datasets for this field. For each dataset add location_id with data
         # in field to location_id_so_far iff the location_id is not already there.
@@ -1190,9 +1167,7 @@ def combined_datasets(
             selected_location_id = location_ids.difference(location_id_so_far)
             timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
             location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-            annotation_series.append(
-                datasets[dataset_name].annotation.loc[selected_location_id, field]
-            )
+            tag_series.append(datasets[dataset_name].tag.loc[selected_location_id, field])
 
     static_series = []
     for field, dataset_names in static_field_dataset_source.items():
@@ -1233,10 +1208,10 @@ def combined_datasets(
             output_timeseries_wide_variables = (
                 output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
             )
-        output_annotation = pd.concat(annotation_series, verify_integrity=True)
+        output_tag = pd.concat(tag_series, verify_integrity=True)
     else:
         output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
-        output_annotation = _EMPTY_ANNOTATION_SERIES
+        output_tag = _EMPTY_TAG_SERIES
     if static_series:
         output_static_df = pd.concat(
             static_series, axis=1, sort=True, verify_integrity=True
@@ -1246,7 +1221,7 @@ def combined_datasets(
 
     return MultiRegionDataset(
         timeseries=output_timeseries_wide_variables,
-        annotation=output_annotation.sort_index(),
+        tag=output_tag.sort_index(),
         static=output_static_df,
     )
 
@@ -1304,7 +1279,7 @@ class TailFilter:
 
     # Possibly drop series_in.iat[-1] to series_in.iat[-14] (inclusive).
     FILTER_DATES_OLDEST: ClassVar[int] = -14
-    # If this many real values are dropped use the more severe AnnotationType.
+    # If this many real values are dropped use the more severe TagType.
     COUNT_OBSERVATION_LONG: ClassVar[int] = 8
 
     @staticmethod
@@ -1375,22 +1350,22 @@ class TailFilter:
             # series_in.iat[truncate_at] is the first value *not* returned
             assert TailFilter.FILTER_DATES_OLDEST <= truncate_at <= -1
             if count_observation_diff_under_threshold < TailFilter.COUNT_OBSERVATION_LONG:
-                annotation_type = AnnotationType.CUMULATIVE_TAIL_TRUNCATED
+                annotation_type = TagType.CUMULATIVE_TAIL_TRUNCATED
                 self.truncated += 1
             else:
-                annotation_type = AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED
+                annotation_type = TagType.CUMULATIVE_LONG_TAIL_TRUNCATED
                 self.long_truncated += 1
             # Currently one annotation is created per series. Maybe it makes more sense to add
             # one for each dropped observation / real value?
             # https://github.com/covid-projections/covid-data-model/pull/855#issuecomment-747698288
             self.annotations.append(
                 {
-                    AnnotationField.LOCATION_ID: series_in.name[0],
-                    AnnotationField.VARIABLE: series_in.name[1],
-                    AnnotationField.TYPE: annotation_type,
-                    AnnotationField.COMMENT: f"Removed {count_observation_diff_under_threshold} observations that look "
+                    TagField.LOCATION_ID: series_in.name[0],
+                    TagField.VARIABLE: series_in.name[1],
+                    TagField.TYPE: annotation_type,
+                    TagField.COMMENT: f"Removed {count_observation_diff_under_threshold} observations that look "
                     f"suspicious compared to mean diff of {mean:.1f} a few weeks ago.",
-                    AnnotationField.DATE: series_in.index[truncate_at - 1],
+                    TagField.DATE: series_in.index[truncate_at - 1],
                 }
             )
             # Using integer position indexing where the upper bound is exclusive, like regular

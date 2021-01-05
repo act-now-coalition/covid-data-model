@@ -15,8 +15,8 @@ from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
-from libs.datasets.timeseries import AnnotationField
-from libs.datasets.timeseries import AnnotationType
+from libs.datasets.timeseries import TagField
+from libs.datasets.timeseries import TagType
 from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from test import test_helpers
@@ -953,11 +953,11 @@ def test_tail_filter_stalled_timeseries():
     _assert_tail_filter_counts(tail_filter, truncated=1)
     assert tail_filter.annotations == [
         {
-            AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
-            AnnotationField.VARIABLE: CommonFields.NEW_CASES,
-            AnnotationField.LOCATION_ID: "iso1:us#fips:97222",
-            AnnotationField.DATE: pd.to_datetime("2020-04-24"),
-            AnnotationField.COMMENT: "Removed 4 observations that look suspicious compared to "
+            TagField.TYPE: TagType.CUMULATIVE_TAIL_TRUNCATED,
+            TagField.VARIABLE: CommonFields.NEW_CASES,
+            TagField.LOCATION_ID: "iso1:us#fips:97222",
+            TagField.DATE: pd.to_datetime("2020-04-24"),
+            TagField.COMMENT: "Removed 4 observations that look suspicious compared to "
             "mean diff of 1000.0 a few weeks ago.",
         }
     ]
@@ -1054,17 +1054,17 @@ def test_tail_filter_small_diff(stall_count: int):
 @pytest.mark.parametrize(
     "stall_count,annotation_type",
     [
-        (6, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
-        (7, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
-        (8, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (9, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (13, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (14, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (15, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (16, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (6, TagType.CUMULATIVE_TAIL_TRUNCATED),
+        (7, TagType.CUMULATIVE_TAIL_TRUNCATED),
+        (8, TagType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (9, TagType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (13, TagType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (14, TagType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (15, TagType.CUMULATIVE_LONG_TAIL_TRUNCATED),
+        (16, TagType.CUMULATIVE_LONG_TAIL_TRUNCATED),
     ],
 )
-def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationType):
+def test_tail_filter_long_stall(stall_count: int, annotation_type: TagType):
     # This timeseries has stalled for a long time.
     values = list(range(100_000, 128_000, 1_000)) + [127_000] * stall_count
     assert len(values) == 28 + stall_count
@@ -1075,9 +1075,9 @@ def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationTyp
     ds_expected = test_helpers.build_default_region_dataset(
         {CommonFields.CASES: values[: -min(stall_count, 14)]}
     )
-    if annotation_type is AnnotationType.CUMULATIVE_TAIL_TRUNCATED:
+    if annotation_type is TagType.CUMULATIVE_TAIL_TRUNCATED:
         _assert_tail_filter_counts(tail_filter, truncated=1)
-    elif annotation_type is AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED:
+    elif annotation_type is TagType.CUMULATIVE_LONG_TAIL_TRUNCATED:
         _assert_tail_filter_counts(tail_filter, long_truncated=1)
 
     assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
