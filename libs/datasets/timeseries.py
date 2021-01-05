@@ -44,25 +44,32 @@ _log = structlog.get_logger()
 
 @enum.unique
 class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
-    VARIABLE = PdFields.VARIABLE
+    """The columns of a tag when stored in a table."""
+
     LOCATION_ID = CommonFields.LOCATION_ID
-    DATE = CommonFields.DATE
+    VARIABLE = PdFields.VARIABLE
     TYPE = "tag_type"
-    COMMENT = "comment"
+    DATE = CommonFields.DATE
+    CONTENT = "content"
 
 
+# TagField columns that are used as DataFrame index levels.
 TAG_INDEX_FIELDS = [
-    CommonFields.LOCATION_ID,
-    PdFields.VARIABLE,
+    TagField.LOCATION_ID,
+    TagField.VARIABLE,
     TagField.TYPE,
     TagField.DATE,
 ]
 
 
 @enum.unique
-class TagType(GetByValueMixin, ValueAsStrMixin, enum.Enum):
+class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
+    """Values that may appear in the TagField.TYPE column."""
+
+    # These are exposed as annotations on a specific date.
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
+    # Provenance is a tag for an entire location_id-variable pair. It has DATE NaT.
     PROVENANCE = PdFields.PROVENANCE
 
 
@@ -228,7 +235,7 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
 # dataset does not have any tags.
 _EMPTY_TAG_SERIES = pd.Series(
     [],
-    name=TagField.COMMENT,
+    name=TagField.CONTENT,
     dtype="str",
     index=pd.MultiIndex.from_tuples([], names=TAG_INDEX_FIELDS,),
 )
@@ -282,7 +289,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
     # considered constant, such as population and hospital beds.
     static: pd.DataFrame = _EMPTY_REGIONAL_ATTRIBUTES_DF
 
-    # A Series of str values having index with levels LOCATION_ID, VARIABLE, TYPE, DATE
+    # A Series of str values having index with levels LOCATION_ID, VARIABLE, TYPE, DATE. Rows
+    # with identical index values may exist.
     tag: pd.Series = _EMPTY_TAG_SERIES
 
     @cached_property
@@ -450,7 +458,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         tag_additions.index = pd.MultiIndex.from_frame(new_index_df)
         # Make a sorted series. The order doesn't matter and sorting makes the order depend only on
         # what is represented, not the order it appears in the input.
-        tag = pd.concat([self.tag, tag_additions]).sort_index().rename(TagField.COMMENT)
+        tag = pd.concat([self.tag, tag_additions]).sort_index().rename(TagField.CONTENT)
         return dataclasses.replace(self, tag=tag)
 
     @staticmethod
@@ -526,7 +534,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         #  and real date values?) after calling sort_index(). It may be related to
         #  https://github.com/pandas-dev/pandas/issues/35992 which is fixed in pandas 1.2.0
         # assert self.tag.index.is_monotonic_increasing
-        assert self.tag.name == TagField.COMMENT
+        assert self.tag.name == TagField.CONTENT
         # Check that all tag location_id are in timeseries location_id
         assert (
             self.tag.index.get_level_values(TagField.LOCATION_ID)
@@ -1299,6 +1307,7 @@ class TailFilter:
         merged = pd.concat([not_filtered, filtered])
         timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
 
+        # TODO(tom): append annotations to dataset instead of returning tail_filter.
         return tail_filter, dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
 
     def annotations_as_dataframe(self):
@@ -1363,7 +1372,7 @@ class TailFilter:
                     TagField.LOCATION_ID: series_in.name[0],
                     TagField.VARIABLE: series_in.name[1],
                     TagField.TYPE: annotation_type,
-                    TagField.COMMENT: f"Removed {count_observation_diff_under_threshold} observations that look "
+                    TagField.CONTENT: f"Removed {count_observation_diff_under_threshold} observations that look "
                     f"suspicious compared to mean diff of {mean:.1f} a few weeks ago.",
                     TagField.DATE: series_in.index[truncate_at - 1],
                 }

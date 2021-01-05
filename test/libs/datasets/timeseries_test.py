@@ -957,7 +957,7 @@ def test_tail_filter_stalled_timeseries():
             TagField.VARIABLE: CommonFields.NEW_CASES,
             TagField.LOCATION_ID: "iso1:us#fips:97222",
             TagField.DATE: pd.to_datetime("2020-04-24"),
-            TagField.COMMENT: "Removed 4 observations that look suspicious compared to "
+            TagField.CONTENT: "Removed 4 observations that look suspicious compared to "
             "mean diff of 1000.0 a few weeks ago.",
         }
     ]
