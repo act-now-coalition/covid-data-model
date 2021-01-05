@@ -47,9 +47,23 @@ class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     """The attributes of a tag, columns in a table with one row per tag."""
 
     LOCATION_ID = CommonFields.LOCATION_ID
+    # VARIABLE values should be a metric name, typically one in CommonFields.
     VARIABLE = PdFields.VARIABLE
+    # TYPE values must be a string from TagType
     TYPE = "tag_type"
+    # DATE may be a specific date in the timeseries or `pd.NaT`/None for a tag applicable to the
+    # entire timeseries.
     DATE = CommonFields.DATE
+    # CONTENT values vary depending on TYPE. They are currently human readable strings.
+    # TODO(tom): Find a structured way to represent more than one attribute with a tag.
+    #  Options include:
+    #  * Require it always be a valid encoded JSON. This makes accessing values in
+    #    the JSON a hassle in code and manually reading the CSV more difficult because encoded JSON
+    #    have lots of , and " which will be escaped.
+    #  * Add extra attributes to TagField. This makes managing attributes that depend on the tag
+    #    type more tricky and complicates code that handle tags in bulk.
+    #  * Allow a single string or an encoded JSON. This leaves reading provenance in the CSV
+    #    easy, only complicating other tag types.
     CONTENT = "content"
 
 
@@ -299,8 +313,8 @@ class MultiRegionDataset(SaveableDatasetInterface):
     # considered constant, such as population and hospital beds.
     static: pd.DataFrame = _EMPTY_REGIONAL_ATTRIBUTES_DF
 
-    # A Series of str values having index with levels LOCATION_ID, VARIABLE, TYPE, DATE. Rows
-    # with identical index values may exist.
+    # A Series of tag CONTENT values having index with levels LOCATION_ID, VARIABLE, TYPE,
+    # DATE. Rows with identical index values may exist.
     tag: pd.Series = _EMPTY_TAG_SERIES
 
     @cached_property
@@ -1384,6 +1398,8 @@ class TailFilter:
                     TagField.LOCATION_ID: series_in.name[0],
                     TagField.VARIABLE: series_in.name[1],
                     TagField.TYPE: annotation_type,
+                    # TODO(tom): Having a formatted string deep in our pipeline is ugly. See TODO
+                    #  in the TagField class.
                     TagField.CONTENT: f"Removed {count_observation_diff_under_threshold} observations that look "
                     f"suspicious compared to mean diff of {mean:.1f} a few weeks ago.",
                     TagField.DATE: series_in.index[truncate_at - 1],
