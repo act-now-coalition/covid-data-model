@@ -251,12 +251,14 @@ def generate_from_loaded_data(
     log,
 ):
     """Runs the API generation code using data in parameters, writing results to output."""
-    icu_data_map = dict(model_output.icu.iter_one_regions())
-    rt_data_map = dict(model_output.infection_rate.iter_one_regions())
-
     # If calculating test positivity succeeds join it with the combined_datasets into one
     # MultiRegionDataset
+    log.info("Running test positivity.")
     regions_data = test_positivity.run_and_maybe_join_columns(selected_dataset, log)
+
+    log.info(f"Joining inputs by region.")
+    icu_data_map = dict(model_output.icu.iter_one_regions())
+    rt_data_map = dict(model_output.infection_rate.iter_one_regions())
     regional_inputs = [
         RegionalInput.from_one_regions(
             region,
@@ -266,7 +268,6 @@ def generate_from_loaded_data(
         )
         for region, regional_data in regions_data.iter_one_regions()
     ]
-    log.info(f"Finished loading all regional inputs.")
     # Build all region timeseries API Output objects.
     log.info("Generating all API Timeseries")
     all_timeseries = run_on_regions(regional_inputs)
