@@ -44,7 +44,7 @@ _log = structlog.get_logger()
 
 @enum.unique
 class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
-    """The columns of a tag when stored in a table."""
+    """The attributes of a tag, columns in a table with one row per tag."""
 
     LOCATION_ID = CommonFields.LOCATION_ID
     VARIABLE = PdFields.VARIABLE
@@ -53,7 +53,7 @@ class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     CONTENT = "content"
 
 
-# TagField columns that are used as DataFrame index levels.
+# Fields used as panda MultiIndex levels when tags are represented in a pd.Series
 TAG_INDEX_FIELDS = [
     TagField.LOCATION_ID,
     TagField.VARIABLE,
@@ -64,12 +64,20 @@ TAG_INDEX_FIELDS = [
 
 @enum.unique
 class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
-    """Values that may appear in the TagField.TYPE column."""
+    """Values that may appear in TagField.TYPE.
 
-    # These are exposed as annotations on a specific date.
+    Currently 'annotation' refers to tag types that must have a specific real value for DATE. Other
+    tags (currently only PROVENANCE, but may be expanded for things such as storing a processing
+    step name) may have a DATE of `pd.NaT` or None. Putting the type of all tags in a single enum
+    makes it easy to represent all tags in the same structure but makes the concept of an
+    'annotation type' less explicit in our code.
+    """
+
+    # 'annotation' types, tags that must of a specific real value for DATE.
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
-    # Provenance is a tag for an entire location_id-variable pair. It has DATE NaT.
+
+    # Provenance is a tag for a location_id-variable pair. It has DATE `pd.NaT` or None.
     PROVENANCE = PdFields.PROVENANCE
 
 
@@ -105,11 +113,13 @@ class OneRegionTimeseriesDataset:
 
     latest: Dict[str, Any]
 
-    # A default exists for convience in tests. Non-test could is expected to explicitly set
-    # provenance.
+    # A default exists for convenience in tests. Non-test is expected to explicitly set provenance.
     # Because these objects are frozen it /might/ be safe to use default={} but using a factory to
     # make a new instance of the mutable {} is safer.
     provenance: Dict[str, str] = dataclasses.field(default_factory=dict)
+
+    # TODO(tom): find a way to expose all tags in this class or maybe add `attributes` as tags with
+    # a real date.
 
     def __post_init__(self):
         assert CommonFields.LOCATION_ID in self.data.columns
@@ -237,7 +247,7 @@ _EMPTY_TAG_SERIES = pd.Series(
     [],
     name=TagField.CONTENT,
     dtype="str",
-    index=pd.MultiIndex.from_tuples([], names=TAG_INDEX_FIELDS,),
+    index=pd.MultiIndex.from_tuples([], names=TAG_INDEX_FIELDS),
 )
 
 
@@ -456,9 +466,11 @@ class MultiRegionDataset(SaveableDatasetInterface):
         new_index_df[TagField.DATE] = pd.NaT
         tag_additions = provenance.copy()
         tag_additions.index = pd.MultiIndex.from_frame(new_index_df)
+        # TODO(tom): When there may be non-provenance tags also do:
+        #  tag_additions = pd.concat([self.tag, tag_additions])
         # Make a sorted series. The order doesn't matter and sorting makes the order depend only on
         # what is represented, not the order it appears in the input.
-        tag = pd.concat([self.tag, tag_additions]).sort_index().rename(TagField.CONTENT)
+        tag = tag_additions.sort_index().rename(TagField.CONTENT)
         return dataclasses.replace(self, tag=tag)
 
     @staticmethod
@@ -551,7 +563,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         timeseries_df = pd.concat([self.timeseries, other.timeseries]).sort_index()
         static_df = pd.concat([self.static, other.static]).sort_index()
         tag = pd.concat([self.tag, other.tag]).sort_index()
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag,)
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
@@ -601,7 +613,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         static_df = self.static.loc[static_mask, :]
         tag_mask = self.tag.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
         tag = self.tag.loc[tag_mask, :]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag,)
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def remove_regions(self, regions: Collection[Region]) -> "MultiRegionDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
@@ -618,7 +630,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         static_df = self.static.loc[~static_mask, :]
         tag_mask = self.tag.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
         tag = self.tag.loc[~tag_mask, :]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag,)
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def get_subset(
         self,
@@ -725,7 +737,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
         timeseries_df = self.timeseries.drop(column, axis="columns", errors="ignore")
         static_df = self.static.drop(column, axis="columns", errors="ignore")
         tag = self.tag[self.tag.index.get_level_values(PdFields.VARIABLE) != column]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag,)
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         """Joins the timeseries columns in `other` with those in `self`.
@@ -745,7 +757,7 @@ class MultiRegionDataset(SaveableDatasetInterface):
             raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
         combined_df = pd.concat([self.timeseries, other.timeseries], axis=1)
         combined_tag = pd.concat([self.tag, other.tag]).sort_index()
-        return MultiRegionDataset(timeseries=combined_df, static=self.static, tag=combined_tag,)
+        return MultiRegionDataset(timeseries=combined_df, static=self.static, tag=combined_tag)
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
