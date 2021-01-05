@@ -256,6 +256,6 @@ def test_provenance():
     expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")}
     expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")}
     expected_positivity = test_helpers.build_dataset(
-        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04",
+        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)

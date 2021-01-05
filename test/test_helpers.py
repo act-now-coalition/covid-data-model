@@ -34,21 +34,24 @@ class TimeseriesLiteral(UserList):
 
 
 def build_dataset(
-    metrics: Mapping[Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]]],
+    metrics_by_region_then_field_name: Mapping[
+        Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]]
+    ],
     *,
     start_date="2020-04-01",
-    dropna=True,
 ) -> timeseries.MultiRegionDataset:
-    """Returns a dataset for multiple regions and metrics. Each sequence of values represents a
-    timeseries metric with identical length. provenance information can be set for a metric by
-    using a TimeseriesLiteral. Timeseries without any real values are dropped.
+    """Returns a dataset for multiple regions and metrics.
+    Args:
+        metrics_by_region_then_field_name: Each sequence of values and TimeseriesLiteral must have
+            at least one real value and identical length. The oldest date is the 0th element.
+        start_date: The oldest date of each timeseries.
     """
     # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
     # sequences in metrics.
     loc_var_seq = {
-        (region.location_id, variable): metrics[region][variable]
-        for region in metrics.keys()
-        for variable in metrics[region].keys()
+        (region.location_id, variable): metrics_by_region_then_field_name[region][variable]
+        for region in metrics_by_region_then_field_name.keys()
+        for variable in metrics_by_region_then_field_name[region].keys()
     }
 
     # Make sure there is only one len among all of loc_var_seq.values(). Make a DatetimeIndex
@@ -63,7 +66,7 @@ def build_dataset(
     df = pd.DataFrame(list(loc_var_seq.values()), index=index, columns=dates)
     df = df.fillna(np.nan).apply(pd.to_numeric)
 
-    dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df, dropna=dropna)
+    dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
 
     loc_var_provenance = {
         key: ts_lit.provenance
@@ -86,10 +89,12 @@ def build_dataset(
 
 
 def build_default_region_dataset(
-    metrics: Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]], *, dropna=True,
+    metrics: Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]],
+    *,
+    region=DEFAULT_REGION,
 ) -> timeseries.MultiRegionDataset:
-    """Returns a `MultiRegionDataset` containing metrics in one region, `DEFAULT_REGION`"""
-    return build_dataset({DEFAULT_REGION: metrics}, dropna=dropna)
+    """Returns a `MultiRegionDataset` containing metrics in one region"""
+    return build_dataset({region: metrics})
 
 
 def build_one_region_dataset(
