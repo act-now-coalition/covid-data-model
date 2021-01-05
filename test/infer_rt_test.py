@@ -208,7 +208,7 @@ def test_smoothing_and_causality(tmp_path):
 @pytest.mark.slow
 def test_generate_infection_rate_metric_one_empty():
     fips = [
-        "51017",  # Bath County VA Almost No Cases. Will be filtered out under any thresholds.
+        "51091",  # Highland County VA Almost No Cases. Will be filtered out under any thresholds.
         "51153",  # Prince William VA Lots of Cases
     ]
     regions = [pipeline.Region.from_fips(f) for f in fips]
@@ -217,7 +217,7 @@ def test_generate_infection_rate_metric_one_empty():
     df = pd.concat(infer_rt.run_rt(input) for input in inputs)
     returned_location_ids = df[CommonFields.LOCATION_ID].unique()
     assert pipeline.fips_to_location_id("51153") in returned_location_ids
-    assert pipeline.fips_to_location_id("51017") not in returned_location_ids
+    assert pipeline.fips_to_location_id("51091") not in returned_location_ids
 
 
 @pytest.mark.slow
