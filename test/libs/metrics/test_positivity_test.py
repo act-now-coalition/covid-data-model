@@ -6,15 +6,14 @@ from covidactnow.datapublic import common_df
 
 from covidactnow.datapublic.common_fields import CommonFields
 
+from test import test_helpers
 from libs.datasets import timeseries
 from libs.pipeline import Region
 from libs.metrics.test_positivity import AllMethods
 from libs.metrics.test_positivity import DivisionMethod
 from libs.metrics import test_positivity
 from test.libs.datasets.timeseries_test import assert_dataset_like
-from test.libs.metrics import top_level_metrics_test
-from test.libs.metrics.top_level_metrics_test import TimeseriesLiteral
-
+from test.test_helpers import TimeseriesLiteral
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
@@ -238,9 +237,7 @@ def test_provenance():
         CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
         CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
     }
-    dataset_in = top_level_metrics_test.build_dataset(
-        {region_as: metrics_as, region_tx: metrics_tx}
-    )
+    dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
 
     methods = [
         DivisionMethod("method1", CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS),
@@ -258,7 +255,7 @@ def test_provenance():
 
     expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")}
     expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")}
-    expected_positivity = top_level_metrics_test.build_dataset(
-        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04",
+    expected_positivity = test_helpers.build_dataset(
+        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
     )
     assert_dataset_like(all_methods.test_positivity, expected_positivity)
