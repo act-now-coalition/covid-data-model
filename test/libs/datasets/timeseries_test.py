@@ -1,8 +1,5 @@
 import io
 import pathlib
-from typing import Mapping
-from typing import Sequence
-from typing import Union
 
 import pytest
 import pandas as pd
