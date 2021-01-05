@@ -25,10 +25,14 @@ from libs.datasets import timeseries
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.sources import forecast_hub
+from libs.datasets import tail_filter
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 from pyseir import DATA_DIR
 import pyseir.icu.utils
 from pyseir.icu import infer_icu
+
+TailFilter = tail_filter.TailFilter
+
 
 CUMULATIVE_FIELDS_TO_FILTER = [
     CommonFields.CASES,
@@ -102,7 +106,7 @@ def update(
         build_field_dataset_source(ALL_FIELDS_FEATURE_DEFINITION),
     )
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
-    tail_filter, multiregion_dataset = timeseries.TailFilter.run(
+    tail_filter, multiregion_dataset = TailFilter.run(
         multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER,
     )
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
@@ -205,7 +209,7 @@ def run_bad_tails_filter(output_path: pathlib.Path):
     us_dataset = combined_datasets.load_us_timeseries_dataset()
     log = structlog.get_logger()
     log.info("Starting filter")
-    tail_filter, dataset_out = timeseries.TailFilter.run(us_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
+    tail_filter, dataset_out = TailFilter.run(us_dataset, CUMULATIVE_FIELDS_TO_FILTER)
     log.info("Writing output")
     wide_dates_df.write_csv(dataset_out.timeseries_rows(), output_path)
     tail_filter.annotations_as_dataframe().to_csv(

@@ -15,8 +15,6 @@ from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
-from libs.datasets.timeseries import AnnotationField
-from libs.datasets.timeseries import AnnotationType
 from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from test import test_helpers
@@ -81,7 +79,7 @@ def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Pat
     assert region_97111.latest["c1"] == 3
     assert region_97111.region.fips == "97111"
     assert multiregion_loaded.get_one_region(Region.from_fips("01")).latest["c2"] == 123.4
-    assert_dataset_like(
+    test_helpers.assert_dataset_like(
         multiregion, multiregion_loaded, drop_na_latest=True, drop_na_timeseries=True
     )
 
@@ -263,59 +261,6 @@ def test_multiregion_provenance():
     assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == "src21"
 
 
-def _timeseries_sorted_by_location_date(
-    dataset: timeseries.MultiRegionDataset, *, drop_na: bool, drop_na_dates: bool
-) -> pd.DataFrame:
-    """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
-    df = dataset.timeseries
-    if drop_na:
-        df = df.dropna("columns", "all")
-    if drop_na_dates:
-        df = df.dropna("rows", "all")
-    df = df.reset_index().sort_values(
-        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
-    )
-    return df
-
-
-def _latest_sorted_by_location_date(
-    ts: timeseries.MultiRegionDataset, drop_na: bool
-) -> pd.DataFrame:
-    """Returns the latest data, sorted by LOCATION_ID."""
-    df = ts.static_and_timeseries_latest_with_fips().sort_values(
-        [CommonFields.LOCATION_ID], ignore_index=True
-    )
-    if drop_na:
-        df = df.dropna("columns", "all")
-    return df
-
-
-def assert_dataset_like(
-    ds1: timeseries.MultiRegionDataset,
-    ds2: timeseries.MultiRegionDataset,
-    *,
-    drop_na_timeseries=False,
-    drop_na_latest=False,
-    drop_na_dates=False,
-):
-    """Asserts that two datasets contain similar date, ignoring order."""
-    ts1 = _timeseries_sorted_by_location_date(
-        ds1, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
-    )
-    ts2 = _timeseries_sorted_by_location_date(
-        ds2, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
-    )
-    pd.testing.assert_frame_equal(ts1, ts2, check_like=True, check_dtype=False)
-    latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
-    latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
-    pd.testing.assert_frame_equal(latest1, latest2, check_like=True, check_dtype=False)
-    # Somehow test/libs/datasets/combined_dataset_utils_test.py::test_update_and_load has
-    # two provenance Series that are empty but assert_series_equal fails with message
-    # 'Attribute "inferred_type" are different'. Don't call it when both series are empty.
-    if not (ds1.provenance.empty and ds2.provenance.empty):
-        pd.testing.assert_series_equal(ds1.provenance, ds2.provenance)
-
-
 def test_append_regions():
     ts_fips = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -344,7 +289,7 @@ def test_append_regions():
     # Check that merge is symmetric
     ts_merged_1 = ts_fips.append_regions(ts_cbsa)
     ts_merged_2 = ts_cbsa.append_regions(ts_fips)
-    assert_dataset_like(ts_merged_1, ts_merged_2)
+    test_helpers.assert_dataset_like(ts_merged_1, ts_merged_2)
 
     ts_expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -367,7 +312,7 @@ def test_append_regions():
             "iso1:us#cbsa:20200,m1,prov20200m2\n"
         )
     )
-    assert_dataset_like(ts_merged_1, ts_expected)
+    test_helpers.assert_dataset_like(ts_merged_1, ts_expected)
 
 
 def test_append_regions_duplicate_region_raises():
@@ -423,7 +368,7 @@ def test_calculate_new_cases():
     )
 
     timeseries_after = timeseries.add_new_cases(mrts_before)
-    assert_dataset_like(mrts_expected, timeseries_after)
+    test_helpers.assert_dataset_like(mrts_expected, timeseries_after)
 
 
 def test_new_cases_remove_negative():
@@ -450,7 +395,7 @@ def test_new_cases_remove_negative():
     )
 
     timeseries_after = timeseries.add_new_cases(mrts_before)
-    assert_dataset_like(mrts_expected, timeseries_after)
+    test_helpers.assert_dataset_like(mrts_expected, timeseries_after)
 
 
 def test_new_cases_gap_in_date():
@@ -475,7 +420,7 @@ def test_new_cases_gap_in_date():
     )
 
     timeseries_after = timeseries.add_new_cases(mrts_before)
-    assert_dataset_like(mrts_expected, timeseries_after)
+    test_helpers.assert_dataset_like(mrts_expected, timeseries_after)
 
 
 def test_timeseries_long():
@@ -550,7 +495,7 @@ def test_timeseries_wide_dates():
     ds_recreated = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(
         ds_wide
     ).add_static_values(ds.static.reset_index())
-    assert_dataset_like(ds, ds_recreated)
+    test_helpers.assert_dataset_like(ds, ds_recreated)
 
 
 def test_timeseries_wide_dates_empty():
@@ -592,7 +537,7 @@ def test_timeseries_drop_stale_timeseries_entire_region():
             "iso1:us#fips:97111,,Bar County,county,4,\n"
         )
     )
-    assert_dataset_like(ds_out, ds_expected)
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
 
 
 def test_timeseries_drop_stale_timeseries_one_metric():
@@ -628,7 +573,7 @@ def test_timeseries_drop_stale_timeseries_one_metric():
             "iso1:us#fips:97111,m1,m1-97111prov\n"
         )
     )
-    assert_dataset_like(ds_out, ds_expected)
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
 
 
 def test_timeseries_latest_values():
@@ -751,7 +696,7 @@ def test_join_columns():
         )
     )
     ts_joined = ts_1.join_columns(ts_2)
-    assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
+    test_helpers.assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
 
     with pytest.raises(NotImplementedError):
         ts_2.join_columns(ts_1)
@@ -801,7 +746,7 @@ def test_join_columns_missing_regions():
         )
     )
     ts_joined = ts_1.join_columns(ts_2)
-    assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
+    test_helpers.assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
 
 
 def test_iter_one_region():
@@ -861,7 +806,7 @@ def test_drop_regions_without_population():
         ts_out = timeseries.drop_regions_without_population(
             ts_in, ["iso1:us#fips:97222"], structlog.get_logger()
         )
-    assert_dataset_like(ts_out, ts_expected)
+    test_helpers.assert_dataset_like(ts_out, ts_expected)
 
     assert [l["event"] for l in logs] == ["Dropping unexpected regions without populaton"]
     assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20200"]]
@@ -896,7 +841,7 @@ def test_remove_outliers():
     # Expected result is the same series with the last value removed
     values = [10.0] * 7
     expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    assert_dataset_like(dataset, expected, drop_na_dates=True)
+    test_helpers.assert_dataset_like(dataset, expected, drop_na_dates=True)
 
 
 def test_remove_outliers_threshold():
@@ -905,14 +850,14 @@ def test_remove_outliers_threshold():
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
-    assert_dataset_like(dataset, result)
+    test_helpers.assert_dataset_like(dataset, result)
 
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=29)
 
     # Expected result is the same series with the last value removed
     values = [1.0] * 7
     expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    assert_dataset_like(result, expected, drop_na_dates=True)
+    test_helpers.assert_dataset_like(result, expected, drop_na_dates=True)
 
 
 def test_not_removing_short_series():
@@ -921,167 +866,7 @@ def test_not_removing_short_series():
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
     # Should not modify becasue not higher than threshold
-    assert_dataset_like(dataset, result)
-
-
-def _assert_tail_filter_counts(
-    tail_filter: timeseries.TailFilter,
-    *,
-    skipped_too_short: int = 0,
-    skipped_na_mean: int = 0,
-    all_good: int = 0,
-    truncated: int = 0,
-    long_truncated: int = 0,
-):
-    """Asserts that tail_filter has given attribute count values, defaulting to zero."""
-    assert tail_filter.skipped_too_short == skipped_too_short
-    assert tail_filter.skipped_na_mean == skipped_na_mean
-    assert tail_filter.all_good == all_good
-    assert tail_filter.truncated == truncated
-    assert tail_filter.long_truncated == long_truncated
-
-
-def test_tail_filter_stalled_timeseries():
-    # Make a timeseries that has 24 days increasing.
-    values_increasing = list(range(100_000, 124_000, 1_000))
-    # Add 4 days that copy the 24th day. The filter is meant to remove these.
-    values_stalled = values_increasing + [values_increasing[-1]] * 4
-    assert len(values_stalled) == 28
-
-    ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values_stalled})
-    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
-    _assert_tail_filter_counts(tail_filter, truncated=1)
-    assert tail_filter.annotations == [
-        {
-            AnnotationField.TYPE: AnnotationType.CUMULATIVE_TAIL_TRUNCATED,
-            AnnotationField.VARIABLE: CommonFields.NEW_CASES,
-            AnnotationField.LOCATION_ID: "iso1:us#fips:97222",
-            AnnotationField.DATE: pd.to_datetime("2020-04-24"),
-            AnnotationField.COMMENT: "Removed 4 observations that look suspicious compared to "
-            "mean diff of 1000.0 a few weeks ago.",
-        }
-    ]
-    ds_expected = test_helpers.build_default_region_dataset(
-        {CommonFields.NEW_CASES: values_increasing}
-    )
-    assert_dataset_like(ds_out, ds_expected)
-
-    # Try again with one day less, not enough for the filter so it returns the data unmodified.
-    ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values_stalled[:-1]})
-    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
-    _assert_tail_filter_counts(tail_filter, skipped_too_short=1)
-    assert tail_filter.annotations == []
-    assert_dataset_like(ds_out, ds_in)
-
-
-def test_tail_filter_mean_nan():
-    # Make a timeseries that has 14 days of NaN, than 14 days of increasing values. The first
-    # 100_000 is there so the NaN form a gap that isn't dropped by unrelated code.
-    values = [100_000] + [float("NaN")] * 14 + list(range(100_000, 114_000, 1_000))
-    assert len(values) == 29
-
-    ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
-    _assert_tail_filter_counts(tail_filter, skipped_na_mean=1)
-    assert tail_filter.annotations == []
-    assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
-
-
-def test_tail_filter_two_series():
-    # Check that two series are both filtered. Currently the 'good' dates of 14-28 days ago are
-    # relative to the most recent date of any timeseries but maybe it should be per-timeseries.
-    pos_tests = list(range(100_000, 128_000, 1_000))
-    tot_tests = list(range(1_000_000, 1_280_000, 10_000))
-    # Pad positive tests with two 'None's so the timeseries are the same length.
-    pos_tests_stalled = pos_tests + [pos_tests[-1]] * 3 + [None] * 2
-    tot_tests_stalled = tot_tests + [tot_tests[-1]] * 5
-
-    ds_in = test_helpers.build_default_region_dataset(
-        {
-            CommonFields.POSITIVE_TESTS: pos_tests_stalled,
-            CommonFields.TOTAL_TESTS: tot_tests_stalled,
-        }
-    )
-    tail_filter, ds_out = timeseries.TailFilter.run(
-        ds_in, [CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS]
-    )
-    ds_expected = test_helpers.build_default_region_dataset(
-        {CommonFields.POSITIVE_TESTS: pos_tests, CommonFields.TOTAL_TESTS: tot_tests}
-    )
-    _assert_tail_filter_counts(tail_filter, truncated=2)
-    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
-    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
-
-
-def test_tail_filter_diff_goes_negative():
-    # The end of this timeseries is (in 1000s) ... 127, 126, 127, 127. Ony the last 127 is
-    # expected to be truncated.
-    values = list(range(100_000, 128_000, 1_000)) + [126_000, 127_000, 127_000]
-    assert len(values) == 31
-
-    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: values})
-    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
-    ds_expected = test_helpers.build_default_region_dataset({CommonFields.CASES: values[:-1]})
-    _assert_tail_filter_counts(tail_filter, truncated=1)
-    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
-    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
-
-
-def test_tail_filter_zero_diff():
-    # Make sure constant value timeseries is not truncated.
-    values = [100_000] * 28
-
-    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: values})
-    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
-    _assert_tail_filter_counts(tail_filter, all_good=1)
-    assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
-    assert tail_filter.annotations == []
-
-
-@pytest.mark.parametrize("stall_count", [0, 1, 2, 4])
-def test_tail_filter_small_diff(stall_count: int):
-    # Make sure a zero increase in the most recent value(s) of a series that was increasing
-    # slowly is not dropped.
-    values = list(range(1_000, 1_030)) + [1_029] * stall_count
-
-    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: values})
-    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
-    _assert_tail_filter_counts(tail_filter, all_good=1)
-    assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
-    assert tail_filter.annotations == []
-
-
-@pytest.mark.parametrize(
-    "stall_count,annotation_type",
-    [
-        (6, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
-        (7, AnnotationType.CUMULATIVE_TAIL_TRUNCATED),
-        (8, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (9, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (13, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (14, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (15, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-        (16, AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED),
-    ],
-)
-def test_tail_filter_long_stall(stall_count: int, annotation_type: AnnotationType):
-    # This timeseries has stalled for a long time.
-    values = list(range(100_000, 128_000, 1_000)) + [127_000] * stall_count
-    assert len(values) == 28 + stall_count
-
-    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: values})
-    tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
-    # There are never more than 13 stalled observations removed.
-    ds_expected = test_helpers.build_default_region_dataset(
-        {CommonFields.CASES: values[: -min(stall_count, 14)]}
-    )
-    if annotation_type is AnnotationType.CUMULATIVE_TAIL_TRUNCATED:
-        _assert_tail_filter_counts(tail_filter, truncated=1)
-    elif annotation_type is AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED:
-        _assert_tail_filter_counts(tail_filter, long_truncated=1)
-
-    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
-    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+    test_helpers.assert_dataset_like(dataset, result)
 
 
 def test_timeseries_empty_timeseries_and_static():
@@ -1134,7 +919,7 @@ def test_aggregate_states_to_country():
             "iso1:us,country,,,,3000\n"
         )
     )
-    assert_dataset_like(country, expected)
+    test_helpers.assert_dataset_like(country, expected)
 
 
 def test_combined_timeseries():
@@ -1179,7 +964,7 @@ def test_combined_timeseries():
         io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
     )
 
-    assert_dataset_like(expected, combined)
+    test_helpers.assert_dataset_like(expected, combined)
 
 
 def test_combined_missing_field():
@@ -1210,7 +995,7 @@ def test_combined_missing_field():
             "iso1:us#fips:97111,2020-04-04,4\n"
         )
     )
-    assert_dataset_like(expected, combined_1)
+    test_helpers.assert_dataset_like(expected, combined_1)
 
     # Because there is only one source for the output timeseries reversing the source list
     # produces the same output.
@@ -1219,7 +1004,7 @@ def test_combined_missing_field():
         {name: reversed(source_list) for name, source_list in field_source_map.items()},
         {},
     )
-    assert_dataset_like(expected, combined_2)
+    test_helpers.assert_dataset_like(expected, combined_2)
 
 
 def test_combined_static():
@@ -1246,7 +1031,7 @@ def test_combined_static():
         io.StringIO("location_id,date,s1\n" "iso1:us#cbsa:10100,,111\n" "iso1:us#fips:97222,,22\n")
     )
 
-    assert_dataset_like(expected, combined, drop_na_timeseries=True)
+    test_helpers.assert_dataset_like(expected, combined, drop_na_timeseries=True)
 
 
 def test_aggregate_states_to_country_scale():
@@ -1278,7 +1063,7 @@ def test_aggregate_states_to_country_scale():
             "iso1:us,country,,,,10000\n"
         )
     )
-    assert_dataset_like(country, expected)
+    test_helpers.assert_dataset_like(country, expected)
 
 
 def test_aggregate_states_to_country_scale_static():
@@ -1309,7 +1094,7 @@ def test_aggregate_states_to_country_scale_static():
             "iso1:us,country,,,10,10000\n"
         )
     )
-    assert_dataset_like(country, expected)
+    test_helpers.assert_dataset_like(country, expected)
 
 
 def test_timeseries_rows():
@@ -1390,4 +1175,4 @@ def test_calculate_puerto_rico_bed_occupancy_rate():
             "iso1:us,country,,,10,10000\n"
         )
     )
-    assert_dataset_like(actual, expected)
+    test_helpers.assert_dataset_like(actual, expected)

@@ -12,7 +12,6 @@ from libs.pipeline import Region
 from libs.metrics.test_positivity import AllMethods
 from libs.metrics.test_positivity import DivisionMethod
 from libs.metrics import test_positivity
-from test.libs.datasets.timeseries_test import assert_dataset_like
 from test.test_helpers import TimeseriesLiteral
 
 # turns all warnings into errors for this module
@@ -71,7 +70,7 @@ def test_basic():
             "iso1:us#iso2:tx,test_positivity,method1\n"
         )
     )
-    assert_dataset_like(all_methods.test_positivity, expected_positivity)
+    test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
 
 
 def test_recent_days():
@@ -119,7 +118,7 @@ def test_recent_days():
             "iso1:us#iso2:us-tx,test_positivity,method1\n"
         )
     )
-    assert_dataset_like(all_methods.test_positivity, expected_positivity)
+    test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
     assert all_methods.test_positivity.get_one_region(Region.from_state("AS")).provenance == {
         CommonFields.TEST_POSITIVITY: "method2"
     }
@@ -258,4 +257,4 @@ def test_provenance():
     expected_positivity = test_helpers.build_dataset(
         {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
     )
-    assert_dataset_like(all_methods.test_positivity, expected_positivity)
+    test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)

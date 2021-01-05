@@ -7,7 +7,7 @@ from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.pipeline import Region
 from libs.qa.common_df_diff import DatasetDiff
-from test.libs.datasets.timeseries_test import assert_dataset_like
+from test import test_helpers
 
 
 def test_persist_and_load_dataset(tmp_path, nyc_fips):
@@ -41,4 +41,6 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
     timeseries_loaded = combined_datasets.load_us_timeseries_dataset(pointer_directory=tmp_path)
     one_region_loaded = timeseries_loaded.get_one_region(nyc_region)
     assert one_region_nyc.latest == one_region_loaded.latest
-    assert_dataset_like(timeseries_loaded, multiregion_timeseries_nyc, drop_na_timeseries=True)
+    test_helpers.assert_dataset_like(
+        timeseries_loaded, multiregion_timeseries_nyc, drop_na_timeseries=True
+    )
