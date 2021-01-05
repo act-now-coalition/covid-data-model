@@ -78,7 +78,7 @@ def calculate_metrics_for_timeseries(
     new_cases = data[CommonFields.NEW_CASES]
     case_density = calculate_case_density(new_cases, population)
 
-    test_positivity, test_positivity_details = calculate_or_copy_test_positivity(timeseries, log)
+    test_positivity, test_positivity_details = copy_test_positivity(timeseries, log)
 
     contact_tracer_capacity = calculate_contact_tracers(
         new_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
@@ -132,32 +132,17 @@ def _lookup_test_positivity_method(
     return method
 
 
-def calculate_or_copy_test_positivity(
+def copy_test_positivity(
     dataset_in: OneRegionTimeseriesDataset, log,
 ) -> Tuple[pd.Series, TestPositivityRatioDetails]:
-    # TODO(tom): Move all these calculations to test_positivity.AllMethods or something applied to
-    #  each datasource with test metrics.
     data = dataset_in.date_indexed
-    # Use POSITIVE_TESTS and NEGATIVE_TEST if they are recent or TEST_POSITIVITY is not available
-    # for this region.
-    positive_negative_recent = has_data_in_past_10_days(
-        data[CommonFields.POSITIVE_TESTS]
-    ) and has_data_in_past_10_days(data[CommonFields.NEGATIVE_TESTS])
     test_positivity = common_df.get_timeseries(data, CommonFields.TEST_POSITIVITY, EMPTY_TS)
-    if positive_negative_recent or not test_positivity.notna().any():
-        method = _lookup_test_positivity_method(
-            dataset_in.provenance.get(CommonFields.POSITIVE_TESTS),
-            dataset_in.provenance.get(CommonFields.NEGATIVE_TESTS),
-            log,
-        )
-        test_positivity = calculate_test_positivity(dataset_in)
-    else:
-        provenance = dataset_in.provenance.get(CommonFields.TEST_POSITIVITY)
-        method = TestPositivityRatioMethod.get(provenance)
-        if method is None:
-            if provenance is not None:
-                log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
-            method = TestPositivityRatioMethod.OTHER
+    provenance = dataset_in.provenance.get(CommonFields.TEST_POSITIVITY)
+    method = TestPositivityRatioMethod.get(provenance)
+    if method is None:
+        if provenance is not None:
+            log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
+        method = TestPositivityRatioMethod.OTHER
     return test_positivity, TestPositivityRatioDetails(source=method)
 
 
@@ -194,33 +179,6 @@ def calculate_case_density(
     """
     smoothed_daily_cases = _calculate_smoothed_daily_cases(new_cases, smooth=smooth)
     return smoothed_daily_cases / (population / normalize_by)
-
-
-def calculate_test_positivity(
-    region_dataset: OneRegionTimeseriesDataset, lag_lookback: int = 7
-) -> pd.Series:
-    """Calculates positive test rate from combined data."""
-    data = region_dataset.date_indexed
-    positive_tests = series_utils.interpolate_stalled_and_missing_values(
-        data[CommonFields.POSITIVE_TESTS]
-    )
-    negative_tests = series_utils.interpolate_stalled_and_missing_values(
-        data[CommonFields.NEGATIVE_TESTS]
-    )
-
-    daily_negative_tests = negative_tests.diff()
-    daily_positive_tests = positive_tests.diff()
-    positive_smoothed = series_utils.smooth_with_rolling_average(daily_positive_tests)
-    negative_smoothed = series_utils.smooth_with_rolling_average(
-        daily_negative_tests, include_trailing_zeros=False
-    )
-    last_n_positive = positive_smoothed[-lag_lookback:]
-    last_n_negative = negative_smoothed[-lag_lookback:]
-
-    if any(last_n_positive) and last_n_negative.isna().all():
-        return pd.Series([], dtype="float64")
-
-    return positive_smoothed / (negative_smoothed + positive_smoothed)
 
 
 def calculate_contact_tracers(
