@@ -29,7 +29,6 @@ import structlog
 from covidactnow.datapublic import common_df
 from libs import pipeline
 from libs.datasets import dataset_utils
-from libs.datasets.dataset_base import SaveableDatasetInterface
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
@@ -104,7 +103,6 @@ class OneRegionTimeseriesDataset:
         return True
 
     def yield_records(self) -> Iterable[dict]:
-        # Copied from dataset_base.py
         # It'd be faster to use self.data.itertuples or find a way to avoid yield_records, but that
         # needs larger changes in code calling this.
         for idx, row in self.data.iterrows():
@@ -238,7 +236,7 @@ _EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
 
 @final
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
-class MultiRegionDataset(SaveableDatasetInterface):
+class MultiRegionDataset:
     """A set of timeseries and static values from any number of regions.
 
     While the data may be accessed directly in the attributes `timeseries`, `static` and `provenance` for
