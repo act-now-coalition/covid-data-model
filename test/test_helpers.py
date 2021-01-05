@@ -4,6 +4,7 @@ from typing import Any
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
 from typing import Union
 
 import more_itertools
@@ -14,6 +15,7 @@ from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
+from libs.datasets.timeseries import TagField
 from libs.pipeline import Region
 
 
@@ -23,14 +25,23 @@ DEFAULT_FIPS = "97222"
 DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
 
 
+# A Tuple of the type, a timestamp and tag content.
+AnnotationInTimeseriesLiteral = Tuple[timeseries.TagType, Union[pd.Timestamp, str], str]
+
+
 class TimeseriesLiteral(UserList):
     """Represents a timeseries literal, a sequence of floats and provenance string."""
 
     def __init__(
-        self, ts_list, *, provenance: str = "",
+        self,
+        ts_list,
+        *,
+        provenance: str = "",
+        annotation: Sequence[AnnotationInTimeseriesLiteral] = (),
     ):
         super().__init__(ts_list)
         self.provenance = provenance
+        self.annotation = annotation
 
 
 def build_dataset(
@@ -74,22 +85,24 @@ def build_dataset(
         new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
         dataset = dataclasses.replace(dataset, timeseries=new_timeseries)
 
-    loc_var_provenance = {
-        key: ts_lit.provenance
-        for key, ts_lit in loc_var_seq.items()
-        if isinstance(ts_lit, TimeseriesLiteral)
-    }
-    if loc_var_provenance:
-        provenance_index = pd.MultiIndex.from_tuples(
-            loc_var_provenance.keys(), names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    tags_to_concat = []
+    for (loc_id, var), ts_literal in loc_var_seq.items():
+        if not isinstance(ts_literal, TimeseriesLiteral):
+            continue
+
+        records = list(ts_literal.annotation)
+        if ts_literal.provenance:
+            records.append((timeseries.TagType.PROVENANCE, pd.NaT, ts_literal.provenance))
+        df = pd.DataFrame.from_records(
+            records, columns=[TagField.TYPE, TagField.DATE, TagField.CONTENT]
         )
-        provenance_series = pd.Series(
-            list(loc_var_provenance.values()),
-            dtype="str",
-            index=provenance_index,
-            name=PdFields.PROVENANCE,
-        )
-        dataset = dataset.add_provenance_series(provenance_series)
+        df[TagField.DATE] = pd.to_datetime(df[TagField.DATE])
+        df[TagField.LOCATION_ID] = loc_id
+        df[TagField.VARIABLE] = var
+        tags_to_concat.append(df)
+
+    if tags_to_concat:
+        dataset = dataset.append_tag_df(pd.concat(tags_to_concat))
 
     return dataset
 

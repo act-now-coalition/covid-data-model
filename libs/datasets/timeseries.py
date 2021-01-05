@@ -577,6 +577,14 @@ class MultiRegionDataset:
         tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
+    def append_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new dataset with additional_tag_df appended."""
+        if additional_tag_df.empty:
+            return self
+        additional_series = additional_tag_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
+        combined_tag = pd.concat([self.tag, additional_series]).sort_index()
+        return dataclasses.replace(self, tag=combined_tag)
+
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
             ts_df = self.timeseries.xs(
@@ -1332,7 +1340,12 @@ class TailFilter:
         timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
 
         # TODO(tom): append annotations to dataset instead of returning tail_filter.
-        return tail_filter, dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
+        return (
+            tail_filter,
+            dataclasses.replace(dataset, timeseries=timeseries_wide_variables).append_tag_df(
+                tail_filter.annotations_as_dataframe()
+            ),
+        )
 
     def annotations_as_dataframe(self):
         return pd.DataFrame(self.annotations)

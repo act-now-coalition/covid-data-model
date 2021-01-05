@@ -298,6 +298,7 @@ def assert_dataset_like(
     drop_na_latest=False,
     drop_na_dates=False,
     check_less_precise=False,
+    compare_tags=True,
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
     ts1 = _timeseries_sorted_by_location_date(
@@ -321,6 +322,11 @@ def assert_dataset_like(
         pd.testing.assert_series_equal(
             ds1.provenance, ds2.provenance, check_less_precise=check_less_precise
         )
+
+    if compare_tags:
+        tag1 = ds1.tag.astype("string")
+        tag2 = ds2.tag.astype("string")
+        pd.testing.assert_series_equal(tag1, tag2)
 
 
 def test_append_regions():
@@ -971,7 +977,7 @@ def test_tail_filter_stalled_timeseries():
     ds_expected = test_helpers.build_default_region_dataset(
         {CommonFields.NEW_CASES: values_increasing}
     )
-    assert_dataset_like(ds_out, ds_expected)
+    assert_dataset_like(ds_out, ds_expected, compare_tags=False)
 
     # Try again with one day less, not enough for the filter so it returns the data unmodified.
     ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values_stalled[:-1]})
@@ -1016,8 +1022,7 @@ def test_tail_filter_two_series():
         {CommonFields.POSITIVE_TESTS: pos_tests, CommonFields.TOTAL_TESTS: tot_tests}
     )
     _assert_tail_filter_counts(tail_filter, truncated=2)
-    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
-    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True, compare_tags=False)
 
 
 def test_tail_filter_diff_goes_negative():
@@ -1030,8 +1035,7 @@ def test_tail_filter_diff_goes_negative():
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
     ds_expected = test_helpers.build_default_region_dataset({CommonFields.CASES: values[:-1]})
     _assert_tail_filter_counts(tail_filter, truncated=1)
-    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
-    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True, compare_tags=False)
 
 
 def test_tail_filter_zero_diff():
@@ -1087,8 +1091,7 @@ def test_tail_filter_long_stall(stall_count: int, annotation_type: TagType):
     elif annotation_type is TagType.CUMULATIVE_LONG_TAIL_TRUNCATED:
         _assert_tail_filter_counts(tail_filter, long_truncated=1)
 
-    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
-    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+    assert_dataset_like(ds_out, ds_expected, drop_na_dates=True, compare_tags=False)
 
 
 def test_timeseries_empty_timeseries_and_static():
