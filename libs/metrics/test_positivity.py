@@ -28,10 +28,14 @@ _log = structlog.get_logger()
 @final
 @dataclasses.dataclass(frozen=True)
 class MethodOutput:
-    """The values returned by Method.caluclate."""
+    """The values returned by Method.caluclate.
+
+    In the grand glorious future we'll have a more generic way to represent multiple datasets and
+    can remove this class.
+    """
 
     # A dataset containing all computed outputs. This is used for debugging.
-    all: MultiRegionDataset
+    all_output: MultiRegionDataset
     # A dataset containing only data considered recent according to the parameters of the method.
     recent: MultiRegionDataset
 
@@ -56,7 +60,7 @@ class Method(ABC):
 
     @abstractmethod
     def calculate(
-        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date
+        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
         """Calculate a DataFrame with LOCATION_ID index and DATE columns.
 
@@ -70,14 +74,18 @@ class Method(ABC):
         """
         pass
 
-    def _filter_recent(self, all: MultiRegionDataset, most_recent_date) -> MethodOutput:
+    def _remove_stale_regions(
+        self, all_output: MultiRegionDataset, most_recent_date: pd.Timestamp
+    ) -> MethodOutput:
         """Filters the output for all regions, returning output for all regions and only those
         with recent data."""
         assert self.recent_days >= 1
         # The oldest date that is considered recent/not-stale. If recent_days is 1 then this is
         # the most recent day in the input.
         recent_date_cutoff = most_recent_date + pd.to_timedelta(1 - self.recent_days, "D")
-        return MethodOutput(all=all, recent=all.drop_stale_timeseries(recent_date_cutoff))
+        return MethodOutput(
+            all_output=all_output, recent=all_output.drop_stale_timeseries(recent_date_cutoff)
+        )
 
 
 def _append_variable_index_level(df: Union[pd.DataFrame, pd.Series], field_name: FieldName) -> None:
@@ -105,6 +113,8 @@ def _make_output_dataset(
         default_provenance: value to put in provenance when no other value is available
         wide_date_df: the timeseries output, copied to the returned dataset
         output_metric: wide_date_df is copied to this metric/column in the returned dataset
+        source_columns: columns that were a source for the output, used to produce the provenance
+          content
     """
     assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
     # Drop all-NA timeseries now, as done in from_timeseries_wide_dates_df. This makes sure
@@ -170,7 +180,7 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
         return {self._numerator, self._denominator}
 
     def calculate(
-        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date
+        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
         delta_df = (
             dataset.timeseries_wide_dates()
@@ -184,10 +194,10 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
         # region/state and date.
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
 
-        return self._filter_recent(
-            _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY),
-            most_recent_date,
+        all_output = _make_output_dataset(
+            dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY
         )
+        return self._remove_stale_regions(all_output, most_recent_date)
 
 
 @dataclasses.dataclass
@@ -215,7 +225,7 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
         return {self._column}
 
     def calculate(
-        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date
+        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
         df = dataset.timeseries_wide_dates().reorder_levels(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID]
@@ -228,25 +238,25 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
         # Optional optimization: The following likely adds the variable/field/column name back in
         # to the index which was just taken out. Consider skipping reindexing.
 
-        return self._filter_recent(
-            _make_output_dataset(dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY),
-            most_recent_date,
+        all_output = _make_output_dataset(
+            dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY
         )
+        return self._remove_stale_regions(all_output, most_recent_date)
 
 
-class OldMethod(Method):
+class SmoothedTests(Method):
     """A method of calculating test positivity using smoothed POSITIVE_TEST and NEGATIVE_TESTS."""
 
     @property
     def name(self) -> timeseries.DatasetName:
-        return timeseries.DatasetName("OldMethod")
+        return timeseries.DatasetName("SmoothedTests")
 
     @property
     def columns(self) -> Set[FieldName]:
         return {CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS}
 
     def calculate(
-        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date
+        self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
 
         positivity_time_series = {}
@@ -254,7 +264,7 @@ class OldMethod(Method):
         # positivity when the input timeseries (POSITIVE_TESTS and NEGATIVE_TESTS) are recent. The
         # other subclasses of `Method` filter based on the most recent real value in the output
         # timeseries.
-        recent_region = set()
+        recent_regions = []
         for region, regional_data in dataset.iter_one_regions():
             data = regional_data.date_indexed
             positive_negative_recent = self._has_recent_data(
@@ -264,7 +274,7 @@ class OldMethod(Method):
             if not series.empty:
                 positivity_time_series[region.location_id] = series
                 if positive_negative_recent:
-                    recent_region.add(region)
+                    recent_regions.append(region)
 
         # Convert dict[location_id, Series] to rows with key as index and value as the row data.
         # See https://stackoverflow.com/a/21005134
@@ -273,7 +283,7 @@ class OldMethod(Method):
         )
 
         # Make a dataset with TEST_POSITIVITY for every region where the calculation finished.
-        ds_all = _make_output_dataset(
+        all_output = _make_output_dataset(
             dataset,
             self.name,
             wide_date_df,
@@ -281,8 +291,8 @@ class OldMethod(Method):
             source_columns=[CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS],
         )
         # Make a dataset with the subset of regions having recent input timeseries.
-        ds_recent = ds_all.get_regions_subset(recent_region)
-        return MethodOutput(all=ds_all, recent=ds_recent)
+        ds_recent = all_output.get_regions_subset(recent_regions)
+        return MethodOutput(all_output=all_output, recent=ds_recent)
 
     def _has_recent_data(self, series: pd.Series) -> bool:
         """Returns True iff series has recent data relative to today().
@@ -294,7 +304,7 @@ class OldMethod(Method):
 
 
 TEST_POSITIVITY_METHODS = (
-    OldMethod(recent_days=10),
+    SmoothedTests(recent_days=10),
     # HACK: For now we assume TEST_POSITIVITY_7D came from CDC numbers while
     # TEST_POSITIVITY_14D came from CMS.
     PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
@@ -367,17 +377,18 @@ class AllMethods:
         calculated_dataset_recent_map = {
             name: method_output.recent for name, method_output in calculated_dataset_map.items()
         }
-        # HACK: If OldMethod is in the output map (which has Method.recent) then add it again at
-        # the end of the map using Method.all. Remember that dict entries remain in the order
-        # inserted. This makes OldMethod the final fallback for a location if no other Method has
-        # a timeseries for it.
+        # HACK: If SmoothedTests is in calculated_dataset_recent_map (that is the
+        # MethodOutput.recent returned by `calculate`) then add it again at the end of the map with
+        # the Method.all_output. Remember that dict entries remain in the order inserted. This makes
+        # SmoothedTests the final fallback for a location if no other Method has a timeseries for
+        # it.
         old_method_output: Optional[MethodOutput] = calculated_dataset_map.get(
-            timeseries.DatasetName("OldMethod")
+            timeseries.DatasetName("SmoothedTests")
         )
-        if old_method_output is not None:
+        if old_method_output:
             calculated_dataset_recent_map[
-                timeseries.DatasetName("OldMethodAll")
-            ] = old_method_output.all
+                timeseries.DatasetName("SmoothedTestsAll")
+            ] = old_method_output.all_output
 
         # Make a dataset object with one metric, containing for each region the timeseries
         # from the highest priority dataset that has recent data.
@@ -389,7 +400,10 @@ class AllMethods:
         # For debugging create a DataFrame with the calculated timeseries of all methods, including
         # timeseries that are not recent.
         all_datasets_df = pd.concat(
-            {name: ds.all.timeseries_wide_dates() for name, ds in calculated_dataset_map.items()},
+            {
+                name: ds.all_output.timeseries_wide_dates()
+                for name, ds in calculated_dataset_map.items()
+            },
             names=[PdFields.DATASET, CommonFields.LOCATION_ID, PdFields.VARIABLE],
         )
         all_methods = (

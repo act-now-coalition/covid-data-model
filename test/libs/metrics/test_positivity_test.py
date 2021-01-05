@@ -366,7 +366,7 @@ def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
         # positive_tests and negative_tests are used
         expected_metrics = {
             CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-                [pd.NA, 0.0909, pd.NA, pd.NA, pd.NA, pd.NA], provenance="OldMethod"
+                [pd.NA, 0.0909, pd.NA, pd.NA, pd.NA, pd.NA], provenance="SmoothedTests"
             )
         }
         expected = top_level_metrics_test.build_dataset(
