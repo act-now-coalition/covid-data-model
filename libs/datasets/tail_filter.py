@@ -8,8 +8,8 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
 
-AnnotationType = timeseries.AnnotationType
-AnnotationField = timeseries.AnnotationField
+TagType = timeseries.TagType
+TagField = timeseries.TagField
 
 
 @dataclasses.dataclass
@@ -30,7 +30,7 @@ class TailFilter:
 
     # Possibly drop series_in.iat[-1] to series_in.iat[-14] (inclusive).
     FILTER_DATES_OLDEST: ClassVar[int] = -14
-    # If this many real values are dropped use the more severe AnnotationType.
+    # If this many real values are dropped use the more severe TagType.
     COUNT_OBSERVATION_LONG: ClassVar[int] = 8
 
     @staticmethod
@@ -50,6 +50,7 @@ class TailFilter:
         merged = pd.concat([not_filtered, filtered])
         timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
 
+        # TODO(tom): append annotations to dataset instead of returning tail_filter.
         return tail_filter, dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
 
     def annotations_as_dataframe(self):
@@ -101,22 +102,24 @@ class TailFilter:
             # series_in.iat[truncate_at] is the first value *not* returned
             assert TailFilter.FILTER_DATES_OLDEST <= truncate_at <= -1
             if count_observation_diff_under_threshold < TailFilter.COUNT_OBSERVATION_LONG:
-                annotation_type = AnnotationType.CUMULATIVE_TAIL_TRUNCATED
+                annotation_type = TagType.CUMULATIVE_TAIL_TRUNCATED
                 self.truncated += 1
             else:
-                annotation_type = AnnotationType.CUMULATIVE_LONG_TAIL_TRUNCATED
+                annotation_type = TagType.CUMULATIVE_LONG_TAIL_TRUNCATED
                 self.long_truncated += 1
             # Currently one annotation is created per series. Maybe it makes more sense to add
             # one for each dropped observation / real value?
             # https://github.com/covid-projections/covid-data-model/pull/855#issuecomment-747698288
             self.annotations.append(
                 {
-                    AnnotationField.LOCATION_ID: series_in.name[0],
-                    AnnotationField.VARIABLE: series_in.name[1],
-                    AnnotationField.TYPE: annotation_type,
-                    AnnotationField.COMMENT: f"Removed {count_observation_diff_under_threshold} observations that look "
+                    TagField.LOCATION_ID: series_in.name[0],
+                    TagField.VARIABLE: series_in.name[1],
+                    TagField.TYPE: annotation_type,
+                    # TODO(tom): Having a formatted string deep in our pipeline is ugly. See TODO
+                    #  in the TagField class.
+                    TagField.CONTENT: f"Removed {count_observation_diff_under_threshold} observations that look "
                     f"suspicious compared to mean diff of {mean:.1f} a few weeks ago.",
-                    AnnotationField.DATE: series_in.index[truncate_at - 1],
+                    TagField.DATE: series_in.index[truncate_at - 1],
                 }
             )
             # Using integer position indexing where the upper bound is exclusive, like regular
