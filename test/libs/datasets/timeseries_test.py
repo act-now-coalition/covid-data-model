@@ -582,6 +582,61 @@ def test_timeseries_wide_dates_empty():
     assert timeseries_wide.empty
 
 
+def test_write_read_wide_dates_csv_compare_literal(tmpdir):
+    # The fixture passes in a py.path, which is not recommended for new projects.
+    tmpdir = pathlib.Path(tmpdir)
+    csv_path = tmpdir / "somefile.csv"
+    wide_dates_path = tmpdir / "somefile-wide-dates.csv"
+
+    region_as = Region.from_state("AS")
+    region_sf = Region.from_fips("06075")
+    metrics_as = {
+        CommonFields.ICU_BEDS: TimeseriesLiteral([0, 2, 4], provenance="pt_src1"),
+        CommonFields.CASES: [100, 200, 300],
+    }
+    metrics_sf = {
+        CommonFields.DEATHS: TimeseriesLiteral([1, 2, None], provenance="pt_src2"),
+        CommonFields.CASES: [None, 210, 310],
+    }
+    dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_sf: metrics_sf})
+
+    dataset_in.write_wide_dates_and_static_csv(csv_path)
+
+    # Compare written file with a string literal so a test fails if something changes in how the
+    # file is written. The literal contains spaces to align the columns in the source.
+    assert wide_dates_path.read_text() == (
+        "                  location_id,variable,provenance,2020-04-03,2020-04-02,2020-04-01\n"
+        "           iso1:us#iso2:us-as,   cases,          ,       300,       200,       100\n"
+        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         4,         2,         0\n"
+        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,       310,       210,          \n"
+        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,          ,         2,         1\n"
+    ).replace(" ", "")
+
+    dataset_read = timeseries.MultiRegionDataset.read_wide_dates_and_static_csv(csv_path)
+
+    assert_dataset_like(dataset_read, dataset_in)
+
+
+def test_write_read_wide_dates_csv_with_annotation(tmpdir):
+    # The fixture passes in a py.path, which is not recommended for new projects.
+    tmpdir = pathlib.Path(tmpdir)
+    csv_path = tmpdir / "somefile.csv"
+
+    region = Region.from_state("AS")
+    metrics = {
+        CommonFields.ICU_BEDS: TimeseriesLiteral(
+            [0, 2, 4], annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-01", "taggy")]
+        ),
+        CommonFields.CASES: [100, 200, 300],
+    }
+    dataset_in = test_helpers.build_dataset({region: metrics})
+
+    dataset_in.write_wide_dates_and_static_csv(csv_path)
+    dataset_read = timeseries.MultiRegionDataset.read_wide_dates_and_static_csv(csv_path)
+
+    assert_dataset_like(dataset_read, dataset_in)
+
+
 def test_timeseries_drop_stale_timeseries_entire_region():
     ds_in = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1461,11 +1516,11 @@ def test_timeseries_rows():
     rows = ts.timeseries_rows()
     expected = pd.read_csv(
         io.StringIO(
-            "location_id,variable,provenance,2020-04-01,2020-04-02\n"
-            "iso1:us#iso2:us-az,m1,,8,12\n"
-            "iso1:us#iso2:us-az,m2,,20,40\n"
+            "location_id,variable,provenance,2020-04-02,2020-04-01\n"
+            "iso1:us#iso2:us-az,m1,,12,8\n"
+            "iso1:us#iso2:us-az,m2,,40,20\n"
             "iso1:us#iso2:us-tx,m1,,4,4\n"
-            "iso1:us#iso2:us-tx,m2,,2,4\n"
+            "iso1:us#iso2:us-tx,m2,,4,2\n"
         )
     ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)

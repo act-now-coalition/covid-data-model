@@ -28,6 +28,7 @@ import numpy as np
 import structlog
 from covidactnow.datapublic import common_df
 from libs import pipeline
+from libs import wide_dates_df
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import DatasetType
@@ -318,9 +319,11 @@ class MultiRegionDataset:
     @cached_property
     def provenance(self) -> pd.DataFrame:
         # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and VARIABLE.
-        provenance = self.tag.loc[
-            self.tag.index.get_level_values(TagField.TYPE) == TagType.PROVENANCE
-        ].droplevel([TagField.TYPE, TagField.DATE])
+        provenance = (
+            self.tag.loc[self.tag.index.get_level_values(TagField.TYPE) == TagType.PROVENANCE]
+            .droplevel([TagField.TYPE, TagField.DATE])
+            .rename(PdFields.PROVENANCE)
+        )
         return provenance
 
     @cached_property
@@ -506,6 +509,21 @@ class MultiRegionDataset:
             if provenance_path.exists():
                 dataset = dataset.add_provenance_csv(provenance_path)
         return dataset
+
+    @staticmethod
+    def read_wide_dates_and_static_csv(csv_path: pathlib.Path) -> "MultiRegionDataset":
+        wide_dates_path = str(csv_path).replace(".csv", "-wide-dates.csv")
+        # static_path = str(csv_path).replace(".csv", "-static.csv")
+        wide_dates_df = pd.read_csv(wide_dates_path, low_memory=False).set_index(
+            [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        )
+        provenance_series = wide_dates_df[PdFields.PROVENANCE].dropna()
+        wide_dates_df = wide_dates_df.drop(columns=[PdFields.PROVENANCE])
+        wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
+        wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
+        return MultiRegionDataset.from_timeseries_wide_dates_df(
+            wide_dates_df
+        ).add_provenance_series(provenance_series)
 
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -699,9 +717,11 @@ class MultiRegionDataset:
         wide_dates = self.timeseries_wide_dates()
         # Format as a string here because to_csv includes a full timestamp.
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
+        # When I look at the CSV I'm usually looking for the most recent values so reverse the
+        # dates to put the most recent on the left.
+        wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
-        wide_dates.insert(0, PdFields.PROVENANCE, self.provenance)
-        return wide_dates
+        return pd.concat([self.provenance, wide_dates], axis=1)
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
@@ -725,7 +745,9 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask]
         return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
 
-    def to_csv(self, path: pathlib.Path, write_timeseries_latest_values=False):
+    def to_csv(
+        self, path: pathlib.Path, write_timeseries_latest_values=False, write_wide_dates=False
+    ):
         """Persists timeseries to CSV.
 
         Args:
@@ -752,6 +774,20 @@ class MultiRegionDataset:
         if not self.provenance.empty:
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
+        if write_wide_dates:
+            self.write_wide_dates_and_static_csv(path)
+
+    def write_wide_dates_and_static_csv(self, csv_path: pathlib.Path):
+        """Write ...-wide-dates.csv and ...-static.csv"""
+        wide_dates_path = str(csv_path).replace(".csv", "-wide-dates.csv")
+        wide_df = self.timeseries_rows()
+        wide_df.to_csv(wide_dates_path, index=True, float_format="%.5g")
+
+        static_path = str(csv_path).replace(".csv", "-static.csv")
+        static_sorted = common_df.index_and_sort(
+            self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
+        )
+        static_sorted.to_csv(static_path)
 
     def drop_column_if_present(self, column: str) -> "MultiRegionDataset":
         """Drops the specified column from the timeseries if it exists"""
