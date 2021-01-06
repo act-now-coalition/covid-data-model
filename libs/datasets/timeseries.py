@@ -478,11 +478,9 @@ class MultiRegionDataset:
         new_index_df[TagField.DATE] = pd.NaT
         tag_additions = provenance.copy()
         tag_additions.index = pd.MultiIndex.from_frame(new_index_df)
-        # TODO(tom): When there may be non-provenance tags also do:
-        #  tag_additions = pd.concat([self.tag, tag_additions])
         # Make a sorted series. The order doesn't matter and sorting makes the order depend only on
         # what is represented, not the order it appears in the input.
-        tag = tag_additions.sort_index().rename(TagField.CONTENT)
+        tag = pd.concat([self.tag, tag_additions]).sort_index().rename(TagField.CONTENT)
         return dataclasses.replace(self, tag=tag)
 
     @staticmethod
@@ -566,7 +564,10 @@ class MultiRegionDataset:
             .empty
         )
         # Make sure the date column contains only timestamps and NaT
-        pd.to_datetime(self.tag.index.get_level_values(TagField.DATE))
+        assert (
+            self.tag.empty
+            or self.tag.index.levels[TAG_INDEX_FIELDS.index(TagField.DATE)].is_all_dates
+        )
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         common_location_id = self.static.index.intersection(other.static.index)
@@ -1140,6 +1141,7 @@ def aggregate_regions(
             CommonFields.LOCATION_ID
         ).map(pipeline.location_id_to_fips)
 
+    # TODO(tom): Copy tags (annotations and provenance) to the return value.
     return MultiRegionDataset(timeseries=timeseries_agg, static=static_agg)
 
 
@@ -1339,7 +1341,8 @@ class TailFilter:
         merged = pd.concat([not_filtered, filtered])
         timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
 
-        # TODO(tom): append annotations to dataset instead of returning tail_filter.
+        # TODO(tom): Find a generic way to return the counts in tail_filter and stop returning the
+        #  object itself.
         return (
             tail_filter,
             dataclasses.replace(dataset, timeseries=timeseries_wide_variables).append_tag_df(

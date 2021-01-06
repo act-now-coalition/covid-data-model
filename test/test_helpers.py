@@ -1,4 +1,5 @@
 import dataclasses
+from typing_extensions import final
 from collections import UserList
 from typing import Any
 from typing import Mapping
@@ -25,7 +26,7 @@ DEFAULT_FIPS = "97222"
 DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
 
 
-# A Tuple of the type, a timestamp and tag content.
+# A Tuple of: the type, a timestamp and tag content.
 AnnotationInTimeseriesLiteral = Tuple[timeseries.TagType, Union[pd.Timestamp, str], str]
 
 
@@ -42,6 +43,32 @@ class TimeseriesLiteral(UserList):
         super().__init__(ts_list)
         self.provenance = provenance
         self.annotation = annotation
+
+
+@final
+@dataclasses.dataclass(frozen=True)
+class TagLiteral:
+    """Represents a tag, which could be provenance or an annotation."""
+
+    region: Region
+    variable: FieldName
+    date: Union[pd.Timestamp, str]
+    type: timeseries.TagType
+    content: str
+
+    def to_dict(self) -> Mapping[TagField, Any]:
+        """Returns a Mapping suitable for making a tag DataFrame."""
+        return {
+            TagField.LOCATION_ID: self.region.location_id,
+            TagField.VARIABLE: self.variable,
+            TagField.DATE: pd.to_datetime(self.date),
+            TagField.TYPE: self.type,
+            TagField.CONTENT: self.content,
+        }
+
+    def to_annotation_tuple(self) -> AnnotationInTimeseriesLiteral:
+        """Returns a tuple for the TimeseriesLiteral.annotation attribute."""
+        return self.type, self.date, self.content
 
 
 def build_dataset(

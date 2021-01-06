@@ -15,13 +15,14 @@ from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
-from libs.datasets.timeseries import TagField
 from libs.datasets.timeseries import TagType
 from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from test import test_helpers
 from test.dataset_utils_test import read_csv_and_index_fips
 from test.dataset_utils_test import read_csv_and_index_fips_date
+from test.test_helpers import TimeseriesLiteral
+
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
@@ -644,6 +645,31 @@ def test_timeseries_drop_stale_timeseries_one_metric():
     assert_dataset_like(ds_out, ds_expected)
 
 
+def test_timeseries_drop_stale_timeseries_with_tag():
+    region = Region.from_state("TX")
+    values_recent = [100, 200, 300, 400]
+    values_stale = [100, 200, None, None]
+    ts_recent = TimeseriesLiteral(
+        values_recent, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
+    )
+    ts_stale = TimeseriesLiteral(
+        values_stale, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
+    )
+
+    dataset_in = test_helpers.build_dataset(
+        {region: {CommonFields.CASES: ts_recent, CommonFields.DEATHS: ts_stale}}
+    )
+
+    dataset_out = dataset_in.drop_stale_timeseries(pd.to_datetime("2020-04-03"))
+
+    assert len(dataset_out.tag) == 1
+    # drop_stale_timeseries preserves the empty DEATHS column so add it to dataset_expected
+    dataset_expected = test_helpers.build_dataset(
+        {region: {CommonFields.CASES: ts_recent}}, timeseries_columns=[CommonFields.DEATHS]
+    )
+    assert_dataset_like(dataset_out, dataset_expected)
+
+
 def test_timeseries_latest_values():
     dataset = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -901,6 +927,85 @@ def test_merge_provenance():
         )
 
 
+def test_append_tags():
+    region_sf = Region.from_fips("06075")
+    cases_values = [100, 200, 300, 400]
+    metrics_sf = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], provenance="pt_src2"),
+        CommonFields.CASES: cases_values,
+    }
+    dataset_in = test_helpers.build_dataset({region_sf: metrics_sf})
+    tag_sf_cases = test_helpers.TagLiteral(
+        region_sf, CommonFields.CASES, "2020-04-02", TagType.CUMULATIVE_TAIL_TRUNCATED, "Truncate"
+    )
+    tag_df = pd.DataFrame.from_records([tag_sf_cases.to_dict()])
+    dataset_out = dataset_in.append_tag_df(tag_df)
+    metrics_sf[CommonFields.CASES] = TimeseriesLiteral(
+        cases_values, annotation=[tag_sf_cases.to_annotation_tuple()]
+    )
+    dataset_expected = test_helpers.build_dataset({region_sf: metrics_sf})
+
+    assert_dataset_like(dataset_out, dataset_expected)
+
+
+def test_add_provenance_all_with_tags():
+    """Checks that add_provenance_all (and add_provenance_series that it calls) preserves tags."""
+    region = Region.from_state("TX")
+    cases_values = [100, 200, 300, 400]
+    cases_tag = test_helpers.TagLiteral(
+        region, CommonFields.CASES, "2020-04-02", TagType.CUMULATIVE_TAIL_TRUNCATED, "Truncate"
+    )
+    timeseries = TimeseriesLiteral(cases_values, annotation=[cases_tag.to_annotation_tuple()])
+    dataset_in = test_helpers.build_dataset({region: {CommonFields.CASES: timeseries}})
+
+    dataset_out = dataset_in.add_provenance_all("prov_prov")
+
+    timeseries.provenance = "prov_prov"
+    dataset_expected = test_helpers.build_dataset({region: {CommonFields.CASES: timeseries}})
+
+    assert_dataset_like(dataset_out, dataset_expected)
+
+
+def test_join_columns_with_tags():
+    """Checks that join_columns preserves tags."""
+    region = Region.from_state("TX")
+    cases_values = [100, 200, 300, 400]
+    ts_lit = TimeseriesLiteral(
+        cases_values, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
+    )
+    dataset_cases = test_helpers.build_dataset({region: {CommonFields.CASES: ts_lit}})
+    dataset_deaths = test_helpers.build_dataset({region: {CommonFields.DEATHS: ts_lit}})
+
+    dataset_out = dataset_cases.join_columns(dataset_deaths)
+
+    assert len(dataset_out.tag) == 2
+    # The following checks that the tags in `ts_lit` have been preserved.
+    dataset_expected = test_helpers.build_dataset(
+        {region: {CommonFields.CASES: ts_lit, CommonFields.DEATHS: ts_lit}}
+    )
+
+    assert_dataset_like(dataset_out, dataset_expected)
+
+
+def test_drop_column_with_tags():
+    """Checks that join_columns preserves tags."""
+    region = Region.from_state("TX")
+    cases_values = [100, 200, 300, 400]
+    ts_lit = TimeseriesLiteral(
+        cases_values, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
+    )
+
+    dataset_in = test_helpers.build_dataset(
+        {region: {CommonFields.CASES: ts_lit, CommonFields.DEATHS: ts_lit}}
+    )
+
+    dataset_out = dataset_in.drop_column_if_present(CommonFields.DEATHS)
+
+    assert len(dataset_out.tag) == 1
+    dataset_expected = test_helpers.build_dataset({region: {CommonFields.CASES: ts_lit}})
+    assert_dataset_like(dataset_out, dataset_expected)
+
+
 def test_remove_outliers():
     values = [10.0] * 7 + [1000.0]
     dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
@@ -964,26 +1069,23 @@ def test_tail_filter_stalled_timeseries():
     ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values_stalled})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
     _assert_tail_filter_counts(tail_filter, truncated=1)
-    assert tail_filter.annotations == [
-        {
-            TagField.TYPE: TagType.CUMULATIVE_TAIL_TRUNCATED,
-            TagField.VARIABLE: CommonFields.NEW_CASES,
-            TagField.LOCATION_ID: "iso1:us#fips:97222",
-            TagField.DATE: pd.to_datetime("2020-04-24"),
-            TagField.CONTENT: "Removed 4 observations that look suspicious compared to "
-            "mean diff of 1000.0 a few weeks ago.",
-        }
-    ]
-    ds_expected = test_helpers.build_default_region_dataset(
-        {CommonFields.NEW_CASES: values_increasing}
+    tag_content = (
+        "Removed 4 observations that look suspicious compared to mean diff of 1000.0 a few weeks "
+        "ago."
     )
-    assert_dataset_like(ds_out, ds_expected, compare_tags=False)
+    truncated_timeseries = test_helpers.TimeseriesLiteral(
+        values_increasing,
+        annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-24", tag_content)],
+    )
+    ds_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.NEW_CASES: truncated_timeseries}
+    )
+    assert_dataset_like(ds_out, ds_expected)
 
     # Try again with one day less, not enough for the filter so it returns the data unmodified.
     ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values_stalled[:-1]})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
     _assert_tail_filter_counts(tail_filter, skipped_too_short=1)
-    assert tail_filter.annotations == []
     assert_dataset_like(ds_out, ds_in)
 
 
@@ -996,7 +1098,6 @@ def test_tail_filter_mean_nan():
     ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.NEW_CASES])
     _assert_tail_filter_counts(tail_filter, skipped_na_mean=1)
-    assert tail_filter.annotations == []
     assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
 
 
@@ -1046,7 +1147,6 @@ def test_tail_filter_zero_diff():
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
     _assert_tail_filter_counts(tail_filter, all_good=1)
     assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
-    assert tail_filter.annotations == []
 
 
 @pytest.mark.parametrize("stall_count", [0, 1, 2, 4])
@@ -1059,7 +1159,6 @@ def test_tail_filter_small_diff(stall_count: int):
     tail_filter, ds_out = timeseries.TailFilter.run(ds_in, [CommonFields.CASES])
     _assert_tail_filter_counts(tail_filter, all_good=1)
     assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
-    assert tail_filter.annotations == []
 
 
 @pytest.mark.parametrize(
