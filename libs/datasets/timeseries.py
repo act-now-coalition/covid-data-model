@@ -718,7 +718,8 @@ class MultiRegionDataset:
     def timeseries_rows(self) -> pd.DataFrame:
         """Returns a DataFrame containing timeseries values and tag, suitable for writing
         to a CSV."""
-        wide_dates = self.timeseries_wide_dates()
+        # Make a copy to avoid modifying the cached DataFrame
+        wide_dates = self.timeseries_wide_dates().copy()
         # Format as a string here because to_csv includes a full timestamp.
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
         # When I look at the CSV I'm usually looking for the most recent values so reverse the
@@ -751,7 +752,7 @@ class MultiRegionDataset:
         return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
 
     def to_csv(
-        self, path: pathlib.Path, write_timeseries_latest_values=False, write_wide_dates=False
+        self, path: pathlib.Path, write_timeseries_latest_values=False, write_wide_dates=True
     ):
         """Persists timeseries to CSV.
 
