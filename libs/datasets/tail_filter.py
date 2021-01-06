@@ -14,7 +14,7 @@ TagField = timeseries.TagField
 
 @dataclasses.dataclass
 class TailFilter:
-    annotations: List[Mapping[str, Any]] = dataclasses.field(default_factory=list)
+    _annotations: List[Mapping[str, Any]] = dataclasses.field(default_factory=list)
 
     # Counts that track what the filter has done.
     skipped_too_short: int = 0
@@ -50,11 +50,14 @@ class TailFilter:
         merged = pd.concat([not_filtered, filtered])
         timeseries_wide_variables = merged.stack().unstack(PdFields.VARIABLE).sort_index()
 
-        # TODO(tom): append annotations to dataset instead of returning tail_filter.
-        return tail_filter, dataclasses.replace(dataset, timeseries=timeseries_wide_variables)
-
-    def annotations_as_dataframe(self):
-        return pd.DataFrame(self.annotations)
+        # TODO(tom): Find a generic way to return the counts in tail_filter and stop returning the
+        #  object itself.
+        return (
+            tail_filter,
+            dataclasses.replace(dataset, timeseries=timeseries_wide_variables).append_tag_df(
+                pd.DataFrame(tail_filter._annotations)
+            ),
+        )
 
     def _filter_one_series(self, series_in: pd.Series) -> pd.Series:
         """Filters one timeseries of cumulative values. This is a method so self can be used to
@@ -110,7 +113,7 @@ class TailFilter:
             # Currently one annotation is created per series. Maybe it makes more sense to add
             # one for each dropped observation / real value?
             # https://github.com/covid-projections/covid-data-model/pull/855#issuecomment-747698288
-            self.annotations.append(
+            self._annotations.append(
                 {
                     TagField.LOCATION_ID: series_in.name[0],
                     TagField.VARIABLE: series_in.name[1],

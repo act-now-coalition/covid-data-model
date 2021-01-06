@@ -476,11 +476,9 @@ class MultiRegionDataset:
         new_index_df[TagField.DATE] = pd.NaT
         tag_additions = provenance.copy()
         tag_additions.index = pd.MultiIndex.from_frame(new_index_df)
-        # TODO(tom): When there may be non-provenance tags also do:
-        #  tag_additions = pd.concat([self.tag, tag_additions])
         # Make a sorted series. The order doesn't matter and sorting makes the order depend only on
         # what is represented, not the order it appears in the input.
-        tag = tag_additions.sort_index().rename(TagField.CONTENT)
+        tag = pd.concat([self.tag, tag_additions]).sort_index().rename(TagField.CONTENT)
         return dataclasses.replace(self, tag=tag)
 
     @staticmethod
@@ -564,7 +562,10 @@ class MultiRegionDataset:
             .empty
         )
         # Make sure the date column contains only timestamps and NaT
-        pd.to_datetime(self.tag.index.get_level_values(TagField.DATE))
+        assert (
+            self.tag.empty
+            or self.tag.index.levels[TAG_INDEX_FIELDS.index(TagField.DATE)].is_all_dates
+        )
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         common_location_id = self.static.index.intersection(other.static.index)
@@ -574,6 +575,14 @@ class MultiRegionDataset:
         static_df = pd.concat([self.static, other.static]).sort_index()
         tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+
+    def append_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new dataset with additional_tag_df appended."""
+        if additional_tag_df.empty:
+            return self
+        additional_series = additional_tag_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
+        combined_tag = pd.concat([self.tag, additional_series]).sort_index()
+        return dataclasses.replace(self, tag=combined_tag)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
@@ -783,6 +792,15 @@ class MultiRegionDataset:
 
     def get_county_name(self, *, region: pipeline.Region) -> str:
         return self.static.at[region.location_id, CommonFields.COUNTY]
+
+    def annotations_as_dataframe(self) -> pd.DataFrame:
+        """Returns tags with a real DATE value in a DataFrame.
+
+        TODO(tom): Currently the only callers of this function are writing annotations to disk.
+         MultiRegionDataset.timeseries_rows (and methods like it) to include annotations so the
+         code calling this method can be removed. Then delete this method.
+        """
+        return self.tag.loc[self.tag.index.get_level_values(TagField.DATE).notna()].reset_index()
 
 
 def _remove_padded_nans(df, columns):
@@ -1130,6 +1148,7 @@ def aggregate_regions(
             CommonFields.LOCATION_ID
         ).map(pipeline.location_id_to_fips)
 
+    # TODO(tom): Copy tags (annotations and provenance) to the return value.
     return MultiRegionDataset(timeseries=timeseries_agg, static=static_agg)
 
 

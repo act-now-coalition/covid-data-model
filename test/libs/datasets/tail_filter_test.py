@@ -1,9 +1,7 @@
 import pytest
-import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
 
-from libs.datasets.timeseries import TagField
 from libs.datasets.timeseries import TagType
 from libs.datasets.tail_filter import TailFilter
 
@@ -37,18 +35,16 @@ def test_tail_filter_stalled_timeseries():
     ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values_stalled})
     tail_filter, ds_out = TailFilter.run(ds_in, [CommonFields.NEW_CASES])
     _assert_tail_filter_counts(tail_filter, truncated=1)
-    assert tail_filter.annotations == [
-        {
-            TagField.TYPE: TagType.CUMULATIVE_TAIL_TRUNCATED,
-            TagField.VARIABLE: CommonFields.NEW_CASES,
-            TagField.LOCATION_ID: "iso1:us#fips:97222",
-            TagField.DATE: pd.to_datetime("2020-04-24"),
-            TagField.CONTENT: "Removed 4 observations that look suspicious compared to "
-            "mean diff of 1000.0 a few weeks ago.",
-        }
-    ]
+    tag_content = (
+        "Removed 4 observations that look suspicious compared to mean diff of 1000.0 a few weeks "
+        "ago."
+    )
+    truncated_timeseries = test_helpers.TimeseriesLiteral(
+        values_increasing,
+        annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-24", tag_content)],
+    )
     ds_expected = test_helpers.build_default_region_dataset(
-        {CommonFields.NEW_CASES: values_increasing}
+        {CommonFields.NEW_CASES: truncated_timeseries}
     )
     test_helpers.assert_dataset_like(ds_out, ds_expected)
 
@@ -56,7 +52,6 @@ def test_tail_filter_stalled_timeseries():
     ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values_stalled[:-1]})
     tail_filter, ds_out = TailFilter.run(ds_in, [CommonFields.NEW_CASES])
     _assert_tail_filter_counts(tail_filter, skipped_too_short=1)
-    assert tail_filter.annotations == []
     test_helpers.assert_dataset_like(ds_out, ds_in)
 
 
@@ -69,7 +64,6 @@ def test_tail_filter_mean_nan():
     ds_in = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
     tail_filter, ds_out = TailFilter.run(ds_in, [CommonFields.NEW_CASES])
     _assert_tail_filter_counts(tail_filter, skipped_na_mean=1)
-    assert tail_filter.annotations == []
     test_helpers.assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
 
 
@@ -95,8 +89,7 @@ def test_tail_filter_two_series():
         {CommonFields.POSITIVE_TESTS: pos_tests, CommonFields.TOTAL_TESTS: tot_tests}
     )
     _assert_tail_filter_counts(tail_filter, truncated=2)
-    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
-    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_dates=True, compare_tags=False)
 
 
 def test_tail_filter_diff_goes_negative():
@@ -109,8 +102,7 @@ def test_tail_filter_diff_goes_negative():
     tail_filter, ds_out = TailFilter.run(ds_in, [CommonFields.CASES])
     ds_expected = test_helpers.build_default_region_dataset({CommonFields.CASES: values[:-1]})
     _assert_tail_filter_counts(tail_filter, truncated=1)
-    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
-    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_dates=True, compare_tags=False)
 
 
 def test_tail_filter_zero_diff():
@@ -121,7 +113,6 @@ def test_tail_filter_zero_diff():
     tail_filter, ds_out = TailFilter.run(ds_in, [CommonFields.CASES])
     _assert_tail_filter_counts(tail_filter, all_good=1)
     test_helpers.assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
-    assert tail_filter.annotations == []
 
 
 @pytest.mark.parametrize("stall_count", [0, 1, 2, 4])
@@ -134,7 +125,6 @@ def test_tail_filter_small_diff(stall_count: int):
     tail_filter, ds_out = TailFilter.run(ds_in, [CommonFields.CASES])
     _assert_tail_filter_counts(tail_filter, all_good=1)
     test_helpers.assert_dataset_like(ds_out, ds_in, drop_na_dates=True)
-    assert tail_filter.annotations == []
 
 
 @pytest.mark.parametrize(
@@ -166,5 +156,4 @@ def test_tail_filter_long_stall(stall_count: int, annotation_type: TagType):
     elif annotation_type is TagType.CUMULATIVE_LONG_TAIL_TRUNCATED:
         _assert_tail_filter_counts(tail_filter, long_truncated=1)
 
-    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
-    # TODO(tom): check this... assert set(tail_filter.annotations) == { {} }
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_dates=True, compare_tags=False)
