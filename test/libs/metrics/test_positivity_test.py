@@ -296,7 +296,7 @@ def test_provenance():
     expected_positivity = test_helpers.build_dataset(
         {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
     )
-    test_helpers.test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
+    test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
 
 
 def test_default_positivity_methods():
