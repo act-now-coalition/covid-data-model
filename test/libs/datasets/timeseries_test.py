@@ -670,6 +670,30 @@ def test_timeseries_drop_stale_timeseries_with_tag():
     assert_dataset_like(dataset_out, dataset_expected)
 
 
+def test_append_region_and_get_regions_subset_with_tag():
+    region_tx = Region.from_state("TX")
+    region_sf = Region.from_fips("06075")
+    values = [100, 200, 300, 400]
+    ts_with_tag = TimeseriesLiteral(
+        values, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
+    )
+
+    dataset_tx = test_helpers.build_dataset({region_tx: {CommonFields.CASES: ts_with_tag}})
+    dataset_sf = test_helpers.build_dataset({region_sf: {CommonFields.CASES: ts_with_tag}})
+
+    dataset_appended = dataset_tx.append_regions(dataset_sf)
+
+    assert len(dataset_appended.tag) == 2
+    dataset_tx_and_sf = test_helpers.build_dataset(
+        {region_tx: {CommonFields.CASES: ts_with_tag}, region_sf: {CommonFields.CASES: ts_with_tag}}
+    )
+    assert_dataset_like(dataset_appended, dataset_tx_and_sf)
+
+    dataset_out = dataset_tx_and_sf.get_regions_subset([region_tx])
+    assert len(dataset_out.tag) == 1
+    assert_dataset_like(dataset_out, dataset_tx)
+
+
 def test_timeseries_latest_values():
     dataset = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
