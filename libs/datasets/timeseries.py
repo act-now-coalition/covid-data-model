@@ -795,6 +795,15 @@ class MultiRegionDataset:
     def get_county_name(self, *, region: pipeline.Region) -> str:
         return self.static.at[region.location_id, CommonFields.COUNTY]
 
+    def annotations_as_dataframe(self) -> pd.DataFrame:
+        """Returns tags with a real DATE value in a DataFrame.
+
+        TODO(tom): Currently the only callers of this function are writing annotations to disk.
+         MultiRegionDataset.timeseries_rows (and methods like it) to include annotations so the
+         code calling this method can be removed. Then delete this method.
+        """
+        return self.tag.loc[self.tag.index.get_level_values(TagField.DATE).notna()].reset_index()
+
 
 def _remove_padded_nans(df, columns):
     if df[columns].isna().all(axis=None):
@@ -1305,7 +1314,7 @@ def aggregate_puerto_rico_from_counties(dataset: MultiRegionDataset) -> MultiReg
 
 @dataclass
 class TailFilter:
-    annotations: List[Mapping[str, Any]] = dataclasses.field(default_factory=list)
+    _annotations: List[Mapping[str, Any]] = dataclasses.field(default_factory=list)
 
     # Counts that track what the filter has done.
     skipped_too_short: int = 0
@@ -1346,12 +1355,9 @@ class TailFilter:
         return (
             tail_filter,
             dataclasses.replace(dataset, timeseries=timeseries_wide_variables).append_tag_df(
-                tail_filter.annotations_as_dataframe()
+                pd.DataFrame(tail_filter._annotations)
             ),
         )
-
-    def annotations_as_dataframe(self):
-        return pd.DataFrame(self.annotations)
 
     def _filter_one_series(self, series_in: pd.Series) -> pd.Series:
         """Filters one timeseries of cumulative values. This is a method so self can be used to
@@ -1407,7 +1413,7 @@ class TailFilter:
             # Currently one annotation is created per series. Maybe it makes more sense to add
             # one for each dropped observation / real value?
             # https://github.com/covid-projections/covid-data-model/pull/855#issuecomment-747698288
-            self.annotations.append(
+            self._annotations.append(
                 {
                     TagField.LOCATION_ID: series_in.name[0],
                     TagField.VARIABLE: series_in.name[1],
