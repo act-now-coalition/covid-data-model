@@ -39,12 +39,14 @@ def build_dataset(
     ],
     *,
     start_date="2020-04-01",
+    timeseries_columns: Optional[Sequence[FieldName]] = None,
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset for multiple regions and metrics.
     Args:
         metrics_by_region_then_field_name: Each sequence of values and TimeseriesLiteral must have
             at least one real value and identical length. The oldest date is the 0th element.
         start_date: The oldest date of each timeseries.
+        timeseries_columns: Columns that will exist in the returned dataset, even if all NA
     """
     # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
     # sequences in metrics.
@@ -67,6 +69,10 @@ def build_dataset(
     df = df.fillna(np.nan).apply(pd.to_numeric)
 
     dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
+
+    if timeseries_columns:
+        new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
+        dataset = dataclasses.replace(dataset, timeseries=new_timeseries)
 
     loc_var_provenance = {
         key: ts_lit.provenance
@@ -112,15 +118,19 @@ def build_one_region_dataset(
         timeseries_columns: Columns that will exist in the returned dataset, even if all NA
         latest_override: values added to the returned `OneRegionTimeseriesDataset.latest`
     """
-    one_region = build_dataset({region: metrics}, start_date=start_date).get_one_region(region)
-    if timeseries_columns:
-        new_columns = [col for col in timeseries_columns if col not in one_region.data.columns]
-        new_data = one_region.data.reindex(columns=[*one_region.data.columns, *new_columns])
-        one_region = dataclasses.replace(one_region, data=new_data)
+    one_region = build_dataset(
+        {region: metrics}, start_date=start_date, timeseries_columns=timeseries_columns
+    ).get_one_region(region)
     if latest_override:
         new_latest = {**one_region.latest, **latest_override}
         one_region = dataclasses.replace(one_region, latest=new_latest)
     return one_region
+
+
+def _add_missing_columns(df: pd.DataFrame, timeseries_columns: Sequence[str]):
+    """Returns a copy of df with any columns not in timeseries_columns appended."""
+    new_columns = [col for col in timeseries_columns if col not in df.columns]
+    return df.reindex(columns=[*df.columns, *new_columns])
 
 
 def _timeseries_sorted_by_location_date(
@@ -157,6 +167,7 @@ def assert_dataset_like(
     drop_na_timeseries=False,
     drop_na_latest=False,
     drop_na_dates=False,
+    check_less_precise=False,
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
     ts1 = _timeseries_sorted_by_location_date(
@@ -165,12 +176,18 @@ def assert_dataset_like(
     ts2 = _timeseries_sorted_by_location_date(
         ds2, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
     )
-    pd.testing.assert_frame_equal(ts1, ts2, check_like=True, check_dtype=False)
+    pd.testing.assert_frame_equal(
+        ts1, ts2, check_like=True, check_dtype=False, check_less_precise=check_less_precise
+    )
     latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
     latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
-    pd.testing.assert_frame_equal(latest1, latest2, check_like=True, check_dtype=False)
+    pd.testing.assert_frame_equal(
+        latest1, latest2, check_like=True, check_dtype=False, check_less_precise=check_less_precise
+    )
     # Somehow test/libs/datasets/combined_dataset_utils_test.py::test_update_and_load has
     # two provenance Series that are empty but assert_series_equal fails with message
     # 'Attribute "inferred_type" are different'. Don't call it when both series are empty.
     if not (ds1.provenance.empty and ds2.provenance.empty):
-        pd.testing.assert_series_equal(ds1.provenance, ds2.provenance)
+        pd.testing.assert_series_equal(
+            ds1.provenance, ds2.provenance, check_less_precise=check_less_precise
+        )

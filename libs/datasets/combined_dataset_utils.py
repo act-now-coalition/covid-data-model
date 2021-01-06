@@ -2,8 +2,8 @@ import pathlib
 import datetime
 import structlog
 
-from libs.datasets import dataset_base
 from libs.datasets import dataset_utils
+from libs.datasets import timeseries
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.github_utils import GitSummary
 
@@ -11,7 +11,7 @@ _logger = structlog.getLogger(__name__)
 
 
 def persist_dataset(
-    dataset: dataset_base.SaveableDatasetInterface,
+    dataset: timeseries.MultiRegionDataset,
     data_directory: pathlib.Path,
     data_public_path: pathlib.Path = dataset_utils.LOCAL_PUBLIC_DATA_PATH,
 ) -> DatasetPointer:
