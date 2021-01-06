@@ -518,9 +518,16 @@ class MultiRegionDataset:
         wide_dates_df = wide_dates_df.drop(columns=[PdFields.PROVENANCE])
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
         wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
-        return MultiRegionDataset.from_timeseries_wide_dates_df(
-            wide_dates_df
-        ).add_provenance_series(provenance_series)
+
+        annotations_path = str(csv_path).replace(".csv", "-annotations.csv")
+        annotations = pd.read_csv(annotations_path, low_memory=False)
+        annotations[TagField.DATE] = pd.to_datetime(annotations[TagField.DATE])
+
+        return (
+            MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df)
+            .add_provenance_series(provenance_series)
+            .append_tag_df(annotations)
+        )
 
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -718,6 +725,7 @@ class MultiRegionDataset:
         # dates to put the most recent on the left.
         wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
+
         return pd.concat([self.provenance, wide_dates], axis=1)
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
@@ -779,6 +787,9 @@ class MultiRegionDataset:
         wide_dates_path = str(csv_path).replace(".csv", "-wide-dates.csv")
         wide_df = self.timeseries_rows()
         wide_df.to_csv(wide_dates_path, index=True, float_format="%.5g")
+
+        annotations_path = str(csv_path).replace(".csv", "-annotations.csv")
+        self.annotations_as_dataframe().to_csv(annotations_path, index=False)
 
         static_path = str(csv_path).replace(".csv", "-static.csv")
         static_sorted = common_df.index_and_sort(

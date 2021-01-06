@@ -560,7 +560,11 @@ def test_write_read_wide_dates_csv_with_annotation(tmpdir):
     region = Region.from_state("AS")
     metrics = {
         CommonFields.ICU_BEDS: TimeseriesLiteral(
-            [0, 2, 4], annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-01", "taggy")]
+            [0, 2, 4],
+            annotation=[
+                (TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-01", "tag1"),
+                (TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "tag2"),
+            ],
         ),
         CommonFields.CASES: [100, 200, 300],
     }
