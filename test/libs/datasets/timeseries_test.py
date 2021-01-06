@@ -15,8 +15,6 @@ from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 
 from libs.datasets import timeseries
-from libs.datasets.timeseries import TagField
-from libs.datasets.timeseries import TagType
 from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from test import test_helpers
