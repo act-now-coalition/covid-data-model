@@ -171,3 +171,69 @@ def _add_missing_columns(df: pd.DataFrame, timeseries_columns: Sequence[str]):
     """Returns a copy of df with any columns not in timeseries_columns appended."""
     new_columns = [col for col in timeseries_columns if col not in df.columns]
     return df.reindex(columns=[*df.columns, *new_columns])
+
+
+def _timeseries_sorted_by_location_date(
+    dataset: timeseries.MultiRegionDataset, *, drop_na: bool, drop_na_dates: bool
+) -> pd.DataFrame:
+    """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
+    df = dataset.timeseries
+    if drop_na:
+        df = df.dropna("columns", "all")
+    if drop_na_dates:
+        df = df.dropna("rows", "all")
+    df = df.reset_index().sort_values(
+        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
+    )
+    return df
+
+
+def _latest_sorted_by_location_date(
+    ts: timeseries.MultiRegionDataset, drop_na: bool
+) -> pd.DataFrame:
+    """Returns the latest data, sorted by LOCATION_ID."""
+    df = ts.static_and_timeseries_latest_with_fips().sort_values(
+        [CommonFields.LOCATION_ID], ignore_index=True
+    )
+    if drop_na:
+        df = df.dropna("columns", "all")
+    return df
+
+
+def assert_dataset_like(
+    ds1: timeseries.MultiRegionDataset,
+    ds2: timeseries.MultiRegionDataset,
+    *,
+    drop_na_timeseries=False,
+    drop_na_latest=False,
+    drop_na_dates=False,
+    check_less_precise=False,
+    compare_tags=True,
+):
+    """Asserts that two datasets contain similar date, ignoring order."""
+    ts1 = _timeseries_sorted_by_location_date(
+        ds1, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
+    )
+    ts2 = _timeseries_sorted_by_location_date(
+        ds2, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
+    )
+    pd.testing.assert_frame_equal(
+        ts1, ts2, check_like=True, check_dtype=False, check_less_precise=check_less_precise
+    )
+    latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
+    latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
+    pd.testing.assert_frame_equal(
+        latest1, latest2, check_like=True, check_dtype=False, check_less_precise=check_less_precise
+    )
+    # Somehow test/libs/datasets/combined_dataset_utils_test.py::test_update_and_load has
+    # two provenance Series that are empty but assert_series_equal fails with message
+    # 'Attribute "inferred_type" are different'. Don't call it when both series are empty.
+    if not (ds1.provenance.empty and ds2.provenance.empty):
+        pd.testing.assert_series_equal(
+            ds1.provenance, ds2.provenance, check_less_precise=check_less_precise
+        )
+
+    if compare_tags:
+        tag1 = ds1.tag.astype("string")
+        tag2 = ds2.tag.astype("string")
+        pd.testing.assert_series_equal(tag1, tag2)
