@@ -146,7 +146,7 @@ def update(
         static_sorted.to_csv(path_prefix / wide_dates_filename.replace("wide-dates", "static"))
         # TODO(tom): When the output filename is disentangled from persist_dataset use it to
         #  store the annotations.
-        tail_filter.annotations_as_dataframe().to_csv(
+        multiregion_dataset.annotations_as_dataframe().to_csv(
             path_prefix / wide_dates_filename.replace("wide-dates", "annotations"), index=False,
         )
 
@@ -205,10 +205,10 @@ def run_bad_tails_filter(output_path: pathlib.Path):
     us_dataset = combined_datasets.load_us_timeseries_dataset()
     log = structlog.get_logger()
     log.info("Starting filter")
-    tail_filter, dataset_out = timeseries.TailFilter.run(us_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
+    _, dataset_out = timeseries.TailFilter.run(us_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
     log.info("Writing output")
     wide_dates_df.write_csv(dataset_out.timeseries_rows(), output_path)
-    tail_filter.annotations_as_dataframe().to_csv(
+    dataset_out.annotations_as_dataframe().to_csv(
         str(output_path).replace(".csv", "-annotations.csv"), index=False
     )
 
