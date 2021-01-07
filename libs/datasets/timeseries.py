@@ -136,19 +136,21 @@ class OneRegionTimeseriesDataset:
 
     latest: Dict[str, Any]
 
-    # A default exists for convenience in tests. Non-test is expected to explicitly set tag.
+    # A default exists for convenience in tests. Non-test code is expected to explicitly set tag.
     tag: pd.Series = dataclasses.field(
         default_factory=lambda: _EMPTY_TAG_SERIES.reset_index(CommonFields.LOCATION_ID, drop=True)
     )
 
     @property
     def provenance(self) -> Dict[str, str]:
-        provenance_series = self.tag.loc[
-            self.tag.index.get_level_values(TagField.TYPE) == TagType.PROVENANCE
-        ].droplevel([TagField.TYPE, TagField.DATE])
+        provenance_series = self.tag.loc[:, [TagType.PROVENANCE]].droplevel(
+            [TagField.TYPE, TagField.DATE]
+        )
         return provenance_series.to_dict()
 
     def annotations(self, metric: FieldName) -> List[TagInTimeseries]:
+        # tag.loc slicing can't select rows that *don't* have a particular type so make a binary
+        # mask array.
         annotation_mask = (self.tag.index.get_level_values(TagField.VARIABLE) == metric) & (
             self.tag.index.get_level_values(TagField.TYPE) != TagType.PROVENANCE
         )
