@@ -27,6 +27,7 @@ import numpy as np
 import structlog
 from covidactnow.datapublic import common_df
 from libs import pipeline
+from libs.datasets import dataset_pointer
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import DatasetType
@@ -323,11 +324,9 @@ class MultiRegionDataset:
 
     @cached_property
     def provenance(self) -> pd.DataFrame:
-        # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and VARIABLE.
-        provenance = self.tag.loc[
-            self.tag.index.get_level_values(TagField.TYPE) == TagType.PROVENANCE
-        ].droplevel([TagField.TYPE, TagField.DATE])
-        return provenance
+        """A Series of str with a MultiIndex with names LOCATION_ID and VARIABLE"""
+        provenance_tags = self.tag.loc[:, :, [TagType.PROVENANCE]]
+        return provenance_tags.droplevel([TagField.TYPE, TagField.DATE]).rename(PdFields.PROVENANCE)
 
     @cached_property
     def _geo_data(self) -> pd.DataFrame:
@@ -343,10 +342,6 @@ class MultiRegionDataset:
         return _merge_attributes(
             self._timeseries_latest_values().reset_index(), self.static.reset_index()
         )
-
-    @classmethod
-    def load_csv(cls, path_or_buf: Union[pathlib.Path, TextIO]):
-        return MultiRegionDataset.from_csv(path_or_buf)
 
     def _timeseries_long(self) -> pd.Series:
         """Returns the timeseries data in long format Series, where all values are in a single column.
@@ -512,6 +507,31 @@ class MultiRegionDataset:
             if provenance_path.exists():
                 dataset = dataset.add_provenance_csv(provenance_path)
         return dataset
+
+    @staticmethod
+    def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
+        wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
+        wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+        # Extract provenance column from wide date DataFrame so all columns are dates.
+        # TODO(tom): support multiple provenance columns
+        provenance_series = wide_dates_df[PdFields.PROVENANCE].dropna()
+        wide_dates_df = wide_dates_df.drop(columns=[PdFields.PROVENANCE])
+        wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
+        wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
+
+        static_df = pd.read_csv(
+            pointer.path_static(), dtype={CommonFields.FIPS: str}, low_memory=False
+        )
+
+        annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
+        annotations[TagField.DATE] = pd.to_datetime(annotations[TagField.DATE])
+
+        return (
+            MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df)
+            .add_static_values(static_df)
+            .add_provenance_series(provenance_series)
+            .append_tag_df(annotations)
+        )
 
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -702,12 +722,18 @@ class MultiRegionDataset:
     def timeseries_rows(self) -> pd.DataFrame:
         """Returns a DataFrame containing timeseries values and tag, suitable for writing
         to a CSV."""
-        wide_dates = self.timeseries_wide_dates()
+        # Make a copy to avoid modifying the cached DataFrame
+        wide_dates = self.timeseries_wide_dates().copy()
         # Format as a string here because to_csv includes a full timestamp.
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
+        # When I look at the CSV I'm usually looking for the most recent values so reverse the
+        # dates to put the most recent on the left.
+        # TODO(tom): When new code seems stable uncomment the following line. For now leave dates
+        #  with most recent on right to reduce diff from what is is currently written.
+        # wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
-        wide_dates.insert(0, PdFields.PROVENANCE, self.provenance)
-        return wide_dates
+
+        return pd.concat([self.provenance, wide_dates], axis=1)
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
@@ -731,7 +757,9 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask]
         return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
 
-    def to_csv(self, path: pathlib.Path, write_timeseries_latest_values=False):
+    def to_csv(
+        self, path: pathlib.Path, write_timeseries_latest_values=False,
+    ):
         """Persists timeseries to CSV.
 
         Args:
@@ -758,6 +786,22 @@ class MultiRegionDataset:
         if not self.provenance.empty:
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
+
+    def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
+        """Writes `self` to files referenced by `pointer`."""
+        self.to_csv(pointer.path_absolute)
+
+        wide_df = self.timeseries_rows()
+        # TODO(tom): Change to %.5g after new code seems stable. For now leaving .12g to reduce
+        #  diff from what is currently written.
+        wide_df.to_csv(pointer.path_wide_dates(), index=True, float_format="%.12g")
+
+        self.annotations_as_dataframe().to_csv(pointer.path_annotation(), index=False)
+
+        static_sorted = common_df.index_and_sort(
+            self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
+        )
+        static_sorted.to_csv(pointer.path_static())
 
     def drop_column_if_present(self, column: str) -> "MultiRegionDataset":
         """Drops the specified column from the timeseries if it exists"""

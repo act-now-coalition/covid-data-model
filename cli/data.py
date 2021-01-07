@@ -8,7 +8,6 @@ import shutil
 import structlog
 
 import click
-from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import google_sheet_helpers, wide_dates_df
@@ -69,7 +68,6 @@ def update_forecasts(filename):
 
 
 @main.command()
-@click.option("--wide-dates-filename", default="multiregion-wide-dates.csv")
 @click.option(
     "--aggregate-to-country/--no-aggregate-to-country",
     is_flag=True,
@@ -78,9 +76,7 @@ def update_forecasts(filename):
 )
 @click.option("--state", type=str, help="For testing, a two letter state abbr")
 @click.option("--fips", type=str, help="For testing, a 5 digit county fips")
-def update(
-    wide_dates_filename, aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
-):
+def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -127,31 +123,6 @@ def update(
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
-
-    # Write DataSource objects that have provenance information, which is only set when significant
-    # processing of the source data is done in this repo before it is combined. The output is not
-    # used downstream, it is for debugging only.
-    for name, source_dataset in data_sources.items():
-        if not source_dataset.provenance.empty:
-            wide_dates_df.write_csv(
-                source_dataset.timeseries_rows(), path_prefix / f"{name}-wide-dates.csv",
-            )
-
-    if wide_dates_filename:
-        wide_dates_df.write_csv(
-            multiregion_dataset.timeseries_rows(), path_prefix / wide_dates_filename,
-        )
-        static_sorted = common_df.index_and_sort(
-            multiregion_dataset.static,
-            index_names=[CommonFields.LOCATION_ID],
-            log=structlog.get_logger(),
-        )
-        static_sorted.to_csv(path_prefix / wide_dates_filename.replace("wide-dates", "static"))
-        # TODO(tom): When the output filename is disentangled from persist_dataset use it to
-        #  store the annotations.
-        multiregion_dataset.annotations_as_dataframe().to_csv(
-            path_prefix / wide_dates_filename.replace("wide-dates", "annotations"), index=False,
-        )
 
 
 @main.command()

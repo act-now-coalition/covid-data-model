@@ -1,3 +1,4 @@
+import datetime
 import io
 import pathlib
 
@@ -11,8 +12,10 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from covidactnow.datapublic.common_test_helpers import to_dict
 
+from libs import github_utils
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
+from libs.datasets import dataset_pointer
 
 from libs.datasets import timeseries
 from libs.datasets.timeseries import TagType
@@ -26,6 +29,21 @@ from test.test_helpers import TimeseriesLiteral
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
+
+
+def _make_dataset_pointer(tmpdir, filename: str = "somefile.csv") -> dataset_pointer.DatasetPointer:
+    # The fixture passes in a py.path, which is not the type in DatasetPointer.
+    path = pathlib.Path(tmpdir) / filename
+
+    fake_git_summary = github_utils.GitSummary(sha="abcdef", branch="main", is_dirty=True)
+
+    return dataset_pointer.DatasetPointer(
+        dataset_type=dataset_pointer.DatasetType.MULTI_REGION,
+        path=path,
+        data_git_info=fake_git_summary,
+        model_git_info=fake_git_summary,
+        updated_at=datetime.datetime.utcnow(),
+    )
 
 
 @pytest.mark.parametrize("include_na_at_end", [False, True])
@@ -514,6 +532,60 @@ def test_timeseries_wide_dates_empty():
     assert timeseries_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
     assert timeseries_wide.columns.names == [CommonFields.DATE]
     assert timeseries_wide.empty
+
+
+def test_write_read_wide_dates_csv_compare_literal(tmpdir):
+    pointer = _make_dataset_pointer(tmpdir)
+
+    region_as = Region.from_state("AS")
+    region_sf = Region.from_fips("06075")
+    metrics_as = {
+        CommonFields.ICU_BEDS: TimeseriesLiteral([0, 2, 4], provenance="pt_src1"),
+        CommonFields.CASES: [100, 200, 300],
+    }
+    metrics_sf = {
+        CommonFields.DEATHS: TimeseriesLiteral([1, 2, None], provenance="pt_src2"),
+        CommonFields.CASES: [None, 210, 310],
+    }
+    dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_sf: metrics_sf})
+
+    dataset_in.write_to_dataset_pointer(pointer)
+
+    # Compare written file with a string literal so a test fails if something changes in how the
+    # file is written. The literal contains spaces to align the columns in the source.
+    assert pointer.path_wide_dates().read_text() == (
+        "                  location_id,variable,provenance,2020-04-01,2020-04-02,2020-04-03\n"
+        "           iso1:us#iso2:us-as,   cases,          ,       100,       200,       300\n"
+        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         0,         2,         4\n"
+        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,          ,       210,       310\n"
+        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,         1,         2,          \n"
+    ).replace(" ", "")
+
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+
+    test_helpers.assert_dataset_like(dataset_read, dataset_in)
+
+
+def test_write_read_wide_dates_csv_with_annotation(tmpdir):
+    pointer = _make_dataset_pointer(tmpdir)
+
+    region = Region.from_state("AS")
+    metrics = {
+        CommonFields.ICU_BEDS: TimeseriesLiteral(
+            [0, 2, 4],
+            annotation=[
+                (TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-01", "tag1"),
+                (TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "tag2"),
+            ],
+        ),
+        CommonFields.CASES: [100, 200, 300],
+    }
+    dataset_in = test_helpers.build_dataset({region: metrics})
+
+    dataset_in.write_to_dataset_pointer(pointer)
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+
+    test_helpers.assert_dataset_like(dataset_read, dataset_in)
 
 
 def test_timeseries_drop_stale_timeseries_entire_region():
@@ -1244,11 +1316,11 @@ def test_timeseries_rows():
     rows = ts.timeseries_rows()
     expected = pd.read_csv(
         io.StringIO(
-            "location_id,variable,provenance,2020-04-01,2020-04-02\n"
-            "iso1:us#iso2:us-az,m1,,8,12\n"
-            "iso1:us#iso2:us-az,m2,,20,40\n"
-            "iso1:us#iso2:us-tx,m1,,4,4\n"
-            "iso1:us#iso2:us-tx,m2,,2,4\n"
+            "       location_id,variable,provenance,2020-04-01,2020-04-02\n"
+            "iso1:us#iso2:us-az,      m1,          ,         8,        12\n"
+            "iso1:us#iso2:us-az,      m2,          ,        20,        40\n"
+            "iso1:us#iso2:us-tx,      m1,          ,         4,         4\n"
+            "iso1:us#iso2:us-tx,      m2,          ,         2,         4\n".replace(" ", "")
         )
     ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)

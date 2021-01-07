@@ -17,7 +17,7 @@ def test_persist_and_load_dataset(tmp_path, nyc_fips):
 
     pointer = combined_dataset_utils.persist_dataset(timeseries_nyc, tmp_path)
 
-    downloaded_dataset: MultiRegionDataset = pointer.load_dataset()
+    downloaded_dataset = MultiRegionDataset.read_from_pointer(pointer)
     differ_l = DatasetDiff.make(downloaded_dataset.timeseries)
     differ_r = DatasetDiff.make(timeseries_nyc.timeseries)
     differ_l.compare(differ_r)
