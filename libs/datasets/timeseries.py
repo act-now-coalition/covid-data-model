@@ -10,6 +10,7 @@ from typing import Dict
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
 from typing import Mapping
+from typing import Set
 from typing import Sequence
 from typing import Tuple
 
@@ -314,8 +315,8 @@ class MultiRegionDataset:
     tag: pd.Series = _EMPTY_TAG_SERIES
 
     @property
-    def regions(self) -> Collection[Region]:
-        """Returns a set of all regions in dataset."""
+    def timeseries_regions(self) -> Set[Region]:
+        """Returns a set of all regions in the timeseries dataset."""
 
         location_ids = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
         return set(Region.from_location_id(location_id) for location_id in location_ids)

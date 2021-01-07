@@ -1315,4 +1315,4 @@ def test_dataset_regions_property(nyc_region):
         {nyc_region: {CommonFields.CASES: [100]}, az_region: {CommonFields.CASES: [100]}}
     )
 
-    assert dataset.regions == set([az_region, nyc_region])
+    assert dataset.timeseries_regions == set([az_region, nyc_region])
