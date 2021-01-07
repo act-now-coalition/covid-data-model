@@ -1,5 +1,4 @@
 from libs import pipeline
-import pandas as pd
 from libs.datasets import combined_datasets
 from libs.datasets import custom_aggregations
 
