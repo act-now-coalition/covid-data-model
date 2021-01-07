@@ -313,6 +313,13 @@ class MultiRegionDataset:
     # DATE. Rows with identical index values may exist.
     tag: pd.Series = _EMPTY_TAG_SERIES
 
+    @property
+    def regions(self) -> Collection[Region]:
+        """Returns a set of all regions in dataset."""
+
+        location_ids = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
+        return set(Region.from_location_id(location_id) for location_id in location_ids)
+
     @cached_property
     def provenance(self) -> pd.DataFrame:
         # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and VARIABLE.
