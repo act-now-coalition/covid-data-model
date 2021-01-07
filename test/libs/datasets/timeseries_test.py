@@ -574,8 +574,8 @@ def test_write_read_wide_dates_csv_with_annotation(tmpdir):
         CommonFields.ICU_BEDS: TimeseriesLiteral(
             [0, 2, 4],
             annotation=[
-                (TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-01", "tag1"),
-                (TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "tag2"),
+                test_helpers.make_tag(date="2020-04-01", content="tag1"),
+                test_helpers.make_tag(date="2020-04-02", content="tag2"),
             ],
         ),
         CommonFields.CASES: [100, 200, 300],
@@ -655,12 +655,8 @@ def test_timeseries_drop_stale_timeseries_with_tag():
     region = Region.from_state("TX")
     values_recent = [100, 200, 300, 400]
     values_stale = [100, 200, None, None]
-    ts_recent = TimeseriesLiteral(
-        values_recent, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
-    )
-    ts_stale = TimeseriesLiteral(
-        values_stale, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
-    )
+    ts_recent = TimeseriesLiteral(values_recent, annotation=[test_helpers.make_tag()])
+    ts_stale = TimeseriesLiteral(values_stale, annotation=[test_helpers.make_tag()])
 
     dataset_in = test_helpers.build_dataset(
         {region: {CommonFields.CASES: ts_recent, CommonFields.DEATHS: ts_stale}}
@@ -680,9 +676,7 @@ def test_append_region_and_get_regions_subset_with_tag():
     region_tx = Region.from_state("TX")
     region_sf = Region.from_fips("06075")
     values = [100, 200, 300, 400]
-    ts_with_tag = TimeseriesLiteral(
-        values, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
-    )
+    ts_with_tag = TimeseriesLiteral(values, annotation=[test_helpers.make_tag()])
 
     dataset_tx = test_helpers.build_dataset({region_tx: {CommonFields.CASES: ts_with_tag}})
     dataset_sf = test_helpers.build_dataset({region_sf: {CommonFields.CASES: ts_with_tag}})
@@ -698,6 +692,34 @@ def test_append_region_and_get_regions_subset_with_tag():
     dataset_out = dataset_tx_and_sf.get_regions_subset([region_tx])
     assert len(dataset_out.tag) == 1
     test_helpers.assert_dataset_like(dataset_out, dataset_tx)
+
+
+def test_one_region_annotations():
+    region_tx = Region.from_state("TX")
+    region_sf = Region.from_fips("06075")
+    values = [100, 200, 300, 400]
+    tag1 = test_helpers.make_tag(content="tag1")
+    tag2a = test_helpers.make_tag(content="tag2a")
+    tag2b = test_helpers.make_tag(content="tag2b")
+
+    dataset_tx_and_sf = test_helpers.build_dataset(
+        {
+            region_tx: {CommonFields.CASES: (TimeseriesLiteral(values, annotation=[tag1]))},
+            region_sf: {CommonFields.CASES: (TimeseriesLiteral(values, annotation=[tag2a, tag2b]))},
+        }
+    )
+
+    # get_one_region and iter_one_regions use separate code to split up the tags. Test both of them.
+    assert dataset_tx_and_sf.get_one_region(region_tx).annotations(CommonFields.CASES) == [tag1]
+    assert dataset_tx_and_sf.get_one_region(region_sf).annotations(CommonFields.CASES) == [
+        tag2a,
+        tag2b,
+    ]
+
+    assert {
+        region: one_region_dataset.annotations(CommonFields.CASES)
+        for region, one_region_dataset in dataset_tx_and_sf.iter_one_regions()
+    } == {region_sf: [tag2a, tag2b], region_tx: [tag1],}
 
 
 def test_timeseries_latest_values():
@@ -965,14 +987,12 @@ def test_append_tags():
         CommonFields.CASES: cases_values,
     }
     dataset_in = test_helpers.build_dataset({region_sf: metrics_sf})
-    tag_sf_cases = test_helpers.TagLiteral(
-        region_sf, CommonFields.CASES, "2020-04-02", TagType.CUMULATIVE_TAIL_TRUNCATED, "Truncate"
+    tag_sf_cases = test_helpers.make_tag(
+        TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "Truncate"
     )
-    tag_df = pd.DataFrame.from_records([tag_sf_cases.to_dict()])
+    tag_df = test_helpers.make_tag_df(region_sf, CommonFields.CASES, [tag_sf_cases])
     dataset_out = dataset_in.append_tag_df(tag_df)
-    metrics_sf[CommonFields.CASES] = TimeseriesLiteral(
-        cases_values, annotation=[tag_sf_cases.to_annotation_tuple()]
-    )
+    metrics_sf[CommonFields.CASES] = TimeseriesLiteral(cases_values, annotation=[tag_sf_cases])
     dataset_expected = test_helpers.build_dataset({region_sf: metrics_sf})
 
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
@@ -982,10 +1002,7 @@ def test_add_provenance_all_with_tags():
     """Checks that add_provenance_all (and add_provenance_series that it calls) preserves tags."""
     region = Region.from_state("TX")
     cases_values = [100, 200, 300, 400]
-    cases_tag = test_helpers.TagLiteral(
-        region, CommonFields.CASES, "2020-04-02", TagType.CUMULATIVE_TAIL_TRUNCATED, "Truncate"
-    )
-    timeseries = TimeseriesLiteral(cases_values, annotation=[cases_tag.to_annotation_tuple()])
+    timeseries = TimeseriesLiteral(cases_values, annotation=[(test_helpers.make_tag())])
     dataset_in = test_helpers.build_dataset({region: {CommonFields.CASES: timeseries}})
 
     dataset_out = dataset_in.add_provenance_all("prov_prov")
@@ -1000,9 +1017,7 @@ def test_join_columns_with_tags():
     """Checks that join_columns preserves tags."""
     region = Region.from_state("TX")
     cases_values = [100, 200, 300, 400]
-    ts_lit = TimeseriesLiteral(
-        cases_values, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
-    )
+    ts_lit = TimeseriesLiteral(cases_values, annotation=[test_helpers.make_tag()])
     dataset_cases = test_helpers.build_dataset({region: {CommonFields.CASES: ts_lit}})
     dataset_deaths = test_helpers.build_dataset({region: {CommonFields.DEATHS: ts_lit}})
 
@@ -1021,9 +1036,7 @@ def test_drop_column_with_tags():
     """Checks that join_columns preserves tags."""
     region = Region.from_state("TX")
     cases_values = [100, 200, 300, 400]
-    ts_lit = TimeseriesLiteral(
-        cases_values, annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "taggy")]
-    )
+    ts_lit = TimeseriesLiteral(cases_values, annotation=[test_helpers.make_tag()])
 
     dataset_in = test_helpers.build_dataset(
         {region: {CommonFields.CASES: ts_lit, CommonFields.DEATHS: ts_lit}}

@@ -41,7 +41,9 @@ def test_tail_filter_stalled_timeseries():
     )
     truncated_timeseries = test_helpers.TimeseriesLiteral(
         values_increasing,
-        annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-24", tag_content)],
+        annotation=[
+            test_helpers.make_tag(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-24", tag_content)
+        ],
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {CommonFields.NEW_CASES: truncated_timeseries}
