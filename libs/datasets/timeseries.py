@@ -342,13 +342,9 @@ class MultiRegionDataset:
 
     @cached_property
     def provenance(self) -> pd.DataFrame:
-        # `provenance` is an array of str with a MultiIndex with names LOCATION_ID and VARIABLE.
-        provenance = (
-            self.tag.loc[self.tag.index.get_level_values(TagField.TYPE) == TagType.PROVENANCE]
-            .droplevel([TagField.TYPE, TagField.DATE])
-            .rename(PdFields.PROVENANCE)
-        )
-        return provenance
+        """A Series of str with a MultiIndex with names LOCATION_ID and VARIABLE"""
+        provenance_tags = self.tag.loc[:, :, [TagType.PROVENANCE]]
+        return provenance_tags.droplevel([TagField.TYPE, TagField.DATE]).rename(PdFields.PROVENANCE)
 
     @cached_property
     def _geo_data(self) -> pd.DataFrame:
@@ -534,6 +530,8 @@ class MultiRegionDataset:
     def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
         wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+        # Extract provenance column from wide date DataFrame so all columns are dates.
+        # TODO(tom): support multiple provenance columns
         provenance_series = wide_dates_df[PdFields.PROVENANCE].dropna()
         wide_dates_df = wide_dates_df.drop(columns=[PdFields.PROVENANCE])
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)

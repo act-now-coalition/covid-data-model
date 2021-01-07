@@ -31,9 +31,9 @@ from test.test_helpers import TimeseriesLiteral
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
 
-def _make_dataset_pointer(tmpdir) -> dataset_pointer.DatasetPointer:
+def _make_dataset_pointer(tmpdir, filename: str = "somefile.csv") -> dataset_pointer.DatasetPointer:
     # The fixture passes in a py.path, which is not the type in DatasetPointer.
-    path = pathlib.Path(tmpdir) / "somefile.csv"
+    path = pathlib.Path(tmpdir) / filename
 
     fake_git_summary = github_utils.GitSummary(sha="abcdef", branch="main", is_dirty=True)
 
