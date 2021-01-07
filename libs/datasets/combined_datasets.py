@@ -129,14 +129,11 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 @functools.lru_cache(None)
 def load_us_timeseries_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
-    before=None,
-    previous_commit=False,
-    commit: str = None,
 ) -> MultiRegionDataset:
     filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return pointer.load_dataset(before=before, previous_commit=previous_commit, commit=commit)
+    return MultiRegionDataset.read_from_pointer(pointer)
 
 
 def get_county_name(region: Region) -> Optional[str]:

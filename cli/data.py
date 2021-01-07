@@ -8,7 +8,6 @@ import shutil
 import structlog
 
 import click
-from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import google_sheet_helpers, wide_dates_df
@@ -122,8 +121,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
-    dataset_pointer = combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
-    multiregion_dataset.write_wide_dates_and_static_csv(dataset_pointer.path)
+    combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
 
 
 @main.command()

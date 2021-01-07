@@ -1,3 +1,4 @@
+import datetime
 import io
 import pathlib
 
@@ -11,11 +12,12 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from covidactnow.datapublic.common_test_helpers import to_dict
 
+from libs import github_utils
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
+from libs.datasets import dataset_pointer
 
 from libs.datasets import timeseries
-from libs.datasets.timeseries import TagField
 from libs.datasets.timeseries import TagType
 from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
@@ -27,6 +29,21 @@ from test.test_helpers import TimeseriesLiteral
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
+
+
+def _make_dataset_pointer(tmpdir) -> dataset_pointer.DatasetPointer:
+    # The fixture passes in a py.path, which is not the type in DatasetPointer.
+    path = pathlib.Path(tmpdir) / "somefile.csv"
+
+    fake_git_summary = github_utils.GitSummary(sha="abcdef", branch="main", is_dirty=True)
+
+    return dataset_pointer.DatasetPointer(
+        dataset_type=dataset_pointer.DatasetType.MULTI_REGION,
+        path=path,
+        data_git_info=fake_git_summary,
+        model_git_info=fake_git_summary,
+        updated_at=datetime.datetime.utcnow(),
+    )
 
 
 @pytest.mark.parametrize("include_na_at_end", [False, True])
@@ -518,10 +535,7 @@ def test_timeseries_wide_dates_empty():
 
 
 def test_write_read_wide_dates_csv_compare_literal(tmpdir):
-    # The fixture passes in a py.path, which is not recommended for new projects.
-    tmpdir = pathlib.Path(tmpdir)
-    csv_path = tmpdir / "somefile.csv"
-    wide_dates_path = tmpdir / "somefile-wide-dates.csv"
+    pointer = _make_dataset_pointer(tmpdir)
 
     region_as = Region.from_state("AS")
     region_sf = Region.from_fips("06075")
@@ -535,27 +549,25 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
     }
     dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_sf: metrics_sf})
 
-    dataset_in.write_wide_dates_and_static_csv(csv_path)
+    dataset_in.write_to_dataset_pointer(pointer)
 
     # Compare written file with a string literal so a test fails if something changes in how the
     # file is written. The literal contains spaces to align the columns in the source.
-    assert wide_dates_path.read_text() == (
-        "                  location_id,variable,provenance,2020-04-03,2020-04-02,2020-04-01\n"
-        "           iso1:us#iso2:us-as,   cases,          ,       300,       200,       100\n"
-        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         4,         2,         0\n"
-        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,       310,       210,          \n"
-        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,          ,         2,         1\n"
+    assert pointer.path_wide_dates().read_text() == (
+        "                  location_id,variable,provenance,2020-04-01,2020-04-02,2020-04-03\n"
+        "           iso1:us#iso2:us-as,   cases,          ,       100,       200,       300\n"
+        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         0,         2,         4\n"
+        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,          ,       210,       310\n"
+        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,         1,         2,          \n"
     ).replace(" ", "")
 
-    dataset_read = timeseries.MultiRegionDataset.read_wide_dates_and_static_csv(csv_path)
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
 
     test_helpers.assert_dataset_like(dataset_read, dataset_in)
 
 
 def test_write_read_wide_dates_csv_with_annotation(tmpdir):
-    # The fixture passes in a py.path, which is not recommended for new projects.
-    tmpdir = pathlib.Path(tmpdir)
-    csv_path = tmpdir / "somefile.csv"
+    pointer = _make_dataset_pointer(tmpdir)
 
     region = Region.from_state("AS")
     metrics = {
@@ -570,8 +582,8 @@ def test_write_read_wide_dates_csv_with_annotation(tmpdir):
     }
     dataset_in = test_helpers.build_dataset({region: metrics})
 
-    dataset_in.write_wide_dates_and_static_csv(csv_path)
-    dataset_read = timeseries.MultiRegionDataset.read_wide_dates_and_static_csv(csv_path)
+    dataset_in.write_to_dataset_pointer(pointer)
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
 
     test_helpers.assert_dataset_like(dataset_read, dataset_in)
 
@@ -1304,11 +1316,11 @@ def test_timeseries_rows():
     rows = ts.timeseries_rows()
     expected = pd.read_csv(
         io.StringIO(
-            "location_id,variable,provenance,2020-04-02,2020-04-01\n"
-            "iso1:us#iso2:us-az,m1,,12,8\n"
-            "iso1:us#iso2:us-az,m2,,40,20\n"
-            "iso1:us#iso2:us-tx,m1,,4,4\n"
-            "iso1:us#iso2:us-tx,m2,,4,2\n"
+            "       location_id,variable,provenance,2020-04-01,2020-04-02\n"
+            "iso1:us#iso2:us-az,      m1,          ,         8,        12\n"
+            "iso1:us#iso2:us-az,      m2,          ,        20,        40\n"
+            "iso1:us#iso2:us-tx,      m1,          ,         4,         4\n"
+            "iso1:us#iso2:us-tx,      m2,          ,         2,         4\n".replace(" ", "")
         )
     ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)

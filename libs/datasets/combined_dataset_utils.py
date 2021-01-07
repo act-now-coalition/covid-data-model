@@ -37,6 +37,6 @@ def persist_dataset(
         model_git_info=model_git_info,
         updated_at=datetime.datetime.utcnow(),
     )
-    dataset_pointer.save_dataset(dataset)
+    dataset.write_to_dataset_pointer(dataset_pointer)
     dataset_pointer.save(data_directory)
     return dataset_pointer
