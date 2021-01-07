@@ -1392,3 +1392,12 @@ def test_calculate_puerto_rico_bed_occupancy_rate():
         )
     )
     test_helpers.assert_dataset_like(actual, expected)
+
+
+def test_dataset_regions_property(nyc_region):
+    az_region = Region.from_state("AZ")
+    dataset = test_helpers.build_dataset(
+        {nyc_region: {CommonFields.CASES: [100]}, az_region: {CommonFields.CASES: [100]}}
+    )
+
+    assert dataset.timeseries_regions == set([az_region, nyc_region])
