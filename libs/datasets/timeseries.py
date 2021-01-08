@@ -1268,7 +1268,7 @@ def combined_datasets(
             selected_location_id = location_ids.difference(location_id_so_far)
             timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
             location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-            tag_series.append(datasets[dataset_name].tag.loc[selected_location_id, field])
+            tag_series.append(datasets[dataset_name].tag.loc[selected_location_id, [field]])
 
     static_series = []
     for field, dataset_names in static_field_dataset_source.items():
