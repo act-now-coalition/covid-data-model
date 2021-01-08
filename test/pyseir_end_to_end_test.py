@@ -41,8 +41,8 @@ def test_pyseir_end_to_end_dc(tmp_path):
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
         regions_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(state="DC")
         regions = [one_region for _, one_region in regions_dataset.iter_one_regions()]
-        region_pipelines: List[OneRegionPipeline] = parallel_utils.parallel_map(
-            OneRegionPipeline.run, regions
+        region_pipelines: List[OneRegionPipeline] = list(
+            parallel_utils.parallel_map(OneRegionPipeline.run, regions)
         )
         # Checking to make sure that build all for states properly filters and only
         # returns DC data
