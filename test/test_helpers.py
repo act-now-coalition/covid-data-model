@@ -34,7 +34,7 @@ class TimeseriesLiteral(UserList):
         self,
         ts_list,
         *,
-        provenance: str = "",
+        provenance: Union[str, List[str]] = "",
         annotation: Sequence[timeseries.TagInTimeseries] = (),
     ):
         super().__init__(ts_list)
@@ -111,12 +111,16 @@ def build_dataset(
             continue
 
         records = list(ts_literal.annotation)
-        if ts_literal.provenance:
-            records.append(
-                timeseries.TagInTimeseries(
-                    timeseries.TagType.PROVENANCE, pd.NaT, ts_literal.provenance
-                )
-            )
+        if not ts_literal.provenance:
+            provenance_list = []
+        elif isinstance(ts_literal.provenance, str):
+            provenance_list = [ts_literal.provenance]
+        else:
+            provenance_list = ts_literal.provenance
+        records.extend(
+            timeseries.TagInTimeseries(timeseries.TagType.PROVENANCE, pd.NaT, provenance)
+            for provenance in provenance_list
+        )
         tags_to_concat.append(make_tag_df(region, var, records))
 
     if tags_to_concat:

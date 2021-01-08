@@ -636,9 +636,16 @@ class MultiRegionDataset:
         """Returns a new dataset with additional_tag_df appended."""
         if additional_tag_df.empty:
             return self
-        additional_series = additional_tag_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
-        combined_tag = pd.concat([self.tag, additional_series]).sort_index()
-        return dataclasses.replace(self, tag=combined_tag)
+        # Sort by index fields, and within rows having identical index fields, by content. This
+        # makes the order of values in combined_series identical, independent of the order they
+        # were appended.
+        combined_df = (
+            self.tag.reset_index()
+            .append(additional_tag_df)
+            .sort_values(TAG_INDEX_FIELDS + [TagField.CONTENT])
+        )
+        combined_series = combined_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
+        return dataclasses.replace(self, tag=combined_series)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
@@ -1327,7 +1334,7 @@ def combined_datasets(
             output_timeseries_wide_variables = (
                 output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
             )
-        output_tag = pd.concat(tag_series, verify_integrity=True)
+        output_tag = pd.concat(tag_series)
     else:
         output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         output_tag = _EMPTY_TAG_SERIES

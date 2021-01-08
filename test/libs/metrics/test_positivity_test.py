@@ -291,7 +291,9 @@ def test_provenance():
     )
     pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
 
-    expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")}
+    expected_as = {
+        CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance=["method2", "pt_src1"])
+    }
     expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")}
     expected_positivity = test_helpers.build_dataset(
         {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
@@ -302,15 +304,19 @@ def test_provenance():
 def test_preserve_tags():
     region_as = Region.from_state("AS")
     region_tx = Region.from_state("TX")
-    tag1 = test_helpers.AnnotationInTimeseriesLiteral(TagType)
+    tag1 = test_helpers.make_tag(date="2020-04-04", content="tag1")
+    tag2 = test_helpers.make_tag(date="2020-04-04", content="tag2")
+    tag_drop = test_helpers.make_tag(date="2020-04-04", content="expect-to-drop")
+    tag3 = test_helpers.make_tag(date="2020-04-04", content="tag3")
+    tag4 = test_helpers.make_tag(date="2020-04-04", content="tag4")
     metrics_as = {
-        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], provenance="pt_src2"),
-        CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], annotation=[tag1]),
+        CommonFields.TOTAL_TESTS: TimeseriesLiteral([100, 200, 300, 400], annotation=[tag2]),
     }
     metrics_tx = {
-        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([None, None, 3, 4], provenance="pt_src2"),
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([None, None, 3, 4], annotation=[tag_drop]),
         CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
-        CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+        CommonFields.TOTAL_TESTS: TimeseriesLiteral([100, 200, 300, 400], annotation=[tag3, tag4]),
     }
     dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
 
@@ -324,8 +330,16 @@ def test_preserve_tags():
     ]
     all_methods = AllMethods.run(dataset_in, methods, 3)
 
-    expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.01], provenance="method1")}
-    expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method2")}
+    expected_as = {
+        CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
+            [0.01], provenance="method1", annotation=[tag1, tag2]
+        )
+    }
+    expected_tx = {
+        CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
+            [0.1], provenance="method2", annotation=[tag3, tag4]
+        )
+    }
     expected_positivity = test_helpers.build_dataset(
         {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
     )
@@ -356,7 +370,7 @@ def test_default_positivity_methods():
 
     expected_as = {
         CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], provenance="src1"
+            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], provenance=["SmoothedTests", "src1"],
         )
     }
     expected_tx = {

@@ -1187,8 +1187,8 @@ def test_combined_annotation():
     ts1a = TimeseriesLiteral(
         [0, 2, 4],
         annotation=[
-            (TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-01", "ds1_a"),
-            (TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "ds1_b"),
+            test_helpers.make_tag(date="2020-04-01", content="ds1_a"),
+            test_helpers.make_tag(date="2020-04-02", content="ds1_b"),
         ],
     )
     ts1b = [100, 200, 300]
@@ -1196,7 +1196,7 @@ def test_combined_annotation():
         {CommonFields.ICU_BEDS: ts1a, CommonFields.CASES: ts1b}
     )
     ts2a = TimeseriesLiteral(
-        [1, 3, 5], annotation=[(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-01", "ds2_a")],
+        [1, 3, 5], annotation=[test_helpers.make_tag(date="2020-04-01", content="ds2_a")],
     )
     ts2b = [150, 250, 350]
     ds2 = test_helpers.build_default_region_dataset(
