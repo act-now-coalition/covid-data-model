@@ -554,11 +554,11 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
     # Compare written file with a string literal so a test fails if something changes in how the
     # file is written. The literal contains spaces to align the columns in the source.
     assert pointer.path_wide_dates().read_text() == (
-        "                  location_id,variable,provenance,2020-04-01,2020-04-02,2020-04-03\n"
-        "           iso1:us#iso2:us-as,   cases,          ,       100,       200,       300\n"
-        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         0,         2,         4\n"
-        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,          ,       210,       310\n"
-        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,         1,         2,          \n"
+        "                  location_id,variable,provenance-0,2020-04-01,2020-04-02,2020-04-03\n"
+        "           iso1:us#iso2:us-as,   cases,            ,       100,       200,       300\n"
+        "           iso1:us#iso2:us-as,icu_beds,     pt_src1,         0,         2,         4\n"
+        "iso1:us#iso2:us-ca#fips:06075,   cases,            ,          ,       210,       310\n"
+        "iso1:us#iso2:us-ca#fips:06075,  deaths,     pt_src2,         1,         2,          \n"
     ).replace(" ", "")
 
     dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
@@ -581,6 +581,29 @@ def test_write_read_wide_dates_csv_with_annotation(tmpdir):
         CommonFields.CASES: [100, 200, 300],
     }
     dataset_in = test_helpers.build_dataset({region: metrics})
+
+    dataset_in.write_to_dataset_pointer(pointer)
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+
+    test_helpers.assert_dataset_like(dataset_read, dataset_in)
+
+
+def test_write_read_dataset_pointer_with_provenance_list(tmpdir):
+    pointer = _make_dataset_pointer(tmpdir)
+
+    dataset_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.ICU_BEDS: TimeseriesLiteral(
+                [0, 2, 4],
+                annotation=[
+                    test_helpers.make_tag(date="2020-04-01", content="tag1"),
+                    test_helpers.make_tag(date="2020-04-02", content="tag2"),
+                ],
+                provenance=["prov1", "prov2"],
+            ),
+            CommonFields.CASES: [100, 200, 300],
+        }
+    )
 
     dataset_in.write_to_dataset_pointer(pointer)
     dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
@@ -1363,11 +1386,11 @@ def test_timeseries_rows():
     rows = ts.timeseries_rows()
     expected = pd.read_csv(
         io.StringIO(
-            "       location_id,variable,provenance,2020-04-01,2020-04-02\n"
-            "iso1:us#iso2:us-az,      m1,          ,         8,        12\n"
-            "iso1:us#iso2:us-az,      m2,          ,        20,        40\n"
-            "iso1:us#iso2:us-tx,      m1,          ,         4,         4\n"
-            "iso1:us#iso2:us-tx,      m2,          ,         2,         4\n".replace(" ", "")
+            "       location_id,variable,2020-04-01,2020-04-02\n"
+            "iso1:us#iso2:us-az,      m1,         8,        12\n"
+            "iso1:us#iso2:us-az,      m2,        20,        40\n"
+            "iso1:us#iso2:us-tx,      m1,         4,         4\n"
+            "iso1:us#iso2:us-tx,      m2,         2,         4\n".replace(" ", "")
         )
     ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)

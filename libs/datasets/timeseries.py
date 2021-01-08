@@ -501,6 +501,7 @@ class MultiRegionDataset:
         if not self.provenance.empty:
             raise NotImplementedError("TODO(tom): add support for merging provenance data")
         assert provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        assert isinstance(provenance, pd.Series)
 
         new_index_df = provenance.index.to_frame()
         new_index_df[TagField.TYPE] = TagType.PROVENANCE
@@ -540,10 +541,23 @@ class MultiRegionDataset:
     def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
         wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+
         # Extract provenance column from wide date DataFrame so all columns are dates.
-        # TODO(tom): support multiple provenance columns
-        provenance_series = wide_dates_df[PdFields.PROVENANCE].dropna()
-        wide_dates_df = wide_dates_df.drop(columns=[PdFields.PROVENANCE])
+        provenance_column_mask = wide_dates_df.columns.str.startswith(PdFields.PROVENANCE + "-")
+        provenance_columns = wide_dates_df.loc[:, provenance_column_mask]
+        provenance_series = (
+            pd.wide_to_long(
+                provenance_columns.reset_index(),
+                PdFields.PROVENANCE,
+                [CommonFields.LOCATION_ID, PdFields.VARIABLE],
+                "dudcount",
+                sep="-",
+            )
+            .dropna()
+            .reset_index("dudcount", drop=True)[PdFields.PROVENANCE]
+        )
+
+        wide_dates_df = wide_dates_df.loc[:, ~provenance_column_mask]
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
         wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
 
@@ -758,7 +772,17 @@ class MultiRegionDataset:
         # wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
 
-        return pd.concat([self.provenance, wide_dates], axis=1)
+        if not self.provenance.empty:
+            # From https://stackoverflow.com/a/38369722
+            prov = (
+                self.provenance.groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+                .apply(lambda df: df.reset_index(drop=True))
+                .unstack()
+                .rename(columns=lambda i: f"provenance-{i}")
+            )
+            return pd.concat([prov, wide_dates], axis=1)
+        else:
+            return wide_dates
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
