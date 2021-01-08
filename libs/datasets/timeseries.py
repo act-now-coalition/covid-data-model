@@ -543,19 +543,20 @@ class MultiRegionDataset:
         wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
 
         # Extract provenance column from wide date DataFrame so all columns are dates.
-        provenance_column_mask = wide_dates_df.columns.str.startswith(PdFields.PROVENANCE + "-")
-        provenance_columns = wide_dates_df.loc[:, provenance_column_mask]
-        provenance_series = (
-            pd.wide_to_long(
-                provenance_columns.reset_index(),
-                PdFields.PROVENANCE,
-                [CommonFields.LOCATION_ID, PdFields.VARIABLE],
-                "dudcount",
-                sep="-",
-            )
-            .dropna()
-            .reset_index("dudcount", drop=True)[PdFields.PROVENANCE]
+        provenance_column_mask = wide_dates_df.columns.str.match(
+            r"\A" + TagType.PROVENANCE + r"(-\d+)?\Z"
         )
+        tag_df_to_concat = []
+        if provenance_column_mask.any():
+            provenance_columns = wide_dates_df.loc[:, provenance_column_mask]
+            provenance_series = (
+                provenance_columns.stack().reset_index(-1, drop=True).rename(TagField.CONTENT)
+            )
+            if not provenance_series.empty:
+                provenance_df = provenance_series.reset_index()
+                provenance_df[TagField.DATE] = pd.NaT
+                provenance_df[TagField.TYPE] = TagType.PROVENANCE
+                tag_df_to_concat.append(provenance_df)
 
         wide_dates_df = wide_dates_df.loc[:, ~provenance_column_mask]
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
@@ -567,12 +568,12 @@ class MultiRegionDataset:
 
         annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
         annotations[TagField.DATE] = pd.to_datetime(annotations[TagField.DATE])
+        tag_df_to_concat.append(annotations)
 
         return (
             MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df)
             .add_static_values(static_df)
-            .add_provenance_series(provenance_series)
-            .append_tag_df(annotations)
+            .append_tag_df(pd.concat(tag_df_to_concat))
         )
 
     @staticmethod
