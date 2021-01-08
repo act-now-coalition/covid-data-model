@@ -1,11 +1,11 @@
 import dataclasses
-from typing_extensions import final
+from typing import List
+
 from collections import UserList
 from typing import Any
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
-from typing import Tuple
 from typing import Union
 
 import more_itertools
@@ -17,6 +17,7 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
 from libs.datasets.timeseries import TagField
+from libs.datasets.timeseries import TagType
 from libs.pipeline import Region
 
 
@@ -24,10 +25,6 @@ from libs.pipeline import Region
 # cases. It is factored out here in an attempt to reduce how much it is hard-coded into our source.
 DEFAULT_FIPS = "97222"
 DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
-
-
-# A Tuple of: the type, a timestamp and tag content.
-AnnotationInTimeseriesLiteral = Tuple[timeseries.TagType, Union[pd.Timestamp, str], str]
 
 
 class TimeseriesLiteral(UserList):
@@ -38,37 +35,32 @@ class TimeseriesLiteral(UserList):
         ts_list,
         *,
         provenance: str = "",
-        annotation: Sequence[AnnotationInTimeseriesLiteral] = (),
+        annotation: Sequence[timeseries.TagInTimeseries] = (),
     ):
         super().__init__(ts_list)
         self.provenance = provenance
         self.annotation = annotation
 
 
-@final
-@dataclasses.dataclass(frozen=True)
-class TagLiteral:
-    """Represents a tag, which could be provenance or an annotation."""
+def make_tag_df(
+    region: Region, metric: CommonFields, records: List[timeseries.TagInTimeseries]
+) -> pd.DataFrame:
+    df = pd.DataFrame.from_records(
+        [dataclasses.astuple(r) for r in records],
+        columns=[TagField.TYPE, TagField.DATE, TagField.CONTENT],
+    )
+    df[TagField.DATE] = pd.to_datetime(df[TagField.DATE])
+    df[TagField.LOCATION_ID] = region.location_id
+    df[TagField.VARIABLE] = metric
+    return df
 
-    region: Region
-    variable: FieldName
-    date: Union[pd.Timestamp, str]
-    type: timeseries.TagType
-    content: str
 
-    def to_dict(self) -> Mapping[TagField, Any]:
-        """Returns a Mapping suitable for making a tag DataFrame."""
-        return {
-            TagField.LOCATION_ID: self.region.location_id,
-            TagField.VARIABLE: self.variable,
-            TagField.DATE: pd.to_datetime(self.date),
-            TagField.TYPE: self.type,
-            TagField.CONTENT: self.content,
-        }
-
-    def to_annotation_tuple(self) -> AnnotationInTimeseriesLiteral:
-        """Returns a tuple for the TimeseriesLiteral.annotation attribute."""
-        return self.type, self.date, self.content
+def make_tag(
+    type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED,
+    date: Union[pd.Timestamp, str] = "2020-04-02",
+    content: str = "taggy",
+) -> timeseries.TagInTimeseries:
+    return timeseries.TagInTimeseries(type, pd.to_datetime(date), content)
 
 
 def build_dataset(
@@ -88,22 +80,23 @@ def build_dataset(
     """
     # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
     # sequences in metrics.
-    loc_var_seq = {
-        (region.location_id, variable): metrics_by_region_then_field_name[region][variable]
+    region_var_seq = {
+        (region, variable): metrics_by_region_then_field_name[region][variable]
         for region in metrics_by_region_then_field_name.keys()
         for variable in metrics_by_region_then_field_name[region].keys()
     }
 
-    # Make sure there is only one len among all of loc_var_seq.values(). Make a DatetimeIndex
+    # Make sure there is only one len among all of region_var_seq.values(). Make a DatetimeIndex
     # with that many dates.
-    sequence_lengths = more_itertools.one(set(len(seq) for seq in loc_var_seq.values()))
+    sequence_lengths = more_itertools.one(set(len(seq) for seq in region_var_seq.values()))
     dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
 
     index = pd.MultiIndex.from_tuples(
-        loc_var_seq.keys(), names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
+        [(region.location_id, var) for region, var in region_var_seq.keys()],
+        names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
     )
 
-    df = pd.DataFrame(list(loc_var_seq.values()), index=index, columns=dates)
+    df = pd.DataFrame(list(region_var_seq.values()), index=index, columns=dates)
     df = df.fillna(np.nan).apply(pd.to_numeric)
 
     dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
@@ -113,20 +106,18 @@ def build_dataset(
         dataset = dataclasses.replace(dataset, timeseries=new_timeseries)
 
     tags_to_concat = []
-    for (loc_id, var), ts_literal in loc_var_seq.items():
+    for (region, var), ts_literal in region_var_seq.items():
         if not isinstance(ts_literal, TimeseriesLiteral):
             continue
 
         records = list(ts_literal.annotation)
         if ts_literal.provenance:
-            records.append((timeseries.TagType.PROVENANCE, pd.NaT, ts_literal.provenance))
-        df = pd.DataFrame.from_records(
-            records, columns=[TagField.TYPE, TagField.DATE, TagField.CONTENT]
-        )
-        df[TagField.DATE] = pd.to_datetime(df[TagField.DATE])
-        df[TagField.LOCATION_ID] = loc_id
-        df[TagField.VARIABLE] = var
-        tags_to_concat.append(df)
+            records.append(
+                timeseries.TagInTimeseries(
+                    timeseries.TagType.PROVENANCE, pd.NaT, ts_literal.provenance
+                )
+            )
+        tags_to_concat.append(make_tag_df(region, var, records))
 
     if tags_to_concat:
         dataset = dataset.append_tag_df(pd.concat(tags_to_concat))

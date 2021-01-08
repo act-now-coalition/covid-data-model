@@ -299,6 +299,39 @@ def test_provenance():
     test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
 
 
+def test_preserve_tags():
+    region_as = Region.from_state("AS")
+    region_tx = Region.from_state("TX")
+    tag1 = test_helpers.AnnotationInTimeseriesLiteral(TagType)
+    metrics_as = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], provenance="pt_src2"),
+        CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+    }
+    metrics_tx = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([None, None, 3, 4], provenance="pt_src2"),
+        CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
+        CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+    }
+    dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
+
+    methods = [
+        DivisionMethod(
+            DatasetName("method1"), CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS
+        ),
+        DivisionMethod(
+            DatasetName("method2"), CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS
+        ),
+    ]
+    all_methods = AllMethods.run(dataset_in, methods, 3)
+
+    expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.01], provenance="method1")}
+    expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method2")}
+    expected_positivity = test_helpers.build_dataset(
+        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
+    )
+    test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
+
+
 def test_default_positivity_methods():
     # This test intentionally doesn't pass any methods to AllMethods.run to run the methods used
     # in production.

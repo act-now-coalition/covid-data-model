@@ -116,6 +116,16 @@ class RegionLatestNotFound(IndexError):
 
 @final
 @dataclass(frozen=True)
+class TagInTimeseries:
+    """Represents a tag in the context of a particular timeseries"""
+
+    type: TagType
+    date: pd.Timestamp
+    content: str
+
+
+@final
+@dataclass(frozen=True)
 class OneRegionTimeseriesDataset:
     """A set of timeseries with values from one region."""
 
@@ -126,13 +136,28 @@ class OneRegionTimeseriesDataset:
 
     latest: Dict[str, Any]
 
-    # A default exists for convenience in tests. Non-test is expected to explicitly set provenance.
-    # Because these objects are frozen it /might/ be safe to use default={} but using a factory to
-    # make a new instance of the mutable {} is safer.
-    provenance: Dict[str, str] = dataclasses.field(default_factory=dict)
+    # A default exists for convenience in tests. Non-test code is expected to explicitly set tag.
+    tag: pd.Series = dataclasses.field(
+        default_factory=lambda: _EMPTY_TAG_SERIES.reset_index(CommonFields.LOCATION_ID, drop=True)
+    )
 
-    # TODO(tom): find a way to expose all tags in this class or maybe add `attributes` as tags with
-    # a real date.
+    @property
+    def provenance(self) -> Dict[str, str]:
+        provenance_series = self.tag.loc[:, [TagType.PROVENANCE]].droplevel(
+            [TagField.TYPE, TagField.DATE]
+        )
+        return provenance_series.to_dict()
+
+    def annotations(self, metric: FieldName) -> List[TagInTimeseries]:
+        # tag.loc slicing can't select rows that *don't* have a particular type so make a binary
+        # mask array.
+        annotation_mask = (self.tag.index.get_level_values(TagField.VARIABLE) == metric) & (
+            self.tag.index.get_level_values(TagField.TYPE) != TagType.PROVENANCE
+        )
+        return_value = []
+        for row in self.tag.loc[annotation_mask].reset_index().itertuples():
+            return_value.append(TagInTimeseries(row.tag_type, row.date, row.content))
+        return return_value
 
     def __post_init__(self):
         assert CommonFields.LOCATION_ID in self.data.columns
@@ -145,6 +170,9 @@ class OneRegionTimeseriesDataset:
 
         if CommonFields.DATE not in self.data.columns:
             raise ValueError("A timeseries must have a date column")
+
+        assert self.tag.index.names == [TagField.VARIABLE, TagField.TYPE, TagField.DATE]
+        assert self.tag.empty or self.tag.index.levels[2].is_all_dates
 
     @property
     def date_indexed(self) -> pd.DataFrame:
@@ -622,20 +650,10 @@ class MultiRegionDataset:
         latest_dict = self._location_id_latest_dict(region.location_id)
         if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
-        provenance_dict = self._location_id_provenance_dict(region.location_id)
 
-        return OneRegionTimeseriesDataset(
-            region=region, data=ts_df, latest=latest_dict, provenance=provenance_dict,
-        )
+        tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
 
-    def _location_id_provenance_dict(self, location_id: str) -> dict:
-        """Returns the provenance dict of a location_id."""
-        try:
-            provenance_series = self.provenance.loc[location_id]
-        except KeyError:
-            return {}
-        else:
-            return provenance_series[provenance_series.notna()].to_dict()
+        return OneRegionTimeseriesDataset(region=region, data=ts_df, latest=latest_dict, tag=tag)
 
     def _location_id_latest_dict(self, location_id: str) -> dict:
         """Returns the latest values dict of a location_id."""
@@ -836,10 +854,10 @@ class MultiRegionDataset:
             CommonFields.LOCATION_ID, as_index=True
         ):
             latest_dict = self._location_id_latest_dict(location_id)
-            provenance_dict = self._location_id_provenance_dict(location_id)
             region = Region.from_location_id(location_id)
+            tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
             yield region, OneRegionTimeseriesDataset(
-                region, timeseries_group.reset_index(), latest_dict, provenance=provenance_dict,
+                region, timeseries_group.reset_index(), latest_dict, tag=tag
             )
 
     def get_county_name(self, *, region: pipeline.Region) -> str:
