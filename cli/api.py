@@ -97,39 +97,12 @@ def generate_test_positivity(
     test_positivity_results = test_positivity.AllMethods.run(selected_dataset)
     test_positivity_results.write(output_dir / test_positivity_all_methods)
 
-    # Similar to test_positivity.run_and_maybe_join_columns
-    joined_dataset = selected_dataset.drop_column_if_present(
-        CommonFields.TEST_POSITIVITY
-    ).join_columns(test_positivity_results.test_positivity)
-
-    log = structlog.get_logger()
-    positivity_time_series = {}
-    source_map = {}
-    for region, regional_data in joined_dataset.iter_one_regions():
-        pos_series, details = top_level_metrics.copy_test_positivity(regional_data, log)
-        positivity_time_series[region.location_id] = pos_series
-        source_map[region.location_id] = details.source.value
-    write_positivity(output_dir / final_result, positivity_time_series, source_map)
-
-
-def write_positivity(
-    final_result_path: pathlib.Path, positivity_time_series: dict, source_map: dict
-):
-    # TODO(tom): Delete this method once calculate_test_positivity produces a MultiRegionDataset.
-    wide_date_df = pd.DataFrame.from_dict(positivity_time_series, orient="index")
-
-    wide_date_df = wide_date_df.dropna("columns", "all")
-    start_date = wide_date_df.columns.min()
-    end_date = wide_date_df.columns.max()
-    date_range = pd.date_range(start=start_date, end=end_date)
-    wide_date_df = wide_date_df.reindex(columns=date_range).rename_axis(None, axis="columns")
-    wide_date_df.columns = wide_date_df.columns.strftime("%Y-%m-%d")
-
-    wide_date_df = wide_date_df.sort_index()
-
-    source_df = pd.DataFrame.from_dict(source_map, orient="index", columns=[PdFields.PROVENANCE])
-    wide_date_df = pd.concat([source_df, wide_date_df], axis=1)
-    wide_date_df.to_csv(final_result_path, index=True, float_format="%.05g")
+    test_positivity_results.test_positivity.timeseries_rows().to_csv(
+        output_dir / final_result, index=True, float_format="%.05g"
+    )
+    test_positivity_results.test_positivity.annotations_as_dataframe().to_csv(
+        output_dir / str(final_result).replace(".csv", "-annotations.csv"), index=False
+    )
 
 
 @main.command()
