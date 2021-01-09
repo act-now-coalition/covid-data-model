@@ -774,14 +774,18 @@ class MultiRegionDataset:
         wide_dates = wide_dates.rename_axis(None, axis="columns")
 
         if not self.provenance.empty:
+            # Add one or more columns with the provenance tag(s) for each timeseries
+            # (identified by a <location_id, variable> pair).
             # From https://stackoverflow.com/a/38369722
-            prov = (
+            provenance_columns = (
                 self.provenance.groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE])
                 .apply(lambda df: df.reset_index(drop=True))
                 .unstack()
-                .rename(columns=lambda i: f"provenance-{i}")
+                # The first provenance column has the same name as when there was only support
+                # for a single column. Extra columns are named "provenance-1", "provenance-2", ...
+                .rename(columns=lambda i: TagType.PROVENANCE + ("" if i == 0 else f"-{i}"))
             )
-            return pd.concat([prov, wide_dates], axis=1)
+            return pd.concat([provenance_columns, wide_dates], axis=1)
         else:
             return wide_dates
 
