@@ -37,7 +37,7 @@ def _build_actuals(actual_data: dict) -> Actuals:
         hospitalBeds={
             "capacity": actual_data.get(CommonFields.MAX_BED_COUNT),
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED),
-            "currentUsageTotal": actual_data.get(CommonFields.CURRENT_HOSPITALIZED_TOTAL),
+            "currentUsageTotal": actual_data.get(CommonFields.HOSPITAL_BEDS_IN_USE_ANY),
             "typicalUsageRate": actual_data.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE),
         },
         icuBeds={
