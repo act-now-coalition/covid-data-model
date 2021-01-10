@@ -348,6 +348,7 @@ class AllMethods:
     def run(
         dataset_in: MultiRegionDataset,
         methods: Sequence[Method] = TEST_POSITIVITY_METHODS,
+        *,
         diff_days: int = 7,
     ) -> "AllMethods":
         """Runs `methods` on `dataset_in` and returns the results or raises a TestPositivityException."""
