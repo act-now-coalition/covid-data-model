@@ -5,7 +5,6 @@ from typing import Mapping
 from typing import Optional
 
 import click
-import structlog
 
 import us
 from covidactnow.datapublic.common_fields import CommonFields
@@ -19,7 +18,6 @@ from api import update_open_api_spec
 from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.metrics import test_positivity
-from libs.metrics import top_level_metrics
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel

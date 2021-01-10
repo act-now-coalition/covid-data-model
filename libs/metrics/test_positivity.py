@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 import dataclasses
-import pathlib
 from itertools import chain
 from typing import Iterable
 from typing import List

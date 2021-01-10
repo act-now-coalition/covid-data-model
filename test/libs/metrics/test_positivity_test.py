@@ -66,14 +66,6 @@ def test_basic():
     ]
     all_methods = AllMethods.run(ds, methods, diff_days=3)
 
-    expected_df = _parse_wide_dates(
-        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
-        "iso1:us#iso2:us-as,method2,,,,0.02\n"
-        "iso1:us#iso2:us-tx,method1,,,,0.1\n"
-        "iso1:us#iso2:us-tx,method2,,,,0.01\n"
-    )
-    pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
-
     expected_positivity = test_helpers.build_dataset(
         {
             region_as: {
@@ -117,14 +109,6 @@ def test_recent_days():
     methods = _replace_methods_attribute(methods, recent_days=2)
     all_methods = AllMethods.run(ds, methods, diff_days=1)
 
-    expected_all = _parse_wide_dates(
-        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
-        "iso1:us#iso2:us-as,method1,,0.2,,\n"
-        "iso1:us#iso2:us-as,method2,,0.02,0.02,0.02\n"
-        "iso1:us#iso2:us-tx,method1,,0.1,0.1,0.1\n"
-        "iso1:us#iso2:us-tx,method2,,0.01,0.01,0.01\n"
-    )
-    pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_all, check_like=True)
     expected_positivity = test_helpers.build_dataset(
         {
             region_as: {
@@ -276,14 +260,6 @@ def test_provenance():
         ),
     ]
     all_methods = AllMethods.run(dataset_in, methods, diff_days=3)
-
-    expected_df = _parse_wide_dates(
-        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
-        "iso1:us#iso2:us-as,method2,,,,0.02\n"
-        "iso1:us#iso2:us-tx,method1,,,,0.1\n"
-        "iso1:us#iso2:us-tx,method2,,,,0.01\n"
-    )
-    pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
 
     expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")}
     expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")}
