@@ -530,10 +530,6 @@ class MultiRegionDataset:
         if not latest_df.empty:
             dataset = dataset.add_static_values(latest_df.drop(columns=[CommonFields.DATE]))
 
-        if isinstance(path_or_buf, pathlib.Path):
-            provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
-            if provenance_path.exists():
-                dataset = dataset.add_provenance_csv(provenance_path)
         return dataset
 
     @staticmethod
@@ -801,9 +797,6 @@ class MultiRegionDataset:
         common_df.write_csv(
             combined, path, structlog.get_logger(), [CommonFields.LOCATION_ID, CommonFields.DATE]
         )
-        if not self.provenance.empty:
-            provenance_path = str(path).replace(".csv", "-provenance.csv")
-            self.provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
 
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
