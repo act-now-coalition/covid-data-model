@@ -112,11 +112,9 @@ def _write_dataset_map(
     output_path: pathlib.Path,
     all_methods_datasets: Mapping[timeseries.DatasetName, MultiRegionDataset],
 ):
-
-    # For debugging create a DataFrame with the calculated timeseries of all methods, including
-    # timeseries that are not recent.
+    """Writes a map from DatasetName to dataset, used for debugging test positivity."""
     all_datasets_df = pd.concat(
-        {name: ds.all_output.timeseries_rows() for name, ds in all_methods_datasets.items()},
+        {name: ds.timeseries_rows() for name, ds in all_methods_datasets.items()},
         names=[PdFields.DATASET, CommonFields.LOCATION_ID, PdFields.VARIABLE],
     )
     all_methods = (

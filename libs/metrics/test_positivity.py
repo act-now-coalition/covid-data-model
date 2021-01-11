@@ -378,11 +378,13 @@ class AllMethods:
         calculated_dataset_recent_map = {
             name: method_output.recent for name, method_output in calculated_dataset_map.items()
         }
-        # HACK: If SmoothedTests is in calculated_dataset_recent_map (that is the
-        # MethodOutput.recent returned by `calculate`) then add it again at the end of the map with
-        # the Method.all_output. Remember that dict entries remain in the order inserted. This makes
-        # SmoothedTests the final fallback for a location if no other Method has a timeseries for
-        # it.
+        calculated_dataset_all_map = {
+            name: method_output.all_output for name, method_output in calculated_dataset_map.items()
+        }
+        # HACK: If SmoothedTests is in calculated_dataset_map (that is the MethodOutput returned by
+        # `calculate`) then add it again at the end of the map with the Method.all_output. Remember
+        # that dict entries remain in the order inserted. This makes # SmoothedTests the final
+        # fallback for a location if no other Method has a timeseries for it.
         old_method_output: Optional[MethodOutput] = calculated_dataset_map.get(
             timeseries.DatasetName("SmoothedTests")
         )
@@ -399,7 +401,7 @@ class AllMethods:
             {},
         )
         return AllMethods(
-            all_methods_datasets=calculated_dataset_map, test_positivity=test_positivity
+            all_methods_datasets=calculated_dataset_all_map, test_positivity=test_positivity
         )
 
     @staticmethod
