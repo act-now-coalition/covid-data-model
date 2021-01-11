@@ -807,8 +807,6 @@ class MultiRegionDataset:
 
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
-        self.to_csv(pointer.path_absolute)
-
         wide_df = self.timeseries_rows()
         # TODO(tom): Change to %.5g after new code seems stable. For now leaving .12g to reduce
         #  diff from what is currently written.
