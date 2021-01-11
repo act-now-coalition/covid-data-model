@@ -340,7 +340,7 @@ def test_default_positivity_methods():
 
     expected_as = {
         CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], provenance=["src1"],
+            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], provenance="src1",
         )
     }
     expected_tx = {
