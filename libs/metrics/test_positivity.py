@@ -102,7 +102,6 @@ def _append_variable_index_level(df: Union[pd.DataFrame, pd.Series], field_name:
 
 def _make_output_dataset(
     dataset_in: MultiRegionDataset,
-    default_provenance: str,
     source_columns: Collection[FieldName],
     wide_date_df: pd.DataFrame,
     output_metric: FieldName,
@@ -112,11 +111,10 @@ def _make_output_dataset(
 
     Args:
         dataset_in: original MultiRegionDataset.
-        default_provenance: value to put in provenance when no other value is available
+        source_columns: columns that were a source for the output. tags are copied from these to
+          the output.
         wide_date_df: the timeseries output, copied to the returned dataset
         output_metric: wide_date_df is copied to this metric/column in the returned dataset
-        source_columns: columns that were a source for the output, used to produce the provenance
-          content
     """
     assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
     # Drop all-NA timeseries now, as done in from_timeseries_wide_dates_df. This makes sure
@@ -136,9 +134,6 @@ def _make_output_dataset(
     if source_columns:
         source_tags = dataset_in.tag.loc[locations, list(source_columns)].reset_index()
         source_tags[TagField.VARIABLE] = output_metric
-        # Append a tag with default_provenance (typically the method name) for every timeseries in
-        # dataset_out. In production runs copying dataset_in.tag above is probably sufficient but
-        # there are a lot of unittests that depend on the method name appearing in a provenance tag.
         # When there are two source_columns they usually contain the same provenance content.
         # Only keep one copy of it.
         output_tags = source_tags.drop_duplicates(ignore_index=True)
@@ -200,7 +195,7 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
 
         all_output = _make_output_dataset(
-            dataset, self.name, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY,
+            dataset, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY,
         )
         return self._remove_stale_regions(all_output, most_recent_date)
 
@@ -244,7 +239,7 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
         # to the index which was just taken out. Consider skipping reindexing.
 
         all_output = _make_output_dataset(
-            dataset, self.name, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY
+            dataset, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY
         )
         return self._remove_stale_regions(all_output, most_recent_date)
 
@@ -289,7 +284,7 @@ class SmoothedTests(Method):
 
         # Make a dataset with TEST_POSITIVITY for every region where the calculation finished.
         all_output = _make_output_dataset(
-            dataset, self.name, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY,
+            dataset, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY,
         )
         # Make a dataset with the subset of regions having recent input timeseries.
         ds_recent = all_output.get_regions_subset(recent_regions)
