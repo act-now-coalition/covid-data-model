@@ -1,6 +1,4 @@
 import dataclasses
-from typing import List
-
 from collections import UserList
 from typing import Any
 from typing import Mapping
@@ -17,7 +15,6 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
 from libs.datasets.timeseries import TagField
-from libs.datasets.timeseries import TagType
 from libs.pipeline import Region
 
 

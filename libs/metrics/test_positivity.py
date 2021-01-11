@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 import dataclasses
-import pathlib
 from itertools import chain
 from typing import Collection
 from typing import Iterable
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -353,7 +353,7 @@ class AllMethods:
     """The result of calculating all test positivity methods for all regions"""
 
     # Test positivity calculated in all valid methods for each region
-    all_methods_timeseries: pd.DataFrame
+    all_methods_datasets: Mapping[timeseries.DatasetName, MultiRegionDataset]
 
     # A MultiRegionDataset with exactly one column, TEST_POSITIVITY, the best available
     # method for each region.
@@ -363,6 +363,7 @@ class AllMethods:
     def run(
         dataset_in: MultiRegionDataset,
         methods: Sequence[Method] = TEST_POSITIVITY_METHODS,
+        *,
         diff_days: int = 7,
     ) -> "AllMethods":
         """Runs `methods` on `dataset_in` and returns the results or raises a TestPositivityException."""
@@ -392,11 +393,13 @@ class AllMethods:
         calculated_dataset_recent_map = {
             name: method_output.recent for name, method_output in calculated_dataset_map.items()
         }
-        # HACK: If SmoothedTests is in calculated_dataset_recent_map (that is the
-        # MethodOutput.recent returned by `calculate`) then add it again at the end of the map with
-        # the Method.all_output. Remember that dict entries remain in the order inserted. This makes
-        # SmoothedTests the final fallback for a location if no other Method has a timeseries for
-        # it.
+        calculated_dataset_all_map = {
+            name: method_output.all_output for name, method_output in calculated_dataset_map.items()
+        }
+        # HACK: If SmoothedTests is in calculated_dataset_map (that is the MethodOutput returned by
+        # `calculate`) then add it again at the end of the map with the Method.all_output. Remember
+        # that dict entries remain in the order inserted. This makes # SmoothedTests the final
+        # fallback for a location if no other Method has a timeseries for it.
         old_method_output: Optional[MethodOutput] = calculated_dataset_map.get(
             timeseries.DatasetName("SmoothedTests")
         )
@@ -412,22 +415,9 @@ class AllMethods:
             {CommonFields.TEST_POSITIVITY: list(calculated_dataset_recent_map.keys())},
             {},
         )
-        # For debugging create a DataFrame with the calculated timeseries of all methods, including
-        # timeseries that are not recent.
-        all_datasets_df = pd.concat(
-            {
-                name: ds.all_output.timeseries_wide_dates()
-                for name, ds in calculated_dataset_map.items()
-            },
-            names=[PdFields.DATASET, CommonFields.LOCATION_ID, PdFields.VARIABLE],
+        return AllMethods(
+            all_methods_datasets=calculated_dataset_all_map, test_positivity=test_positivity
         )
-        all_methods = (
-            all_datasets_df.xs(CommonFields.TEST_POSITIVITY, level=PdFields.VARIABLE)
-            .sort_index()
-            .reindex(columns=dates)
-            .reorder_levels([CommonFields.LOCATION_ID, PdFields.DATASET])
-        )
-        return AllMethods(all_methods_timeseries=all_methods, test_positivity=test_positivity)
 
     @staticmethod
     def _methods_with_columns_available(
@@ -440,18 +430,6 @@ class AllMethods:
     def _list_columns(methods: Iterable[Method]) -> List[FieldName]:
         """Returns unsorted list of columns in given Method objects."""
         return list(set(chain.from_iterable(method.columns for method in methods)))
-
-    def write(self, csv_path: pathlib.Path):
-        # TODO(tom): Change all_method_timeseries to be something like Mapping[DatasetName,
-        #  MultiRegionDataset] and use shared code to write it.
-        df = self.all_methods_timeseries.dropna("columns", "all")
-        start_date = df.columns.min()
-        end_date = df.columns.max()
-        date_range = pd.date_range(start=start_date, end=end_date)
-        df = df.reindex(columns=date_range).rename_axis(None, axis="columns")
-        df.columns = df.columns.strftime("%Y-%m-%d")
-
-        df.sort_index().to_csv(csv_path, index=True, float_format="%.05g")
 
 
 def run_and_maybe_join_columns(

@@ -1,10 +1,10 @@
 import logging
 import json
 import pathlib
+from typing import Mapping
 from typing import Optional
 
 import click
-import structlog
 
 import us
 from covidactnow.datapublic.common_fields import CommonFields
@@ -15,8 +15,9 @@ import pyseir.cli
 import pyseir.run
 
 from api import update_open_api_spec
+from libs.datasets import timeseries
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.metrics import test_positivity
-from libs.metrics import top_level_metrics
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
@@ -95,7 +96,9 @@ def generate_test_positivity(
         exclude_county_999=True, states=active_states, fips=fips,
     )
     test_positivity_results = test_positivity.AllMethods.run(selected_dataset)
-    test_positivity_results.write(output_dir / test_positivity_all_methods)
+    _write_dataset_map(
+        output_dir / test_positivity_all_methods, test_positivity_results.all_methods_datasets
+    )
 
     test_positivity_results.test_positivity.timeseries_rows().to_csv(
         output_dir / final_result, index=True, float_format="%.05g"
@@ -103,6 +106,23 @@ def generate_test_positivity(
     test_positivity_results.test_positivity.annotations_as_dataframe().to_csv(
         output_dir / str(final_result).replace(".csv", "-annotations.csv"), index=False
     )
+
+
+def _write_dataset_map(
+    output_path: pathlib.Path,
+    all_methods_datasets: Mapping[timeseries.DatasetName, MultiRegionDataset],
+):
+    """Writes a map from DatasetName to dataset, used for debugging test positivity."""
+    all_datasets_df = pd.concat(
+        {name: ds.timeseries_rows() for name, ds in all_methods_datasets.items()},
+        names=[PdFields.DATASET, CommonFields.LOCATION_ID, PdFields.VARIABLE],
+    )
+    all_methods = (
+        all_datasets_df.xs(CommonFields.TEST_POSITIVITY, level=PdFields.VARIABLE)
+        .sort_index()
+        .reorder_levels([CommonFields.LOCATION_ID, PdFields.DATASET])
+    )
+    all_methods.sort_index().to_csv(output_path, index=True, float_format="%.05g")
 
 
 @main.command()
