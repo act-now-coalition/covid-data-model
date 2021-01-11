@@ -1,6 +1,7 @@
 import dataclasses
 from collections import UserList
 from typing import Any
+from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
@@ -15,6 +16,7 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
 from libs.datasets.timeseries import TagField
+from libs.datasets.timeseries import TagType
 from libs.pipeline import Region
 
 
@@ -130,9 +132,10 @@ def build_default_region_dataset(
     metrics: Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]],
     *,
     region=DEFAULT_REGION,
+    start_date="2020-04-01",
 ) -> timeseries.MultiRegionDataset:
     """Returns a `MultiRegionDataset` containing metrics in one region"""
-    return build_dataset({region: metrics})
+    return build_dataset({region: metrics}, start_date=start_date)
 
 
 def build_one_region_dataset(

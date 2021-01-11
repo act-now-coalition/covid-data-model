@@ -139,20 +139,6 @@ def _make_output_dataset(
         # Append a tag with default_provenance (typically the method name) for every timeseries in
         # dataset_out. In production runs copying dataset_in.tag above is probably sufficient but
         # there are a lot of unittests that depend on the method name appearing in a provenance tag.
-        # TODO(tom): Clean up the unittest that fail when the following append of default_provenance
-        #  is removed.
-        source_tags = source_tags.append(
-            pd.DataFrame.from_dict(
-                {
-                    TagField.LOCATION_ID: locations,
-                    TagField.VARIABLE: output_metric,
-                    TagField.DATE: pd.NaT,
-                    TagField.TYPE: TagType.PROVENANCE,
-                    TagField.CONTENT: default_provenance,
-                }
-            ),
-            ignore_index=True,
-        )
         # When there are two source_columns they usually contain the same provenance content.
         # Only keep one copy of it.
         output_tags = source_tags.drop_duplicates(ignore_index=True)
