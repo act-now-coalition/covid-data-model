@@ -554,11 +554,11 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
     # Compare written file with a string literal so a test fails if something changes in how the
     # file is written. The literal contains spaces to align the columns in the source.
     assert pointer.path_wide_dates().read_text() == (
-        "                  location_id,variable,provenance-0,2020-04-01,2020-04-02,2020-04-03\n"
-        "           iso1:us#iso2:us-as,   cases,            ,       100,       200,       300\n"
-        "           iso1:us#iso2:us-as,icu_beds,     pt_src1,         0,         2,         4\n"
-        "iso1:us#iso2:us-ca#fips:06075,   cases,            ,          ,       210,       310\n"
-        "iso1:us#iso2:us-ca#fips:06075,  deaths,     pt_src2,         1,         2,          \n"
+        "                  location_id,variable,provenance,2020-04-01,2020-04-02,2020-04-03\n"
+        "           iso1:us#iso2:us-as,   cases,          ,       100,       200,       300\n"
+        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         0,         2,         4\n"
+        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,          ,       210,       310\n"
+        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,         1,         2,          \n"
     ).replace(" ", "")
 
     dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
