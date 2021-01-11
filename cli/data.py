@@ -10,7 +10,7 @@ import structlog
 import click
 from covidactnow.datapublic.common_fields import CommonFields
 
-from libs import google_sheet_helpers, wide_dates_df
+from libs import google_sheet_helpers
 from libs import pipeline
 from libs.datasets import combined_dataset_utils
 from libs.datasets import custom_aggregations
