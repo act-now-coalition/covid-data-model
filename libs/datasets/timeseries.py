@@ -1061,7 +1061,6 @@ def _find_scale_factors(
 ) -> pd.DataFrame:
     assert static_in.index.names == [CommonFields.LOCATION_ID]
     assert static_agg.index.names == [CommonFields.LOCATION_ID]
-
     # For each location_id, calculate the scaling factor from the static data.
     scale_factors = pd.DataFrame([], index=pd.Index(location_ids).unique().sort_values())
     for scale_factor_field in {agg.scale_factor for agg in aggregations}:
@@ -1077,8 +1076,30 @@ def _find_scale_factors(
     return scale_factors
 
 
+# Calculate weighted reporting percentage by group weighted by scale field
+def _calculate_weighted_reporting_ratio(
+    long_all_values, location_id_map, scale_series, groupby_columns
+):
+    scale_field = "scale"
+
+    location_id_df = pd.DataFrame(
+        location_id_map.items(), columns=[CommonFields.LOCATION_ID, LOCATION_ID_AGG]
+    ).set_index(CommonFields.LOCATION_ID)
+    location_id_df[scale_field] = scale_series
+    location_id_aggregated_scale_field = location_id_df.groupby(LOCATION_ID_AGG)[scale_field].sum()
+
+    long_all_scaled_count = long_all_values.notna() * scale_series
+    long_agg_scaled = long_all_scaled_count.groupby(groupby_columns).sum()
+
+    return long_agg_scaled / location_id_aggregated_scale_field
+
+
 def _aggregate_dataframe_by_region(
-    df_in: pd.DataFrame, location_id_map: Mapping[str, str], *, ignore_na: bool
+    df_in: pd.DataFrame,
+    location_id_map: Mapping[str, str],
+    *,
+    reporting_ratio_location_weights: Optional[pd.Series] = None,
+    reporting_ratio_required: float = 1.0,
 ) -> pd.DataFrame:
     """Aggregates a DataFrame using given region map. The output contains dates iff the input does."""
 
@@ -1108,29 +1129,19 @@ def _aggregate_dataframe_by_region(
     long_all_values = df.rename_axis(columns=PdFields.VARIABLE).stack(dropna=True)
     assert long_all_values.index.names == [CommonFields.LOCATION_ID] + groupby_columns
 
-    # Make a Series with index `location_id_agg` containing the count of regions to be
-    # aggregated for that region.
-    location_id_agg_count = (
-        pd.Series(list(location_id_map.values()))
-        .value_counts()
-        .rename_axis(LOCATION_ID_AGG)
-        .rename("location_id_agg_count")
-    )
+    # Aggregate by location_id_agg, optional date and variable.
+    long_agg = long_all_values.groupby(groupby_columns, sort=False).sum()
 
-    # Aggregate by location_id_agg, optional date and variable. Keep the sum and count of
-    # input values.
-    long_agg = long_all_values.groupby(groupby_columns, sort=False).agg(["sum", "count"])
-    # Join the count of regions in each location_id_agg
-    long_agg = long_agg.join(location_id_agg_count, on=LOCATION_ID_AGG)
-
-    if not ignore_na:
-        # Only keep aggregated values where the count of aggregated values is the same as the
-        # count of input regions.
-        long_agg = long_agg.loc[long_agg["count"] == long_agg["location_id_agg_count"]]
+    if reporting_ratio_required:
+        weighted_reporting_ratio = _calculate_weighted_reporting_ratio(
+            long_all_values, location_id_map, reporting_ratio_location_weights, groupby_columns
+        )
+        is_valid_reporting_ratio = weighted_reporting_ratio >= reporting_ratio_required
+        acceptable_ratios = weighted_reporting_ratio.loc[is_valid_reporting_ratio]
+        long_agg = long_agg.filter(acceptable_ratios.index, axis=0)
 
     df_out = (
-        long_agg["sum"]
-        .unstack()
+        long_agg.unstack()
         .rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID})
         .sort_index()
         .reindex(columns=df_in.columns)
@@ -1145,6 +1156,7 @@ def aggregate_regions(
     aggregations: Sequence[StaticWeightedAverageAggregation] = WEIGHTED_AGGREGATIONS,
     *,
     ignore_na: bool = False,
+    reporting_ratio_required: float = 1.0,
 ) -> MultiRegionDataset:
     """Produces a dataset with dataset_in aggregated using sum or weighted aggregation."""
     dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
@@ -1174,12 +1186,18 @@ def aggregate_regions(
     # ... all other static input values.
     static_in_other_fields = static_in.loc[:, ~scale_fields_mask]
 
+    populations = static_in.loc[:, CommonFields.POPULATION]
+
     static_agg_scale_fields = _aggregate_dataframe_by_region(
-        static_in_scale_fields, location_id_map, ignore_na=ignore_na
+        static_in_scale_fields,
+        location_id_map,
+        reporting_ratio_location_weights=populations,
+        reporting_ratio_required=reporting_ratio_required,
     )
     location_ids = dataset_in.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
     # TODO(tom): Add support for time-varying scale factors, for example to scale
     # test_positivity by number of tests.
+
     scale_factors = _find_scale_factors(
         aggregations,
         location_id_map,
@@ -1194,10 +1212,16 @@ def aggregate_regions(
     timeseries_scaled = _apply_scaling_factor(dataset_in.timeseries, scale_factors, aggregations)
 
     static_agg_other_fields = _aggregate_dataframe_by_region(
-        static_other_fields_scaled, location_id_map, ignore_na=ignore_na
+        static_other_fields_scaled,
+        location_id_map,
+        reporting_ratio_location_weights=populations,
+        reporting_ratio_required=reporting_ratio_required,
     )
     timeseries_agg = _aggregate_dataframe_by_region(
-        timeseries_scaled, location_id_map, ignore_na=ignore_na
+        timeseries_scaled,
+        location_id_map,
+        reporting_ratio_location_weights=populations,
+        reporting_ratio_required=reporting_ratio_required,
     )
     static_agg = pd.concat([static_agg_scale_fields, static_agg_other_fields], axis=1)
     if static_agg.index.name != CommonFields.LOCATION_ID:
