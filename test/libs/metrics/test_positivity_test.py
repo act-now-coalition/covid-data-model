@@ -7,6 +7,7 @@ import pytest
 from covidactnow.datapublic import common_df
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldName
 from freezegun import freeze_time
 
 from test import test_helpers
@@ -40,19 +41,20 @@ def _replace_methods_attribute(methods: List[Method], **kwargs) -> List[Method]:
 
 
 def test_basic():
-    ts = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,positive_tests,positive_tests_viral,total_tests,\n"
-            "iso1:us#iso2:as,2020-04-01,0,,100\n"
-            "iso1:us#iso2:as,2020-04-02,2,,200\n"
-            "iso1:us#iso2:as,2020-04-03,4,,300\n"
-            "iso1:us#iso2:as,2020-04-04,6,,400\n"
-            "iso1:us#iso2:tx,2020-04-01,1,10,100\n"
-            "iso1:us#iso2:tx,2020-04-02,2,20,200\n"
-            "iso1:us#iso2:tx,2020-04-03,3,30,300\n"
-            "iso1:us#iso2:tx,2020-04-04,4,40,400\n"
-        )
-    )
+    region_as = Region.from_state("AS")
+    region_tx = Region.from_state("TX")
+    metrics_as = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([0, 2, 4, 6], provenance="pos"),
+        CommonFields.TOTAL_TESTS: TimeseriesLiteral([100, 200, 300, 400]),
+    }
+    metrics_tx = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], provenance="pos"),
+        CommonFields.POSITIVE_TESTS_VIRAL: TimeseriesLiteral(
+            [10, 20, 30, 40], provenance="pos_viral"
+        ),
+        CommonFields.TOTAL_TESTS: TimeseriesLiteral([100, 200, 300, 400]),
+    }
+    ds = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
 
     methods = [
         DivisionMethod(
@@ -62,46 +64,40 @@ def test_basic():
             DatasetName("method2"), CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS
         ),
     ]
-    all_methods = AllMethods.run(ts, methods, 3)
+    all_methods = AllMethods.run(ds, methods, diff_days=3)
 
-    expected_df = _parse_wide_dates(
-        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
-        "iso1:us#iso2:as,method2,,,,0.02\n"
-        "iso1:us#iso2:tx,method1,,,,0.1\n"
-        "iso1:us#iso2:tx,method2,,,,0.01\n"
-    )
-    pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
-
-    expected_positivity = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,test_positivity\n"
-            "iso1:us#iso2:as,2020-04-04,0.02\n"
-            "iso1:us#iso2:tx,2020-04-04,0.1\n"
-        )
-    ).add_provenance_csv(
-        io.StringIO(
-            "location_id,variable,provenance\n"
-            "iso1:us#iso2:as,test_positivity,method2\n"
-            "iso1:us#iso2:tx,test_positivity,method1\n"
-        )
+    expected_positivity = test_helpers.build_dataset(
+        {
+            region_as: {
+                CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")
+            },
+            region_tx: {
+                CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")
+            },
+        },
+        start_date="2020-04-04",
     )
     test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
 
 
 def test_recent_days():
-    ts = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,positive_tests,positive_tests_viral,total_tests,\n"
-            "iso1:us#iso2:us-as,2020-04-01,0,0,100\n"
-            "iso1:us#iso2:us-as,2020-04-02,2,20,200\n"
-            "iso1:us#iso2:us-as,2020-04-03,4,,300\n"
-            "iso1:us#iso2:us-as,2020-04-04,6,,400\n"
-            "iso1:us#iso2:us-tx,2020-04-01,1,10,100\n"
-            "iso1:us#iso2:us-tx,2020-04-02,2,20,200\n"
-            "iso1:us#iso2:us-tx,2020-04-03,3,30,300\n"
-            "iso1:us#iso2:us-tx,2020-04-04,4,40,400\n"
-        )
-    )
+    region_as = Region.from_state("AS")
+    region_tx = Region.from_state("TX")
+    metrics_as = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([0, 2, 4, 6], provenance="pos"),
+        CommonFields.POSITIVE_TESTS_VIRAL: TimeseriesLiteral(
+            [0, 20, None, None], provenance="pos_viral"
+        ),
+        CommonFields.TOTAL_TESTS: TimeseriesLiteral([100, 200, 300, 400]),
+    }
+    metrics_tx = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], provenance="pos"),
+        CommonFields.POSITIVE_TESTS_VIRAL: TimeseriesLiteral(
+            [10, 20, 30, 40], provenance="pos_viral"
+        ),
+        CommonFields.TOTAL_TESTS: TimeseriesLiteral([100, 200, 300, 400]),
+    }
+    ds = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
     methods = [
         DivisionMethod(
             DatasetName("method1"), CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS
@@ -111,43 +107,33 @@ def test_recent_days():
         ),
     ]
     methods = _replace_methods_attribute(methods, recent_days=2)
-    all_methods = AllMethods.run(ts, methods, diff_days=1)
+    all_methods = AllMethods.run(ds, methods, diff_days=1)
 
-    expected_all = _parse_wide_dates(
-        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
-        "iso1:us#iso2:us-as,method1,,0.2,,\n"
-        "iso1:us#iso2:us-as,method2,,0.02,0.02,0.02\n"
-        "iso1:us#iso2:us-tx,method1,,0.1,0.1,0.1\n"
-        "iso1:us#iso2:us-tx,method2,,0.01,0.01,0.01\n"
-    )
-    pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_all, check_like=True)
-    expected_positivity = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,test_positivity\n"
-            "iso1:us#iso2:us-as,2020-04-02,0.02\n"
-            "iso1:us#iso2:us-as,2020-04-03,0.02\n"
-            "iso1:us#iso2:us-as,2020-04-04,0.02\n"
-            "iso1:us#iso2:us-tx,2020-04-02,0.1\n"
-            "iso1:us#iso2:us-tx,2020-04-03,0.1\n"
-            "iso1:us#iso2:us-tx,2020-04-04,0.1\n"
-        )
-    ).add_provenance_csv(
-        io.StringIO(
-            "location_id,variable,provenance\n"
-            "iso1:us#iso2:us-as,test_positivity,method2\n"
-            "iso1:us#iso2:us-tx,test_positivity,method1\n"
-        )
+    expected_positivity = test_helpers.build_dataset(
+        {
+            region_as: {
+                CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
+                    [0.02, 0.02, 0.02], provenance="method2"
+                )
+            },
+            region_tx: {
+                CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
+                    [0.1, 0.1, 0.1], provenance="method1"
+                )
+            },
+        },
+        start_date="2020-04-02",
     )
     test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
-    assert all_methods.test_positivity.get_one_region(Region.from_state("AS")).provenance == {
+    assert all_methods.test_positivity.get_one_region(region_as).provenance == {
         CommonFields.TEST_POSITIVITY: "method2"
     }
-    assert all_methods.test_positivity.get_one_region(Region.from_state("TX")).provenance == {
+    assert all_methods.test_positivity.get_one_region(region_tx).provenance == {
         CommonFields.TEST_POSITIVITY: "method1"
     }
 
     methods = _replace_methods_attribute(methods, recent_days=3)
-    all_methods = AllMethods.run(ts, methods, diff_days=1)
+    all_methods = AllMethods.run(ds, methods, diff_days=1)
     positivity_provenance = all_methods.test_positivity.provenance
     assert positivity_provenance.loc["iso1:us#iso2:us-as"].to_dict() == {
         CommonFields.TEST_POSITIVITY: "method1"
@@ -158,14 +144,12 @@ def test_recent_days():
 
 
 def test_missing_column_for_one_method():
-    ts = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,positive_tests,positive_tests_viral,total_tests\n"
-            "iso1:us#iso2:tx,2020-04-01,1,10,100\n"
-            "iso1:us#iso2:tx,2020-04-02,2,20,200\n"
-            "iso1:us#iso2:tx,2020-04-03,3,30,300\n"
-            "iso1:us#iso2:tx,2020-04-04,4,40,400\n"
-        )
+    ds = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.POSITIVE_TESTS: [1, 2, 3, 4],
+            CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
+            CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
+        }
     )
     methods = [
         DivisionMethod(
@@ -182,22 +166,16 @@ def test_missing_column_for_one_method():
     ]
     methods = _replace_methods_attribute(methods, recent_days=4)
     assert (
-        AllMethods.run(ts, methods, diff_days=1)
-        .test_positivity.provenance.loc["iso1:us#iso2:tx"]
+        AllMethods.run(ds, methods, diff_days=1)
+        .test_positivity.provenance.loc[test_helpers.DEFAULT_REGION.location_id]
         .at[CommonFields.TEST_POSITIVITY]
         == "method1"
     )
 
 
 def test_missing_columns_for_all_tests():
-    ts = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,m1,m2,m3\n"
-            "iso1:us#iso2:tx,2020-04-01,1,10,100\n"
-            "iso1:us#iso2:tx,2020-04-02,2,20,200\n"
-            "iso1:us#iso2:tx,2020-04-03,3,30,300\n"
-            "iso1:us#iso2:tx,2020-04-04,4,40,400\n"
-        )
+    ds = test_helpers.build_default_region_dataset(
+        {FieldName("m1"): [1, 2, 3, 4], FieldName("m2"): [10, 20, 30, 40]}
     )
     methods = [
         DivisionMethod(
@@ -214,7 +192,7 @@ def test_missing_columns_for_all_tests():
     ]
     methods = _replace_methods_attribute(methods, recent_days=4)
     with pytest.raises(test_positivity.NoMethodsWithRelevantColumns):
-        AllMethods.run(ts, methods, diff_days=1)
+        AllMethods.run(ds, methods, diff_days=1)
 
 
 def test_column_present_with_no_data():
@@ -281,15 +259,7 @@ def test_provenance():
             DatasetName("method2"), CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS
         ),
     ]
-    all_methods = AllMethods.run(dataset_in, methods, 3)
-
-    expected_df = _parse_wide_dates(
-        "location_id,dataset,2020-04-01,2020-04-02,2020-04-03,2020-04-04\n"
-        "iso1:us#iso2:us-as,method2,,,,0.02\n"
-        "iso1:us#iso2:us-tx,method1,,,,0.1\n"
-        "iso1:us#iso2:us-tx,method2,,,,0.01\n"
-    )
-    pd.testing.assert_frame_equal(all_methods.all_methods_timeseries, expected_df, check_like=True)
+    all_methods = AllMethods.run(dataset_in, methods, diff_days=3)
 
     expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")}
     expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")}

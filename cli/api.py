@@ -1,10 +1,10 @@
 import logging
 import json
 import pathlib
+from typing import Mapping
 from typing import Optional
 
 import click
-import structlog
 
 import us
 from covidactnow.datapublic.common_fields import CommonFields
@@ -15,8 +15,9 @@ import pyseir.cli
 import pyseir.run
 
 from api import update_open_api_spec
+from libs.datasets import timeseries
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.metrics import test_positivity
-from libs.metrics import top_level_metrics
 from libs.datasets import combined_datasets
 from libs.datasets.dataset_utils import REPO_ROOT
 from libs.datasets.dataset_utils import AggregationLevel
@@ -95,41 +96,33 @@ def generate_test_positivity(
         exclude_county_999=True, states=active_states, fips=fips,
     )
     test_positivity_results = test_positivity.AllMethods.run(selected_dataset)
-    test_positivity_results.write(output_dir / test_positivity_all_methods)
+    _write_dataset_map(
+        output_dir / test_positivity_all_methods, test_positivity_results.all_methods_datasets
+    )
 
-    # Similar to test_positivity.run_and_maybe_join_columns
-    joined_dataset = selected_dataset.drop_column_if_present(
-        CommonFields.TEST_POSITIVITY
-    ).join_columns(test_positivity_results.test_positivity)
-
-    log = structlog.get_logger()
-    positivity_time_series = {}
-    source_map = {}
-    for region, regional_data in joined_dataset.iter_one_regions():
-        pos_series, details = top_level_metrics.copy_test_positivity(regional_data, log)
-        positivity_time_series[region.location_id] = pos_series
-        source_map[region.location_id] = details.source.value
-    write_positivity(output_dir / final_result, positivity_time_series, source_map)
+    test_positivity_results.test_positivity.timeseries_rows().to_csv(
+        output_dir / final_result, index=True, float_format="%.05g"
+    )
+    test_positivity_results.test_positivity.annotations_as_dataframe().to_csv(
+        output_dir / str(final_result).replace(".csv", "-annotations.csv"), index=False
+    )
 
 
-def write_positivity(
-    final_result_path: pathlib.Path, positivity_time_series: dict, source_map: dict
+def _write_dataset_map(
+    output_path: pathlib.Path,
+    all_methods_datasets: Mapping[timeseries.DatasetName, MultiRegionDataset],
 ):
-    # TODO(tom): Delete this method once calculate_test_positivity produces a MultiRegionDataset.
-    wide_date_df = pd.DataFrame.from_dict(positivity_time_series, orient="index")
-
-    wide_date_df = wide_date_df.dropna("columns", "all")
-    start_date = wide_date_df.columns.min()
-    end_date = wide_date_df.columns.max()
-    date_range = pd.date_range(start=start_date, end=end_date)
-    wide_date_df = wide_date_df.reindex(columns=date_range).rename_axis(None, axis="columns")
-    wide_date_df.columns = wide_date_df.columns.strftime("%Y-%m-%d")
-
-    wide_date_df = wide_date_df.sort_index()
-
-    source_df = pd.DataFrame.from_dict(source_map, orient="index", columns=[PdFields.PROVENANCE])
-    wide_date_df = pd.concat([source_df, wide_date_df], axis=1)
-    wide_date_df.to_csv(final_result_path, index=True, float_format="%.05g")
+    """Writes a map from DatasetName to dataset, used for debugging test positivity."""
+    all_datasets_df = pd.concat(
+        {name: ds.timeseries_rows() for name, ds in all_methods_datasets.items()},
+        names=[PdFields.DATASET, CommonFields.LOCATION_ID, PdFields.VARIABLE],
+    )
+    all_methods = (
+        all_datasets_df.xs(CommonFields.TEST_POSITIVITY, level=PdFields.VARIABLE)
+        .sort_index()
+        .reorder_levels([CommonFields.LOCATION_ID, PdFields.DATASET])
+    )
+    all_methods.sort_index().to_csv(output_path, index=True, float_format="%.05g")
 
 
 @main.command()
