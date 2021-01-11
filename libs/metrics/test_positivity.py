@@ -20,7 +20,6 @@ from typing_extensions import final
 
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
-from libs.datasets.tail_filter import TagType
 
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
