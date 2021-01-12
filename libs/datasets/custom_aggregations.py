@@ -57,9 +57,9 @@ def replace_dc_county_with_state_data(
     static_excluding_numbers = dataset_in.get_regions_subset(
         [dc_county_region]
     ).static.select_dtypes(exclude="number")
-    dc_county_dataset = timeseries.aggregate_regions(
-        dataset_in, dc_map, ignore_na=True
-    ).add_static_values(static_excluding_numbers.reset_index())
+    dc_county_dataset = timeseries.aggregate_regions(dataset_in, dc_map).add_static_values(
+        static_excluding_numbers.reset_index()
+    )
     dataset_without_dc_county = dataset_in.remove_regions([dc_county_region])
 
     return dataset_without_dc_county.append_regions(dc_county_dataset)
