@@ -4,12 +4,12 @@
   "data_git_info": {
     "sha": "e939397b1b0aa7b53c93850c1a1812439a9b0864",
     "branch": "main",
-    "is_dirty": true
+    "is_dirty": false
   },
   "model_git_info": {
-    "sha": "5d4a69da93fa1742082a7db6731ddbabd8276899",
-    "branch": "enable-filtering-out-values-based-on-location-scale-values",
-    "is_dirty": true
+    "sha": "e0fad5c6bf3de4e56e231d0ca91f24c0297066f0",
+    "branch": "main",
+    "is_dirty": false
   },
-  "updated_at": "2021-01-12T00:02:48.385400"
+  "updated_at": "2021-01-11T15:55:04.121316"
 }
