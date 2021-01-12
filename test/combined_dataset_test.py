@@ -62,13 +62,20 @@ def test_nyc_aggregation(nyc_region):
 def test_combined_county_has_some_timeseries_data(fips):
     region = Region.from_fips(fips)
     latest = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
+    date = "2020-09-04"  # Arbitrary date when both regions have data
     df = latest.data.set_index(CommonFields.DATE)
-    date = "2020-09-04"  # Arbitrary date that both FIPS have data for.
-    assert df.loc[date, CommonFields.CASES] > 0
-    assert df.loc[date, CommonFields.DEATHS] > 0
-    assert df.loc[date, CommonFields.POSITIVE_TESTS] > 0
-    assert df.loc[date, CommonFields.NEGATIVE_TESTS] > 0
-    assert df.loc[date, CommonFields.CURRENT_ICU] > 0
+    one_date = df.loc[date]
+    assert one_date[CommonFields.CASES] > 0
+    assert one_date[CommonFields.DEATHS] > 0
+    # Check that there is some testing data, either positive and negative tests or a test
+    # positivity ratio.
+    assert (
+        one_date[CommonFields.POSITIVE_TESTS] > 0 and one_date[CommonFields.NEGATIVE_TESTS] > 0
+    ) or (
+        one_date[CommonFields.TEST_POSITIVITY_7D] > 0
+        or one_date[CommonFields.TEST_POSITIVITY_14D] > 0
+    )
+    assert one_date[CommonFields.CURRENT_ICU] > 0
 
 
 def test_get_county_name():
