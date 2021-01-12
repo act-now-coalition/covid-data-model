@@ -70,7 +70,7 @@ def build_dataset(
     *,
     start_date="2020-04-01",
     timeseries_columns: Optional[Sequence[FieldName]] = None,
-    static_by_region_then_field_name: Mapping[Region, Mapping[FieldName, Any]],
+    static_by_region_then_field_name: Optional[Mapping[Region, Mapping[FieldName, Any]]] = None,
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset for multiple regions and metrics.
     Args:
