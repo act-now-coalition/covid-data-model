@@ -1156,7 +1156,7 @@ def aggregate_regions(
     aggregations: Sequence[StaticWeightedAverageAggregation] = WEIGHTED_AGGREGATIONS,
     *,
     ignore_na: bool = False,
-    reporting_ratio_required: float = 1.0,
+    reporting_ratio_required: float = 0.95,
 ) -> MultiRegionDataset:
     """Produces a dataset with dataset_in aggregated using sum or weighted aggregation."""
     dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
