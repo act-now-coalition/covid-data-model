@@ -542,7 +542,8 @@ class MultiRegionDataset:
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
         wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
 
-        # Extract provenance column from wide date DataFrame so all columns are dates.
+        # Extract provenance columns from wide date DataFrame so all columns are dates. This
+        # parses the column names created in `timeseries_rows`.
         provenance_column_mask = wide_dates_df.columns.str.match(
             r"\A" + TagType.PROVENANCE + r"(-\d+)?\Z"
         )
@@ -783,6 +784,7 @@ class MultiRegionDataset:
                 .unstack()
                 # The first provenance column has the same name as when there was only support
                 # for a single column. Extra columns are named "provenance-1", "provenance-2", ...
+                # These column names are parsed in `read_from_pointer`.
                 .rename(columns=lambda i: TagType.PROVENANCE + ("" if i == 0 else f"-{i}"))
             )
             return pd.concat([provenance_columns, wide_dates], axis=1)
