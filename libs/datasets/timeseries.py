@@ -775,22 +775,14 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask]
         return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
 
-    def to_csv(
-        self, path: pathlib.Path, write_timeseries_latest_values=False,
-    ):
+    def to_csv(self, path: pathlib.Path):
         """Persists timeseries to CSV.
 
         Args:
             path: Path to write to.
-            write_timeseries_latest_values: write both explicit set static attributes and timeseries
-              values derived from timeseries. Mostly exists to compare to old files created when latest
-              values were calculated upstream.
         """
-        if write_timeseries_latest_values:
-            latest_data = self.static_and_timeseries_latest_with_fips().reset_index()
-        else:
-            latest_data = self.static.reset_index()
-            _add_fips_if_missing(latest_data)
+        latest_data = self.static.reset_index()
+        _add_fips_if_missing(latest_data)
 
         timeseries_data = self._geo_data.join(self.timeseries).reset_index()
         _add_fips_if_missing(timeseries_data)
@@ -807,8 +799,6 @@ class MultiRegionDataset:
 
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
-        self.to_csv(pointer.path_absolute)
-
         wide_df = self.timeseries_rows()
         # TODO(tom): Change to %.5g after new code seems stable. For now leaving .12g to reduce
         #  diff from what is currently written.
