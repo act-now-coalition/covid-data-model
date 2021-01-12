@@ -105,42 +105,6 @@ def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Pat
     )
 
 
-def test_multi_region_to_csv_write_timeseries_latest_values(tmp_path: pathlib.Path):
-    ts = read_csv_and_index_fips_date(
-        "fips,county,aggregate_level,date,m1,m2\n"
-        "97111,Bar County,county,2020-04-02,2,\n"
-        "97222,Foo County,county,2020-04-01,,10\n"
-        "01,,state,2020-04-01,,20\n"
-    ).reset_index()
-    latest_values = read_csv_and_index_fips(
-        "fips,county,aggregate_level,c1,m2\n"
-        "97111,Bar County,county,3,\n"
-        "97222,Foo County,county,4,10.5\n"
-        "01,,state,,123.4\n"
-    ).reset_index()
-    multiregion = (
-        timeseries.MultiRegionDataset.from_fips_timeseries_df(ts)
-        .add_fips_static_df(latest_values)
-        .add_provenance_csv(
-            io.StringIO("location_id,variable,provenance\n" "iso1:us#fips:97111,m1,ts197111prov\n")
-        )
-    )
-
-    csv_path = tmp_path / "multiregion.csv"
-    # Check that latest values are correctly derived from timeseries and merged with
-    # the static data.
-    multiregion.to_csv(csv_path, write_timeseries_latest_values=True)
-    assert csv_path.read_text() == (
-        "location_id,date,fips,county,aggregate_level,c1,m1,m2\n"
-        "iso1:us#fips:97111,2020-04-02,97111,Bar County,county,,2,\n"
-        "iso1:us#fips:97111,,97111,Bar County,county,3,2,\n"
-        "iso1:us#fips:97222,2020-04-01,97222,Foo County,county,,,10\n"
-        "iso1:us#fips:97222,,97222,Foo County,county,4,,10.5\n"
-        "iso1:us#iso2:us-al,2020-04-01,01,,state,,,20\n"
-        "iso1:us#iso2:us-al,,01,,state,,,123.4\n"
-    )
-
-
 def test_multi_region_get_one_region():
     ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
