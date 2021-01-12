@@ -68,11 +68,9 @@ def test_basic():
 
     expected_positivity = test_helpers.build_dataset(
         {
-            region_as: {
-                CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")
-            },
+            region_as: {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="pos")},
             region_tx: {
-                CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")
+                CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="pos_viral")
             },
         },
         start_date="2020-04-04",
@@ -113,12 +111,12 @@ def test_recent_days():
         {
             region_as: {
                 CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-                    [0.02, 0.02, 0.02], provenance="method2"
+                    [0.02, 0.02, 0.02], provenance="pos"
                 )
             },
             region_tx: {
                 CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-                    [0.1, 0.1, 0.1], provenance="method1"
+                    [0.1, 0.1, 0.1], provenance="pos_viral"
                 )
             },
         },
@@ -126,20 +124,20 @@ def test_recent_days():
     )
     test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
     assert all_methods.test_positivity.get_one_region(region_as).provenance == {
-        CommonFields.TEST_POSITIVITY: "method2"
+        CommonFields.TEST_POSITIVITY: "pos"
     }
     assert all_methods.test_positivity.get_one_region(region_tx).provenance == {
-        CommonFields.TEST_POSITIVITY: "method1"
+        CommonFields.TEST_POSITIVITY: "pos_viral"
     }
 
     methods = _replace_methods_attribute(methods, recent_days=3)
     all_methods = AllMethods.run(ds, methods, diff_days=1)
     positivity_provenance = all_methods.test_positivity.provenance
     assert positivity_provenance.loc["iso1:us#iso2:us-as"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method1"
+        CommonFields.TEST_POSITIVITY: "pos_viral"
     }
     assert positivity_provenance.loc["iso1:us#iso2:us-tx"].to_dict() == {
-        CommonFields.TEST_POSITIVITY: "method1"
+        CommonFields.TEST_POSITIVITY: "pos_viral"
     }
 
 
@@ -147,7 +145,9 @@ def test_missing_column_for_one_method():
     ds = test_helpers.build_default_region_dataset(
         {
             CommonFields.POSITIVE_TESTS: [1, 2, 3, 4],
-            CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
+            CommonFields.POSITIVE_TESTS_VIRAL: TimeseriesLiteral(
+                [10, 20, 30, 40], provenance="pos_viral"
+            ),
             CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
         }
     )
@@ -169,7 +169,7 @@ def test_missing_column_for_one_method():
         AllMethods.run(ds, methods, diff_days=1)
         .test_positivity.provenance.loc[test_helpers.DEFAULT_REGION.location_id]
         .at[CommonFields.TEST_POSITIVITY]
-        == "method1"
+        == "pos_viral"
     )
 
 
@@ -246,7 +246,9 @@ def test_provenance():
     }
     metrics_tx = {
         CommonFields.POSITIVE_TESTS: TimeseriesLiteral([1, 2, 3, 4], provenance="pt_src2"),
-        CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
+        CommonFields.POSITIVE_TESTS_VIRAL: TimeseriesLiteral(
+            [10, 20, 30, 40], provenance="pos_viral"
+        ),
         CommonFields.TOTAL_TESTS: [100, 200, 300, 400],
     }
     dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
@@ -261,8 +263,51 @@ def test_provenance():
     ]
     all_methods = AllMethods.run(dataset_in, methods, diff_days=3)
 
-    expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance="method2")}
-    expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="method1")}
+    expected_as = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.02], provenance=["pt_src1"])}
+    expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], provenance="pos_viral")}
+    expected_positivity = test_helpers.build_dataset(
+        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
+    )
+    test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
+
+
+def test_preserve_tags():
+    region_as = Region.from_state("AS")
+    region_tx = Region.from_state("TX")
+    tag1 = test_helpers.make_tag(date="2020-04-04", content="tag1")
+    tag2 = test_helpers.make_tag(date="2020-04-04", content="tag2")
+    tag_drop = test_helpers.make_tag(date="2020-04-04", content="expect-to-drop")
+    tag3 = test_helpers.make_tag(date="2020-04-04", content="tag3")
+    tag4 = test_helpers.make_tag(date="2020-04-04", content="tag4")
+    metrics_as = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral(
+            [1, 2, 3, 4], annotation=[tag1], provenance="pos"
+        ),
+        CommonFields.TOTAL_TESTS: TimeseriesLiteral([100, 200, 300, 400], annotation=[tag2]),
+    }
+    metrics_tx = {
+        CommonFields.POSITIVE_TESTS: TimeseriesLiteral([None, None, 3, 4], annotation=[tag_drop]),
+        CommonFields.POSITIVE_TESTS_VIRAL: [10, 20, 30, 40],
+        CommonFields.TOTAL_TESTS: TimeseriesLiteral([100, 200, 300, 400], annotation=[tag3, tag4]),
+    }
+    dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
+
+    methods = [
+        DivisionMethod(
+            DatasetName("method1"), CommonFields.POSITIVE_TESTS, CommonFields.TOTAL_TESTS
+        ),
+        DivisionMethod(
+            DatasetName("method2"), CommonFields.POSITIVE_TESTS_VIRAL, CommonFields.TOTAL_TESTS
+        ),
+    ]
+    all_methods = AllMethods.run(dataset_in, methods, diff_days=3)
+
+    expected_as = {
+        CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
+            [0.01], provenance="pos", annotation=[tag1, tag2]
+        )
+    }
+    expected_tx = {CommonFields.TEST_POSITIVITY: TimeseriesLiteral([0.1], annotation=[tag3, tag4])}
     expected_positivity = test_helpers.build_dataset(
         {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-04"
     )
@@ -281,7 +326,9 @@ def test_default_positivity_methods():
         ),
     }
     metrics_tx = {
-        CommonFields.POSITIVE_TESTS_VIRAL: [2, 4, 6, 8, 10, 12, 14, 16],
+        CommonFields.POSITIVE_TESTS_VIRAL: TimeseriesLiteral(
+            [2, 4, 6, 8, 10, 12, 14, 16], provenance="pos_tests"
+        ),
         CommonFields.TOTAL_TESTS_VIRAL: [10, 20, 30, 40, 50, 60, 70, 80],
     }
     dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_tx: metrics_tx})
@@ -293,12 +340,12 @@ def test_default_positivity_methods():
 
     expected_as = {
         CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], provenance="src1"
+            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], provenance="src1",
         )
     }
     expected_tx = {
         CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-            [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2], provenance="positiveTestsViral_totalTestsViral"
+            [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2], provenance="pos_tests"
         )
     }
     expected_positivity = test_helpers.build_dataset(
@@ -309,21 +356,19 @@ def test_default_positivity_methods():
 
 @pytest.mark.parametrize("pos_neg_tests_recent", [False, True])
 def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
-    region = test_helpers.DEFAULT_REGION
     # positive_tests and negative_tests appear on 8/10 and 8/11. They will be used when
     # that is within 10 days of 'today'.
-    timeseries_csv = io.StringIO(
-        "      date,test_positivity_7d,positive_tests,negative_tests\n"
-        "2020-08-10,              0.02,             1,            10\n"
-        "2020-08-11,              0.03,             2,            20\n"
-        "2020-08-12,              0.04,              ,              \n"
-        "2020-08-13,              0.05,              ,              \n"
-        "2020-08-14,              0.06,              ,              \n"
-        "2020-08-15,              0.07,              ,              \n"
-    )
-    df = pd.read_csv(timeseries_csv, skipinitialspace=True)
-    dataset_in = test_helpers.build_dataset(
-        {region: df.drop(columns="date").to_dict("list")}, start_date=df[CommonFields.DATE].min(),
+    dataset_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.TEST_POSITIVITY_7D: TimeseriesLiteral(
+                [0.02, 0.03, 0.04, 0.05, 0.06, 0.07], provenance="CDCTesting"
+            ),
+            CommonFields.POSITIVE_TESTS: TimeseriesLiteral(
+                [1, 2, None, None, None, None], provenance="pos"
+            ),
+            CommonFields.NEGATIVE_TESTS: [10, 20, None, None, None, None],
+        },
+        start_date="2020-08-10",
     )
 
     if pos_neg_tests_recent:
@@ -331,10 +376,12 @@ def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
         # positive_tests and negative_tests are used
         expected_metrics = {
             CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-                [pd.NA, 0.0909, pd.NA, pd.NA, pd.NA, pd.NA], provenance="SmoothedTests"
+                [pd.NA, 0.0909, pd.NA, pd.NA, pd.NA, pd.NA], provenance="pos"
             )
         }
-        expected = test_helpers.build_dataset({region: expected_metrics}, start_date="2020-08-10",)
+        expected = test_helpers.build_default_region_dataset(
+            expected_metrics, start_date="2020-08-10"
+        )
 
     else:
         freeze_date = "2020-08-22"
@@ -345,7 +392,9 @@ def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
                 [0.02, 0.03, 0.04, 0.05, 0.06, 0.07], provenance="CDCTesting"
             )
         }
-        expected = test_helpers.build_dataset({region: expected_metrics}, start_date="2020-08-10",)
+        expected = test_helpers.build_default_region_dataset(
+            expected_metrics, start_date="2020-08-10"
+        )
 
     with freeze_time(freeze_date):
         all_methods = AllMethods.run(dataset_in)

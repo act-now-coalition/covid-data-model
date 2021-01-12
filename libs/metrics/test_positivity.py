@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import dataclasses
 from itertools import chain
+from typing import Collection
 from typing import Iterable
 from typing import List
 from typing import Mapping
@@ -18,6 +19,7 @@ from libs import series_utils
 from typing_extensions import final
 
 from libs.datasets import timeseries
+from libs.datasets.tail_filter import TagField
 
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -99,22 +101,19 @@ def _append_variable_index_level(df: Union[pd.DataFrame, pd.Series], field_name:
 
 def _make_output_dataset(
     dataset_in: MultiRegionDataset,
-    default_provenance: str,
+    source_columns: Collection[FieldName],
     wide_date_df: pd.DataFrame,
     output_metric: FieldName,
-    *,
-    source_columns: Optional[List[FieldName]] = None,
 ) -> MultiRegionDataset:
     """Returns a dataset with `wide_date_df` in a column named `output_metric` and provenance
     information copied from `dataset_in`.
 
     Args:
-        dataset_in: original MultiRegionDataset. TODO(tom): copy provenance information from this.
-        default_provenance: value to put in provenance when no other value is available
+        dataset_in: original MultiRegionDataset.
+        source_columns: columns that were a source for the output. tags are copied from these to
+          the output.
         wide_date_df: the timeseries output, copied to the returned dataset
         output_metric: wide_date_df is copied to this metric/column in the returned dataset
-        source_columns: columns that were a source for the output, used to produce the provenance
-          content
     """
     assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
     # Drop all-NA timeseries now, as done in from_timeseries_wide_dates_df. This makes sure
@@ -124,34 +123,34 @@ def _make_output_dataset(
     locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
     _append_variable_index_level(wide_date_df, output_metric)
 
-    assert dataset_in.provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    assert dataset_in.tag.index.names == [
+        TagField.LOCATION_ID,
+        TagField.VARIABLE,
+        TagField.TYPE,
+        TagField.DATE,
+    ]
+    dataset_out = MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df)
     if source_columns:
-        # Make a DataFrame of the provenance with location_id index and column for each of
-        # source_columns. The columns are in an arbitrary order.
-        provenance_unsorted_columns = dataset_in.provenance.loc[locations, source_columns].unstack(
-            PdFields.VARIABLE
-        )
-        provenance = (
-            provenance_unsorted_columns
-            # TODO(tom): remove the hack that derives provenance from the field name and use
-            #  something like the following to produce a more complete provenance per location.
-            #  Maybe make this a method of the class Method and use self.columns instead of
-            #  source_columns.
-            # .apply(lambda s: f"{default_provenance}({','.join(s)})", axis=1)
-            .apply(lambda s: ",".join(s.drop_duplicates()), axis=1).rename(PdFields.PROVENANCE)
-        )
-        _append_variable_index_level(provenance, output_metric)
-    else:
-        provenance = pd.Series([], name=PdFields.PROVENANCE, dtype="object")
+        source_tags = dataset_in.tag.loc[locations, list(source_columns)].reset_index()
+        source_tags[TagField.VARIABLE] = output_metric
+        # When there are two source_columns they usually contain the same provenance content.
+        # Only keep one copy of it.
+        output_tags = source_tags.drop_duplicates(ignore_index=True)
+        # I expect the DATE datetime level in dataset_in.tag to be a Timestamp column in
+        # source_tags but somehow it is sometimes changed to floats. This seems to happen when
+        # all the dates for `locations` and `source_columns` are NaT. Maybe it is a variation of
+        # https://github.com/pandas-dev/pandas/issues/12941 but I haven't found a simple way to
+        # reproduce the issue. To reproduce remove the patch below and wait for the
+        # is_all_dates check in MultiRegionDataset.__post_init__ to fail.
+        if output_tags[TagField.DATE].dtype == "float":
+            # For mysterious reasons output_tags._is_copy is sometimes a weakref to source_tags
+            # which causes the following assignment to trip a SettingWithCopy. Make a copy to
+            # work-around the problem.
+            output_tags = output_tags.copy()
+            output_tags.loc[:, TagField.DATE] = pd.to_datetime(output_tags.loc[:, TagField.DATE])
+        dataset_out = dataset_out.append_tag_df(output_tags)
 
-    # Make sure every timeseries has something in `provenance`.
-    provenance_index = pd.MultiIndex.from_product(
-        [locations, [output_metric]], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
-    )
-    provenance = provenance.reindex(provenance_index, fill_value=default_provenance)
-    return MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df).add_provenance_series(
-        provenance
-    )
+    return dataset_out
 
 
 @dataclasses.dataclass
@@ -195,7 +194,7 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
         wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
 
         all_output = _make_output_dataset(
-            dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY
+            dataset, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY,
         )
         return self._remove_stale_regions(all_output, most_recent_date)
 
@@ -239,7 +238,7 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
         # to the index which was just taken out. Consider skipping reindexing.
 
         all_output = _make_output_dataset(
-            dataset, self._name, wide_date_df, CommonFields.TEST_POSITIVITY
+            dataset, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY
         )
         return self._remove_stale_regions(all_output, most_recent_date)
 
@@ -284,11 +283,7 @@ class SmoothedTests(Method):
 
         # Make a dataset with TEST_POSITIVITY for every region where the calculation finished.
         all_output = _make_output_dataset(
-            dataset,
-            self.name,
-            wide_date_df,
-            CommonFields.TEST_POSITIVITY,
-            source_columns=[CommonFields.POSITIVE_TESTS, CommonFields.NEGATIVE_TESTS],
+            dataset, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY,
         )
         # Make a dataset with the subset of regions having recent input timeseries.
         ds_recent = all_output.get_regions_subset(recent_regions)

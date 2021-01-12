@@ -501,6 +501,7 @@ class MultiRegionDataset:
         if not self.provenance.empty:
             raise NotImplementedError("TODO(tom): add support for merging provenance data")
         assert provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        assert isinstance(provenance, pd.Series)
 
         new_index_df = provenance.index.to_frame()
         new_index_df[TagField.TYPE] = TagType.PROVENANCE
@@ -540,10 +541,25 @@ class MultiRegionDataset:
     def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
         wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
-        # Extract provenance column from wide date DataFrame so all columns are dates.
-        # TODO(tom): support multiple provenance columns
-        provenance_series = wide_dates_df[PdFields.PROVENANCE].dropna()
-        wide_dates_df = wide_dates_df.drop(columns=[PdFields.PROVENANCE])
+
+        # Extract provenance columns from wide date DataFrame so all columns are dates. This
+        # parses the column names created in `timeseries_rows`.
+        provenance_column_mask = wide_dates_df.columns.str.match(
+            r"\A" + TagType.PROVENANCE + r"(-\d+)?\Z"
+        )
+        tag_df_to_concat = []
+        if provenance_column_mask.any():
+            provenance_columns = wide_dates_df.loc[:, provenance_column_mask]
+            provenance_series = (
+                provenance_columns.stack().reset_index(-1, drop=True).rename(TagField.CONTENT)
+            )
+            if not provenance_series.empty:
+                provenance_df = provenance_series.reset_index()
+                provenance_df[TagField.DATE] = pd.NaT
+                provenance_df[TagField.TYPE] = TagType.PROVENANCE
+                tag_df_to_concat.append(provenance_df)
+
+        wide_dates_df = wide_dates_df.loc[:, ~provenance_column_mask]
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
         wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
 
@@ -553,12 +569,12 @@ class MultiRegionDataset:
 
         annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
         annotations[TagField.DATE] = pd.to_datetime(annotations[TagField.DATE])
+        tag_df_to_concat.append(annotations)
 
         return (
             MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df)
             .add_static_values(static_df)
-            .add_provenance_series(provenance_series)
-            .append_tag_df(annotations)
+            .append_tag_df(pd.concat(tag_df_to_concat))
         )
 
     @staticmethod
@@ -636,9 +652,16 @@ class MultiRegionDataset:
         """Returns a new dataset with additional_tag_df appended."""
         if additional_tag_df.empty:
             return self
-        additional_series = additional_tag_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
-        combined_tag = pd.concat([self.tag, additional_series]).sort_index()
-        return dataclasses.replace(self, tag=combined_tag)
+        # Sort by index fields, and within rows having identical index fields, by content. This
+        # makes the order of values in combined_series identical, independent of the order they
+        # were appended.
+        combined_df = (
+            self.tag.reset_index()
+            .append(additional_tag_df)
+            .sort_values(TAG_INDEX_FIELDS + [TagField.CONTENT])
+        )
+        combined_series = combined_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
+        return dataclasses.replace(self, tag=combined_series)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
@@ -751,7 +774,22 @@ class MultiRegionDataset:
         # wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
 
-        return pd.concat([self.provenance, wide_dates], axis=1)
+        if not self.provenance.empty:
+            # Add one or more columns with the provenance tag(s) for each timeseries
+            # (identified by a <location_id, variable> pair).
+            # From https://stackoverflow.com/a/38369722
+            provenance_columns = (
+                self.provenance.groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+                .apply(lambda df: df.reset_index(drop=True))
+                .unstack()
+                # The first provenance column has the same name as when there was only support
+                # for a single column. Extra columns are named "provenance-1", "provenance-2", ...
+                # These column names are parsed in `read_from_pointer`.
+                .rename(columns=lambda i: TagType.PROVENANCE + ("" if i == 0 else f"-{i}"))
+            )
+            return pd.concat([provenance_columns, wide_dates], axis=1)
+        else:
+            return wide_dates
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
@@ -1331,7 +1369,7 @@ def combined_datasets(
             selected_location_id = location_ids.difference(location_id_so_far)
             timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
             location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-            tag_series.append(datasets[dataset_name].tag.loc[selected_location_id, field])
+            tag_series.append(datasets[dataset_name].tag.loc[selected_location_id, [field]])
 
     static_series = []
     for field, dataset_names in static_field_dataset_source.items():
@@ -1372,7 +1410,7 @@ def combined_datasets(
             output_timeseries_wide_variables = (
                 output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
             )
-        output_tag = pd.concat(tag_series, verify_integrity=True)
+        output_tag = pd.concat(tag_series)
     else:
         output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         output_tag = _EMPTY_TAG_SERIES

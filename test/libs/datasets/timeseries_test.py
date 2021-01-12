@@ -552,6 +552,29 @@ def test_write_read_wide_dates_csv_with_annotation(tmpdir):
     test_helpers.assert_dataset_like(dataset_read, dataset_in)
 
 
+def test_write_read_dataset_pointer_with_provenance_list(tmpdir):
+    pointer = _make_dataset_pointer(tmpdir)
+
+    dataset_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.ICU_BEDS: TimeseriesLiteral(
+                [0, 2, 4],
+                annotation=[
+                    test_helpers.make_tag(date="2020-04-01", content="tag1"),
+                    test_helpers.make_tag(date="2020-04-02", content="tag2"),
+                ],
+                provenance=["prov1", "prov2"],
+            ),
+            CommonFields.CASES: [100, 200, 300],
+        }
+    )
+
+    dataset_in.write_to_dataset_pointer(pointer)
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+
+    test_helpers.assert_dataset_like(dataset_read, dataset_in)
+
+
 def test_timeseries_drop_stale_timeseries_entire_region():
     ds_in = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1106,7 +1129,7 @@ def test_aggregate_states_to_country():
 
 
 def test_combined_timeseries():
-    ts1 = timeseries.MultiRegionDataset.from_csv(
+    ds1 = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,county,aggregate_level,m1\n"
             "iso1:us#cbsa:10100,2020-04-02,,,2.2\n"
@@ -1115,9 +1138,9 @@ def test_combined_timeseries():
             "iso1:us#fips:97111,2020-04-04,Bar County,county,4\n"
         )
     ).add_provenance_csv(
-        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ds110100prov\n")
     )
-    ts2 = timeseries.MultiRegionDataset.from_csv(
+    ds2 = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,county,aggregate_level,m1\n"
             "iso1:us#cbsa:10100,2020-04-02,,,333\n"
@@ -1126,11 +1149,11 @@ def test_combined_timeseries():
             "iso1:us#fips:97222,2020-04-04,Foo County,county,40\n"
         )
     ).add_provenance_csv(
-        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ds110100prov\n")
     )
     combined = timeseries.combined_datasets(
-        {DatasetName("ts1"): ts1, DatasetName("ts2"): ts2},
-        {FieldName("m1"): [DatasetName("ts1"), DatasetName("ts2")]},
+        {DatasetName("ds1"): ds1, DatasetName("ds2"): ds2},
+        {FieldName("m1"): [DatasetName("ds1"), DatasetName("ds2")]},
         {},
     )
     expected = timeseries.MultiRegionDataset.from_csv(
@@ -1144,10 +1167,44 @@ def test_combined_timeseries():
             "iso1:us#fips:97222,2020-04-04,40\n"
         )
     ).add_provenance_csv(
-        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ts110100prov\n")
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ds110100prov\n")
     )
 
     test_helpers.assert_dataset_like(expected, combined)
+
+
+def test_combined_annotation():
+    ts1a = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01", content="ds1_a"),
+            test_helpers.make_tag(date="2020-04-02", content="ds1_b"),
+        ],
+    )
+    ts1b = [100, 200, 300]
+    ds1 = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts1a, CommonFields.CASES: ts1b}
+    )
+    ts2a = TimeseriesLiteral(
+        [1, 3, 5], annotation=[test_helpers.make_tag(date="2020-04-01", content="ds2_a")],
+    )
+    ts2b = [150, 250, 350]
+    ds2 = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts2a, CommonFields.CASES: ts2b}
+    )
+    ds1_name = DatasetName("ds1")
+    ds2_name = DatasetName("ds2")
+    combined = timeseries.combined_datasets(
+        {ds1_name: ds1, ds2_name: ds2},
+        {CommonFields.ICU_BEDS: [ds1_name, ds2_name], CommonFields.CASES: [ds2_name, ds1_name]},
+        {},
+    )
+
+    expected = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts1a, CommonFields.CASES: ts2b}
+    )
+
+    test_helpers.assert_dataset_like(combined, expected)
 
 
 def test_combined_missing_field():
@@ -1296,11 +1353,11 @@ def test_timeseries_rows():
     rows = ts.timeseries_rows()
     expected = pd.read_csv(
         io.StringIO(
-            "       location_id,variable,provenance,2020-04-01,2020-04-02\n"
-            "iso1:us#iso2:us-az,      m1,          ,         8,        12\n"
-            "iso1:us#iso2:us-az,      m2,          ,        20,        40\n"
-            "iso1:us#iso2:us-tx,      m1,          ,         4,         4\n"
-            "iso1:us#iso2:us-tx,      m2,          ,         2,         4\n".replace(" ", "")
+            "       location_id,variable,2020-04-01,2020-04-02\n"
+            "iso1:us#iso2:us-az,      m1,         8,        12\n"
+            "iso1:us#iso2:us-az,      m2,        20,        40\n"
+            "iso1:us#iso2:us-tx,      m1,         4,         4\n"
+            "iso1:us#iso2:us-tx,      m2,         2,         4\n".replace(" ", "")
         )
     ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)
