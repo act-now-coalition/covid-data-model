@@ -1066,10 +1066,23 @@ def _find_scale_factors(
     return scale_factors
 
 
-# Calculate weighted reporting percentage by group weighted by scale field
 def _calculate_weighted_reporting_ratio(
-    long_all_values, location_id_map, scale_series, groupby_columns
-):
+    long_all_values: pd.Series,
+    location_id_map: Mapping[str, str],
+    scale_series: pd.Series,
+    groupby_columns: List[str],
+) -> pd.Series:
+    """Calculates weighted ratio of locations reporting data scaled by `scale_series`.
+
+    Args:
+        long_all_values: All values as a series
+        location_id_map: Map of input region location_id to aggregate region location id.
+        scale_series: Series with index of CommonFields.LOCATION_ID of weights for each
+            location id. For example, population of each location id.
+        groupby_columns: Columns to group scaled values by when aggregating.
+
+    Returns: Series of scaled ratio of regions reporting with an index of `groupby_columns`.
+    """
     scale_field = "scale"
 
     location_id_df = pd.DataFrame(
