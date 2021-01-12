@@ -19,6 +19,17 @@ class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
     OTHER = "other"
 
 
+class MetricSources(GetByValueMixin, enum.Enum):
+    """Metric source."""
+
+    CMSTesting = "CMSTesting"
+    CDCTesting = "CDCTesting"
+    HHSTesting = "HHSTesting"
+    VALORUM = "Valorum"
+    COVID_TRACKING = "covid_tracking"
+    OTHER = "other"
+
+
 class TestPositivityRatioDetails(base_model.APIBaseModel):
     """Details about how the test positivity ratio was calculated."""
 
@@ -119,6 +130,45 @@ class ActualsTimeseriesRow(Actuals):
     """Actual data for a specific day."""
 
     date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
+
+
+class MetricAnomaly(base_model.APIBaseModel):
+    date: datetime.date = pydantic.Field(..., description="Date of anomaly")
+    description: str
+
+
+class MetricAnnotations(base_model.APIBaseModel):
+    """Annotations associated with one field."""
+
+    source: List[MetricSources]
+    anomalies: List[MetricAnomaly]
+
+
+class Annotations(base_model.APIBaseModel):
+    """Annotations for each field."""
+
+    cases: Optional[MetricAnnotations] = pydantic.Field(None, description="Annotations for cases")
+    deaths: Optional[MetricAnnotations] = pydantic.Field(
+        None, description="Annotations for deaths",
+    )
+    positiveTests: Optional[MetricAnnotations] = pydantic.Field(
+        None, description="Annotations for positiveTests"
+    )
+    negativeTests: Optional[MetricAnnotations] = pydantic.Field(
+        None, description="Annotations for negativeTests"
+    )
+    contactTracers: Optional[int] = pydantic.Field(
+        None, description="Annotations for contactTracers"
+    )
+    hospitalBeds: Optional[MetricAnnotations] = pydantic.Field(
+        None, description="Annotations for hospitalBeds"
+    )
+    icuBeds: Optional[MetricAnnotations] = pydantic.Field(
+        None, description="Annotations for icuBeds"
+    )
+    newCases: Optional[MetricAnnotations] = pydantic.Field(
+        None, description="""Annotations for newCases""",
+    )
 
 
 class Metrics(base_model.APIBaseModel):
@@ -261,6 +311,7 @@ class RegionSummary(base_model.APIBaseModel):
     metrics: Metrics = pydantic.Field(...)
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
     actuals: Actuals = pydantic.Field(...)
+    annotations: Annotations = pydantic.Field(...)
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
 

@@ -4,6 +4,8 @@ import pandas as pd
 from api.can_api_v2_definition import (
     Actuals,
     ActualsTimeseriesRow,
+    Annotations,
+    MetricAnnotations,
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
     Metrics,
@@ -16,6 +18,8 @@ from api.can_api_v2_definition import (
     RiskLevelTimeseriesRow,
 )
 from covidactnow.datapublic.common_fields import CommonFields
+
+from libs.datasets import timeseries
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs import pipeline
 
@@ -51,11 +55,12 @@ def _build_actuals(actual_data: dict) -> Actuals:
 
 
 def build_region_summary(
-    latest_values: dict,
+    one_region: timeseries.OneRegionTimeseriesDataset,
     latest_metrics: Optional[Metrics],
     risk_levels: RiskLevels,
-    region: pipeline.Region,
 ) -> RegionSummary:
+    latest_values = one_region.latest
+    region = one_region.region
 
     actuals = _build_actuals(latest_values)
     return RegionSummary(
@@ -73,6 +78,7 @@ def build_region_summary(
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
         url=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
+        annotations=Annotations(),
     )
 
 
