@@ -70,6 +70,7 @@ def build_dataset(
     *,
     start_date="2020-04-01",
     timeseries_columns: Optional[Sequence[FieldName]] = None,
+    static_by_region_then_field_name: Mapping[Region, Mapping[FieldName, Any]],
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset for multiple regions and metrics.
     Args:
@@ -121,6 +122,18 @@ def build_dataset(
 
     if tags_to_concat:
         dataset = dataset.append_tag_df(pd.concat(tags_to_concat))
+
+    if static_by_region_then_field_name:
+        static_df_rows = []
+        for region, data in static_by_region_then_field_name.items():
+            row = {
+                CommonFields.LOCATION_ID: region.location_id,
+                **data,
+            }
+            static_df_rows.append(row)
+
+        attributes_df = pd.DataFrame(static_df_rows)
+        dataset = dataset.add_static_values(attributes_df)
 
     return dataset
 

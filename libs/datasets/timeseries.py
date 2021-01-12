@@ -1093,7 +1093,6 @@ def _calculate_weighted_reporting_ratio(
 
     long_all_scaled_count = long_all_values.notna() * scale_series
     long_agg_scaled = long_all_scaled_count.groupby(groupby_columns).sum()
-
     return long_agg_scaled / location_id_aggregated_scale_field
 
 

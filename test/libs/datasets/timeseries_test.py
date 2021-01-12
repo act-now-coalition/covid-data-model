@@ -1368,3 +1368,29 @@ def test_dataset_regions_property(nyc_region):
     )
 
     assert dataset.timeseries_regions == set([az_region, nyc_region])
+
+
+@pytest.mark.parametrize("reporting_ratio,expected_na", [(0.09, False), (0.1, False), (0.11, True)])
+def test_weighted_reporting_ratio(reporting_ratio, expected_na):
+    ny_region = Region.from_state("NY")
+    az_region = Region.from_state("AZ")
+    us_region = Region.from_iso1("us")
+    aggregate_map = {
+        ny_region: us_region,
+        az_region: us_region,
+    }
+    metrics = {ny_region: {CommonFields.CASES: [100]}, az_region: {CommonFields.CASES: [None]}}
+    static = {ny_region: {CommonFields.POPULATION: 100}, az_region: {CommonFields.POPULATION: 900}}
+    dataset = test_helpers.build_dataset(metrics, static_by_region_then_field_name=static)
+
+    aggregation = timeseries.aggregate_regions(
+        dataset,
+        aggregate_map,
+        aggregations=[],
+        reporting_ratio_required_to_aggregate=reporting_ratio,
+    )
+    cases = aggregation.timeseries[CommonFields.CASES]
+    if expected_na:
+        assert not len(cases)
+    else:
+        assert len(cases)
