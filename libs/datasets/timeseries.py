@@ -1174,6 +1174,10 @@ def aggregate_regions(
 
     Returns: Dataset with values aggregated to aggregate regions.
     """
+    assert (
+        reporting_ratio_required_to_aggregate is None
+        or 0 < reporting_ratio_required_to_aggregate <= 1.0
+    )
     dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
     location_id_map = {
         region_in.location_id: region_agg.location_id
