@@ -4,6 +4,7 @@ import pytest
 import structlog
 
 from api.can_api_v2_definition import Actuals
+from api.can_api_v2_definition import Annotations
 from api.can_api_v2_definition import RegionSummary
 from libs.metrics import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
@@ -34,7 +35,7 @@ def test_build_summary_for_fips(
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     assert latest_metric
-    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels, nyc_region)
+    summary = build_api_v2.build_region_summary(fips_timeseries, latest_metric, risk_levels)
     expected = RegionSummary(
         population=nyc_latest["population"],
         state="NY",
@@ -68,6 +69,7 @@ def test_build_summary_for_fips(
             contactTracers=nyc_latest["contact_tracers_count"],
             newCases=nyc_latest["new_cases"],
         ),
+        annotations=Annotations(),
         lastUpdatedDate=datetime.datetime.utcnow(),
         url="https://covidactnow.org/us/new_york-ny/county/bronx_county",
     )
@@ -85,14 +87,12 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_datase
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     risk_timeseries = top_level_metric_risk_levels.calculate_risk_level_timeseries(metrics_series)
 
-    region_summary = build_api_v2.build_region_summary(
-        nyc_latest, latest_metric, risk_levels, nyc_region
-    )
+    region_summary = build_api_v2.build_region_summary(nyc_timeseries, latest_metric, risk_levels)
     region_timeseries = build_api_v2.build_region_timeseries(
         region_summary, nyc_timeseries, metrics_series, risk_timeseries
     )
 
-    summary = build_api_v2.build_region_summary(nyc_latest, latest_metric, risk_levels, nyc_region)
+    summary = build_api_v2.build_region_summary(nyc_timeseries, latest_metric, risk_levels)
 
     assert summary.dict() == region_timeseries.region_summary.dict()
     # Double checking that serialized json does not contain NaNs, all values should

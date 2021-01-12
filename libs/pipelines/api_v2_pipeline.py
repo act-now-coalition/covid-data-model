@@ -147,7 +147,6 @@ def build_timeseries_for_region(
     Returns: Summary with timeseries for region.
     """
     log = structlog.get_logger(location_id=regional_input.region.location_id)
-    fips_latest = regional_input.latest
 
     try:
         fips_timeseries = regional_input.timeseries
@@ -159,7 +158,7 @@ def build_timeseries_for_region(
         )
         risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(metrics_latest)
         region_summary = build_api_v2.build_region_summary(
-            fips_latest, metrics_latest, risk_levels, regional_input.region
+            regional_input.timeseries, metrics_latest, risk_levels
         )
         region_timeseries = build_api_v2.build_region_timeseries(
             region_summary, fips_timeseries, metrics_results, risk_timeseries
