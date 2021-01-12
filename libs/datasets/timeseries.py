@@ -530,6 +530,10 @@ class MultiRegionDataset:
         if not latest_df.empty:
             dataset = dataset.add_static_values(latest_df.drop(columns=[CommonFields.DATE]))
 
+        if isinstance(path_or_buf, pathlib.Path):
+            provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
+            if provenance_path.exists():
+                dataset = dataset.add_provenance_csv(provenance_path)
         return dataset
 
     @staticmethod
@@ -771,22 +775,14 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask]
         return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
 
-    def to_csv(
-        self, path: pathlib.Path, write_timeseries_latest_values=False,
-    ):
+    def to_csv(self, path: pathlib.Path):
         """Persists timeseries to CSV.
 
         Args:
             path: Path to write to.
-            write_timeseries_latest_values: write both explicit set static attributes and timeseries
-              values derived from timeseries. Mostly exists to compare to old files created when latest
-              values were calculated upstream.
         """
-        if write_timeseries_latest_values:
-            latest_data = self.static_and_timeseries_latest_with_fips().reset_index()
-        else:
-            latest_data = self.static.reset_index()
-            _add_fips_if_missing(latest_data)
+        latest_data = self.static.reset_index()
+        _add_fips_if_missing(latest_data)
 
         timeseries_data = self._geo_data.join(self.timeseries).reset_index()
         _add_fips_if_missing(timeseries_data)
@@ -797,6 +793,9 @@ class MultiRegionDataset:
         common_df.write_csv(
             combined, path, structlog.get_logger(), [CommonFields.LOCATION_ID, CommonFields.DATE]
         )
+        if not self.provenance.empty:
+            provenance_path = str(path).replace(".csv", "-provenance.csv")
+            self.provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
 
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
