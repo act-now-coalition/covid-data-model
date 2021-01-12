@@ -1139,8 +1139,7 @@ def _aggregate_dataframe_by_region(
             long_all_values, location_id_map, reporting_ratio_location_weights, groupby_columns
         )
         is_valid_reporting_ratio = weighted_reporting_ratio >= reporting_ratio_required
-        acceptable_ratios = weighted_reporting_ratio.loc[is_valid_reporting_ratio]
-        long_agg = long_agg.filter(acceptable_ratios.index, axis=0)
+        long_agg = long_agg.loc[is_valid_reporting_ratio]
 
     df_out = (
         long_agg.unstack()
@@ -1167,7 +1166,8 @@ def aggregate_regions(
         aggregations: Sequence of aggregation overrides to apply aggregations other
             than sum to fields.
         reporting_ratio_required_to_aggregate: Ratio of locations per aggregate region required
-            to compute aggregate value for individual data points.
+            to compute aggregate value for individual data points. Uses population to weight
+            ratio.
 
     Returns: Dataset with values aggregated to aggregate regions.
     """
