@@ -28,7 +28,9 @@ class CountyToCBSAAggregator:
         timeseries.StaticWeightedAverageAggregation
     ] = timeseries.WEIGHTED_AGGREGATIONS
 
-    def aggregate(self, dataset_in: MultiRegionDataset) -> MultiRegionDataset:
+    def aggregate(
+        self, dataset_in: MultiRegionDataset, reporting_ratio_required_to_aggregate=None
+    ) -> MultiRegionDataset:
         """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
         region_map = {
             pipeline.Region.from_fips(fips): pipeline.Region.from_cbsa_code(cbsa_code)

@@ -1145,7 +1145,7 @@ def aggregate_regions(
     aggregate_map: Mapping[Region, Region],
     aggregations: Sequence[StaticWeightedAverageAggregation] = WEIGHTED_AGGREGATIONS,
     *,
-    reporting_ratio_required_to_aggregate: Optional[float] = 0.95,
+    reporting_ratio_required_to_aggregate: Optional[float] = None,
 ) -> MultiRegionDataset:
     """Produces a dataset with dataset_in aggregated using sum or weighted aggregation.
 
@@ -1186,7 +1186,9 @@ def aggregate_regions(
     # ... all other static input values.
     static_in_other_fields = static_in.loc[:, ~scale_fields_mask]
 
-    populations = static_in.loc[:, CommonFields.POPULATION]
+    populations = None
+    if reporting_ratio_required_to_aggregate is not None:
+        populations = static_in.loc[:, CommonFields.POPULATION]
 
     static_agg_scale_fields = _aggregate_dataframe_by_region(
         static_in_scale_fields,

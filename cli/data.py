@@ -48,6 +48,9 @@ CUMULATIVE_FIELDS_TO_FILTER = [
 
 PROD_BUCKET = "data.covidactnow.org"
 
+# By default require 0.95 of populations from regions to include a data point in aggregate.
+DEFAULT_REPORTING_RATIO = 0.95
+
 _logger = logging.getLogger(__name__)
 
 
@@ -113,12 +116,16 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(multiregion_dataset)
 
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-    cbsa_dataset = aggregator.aggregate(multiregion_dataset)
+    cbsa_dataset = aggregator.aggregate(
+        multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+    )
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
 
     if aggregate_to_country:
         country_dataset = timeseries.aggregate_regions(
-            multiregion_dataset, pipeline.us_states_to_country_map(),
+            multiregion_dataset,
+            pipeline.us_states_to_country_map(),
+            reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
 
