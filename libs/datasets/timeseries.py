@@ -1083,6 +1083,9 @@ def _calculate_weighted_reporting_ratio(
 
     Returns: Series of scaled ratio of regions reporting with an index of `groupby_columns`.
     """
+    assert long_all_values.index.names == [CommonFields.LOCATION_ID] + groupby_columns
+    assert scale_series.index.names == [CommonFields.LOCATION_ID]
+
     scale_field = "scale"
 
     location_id_df = pd.DataFrame(
