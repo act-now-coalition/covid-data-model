@@ -1155,10 +1155,20 @@ def aggregate_regions(
     aggregate_map: Mapping[Region, Region],
     aggregations: Sequence[StaticWeightedAverageAggregation] = WEIGHTED_AGGREGATIONS,
     *,
-    ignore_na: bool = False,
-    reporting_ratio_required: float = 0.95,
+    reporting_ratio_required_to_aggregate: Optional[float] = 0.95,
 ) -> MultiRegionDataset:
-    """Produces a dataset with dataset_in aggregated using sum or weighted aggregation."""
+    """Produces a dataset with dataset_in aggregated using sum or weighted aggregation.
+
+    Args:
+        dataset_in: Input dataset.
+        aggregate_map: Region mapping input region to aggregate region.
+        aggregations: Sequence of aggregation overrides to apply aggregations other
+            than sum to fields.
+        reporting_ratio_required_to_aggregate: Ratio of locations per aggregate region required
+            to compute aggregate value for individual data points.
+
+    Returns: Dataset with values aggregated to aggregate regions.
+    """
     dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
     location_id_map = {
         region_in.location_id: region_agg.location_id
@@ -1192,7 +1202,7 @@ def aggregate_regions(
         static_in_scale_fields,
         location_id_map,
         reporting_ratio_location_weights=populations,
-        reporting_ratio_required=reporting_ratio_required,
+        reporting_ratio_required=reporting_ratio_required_to_aggregate,
     )
     location_ids = dataset_in.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
     # TODO(tom): Add support for time-varying scale factors, for example to scale
@@ -1215,13 +1225,13 @@ def aggregate_regions(
         static_other_fields_scaled,
         location_id_map,
         reporting_ratio_location_weights=populations,
-        reporting_ratio_required=reporting_ratio_required,
+        reporting_ratio_required=reporting_ratio_required_to_aggregate,
     )
     timeseries_agg = _aggregate_dataframe_by_region(
         timeseries_scaled,
         location_id_map,
         reporting_ratio_location_weights=populations,
-        reporting_ratio_required=reporting_ratio_required,
+        reporting_ratio_required=reporting_ratio_required_to_aggregate,
     )
     static_agg = pd.concat([static_agg_scale_fields, static_agg_other_fields], axis=1)
     if static_agg.index.name != CommonFields.LOCATION_ID:
