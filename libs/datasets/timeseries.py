@@ -1010,7 +1010,7 @@ def drop_new_case_outliers(
                 TagField.TYPE: TagType.ZSCORE_OUTLIER,
                 # TODO(tom): Having a formatted string deep in our pipeline is ugly. See TODO
                 #  in the TagField class.
-                TagField.CONTENT: f"Removed outlier {df_copy.at[idx, CommonFields.NEW_CASES]:.3g}",
+                TagField.CONTENT: f"Removed outlier {df_copy.at[idx, CommonFields.NEW_CASES]:.6g}",
                 TagField.DATE: idx[1],
             }
         )
