@@ -999,9 +999,12 @@ def drop_new_case_outliers(
     grouped_df = timeseries.groupby_region()
 
     zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
+    to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
 
     new_tags = []
-    to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
+    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
+    # rows where to_exclude is True.
+    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     for idx, _ in to_exclude[to_exclude].iteritems():
         new_tags.append(
             {
