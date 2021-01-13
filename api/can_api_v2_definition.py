@@ -19,8 +19,9 @@ class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
     OTHER = "other"
 
 
-class MetricSources(GetByValueMixin, enum.Enum):
-    """Metric source."""
+class MetricSource(GetByValueMixin, enum.Enum):
+    """The data source of a metric. This enumeration lists the places from which CAN fetches
+    data. The source is tracked on a per metric and region timeseries basis."""
 
     NYTimes = "NYTimes"
     CMSTesting = "CMSTesting"
@@ -141,7 +142,7 @@ class MetricAnomaly(base_model.APIBaseModel):
 class MetricAnnotations(base_model.APIBaseModel):
     """Annotations associated with one field."""
 
-    sources: List[MetricSources]
+    sources: List[MetricSource]
     anomalies: List[MetricAnomaly]
 
 

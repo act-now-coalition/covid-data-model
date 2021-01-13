@@ -20,14 +20,14 @@ from api.can_api_v2_definition import (
 from covidactnow.datapublic.common_fields import CommonFields
 
 from api.can_api_v2_definition import MetricAnomaly
-from api.can_api_v2_definition import MetricSources
+from api.can_api_v2_definition import MetricSource
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TagType
 
 
-METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in MetricSources enum"
+METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in MetricSource enum"
 
 
 def _build_actuals(actual_data: dict) -> Actuals:
@@ -117,9 +117,9 @@ def _build_metric_annotations(
 
     sources_enum = []
     for source_str in metric_tag_df.loc[[TagType.PROVENANCE]]:
-        source_enum = MetricSources.get(source_str)
+        source_enum = MetricSource.get(source_str)
         if source_enum is None:
-            source_enum = MetricSources.OTHER
+            source_enum = MetricSource.OTHER
             log.info(
                 METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
             )

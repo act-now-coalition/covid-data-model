@@ -2,7 +2,7 @@ import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
 from api.can_api_v2_definition import MetricAnomaly
-from api.can_api_v2_definition import MetricSources
+from api.can_api_v2_definition import MetricSource
 from libs import build_api_v2
 from libs.metrics import test_positivity
 from libs.datasets import timeseries
@@ -153,7 +153,7 @@ def test_annotation(rt_dataset, icu_dataset):
         }
     ]
 
-    assert timeseries_for_region.annotations.cases.sources == [MetricSources.NYTimes]
+    assert timeseries_for_region.annotations.cases.sources == [MetricSource.NYTimes]
     assert timeseries_for_region.annotations.cases.anomalies == []
 
     assert timeseries_for_region.annotations.deaths.sources == []
