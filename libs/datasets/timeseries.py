@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import enum
 import pathlib
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -769,9 +770,7 @@ class MultiRegionDataset:
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
         # When I look at the CSV I'm usually looking for the most recent values so reverse the
         # dates to put the most recent on the left.
-        # TODO(tom): When new code seems stable uncomment the following line. For now leave dates
-        #  with most recent on right to reduce diff from what is is currently written.
-        # wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
+        wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
 
         if not self.provenance.empty:
@@ -838,9 +837,14 @@ class MultiRegionDataset:
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
         wide_df = self.timeseries_rows()
-        # TODO(tom): Change to %.5g after new code seems stable. For now leaving .12g to reduce
-        #  diff from what is currently written.
-        wide_df.to_csv(pointer.path_wide_dates(), index=True, float_format="%.12g")
+
+        # 7 significant digits of precision seems like enough.
+        csv_buf = wide_df.to_csv(index=True, float_format="%.7g")
+        # Most timeseries don't go back to the oldest dates in the CSV so they are represented by
+        # a row ending in lots of commas. Remove these because CSV readers seem to handle rows
+        # with missing commas correctly.
+        csv_buf = re.sub(r",+\n", r"\n", csv_buf)
+        pointer.path_wide_dates().write_text(csv_buf)
 
         self.annotations_as_dataframe().to_csv(pointer.path_annotation(), index=False)
 

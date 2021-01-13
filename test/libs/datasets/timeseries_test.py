@@ -518,11 +518,11 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
     # Compare written file with a string literal so a test fails if something changes in how the
     # file is written. The literal contains spaces to align the columns in the source.
     assert pointer.path_wide_dates().read_text() == (
-        "                  location_id,variable,provenance,2020-04-01,2020-04-02,2020-04-03\n"
-        "           iso1:us#iso2:us-as,   cases,          ,       100,       200,       300\n"
-        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         0,         2,         4\n"
-        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,          ,       210,       310\n"
-        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,         1,         2,          \n"
+        "                  location_id,variable,provenance,2020-04-03,2020-04-02,2020-04-01\n"
+        "           iso1:us#iso2:us-as,   cases,          ,       300,       200,       100\n"
+        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         4,         2,         0\n"
+        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,       310,       210\n"
+        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,          ,         2,         1\n"
     ).replace(" ", "")
 
     dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
@@ -1353,11 +1353,11 @@ def test_timeseries_rows():
     rows = ts.timeseries_rows()
     expected = pd.read_csv(
         io.StringIO(
-            "       location_id,variable,2020-04-01,2020-04-02\n"
-            "iso1:us#iso2:us-az,      m1,         8,        12\n"
-            "iso1:us#iso2:us-az,      m2,        20,        40\n"
+            "       location_id,variable,2020-04-02,2020-04-01\n"
+            "iso1:us#iso2:us-az,      m1,        12,         8\n"
+            "iso1:us#iso2:us-az,      m2,        40,        20\n"
             "iso1:us#iso2:us-tx,      m1,         4,         4\n"
-            "iso1:us#iso2:us-tx,      m2,         2,         4\n".replace(" ", "")
+            "iso1:us#iso2:us-tx,      m2,         4,         2\n".replace(" ", "")
         )
     ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)
