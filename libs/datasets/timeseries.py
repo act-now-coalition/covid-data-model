@@ -89,6 +89,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     # 'annotation' types, tags that must of a specific real value for DATE.
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
+    ZSCORE_OUTLIER = "zscore_outlier"
 
     # Provenance is a tag for a location_id-variable pair. It has DATE `pd.NaT` or None.
     PROVENANCE = PdFields.PROVENANCE
@@ -999,10 +1000,25 @@ def drop_new_case_outliers(
 
     zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
 
+    new_tags = []
     to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
-    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
+    for idx, _ in to_exclude[to_exclude].iteritems():
+        new_tags.append(
+            {
+                TagField.LOCATION_ID: idx[0],
+                TagField.VARIABLE: CommonFields.NEW_CASES,
+                TagField.TYPE: TagType.ZSCORE_OUTLIER,
+                # TODO(tom): Having a formatted string deep in our pipeline is ugly. See TODO
+                #  in the TagField class.
+                TagField.CONTENT: f"Removed outlier {df_copy.at[idx, CommonFields.NEW_CASES]:.3g}",
+                TagField.DATE: idx[1],
+            }
+        )
+    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = np.nan
 
-    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy)
+    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy).append_tag_df(
+        pd.DataFrame(new_tags)
+    )
 
     return new_timeseries
 
