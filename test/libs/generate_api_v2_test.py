@@ -31,13 +31,14 @@ def test_build_summary_for_fips(
 
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
     nyc_latest = fips_timeseries.latest
+    log = structlog.get_logger()
 
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
-        fips_timeseries, nyc_rt_dataset, nyc_icu_dataset, structlog.get_logger()
+        fips_timeseries, nyc_rt_dataset, nyc_icu_dataset, log,
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     assert latest_metric
-    summary = build_api_v2.build_region_summary(fips_timeseries, latest_metric, risk_levels)
+    summary = build_api_v2.build_region_summary(fips_timeseries, latest_metric, risk_levels, log)
     expected = RegionSummary(
         population=nyc_latest["population"],
         state="NY",
@@ -92,18 +93,21 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_datase
 
     nyc_timeseries = us_timeseries.get_one_region(nyc_region)
     nyc_latest = nyc_timeseries.latest
+    log = structlog.get_logger()
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
-        nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset, structlog.get_logger()
+        nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset, log
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     risk_timeseries = top_level_metric_risk_levels.calculate_risk_level_timeseries(metrics_series)
 
-    region_summary = build_api_v2.build_region_summary(nyc_timeseries, latest_metric, risk_levels)
+    region_summary = build_api_v2.build_region_summary(
+        nyc_timeseries, latest_metric, risk_levels, log
+    )
     region_timeseries = build_api_v2.build_region_timeseries(
         region_summary, nyc_timeseries, metrics_series, risk_timeseries
     )
 
-    summary = build_api_v2.build_region_summary(nyc_timeseries, latest_metric, risk_levels)
+    summary = build_api_v2.build_region_summary(nyc_timeseries, latest_metric, risk_levels, log)
 
     assert summary.dict() == region_timeseries.region_summary.dict()
     # Double checking that serialized json does not contain NaNs, all values should

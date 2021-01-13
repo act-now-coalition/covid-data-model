@@ -1,6 +1,9 @@
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
+from api.can_api_v2_definition import MetricAnomaly
+from api.can_api_v2_definition import MetricSources
+from libs import build_api_v2
 from libs.metrics import test_positivity
 from libs.datasets import timeseries
 from libs.pipeline import Region
@@ -119,7 +122,7 @@ def test_annotation(rt_dataset, icu_dataset):
             CommonFields.CASES: TimeseriesLiteral([100, 200, 300], provenance="NYTimes"),
             CommonFields.NEW_CASES: [100, 100, 100],
             CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
-            CommonFields.ICU_BEDS: [20, 20, 20],
+            CommonFields.ICU_BEDS: TimeseriesLiteral([20, 20, 20], provenance="NotFound"),
             CommonFields.CURRENT_ICU: [5, 5, 5],
             CommonFields.DEATHS: TimeseriesLiteral(
                 [2, 3, 2],
@@ -133,8 +136,27 @@ def test_annotation(rt_dataset, icu_dataset):
             CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
         },
     )
-
     regional_input = api_v2_pipeline.RegionalInput.from_region_and_model_output(
         region, ds, rt_dataset, icu_dataset
     )
-    assert api_v2_pipeline.build_timeseries_for_region(regional_input)
+
+    with structlog.testing.capture_logs() as logs:
+        timeseries_for_region = api_v2_pipeline.build_timeseries_for_region(regional_input)
+
+    assert logs == [
+        {
+            "location_id": region.location_id,
+            "field_name": CommonFields.ICU_BEDS,
+            "provenance": "NotFound",
+            "event": build_api_v2.METRIC_SOURCES_NOT_FOUND_MESSAGE,
+            "log_level": "info",
+        }
+    ]
+
+    assert timeseries_for_region.annotations.cases.sources == [MetricSources.NYTimes]
+    assert timeseries_for_region.annotations.cases.anomalies == []
+
+    assert timeseries_for_region.annotations.deaths.sources == []
+    assert timeseries_for_region.annotations.deaths.anomalies == [
+        MetricAnomaly(date="2020-04-01", description="Something happened")
+    ]

@@ -22,8 +22,12 @@ from covidactnow.datapublic.common_fields import CommonFields
 from api.can_api_v2_definition import MetricAnomaly
 from api.can_api_v2_definition import MetricSources
 from libs.datasets import timeseries
+from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import TagType
+
+
+METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in MetricSources enum"
 
 
 def _build_actuals(actual_data: dict) -> Actuals:
@@ -60,6 +64,7 @@ def build_region_summary(
     one_region: timeseries.OneRegionTimeseriesDataset,
     latest_metrics: Optional[Metrics],
     risk_levels: RiskLevels,
+    log,
 ) -> RegionSummary:
     latest_values = one_region.latest
     region = one_region.region
@@ -80,35 +85,45 @@ def build_region_summary(
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
         url=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
-        annotations=build_annotations(one_region),
+        annotations=build_annotations(one_region, log),
     )
 
 
-def build_annotations(one_region: OneRegionTimeseriesDataset) -> Annotations:
+def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotations:
+    assert one_region.tag.index.names == [TagField.VARIABLE, TagField.TYPE, TagField.DATE]
     return Annotations(
-        cases=build_metric_annotations(one_region.tag, CommonFields.CASES),
-        deaths=build_metric_annotations(one_region.tag, CommonFields.DEATHS),
-        positiveTests=build_metric_annotations(one_region.tag, CommonFields.POSITIVE_TESTS),
-        negativeTests=build_metric_annotations(one_region.tag, CommonFields.NEGATIVE_TESTS),
-        contactTracers=build_metric_annotations(one_region.tag, CommonFields.CONTACT_TRACERS_COUNT),
-        hospitalBeds=build_metric_annotations(
-            one_region.tag, CommonFields.HOSPITAL_BEDS_IN_USE_ANY
+        cases=_build_metric_annotations(one_region.tag, CommonFields.CASES, log),
+        deaths=_build_metric_annotations(one_region.tag, CommonFields.DEATHS, log),
+        positiveTests=_build_metric_annotations(one_region.tag, CommonFields.POSITIVE_TESTS, log),
+        negativeTests=_build_metric_annotations(one_region.tag, CommonFields.NEGATIVE_TESTS, log),
+        contactTracers=_build_metric_annotations(
+            one_region.tag, CommonFields.CONTACT_TRACERS_COUNT, log
         ),
-        icuBeds=build_metric_annotations(one_region.tag, CommonFields.ICU_BEDS),
-        newCases=build_metric_annotations(one_region.tag, CommonFields.NEW_CASES),
+        hospitalBeds=_build_metric_annotations(
+            one_region.tag, CommonFields.HOSPITAL_BEDS_IN_USE_ANY, log
+        ),
+        icuBeds=_build_metric_annotations(one_region.tag, CommonFields.ICU_BEDS, log),
+        newCases=_build_metric_annotations(one_region.tag, CommonFields.NEW_CASES, log),
     )
 
 
-def build_metric_annotations(
-    tag_series: pd.Series, field_name: CommonFields
+def _build_metric_annotations(
+    tag_series: pd.Series, field_name: CommonFields, log
 ) -> Optional[MetricAnnotations]:
     try:
         metric_tag_df: pd.DataFrame = tag_series[field_name]
     except KeyError:
         return None
 
-    sources_str = list(metric_tag_df.loc[[TagType.PROVENANCE]])
-    sources_enum = [MetricSources.get(s) or MetricSources.OTHER for s in sources_str]
+    sources_enum = []
+    for source_str in metric_tag_df.loc[[TagType.PROVENANCE]]:
+        source_enum = MetricSources.get(source_str)
+        if source_enum is None:
+            source_enum = MetricSources.OTHER
+            log.info(
+                METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
+            )
+        sources_enum.append(source_enum)
 
     anomalies_tuples = (
         metric_tag_df.loc[
