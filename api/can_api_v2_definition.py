@@ -22,6 +22,7 @@ class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
 class MetricSources(GetByValueMixin, enum.Enum):
     """Metric source."""
 
+    NYTimes = "NYTimes"
     CMSTesting = "CMSTesting"
     CDCTesting = "CDCTesting"
     HHSTesting = "HHSTesting"
@@ -140,7 +141,7 @@ class MetricAnomaly(base_model.APIBaseModel):
 class MetricAnnotations(base_model.APIBaseModel):
     """Annotations associated with one field."""
 
-    source: List[MetricSources]
+    sources: List[MetricSources]
     anomalies: List[MetricAnomaly]
 
 
@@ -157,7 +158,7 @@ class Annotations(base_model.APIBaseModel):
     negativeTests: Optional[MetricAnnotations] = pydantic.Field(
         None, description="Annotations for negativeTests"
     )
-    contactTracers: Optional[int] = pydantic.Field(
+    contactTracers: Optional[MetricAnnotations] = pydantic.Field(
         None, description="Annotations for contactTracers"
     )
     hospitalBeds: Optional[MetricAnnotations] = pydantic.Field(
@@ -167,7 +168,7 @@ class Annotations(base_model.APIBaseModel):
         None, description="Annotations for icuBeds"
     )
     newCases: Optional[MetricAnnotations] = pydantic.Field(
-        None, description="""Annotations for newCases""",
+        None, description="Annotations for newCases",
     )
 
 

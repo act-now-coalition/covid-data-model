@@ -10,6 +10,9 @@ from libs.datasets import AggregationLevel
 import pandas as pd
 import structlog
 
+from test import test_helpers
+from test.test_helpers import TimeseriesLiteral
+
 
 @pytest.fixture
 def nyc_regional_input(nyc_region, rt_dataset, icu_dataset):
@@ -107,3 +110,31 @@ def test_output_no_timeseries_rows(nyc_regional_input, tmp_path):
     all_timeseries_api = api_v2_pipeline.run_on_regions([regional_input])
 
     assert all_timeseries_api
+
+
+def test_annotation(rt_dataset, icu_dataset):
+    region = Region.from_state("IL")
+    ds = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral([100, 200, 300], provenance="NYTimes"),
+            CommonFields.NEW_CASES: [100, 100, 100],
+            CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
+            CommonFields.ICU_BEDS: [20, 20, 20],
+            CommonFields.CURRENT_ICU: [5, 5, 5],
+            CommonFields.DEATHS: TimeseriesLiteral(
+                [2, 3, 2],
+                annotation=[test_helpers.make_tag(date="2020-04-01", content="Something happened")],
+            ),
+        },
+        region=region,
+        static={
+            CommonFields.POPULATION: 100_000,
+            CommonFields.STATE: "IL",
+            CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
+        },
+    )
+
+    regional_input = api_v2_pipeline.RegionalInput.from_region_and_model_output(
+        region, ds, rt_dataset, icu_dataset
+    )
+    assert api_v2_pipeline.build_timeseries_for_region(regional_input)

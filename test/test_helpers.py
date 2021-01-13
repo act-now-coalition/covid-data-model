@@ -142,9 +142,10 @@ def build_default_region_dataset(
     metrics: Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]],
     *,
     region=DEFAULT_REGION,
+    static: Optional[Mapping[FieldName, Any]] = None,
 ) -> timeseries.MultiRegionDataset:
     """Returns a `MultiRegionDataset` containing metrics in one region"""
-    return build_dataset({region: metrics})
+    return build_dataset({region: metrics}, static_by_region_then_field_name={region: static})
 
 
 def build_one_region_dataset(

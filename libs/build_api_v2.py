@@ -19,9 +19,11 @@ from api.can_api_v2_definition import (
 )
 from covidactnow.datapublic.common_fields import CommonFields
 
+from api.can_api_v2_definition import MetricAnomaly
+from api.can_api_v2_definition import MetricSources
 from libs.datasets import timeseries
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs import pipeline
+from libs.datasets.timeseries import TagType
 
 
 def _build_actuals(actual_data: dict) -> Actuals:
@@ -78,7 +80,47 @@ def build_region_summary(
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
         url=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
-        annotations=Annotations(),
+        annotations=build_annotations(one_region),
+    )
+
+
+def build_annotations(one_region: OneRegionTimeseriesDataset) -> Annotations:
+    return Annotations(
+        cases=build_metric_annotations(one_region.tag, CommonFields.CASES),
+        deaths=build_metric_annotations(one_region.tag, CommonFields.DEATHS),
+        positiveTests=build_metric_annotations(one_region.tag, CommonFields.POSITIVE_TESTS),
+        negativeTests=build_metric_annotations(one_region.tag, CommonFields.NEGATIVE_TESTS),
+        contactTracers=build_metric_annotations(one_region.tag, CommonFields.CONTACT_TRACERS_COUNT),
+        hospitalBeds=build_metric_annotations(
+            one_region.tag, CommonFields.HOSPITAL_BEDS_IN_USE_ANY
+        ),
+        icuBeds=build_metric_annotations(one_region.tag, CommonFields.ICU_BEDS),
+        newCases=build_metric_annotations(one_region.tag, CommonFields.NEW_CASES),
+    )
+
+
+def build_metric_annotations(
+    tag_series: pd.Series, field_name: CommonFields
+) -> Optional[MetricAnnotations]:
+    try:
+        metric_tag_df: pd.DataFrame = tag_series[field_name]
+    except KeyError:
+        return None
+
+    sources_str = list(metric_tag_df.loc[[TagType.PROVENANCE]])
+    sources_enum = [MetricSources.get(s) or MetricSources.OTHER for s in sources_str]
+
+    anomalies_tuples = (
+        metric_tag_df.loc[
+            [TagType.CUMULATIVE_TAIL_TRUNCATED, TagType.CUMULATIVE_LONG_TAIL_TRUNCATED]
+        ]
+        .reset_index()
+        .itertuples(index=False)
+    )
+
+    return MetricAnnotations(
+        sources=sources_enum,
+        anomalies=[MetricAnomaly(date=t.date, description=t.content) for t in anomalies_tuples],
     )
 
 
