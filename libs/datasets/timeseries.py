@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import enum
 import pathlib
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -836,7 +837,14 @@ class MultiRegionDataset:
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
         wide_df = self.timeseries_rows()
-        wide_df.to_csv(pointer.path_wide_dates(), index=True, float_format="%.5g")
+
+        # 6 significant digits of precision seems like enough.
+        csv_buf = wide_df.to_csv(index=True, float_format="%.6g")
+        # Most timeseries don't go back to the oldest dates in the CSV so they are represented by
+        # a row ending in lots of commas. Remove these because CSV readers seem to handle rows
+        # with missing commas correctly.
+        csv_buf = re.sub(r",+\n", r"\n", csv_buf)
+        pointer.path_wide_dates().write_text(csv_buf)
 
         self.annotations_as_dataframe().to_csv(pointer.path_annotation(), index=False)
 
