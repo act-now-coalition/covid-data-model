@@ -5,6 +5,8 @@ import structlog
 
 from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import Annotations
+from api.can_api_v2_definition import MetricAnnotations
+from api.can_api_v2_definition import MetricSources
 from api.can_api_v2_definition import RegionSummary
 from libs.metrics import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
@@ -69,7 +71,16 @@ def test_build_summary_for_fips(
             contactTracers=nyc_latest["contact_tracers_count"],
             newCases=nyc_latest["new_cases"],
         ),
-        annotations=Annotations(),
+        annotations=Annotations(
+            cases=MetricAnnotations(sources=[MetricSources.OTHER], anomalies=[]),
+            deaths=MetricAnnotations(sources=[MetricSources.OTHER], anomalies=[]),
+            positiveTests=MetricAnnotations(sources=[MetricSources.VALORUM], anomalies=[]),
+            negativeTests=MetricAnnotations(sources=[MetricSources.VALORUM], anomalies=[]),
+            hospitalBeds=MetricAnnotations(sources=[MetricSources.OTHER], anomalies=[]),
+            icuBeds=MetricAnnotations(sources=[MetricSources.OTHER], anomalies=[]),
+            contactTracers=None,
+            newCases=None,
+        ),
         lastUpdatedDate=datetime.datetime.utcnow(),
         url="https://covidactnow.org/us/new_york-ny/county/bronx_county",
     )
