@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import enum
 import pathlib
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -89,6 +90,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     # 'annotation' types, tags that must of a specific real value for DATE.
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
+    ZSCORE_OUTLIER = "zscore_outlier"
 
     # Provenance is a tag for a location_id-variable pair. It has DATE `pd.NaT` or None.
     PROVENANCE = PdFields.PROVENANCE
@@ -511,6 +513,7 @@ class MultiRegionDataset:
         if not self.provenance.empty:
             raise NotImplementedError("TODO(tom): add support for merging provenance data")
         assert provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        assert isinstance(provenance, pd.Series)
 
         new_index_df = provenance.index.to_frame()
         new_index_df[TagField.TYPE] = TagType.PROVENANCE
@@ -550,10 +553,25 @@ class MultiRegionDataset:
     def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
         wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
-        # Extract provenance column from wide date DataFrame so all columns are dates.
-        # TODO(tom): support multiple provenance columns
-        provenance_series = wide_dates_df[PdFields.PROVENANCE].dropna()
-        wide_dates_df = wide_dates_df.drop(columns=[PdFields.PROVENANCE])
+
+        # Extract provenance columns from wide date DataFrame so all columns are dates. This
+        # parses the column names created in `timeseries_rows`.
+        provenance_column_mask = wide_dates_df.columns.str.match(
+            r"\A" + TagType.PROVENANCE + r"(-\d+)?\Z"
+        )
+        tag_df_to_concat = []
+        if provenance_column_mask.any():
+            provenance_columns = wide_dates_df.loc[:, provenance_column_mask]
+            provenance_series = (
+                provenance_columns.stack().reset_index(-1, drop=True).rename(TagField.CONTENT)
+            )
+            if not provenance_series.empty:
+                provenance_df = provenance_series.reset_index()
+                provenance_df[TagField.DATE] = pd.NaT
+                provenance_df[TagField.TYPE] = TagType.PROVENANCE
+                tag_df_to_concat.append(provenance_df)
+
+        wide_dates_df = wide_dates_df.loc[:, ~provenance_column_mask]
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
         wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
 
@@ -563,12 +581,12 @@ class MultiRegionDataset:
 
         annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
         annotations[TagField.DATE] = pd.to_datetime(annotations[TagField.DATE])
+        tag_df_to_concat.append(annotations)
 
         return (
             MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df)
             .add_static_values(static_df)
-            .add_provenance_series(provenance_series)
-            .append_tag_df(annotations)
+            .append_tag_df(pd.concat(tag_df_to_concat))
         )
 
     @staticmethod
@@ -648,9 +666,16 @@ class MultiRegionDataset:
         """Returns a new dataset with additional_tag_df appended."""
         if additional_tag_df.empty:
             return self
-        additional_series = additional_tag_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
-        combined_tag = pd.concat([self.tag, additional_series]).sort_index()
-        return dataclasses.replace(self, tag=combined_tag)
+        # Sort by index fields, and within rows having identical index fields, by content. This
+        # makes the order of values in combined_series identical, independent of the order they
+        # were appended.
+        combined_df = (
+            self.tag.reset_index()
+            .append(additional_tag_df)
+            .sort_values(TAG_INDEX_FIELDS + [TagField.CONTENT])
+        )
+        combined_series = combined_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
+        return dataclasses.replace(self, tag=combined_series)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
@@ -758,12 +783,25 @@ class MultiRegionDataset:
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
         # When I look at the CSV I'm usually looking for the most recent values so reverse the
         # dates to put the most recent on the left.
-        # TODO(tom): When new code seems stable uncomment the following line. For now leave dates
-        #  with most recent on right to reduce diff from what is is currently written.
-        # wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
+        wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
 
-        return pd.concat([self.provenance, wide_dates], axis=1)
+        if not self.provenance.empty:
+            # Add one or more columns with the provenance tag(s) for each timeseries
+            # (identified by a <location_id, variable> pair).
+            # From https://stackoverflow.com/a/38369722
+            provenance_columns = (
+                self.provenance.groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+                .apply(lambda df: df.reset_index(drop=True))
+                .unstack()
+                # The first provenance column has the same name as when there was only support
+                # for a single column. Extra columns are named "provenance-1", "provenance-2", ...
+                # These column names are parsed in `read_from_pointer`.
+                .rename(columns=lambda i: TagType.PROVENANCE + ("" if i == 0 else f"-{i}"))
+            )
+            return pd.concat([provenance_columns, wide_dates], axis=1)
+        else:
+            return wide_dates
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
@@ -812,9 +850,14 @@ class MultiRegionDataset:
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
         wide_df = self.timeseries_rows()
-        # TODO(tom): Change to %.5g after new code seems stable. For now leaving .12g to reduce
-        #  diff from what is currently written.
-        wide_df.to_csv(pointer.path_wide_dates(), index=True, float_format="%.12g")
+
+        # 7 significant digits of precision seems like enough.
+        csv_buf = wide_df.to_csv(index=True, float_format="%.7g")
+        # Most timeseries don't go back to the oldest dates in the CSV so they are represented by
+        # a row ending in lots of commas. Remove these because CSV readers seem to handle rows
+        # with missing commas correctly.
+        csv_buf = re.sub(r",+\n", r"\n", csv_buf)
+        pointer.path_wide_dates().write_text(csv_buf)
 
         self.annotations_as_dataframe().to_csv(pointer.path_annotation(), index=False)
 
@@ -972,11 +1015,29 @@ def drop_new_case_outliers(
     grouped_df = timeseries.groupby_region()
 
     zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
-
     to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
-    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
 
-    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy)
+    new_tags = []
+    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
+    # rows where to_exclude is True.
+    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    for idx, _ in to_exclude[to_exclude].iteritems():
+        new_tags.append(
+            {
+                TagField.LOCATION_ID: idx[0],
+                TagField.VARIABLE: CommonFields.NEW_CASES,
+                TagField.TYPE: TagType.ZSCORE_OUTLIER,
+                # TODO(tom): Having a formatted string deep in our pipeline is ugly. See TODO
+                #  in the TagField class.
+                TagField.CONTENT: f"Removed outlier {df_copy.at[idx, CommonFields.NEW_CASES]:.6g}",
+                TagField.DATE: idx[1],
+            }
+        )
+    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = np.nan
+
+    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy).append_tag_df(
+        pd.DataFrame(new_tags)
+    )
 
     return new_timeseries
 
@@ -1343,7 +1404,7 @@ def combined_datasets(
             selected_location_id = location_ids.difference(location_id_so_far)
             timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
             location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-            tag_series.append(datasets[dataset_name].tag.loc[selected_location_id, field])
+            tag_series.append(datasets[dataset_name].tag.loc[selected_location_id, [field]])
 
     static_series = []
     for field, dataset_names in static_field_dataset_source.items():
@@ -1384,7 +1445,7 @@ def combined_datasets(
             output_timeseries_wide_variables = (
                 output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
             )
-        output_tag = pd.concat(tag_series, verify_integrity=True)
+        output_tag = pd.concat(tag_series)
     else:
         output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         output_tag = _EMPTY_TAG_SERIES
