@@ -113,6 +113,18 @@ Notable exceptions:
  2. Any days with negative new cases are removed.
 """,
     )
+    vaccinesDistributed: Optional[int] = pydantic.Field(
+        ..., description="Number of vaccine doses distributed."
+    )
+    vaccinationsInitiated: Optional[int] = pydantic.Field(
+        ...,
+        description="""
+Number of vaccinations initiated.
+
+This value may vary by type of vaccine, but for Moderna and Pfizer, this indicates
+number of people vaccinated with the first dose.
+""",
+    )
 
 
 class ActualsTimeseriesRow(Actuals):
