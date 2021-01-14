@@ -4,7 +4,12 @@
   "type": "object",
   "properties": {
     "source": {
-      "$ref": "#/definitions/TestPositivityRatioMethod"
+      "description": "Source data for test positivity ratio.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/TestPositivityRatioMethod"
+        }
+      ]
     }
   },
   "required": [
