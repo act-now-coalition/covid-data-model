@@ -25,6 +25,7 @@ def test_optional_field_modifies_schema_properly():
         bar: Optional[float] = pydantic.Field(...)
         baz: float = pydantic.Field(...)
         bee: Optional[Bar] = pydantic.Field(...)
+        qux: Optional[float] = pydantic.Field(None)
 
     results = Foo.schema()
 
@@ -36,6 +37,7 @@ def test_optional_field_modifies_schema_properly():
             "bar": {"title": "Bar", "anyOf": [{"type": "number"}, {"type": "null"}]},
             "baz": {"title": "Baz", "type": "number"},
             "bee": {"anyOf": [{"$ref": "#/definitions/Bar"}, {"type": "null"}]},
+            "qux": {"title": "Qux", "anyOf": [{"type": "number"}, {"type": "null"}]},
         },
         "required": ["bar", "baz", "bee"],
         "definitions": {
