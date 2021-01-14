@@ -14,6 +14,7 @@ class CDCVaccinesDataset(data_source.DataSource):
 
     INDEX_FIELD_MAP = {f: f for f in TIMESERIES_INDEX_FIELDS}
 
+    # TODO: Remove constants(https://trello.com/c/uPQXBuDg/777-remove-unused-datasource-constants)
     COMMON_FIELD_MAP = {
         f: f
         for f in {
@@ -30,7 +31,3 @@ class CDCVaccinesDataset(data_source.DataSource):
         input_path = data_root / cls.DATA_PATH
         data = common_df.read_csv(input_path, set_index=False)
         return cls(data)
-
-    @lru_cache(None)
-    def multi_region_dataset(self) -> MultiRegionDataset:
-        return super().multi_region_dataset()
