@@ -1,6 +1,6 @@
 {
-  "title": "RiskLevelTimeseriesRow",
-  "description": "Timeseries data for risk levels. Currently only surfacing overall risk level for region.",
+  "title": "RiskLevelsRow",
+  "description": "Base model for API output.",
   "type": "object",
   "properties": {
     "overall": {
@@ -10,17 +10,10 @@
           "$ref": "#/definitions/RiskLevel"
         }
       ]
-    },
-    "date": {
-      "title": "Date",
-      "description": "Date of timeseries data point",
-      "type": "string",
-      "format": "date"
     }
   },
   "required": [
-    "overall",
-    "date"
+    "overall"
   ],
   "definitions": {
     "RiskLevel": {

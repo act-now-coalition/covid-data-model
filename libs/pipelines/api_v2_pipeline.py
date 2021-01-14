@@ -229,7 +229,7 @@ def deploy_single_level(
 
 
 def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathlib.Path,) -> None:
-    output_path.write_text(region_result.json())
+    output_path.write_text(region_result.json(exclude_unset=True))
 
 
 def deploy_csv_api_output(

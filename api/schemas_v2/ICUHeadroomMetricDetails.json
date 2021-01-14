@@ -9,7 +9,12 @@
       "type": "integer"
     },
     "currentIcuCovidMethod": {
-      "$ref": "#/definitions/CovidPatientsMethod"
+      "description": "Method used to determine number of current ICU patients with covid.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CovidPatientsMethod"
+        }
+      ]
     },
     "currentIcuNonCovid": {
       "title": "Currenticunoncovid",
@@ -17,7 +22,12 @@
       "type": "integer"
     },
     "currentIcuNonCovidMethod": {
-      "$ref": "#/definitions/NonCovidPatientsMethod"
+      "description": "Method used to determine number of current ICU patients without covid.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/NonCovidPatientsMethod"
+        }
+      ]
     }
   },
   "required": [
