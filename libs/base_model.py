@@ -26,10 +26,7 @@ class APIBaseModel(pydantic.BaseModel):
 
                 # Checking for fields that allow none (essentially indicating that the
                 # type is Optional[<type>]) and required.
-                # This is possibly more stringent than necessary (field.required may not be
-                # necessary), but since this code is fairly manual, this applies the
-                # minimum changes necessary for our code.
-                if field.allow_none and field.required:
+                if field.allow_none:
                     existing_field = schema["properties"][field_name]
                     if "type" in existing_field:
                         # Removing existing type field and adding a "anyOf" indicates that
