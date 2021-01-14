@@ -173,7 +173,7 @@ class Metrics(base_model.APIBaseModel):
         description="90th percentile confidence interval upper endpoint of the infection rate.",
     )
     icuHeadroomRatio: Optional[float] = pydantic.Field(...)
-    icuHeadroomDetails: ICUHeadroomMetricDetails = pydantic.Field(None)
+    icuHeadroomDetails: Optional[ICUHeadroomMetricDetails] = pydantic.Field(None)
     icuCapacityRatio: Optional[float] = pydantic.Field(...)
 
     @staticmethod
