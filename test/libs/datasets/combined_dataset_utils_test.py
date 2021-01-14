@@ -1,5 +1,6 @@
 import pathlib
 
+import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs.datasets import combined_dataset_utils
@@ -40,7 +41,7 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
 
     timeseries_loaded = combined_datasets.load_us_timeseries_dataset(pointer_directory=tmp_path)
     one_region_loaded = timeseries_loaded.get_one_region(nyc_region)
-    assert one_region_nyc.latest == one_region_loaded.latest
+    assert one_region_nyc.latest == pytest.approx(one_region_loaded.latest)
     test_helpers.assert_dataset_like(
         timeseries_loaded, multiregion_timeseries_nyc, drop_na_timeseries=True
     )

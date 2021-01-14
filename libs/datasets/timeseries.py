@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import enum
 import pathlib
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -89,6 +90,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     # 'annotation' types, tags that must of a specific real value for DATE.
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
+    ZSCORE_OUTLIER = "zscore_outlier"
 
     # Provenance is a tag for a location_id-variable pair. It has DATE `pd.NaT` or None.
     PROVENANCE = PdFields.PROVENANCE
@@ -218,6 +220,16 @@ def _add_fips_if_missing(df: pd.DataFrame):
     """Adds the FIPS column derived from location_id, inplace."""
     if CommonFields.FIPS not in df.columns:
         df[CommonFields.FIPS] = df[CommonFields.LOCATION_ID].apply(pipeline.location_id_to_fips)
+
+
+def _add_state_if_missing(df: pd.DataFrame):
+    """Adds the state code column if missing, in place."""
+    assert CommonFields.LOCATION_ID in df.columns
+
+    if CommonFields.STATE not in df.columns:
+        df[CommonFields.STATE] = df[CommonFields.LOCATION_ID].apply(
+            lambda x: Region.from_location_id(x).state
+        )
 
 
 def _geodata_df_to_static_attribute_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
@@ -580,6 +592,8 @@ class MultiRegionDataset:
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
         ts_df = _add_location_id(ts_df)
+        _add_state_if_missing(ts_df)
+
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
     def add_fips_provenance(self, provenance):
@@ -769,9 +783,7 @@ class MultiRegionDataset:
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
         # When I look at the CSV I'm usually looking for the most recent values so reverse the
         # dates to put the most recent on the left.
-        # TODO(tom): When new code seems stable uncomment the following line. For now leave dates
-        #  with most recent on right to reduce diff from what is is currently written.
-        # wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
+        wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
 
         if not self.provenance.empty:
@@ -838,9 +850,14 @@ class MultiRegionDataset:
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
         wide_df = self.timeseries_rows()
-        # TODO(tom): Change to %.5g after new code seems stable. For now leaving .12g to reduce
-        #  diff from what is currently written.
-        wide_df.to_csv(pointer.path_wide_dates(), index=True, float_format="%.12g")
+
+        # 7 significant digits of precision seems like enough.
+        csv_buf = wide_df.to_csv(index=True, float_format="%.7g")
+        # Most timeseries don't go back to the oldest dates in the CSV so they are represented by
+        # a row ending in lots of commas. Remove these because CSV readers seem to handle rows
+        # with missing commas correctly.
+        csv_buf = re.sub(r",+\n", r"\n", csv_buf)
+        pointer.path_wide_dates().write_text(csv_buf)
 
         self.annotations_as_dataframe().to_csv(pointer.path_annotation(), index=False)
 
@@ -998,11 +1015,29 @@ def drop_new_case_outliers(
     grouped_df = timeseries.groupby_region()
 
     zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
-
     to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
-    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = None
 
-    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy)
+    new_tags = []
+    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
+    # rows where to_exclude is True.
+    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    for idx, _ in to_exclude[to_exclude].iteritems():
+        new_tags.append(
+            {
+                TagField.LOCATION_ID: idx[0],
+                TagField.VARIABLE: CommonFields.NEW_CASES,
+                TagField.TYPE: TagType.ZSCORE_OUTLIER,
+                # TODO(tom): Having a formatted string deep in our pipeline is ugly. See TODO
+                #  in the TagField class.
+                TagField.CONTENT: f"Removed outlier {df_copy.at[idx, CommonFields.NEW_CASES]:.6g}",
+                TagField.DATE: idx[1],
+            }
+        )
+    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = np.nan
+
+    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy).append_tag_df(
+        pd.DataFrame(new_tags)
+    )
 
     return new_timeseries
 
