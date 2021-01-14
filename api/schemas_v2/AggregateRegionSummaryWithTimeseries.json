@@ -446,6 +446,21 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinesDistributed": {
+          "title": "Vaccinesdistributed",
+          "description": "Number of vaccine doses distributed.",
+          "type": "integer"
+        },
+        "vaccinationsInitiated": {
+          "title": "Vaccinationsinitiated",
+          "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n",
+          "type": "integer"
+        },
+        "vaccinationsCompleted": {
+          "title": "Vaccinationscompleted",
+          "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the both first and second dose.\n",
+          "type": "integer"
         }
       },
       "required": [
@@ -664,6 +679,21 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinesDistributed": {
+          "title": "Vaccinesdistributed",
+          "description": "Number of vaccine doses distributed.",
+          "type": "integer"
+        },
+        "vaccinationsInitiated": {
+          "title": "Vaccinationsinitiated",
+          "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n",
+          "type": "integer"
+        },
+        "vaccinationsCompleted": {
+          "title": "Vaccinationscompleted",
+          "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the both first and second dose.\n",
+          "type": "integer"
         },
         "date": {
           "title": "Date",
