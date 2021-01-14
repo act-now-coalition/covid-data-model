@@ -19,7 +19,7 @@ from api.can_api_v2_definition import (
 )
 from covidactnow.datapublic.common_fields import CommonFields
 
-from api.can_api_v2_definition import MetricAnomaly
+from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import MetricSource
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
@@ -132,11 +132,12 @@ def _build_metric_annotations(
         .reset_index()
         .itertuples(index=False)
     )
+    anomalies = [AnomalyAnnotation(date=t.date, description=t.content) for t in anomalies_tuples]
 
-    return MetricAnnotations(
-        sources=sources_enum,
-        anomalies=[MetricAnomaly(date=t.date, description=t.content) for t in anomalies_tuples],
-    )
+    if not sources_enum and not anomalies:
+        return None
+
+    return MetricAnnotations(sources=sources_enum, anomalies=anomalies,)
 
 
 def build_region_timeseries(

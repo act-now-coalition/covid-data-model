@@ -1,7 +1,7 @@
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
-from api.can_api_v2_definition import MetricAnomaly
+from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import MetricSource
 from libs import build_api_v2
 from libs.metrics import test_positivity
@@ -152,11 +152,15 @@ def test_annotation(rt_dataset, icu_dataset):
             "log_level": "info",
         }
     ]
+    assert timeseries_for_region.annotations.icuBeds.sources == [MetricSource.OTHER]
+    assert timeseries_for_region.annotations.icuBeds.anomalies == []
 
     assert timeseries_for_region.annotations.cases.sources == [MetricSource.NYTimes]
     assert timeseries_for_region.annotations.cases.anomalies == []
 
     assert timeseries_for_region.annotations.deaths.sources == []
     assert timeseries_for_region.annotations.deaths.anomalies == [
-        MetricAnomaly(date="2020-04-01", description="Something happened")
+        AnomalyAnnotation(date="2020-04-01", description="Something happened")
     ]
+
+    assert timeseries_for_region.annotations.contactTracers is None

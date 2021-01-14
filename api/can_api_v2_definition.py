@@ -134,7 +134,7 @@ class ActualsTimeseriesRow(Actuals):
     date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
 
 
-class MetricAnomaly(base_model.APIBaseModel):
+class AnomalyAnnotation(base_model.APIBaseModel):
     date: datetime.date = pydantic.Field(..., description="Date of anomaly")
     description: str
 
@@ -143,7 +143,7 @@ class MetricAnnotations(base_model.APIBaseModel):
     """Annotations associated with one field."""
 
     sources: List[MetricSource]
-    anomalies: List[MetricAnomaly]
+    anomalies: List[AnomalyAnnotation]
 
 
 class Annotations(base_model.APIBaseModel):
