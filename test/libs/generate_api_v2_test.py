@@ -67,6 +67,8 @@ def test_build_summary_for_fips(
             },
             contactTracers=nyc_latest["contact_tracers_count"],
             newCases=nyc_latest["new_cases"],
+            vaccinesDistributed=nyc_latest["vaccines_distributed"],
+            vaccinationsInitiated=nyc_latest["vaccinations_initiated"],
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),
         url="https://covidactnow.org/us/new_york-ny/county/bronx_county",

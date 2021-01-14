@@ -114,10 +114,10 @@ Notable exceptions:
 """,
     )
     vaccinesDistributed: Optional[int] = pydantic.Field(
-        ..., description="Number of vaccine doses distributed."
+        None, description="Number of vaccine doses distributed."
     )
     vaccinationsInitiated: Optional[int] = pydantic.Field(
-        ...,
+        None,
         description="""
 Number of vaccinations initiated.
 

@@ -20,6 +20,9 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs import pipeline
 
 
+USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
+
+
 def _build_actuals(actual_data: dict) -> Actuals:
     """Generate actuals entry.
 
@@ -89,8 +92,16 @@ def build_region_timeseries(
     for row in timeseries.yield_records():
         # Timeseries records don't have population
         row[CommonFields.POPULATION] = region_summary.population
-        actual = _build_actuals(row)
-        timeseries_row = ActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
+        actual = _build_actuals(row).dict()
+
+        # Don't include vaccinations in timeseries before first possible vaccination
+        # date to not bloat timeseries.
+        if row[CommonFields.DATE] < USA_VACCINATION_START_DATE:
+            print(f"deleting {row[CommonFields.DATE]}")
+            del actual["vaccinesDistributed"]
+            del actual["vaccinationsInitiated"]
+
+        timeseries_row = ActualsTimeseriesRow(**actual, date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
 
     metrics_rows = [
