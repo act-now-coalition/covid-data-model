@@ -131,7 +131,7 @@ number of people vaccinated with the first dose.
 Number of vaccinations completed.
 
 This value may vary by type of vaccine, but for Moderna and Pfizer, this indicates
-number of people vaccinated with the both first and second dose.
+number of people vaccinated with both the first and second dose.
 """,
     )
 
