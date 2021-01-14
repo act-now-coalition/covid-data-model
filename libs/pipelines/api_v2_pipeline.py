@@ -228,8 +228,12 @@ def deploy_single_level(
     deploy_csv_api_output(bulk_summaries, output_path)
 
 
-def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathlib.Path,) -> None:
-    output_path.write_text(region_result.json(exclude_unset=True))
+def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathlib.Path) -> None:
+    # Excluding fields that are not specifically included in a model.
+    # This lets a field be undefined and not included in the actual json.
+    serialized_result = region_result.json(exclude_unset=True)
+
+    output_path.write_text(serialized_result)
 
 
 def deploy_csv_api_output(
