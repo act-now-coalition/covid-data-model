@@ -222,6 +222,16 @@ def _add_fips_if_missing(df: pd.DataFrame):
         df[CommonFields.FIPS] = df[CommonFields.LOCATION_ID].apply(pipeline.location_id_to_fips)
 
 
+def _add_state_if_missing(df: pd.DataFrame):
+    """Adds the state code column if missing, in place."""
+    assert CommonFields.LOCATION_ID in df.columns
+
+    if CommonFields.STATE not in df.columns:
+        df[CommonFields.STATE] = df[CommonFields.LOCATION_ID].apply(
+            lambda x: Region.from_location_id(x).state
+        )
+
+
 def _geodata_df_to_static_attribute_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
     """Creates a DataFrame to use as static from geo data taken from timeseries CSV."""
     assert geodata_df.index.names == [None]  # [CommonFields.LOCATION_ID, CommonFields.DATE]
@@ -582,6 +592,8 @@ class MultiRegionDataset:
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
         ts_df = _add_location_id(ts_df)
+        _add_state_if_missing(ts_df)
+
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
     def add_fips_provenance(self, provenance):
