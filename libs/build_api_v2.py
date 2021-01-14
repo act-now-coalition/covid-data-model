@@ -47,8 +47,8 @@ def _build_actuals(actual_data: dict) -> Actuals:
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
         newCases=actual_data[CommonFields.NEW_CASES],
-        vaccinesDistributed=None,
-        vaccinationsInitiated=None,
+        vaccinesDistributed=actual_data[CommonFields.VACCINES_DISTRIBUTED],
+        vaccinationsInitiated=actual_data[CommonFields.VACCINATIONS_INITIATED],
     )
 
 
