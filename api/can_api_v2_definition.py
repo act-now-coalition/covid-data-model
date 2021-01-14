@@ -313,8 +313,12 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
         ...,
         description="Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
     )
-    lat: float = pydantic.Field(..., description="Latitude of point within the state or county")
-    long: float = pydantic.Field(..., description="Longitude of point within the state or county")
+    lat: Optional[float] = pydantic.Field(
+        ..., description="Latitude of point within the state or county"
+    )
+    long: Optional[float] = pydantic.Field(
+        ..., description="Longitude of point within the state or county"
+    )
     locationId: str = pydantic.Field(
         ...,
         description="Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",

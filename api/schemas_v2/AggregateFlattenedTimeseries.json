@@ -516,6 +516,8 @@
         "state",
         "county",
         "fips",
+        "lat",
+        "long",
         "locationId",
         "actuals",
         "metrics",
