@@ -1084,6 +1084,31 @@
         },
         "description": "Calculated metrics data based on known actuals."
       },
+      "RiskLevel": {
+        "title": "RiskLevel",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown\n *Extreme* - Severe outbreak"
+      },
+      "RiskLevelsRow": {
+        "title": "RiskLevelsRow",
+        "required": [
+          "overall"
+        ],
+        "type": "object",
+        "properties": {
+          "overall": {
+            "$ref": "#/components/schemas/RiskLevel"
+          }
+        },
+        "description": "Base model for API output."
+      },
       "RegionTimeseriesRowWithHeader": {
         "title": "RegionTimeseriesRowWithHeader",
         "required": [
@@ -1094,7 +1119,8 @@
           "fips",
           "locationId",
           "actuals",
-          "metrics"
+          "metrics",
+          "riskLevels"
         ],
         "type": "object",
         "properties": {
@@ -1170,6 +1196,15 @@
               }
             ],
             "description": "Metrics for given day"
+          },
+          "riskLevels": {
+            "title": "Risklevels",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevelsRow"
+              }
+            ],
+            "description": "Risk Levels for given day"
           }
         },
         "description": "Prediction timeseries row with location information."
@@ -1192,18 +1227,6 @@
           "place"
         ],
         "description": "An enumeration."
-      },
-      "RiskLevel": {
-        "title": "RiskLevel",
-        "enum": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown\n *Extreme* - Severe outbreak"
       },
       "RiskLevels": {
         "title": "RiskLevels",
@@ -1606,19 +1629,19 @@
       "RiskLevelTimeseriesRow": {
         "title": "RiskLevelTimeseriesRow",
         "required": [
-          "date",
-          "overall"
+          "overall",
+          "date"
         ],
         "type": "object",
         "properties": {
+          "overall": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
           "date": {
             "title": "Date",
             "type": "string",
             "description": "Date of timeseries data point",
             "format": "date"
-          },
-          "overall": {
-            "$ref": "#/components/schemas/RiskLevel"
           }
         },
         "description": "Timeseries data for risk levels. Currently only surfacing overall risk level for region."

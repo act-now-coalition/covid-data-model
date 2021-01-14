@@ -782,19 +782,19 @@
       "description": "Timeseries data for risk levels. Currently only surfacing overall risk level for region.",
       "type": "object",
       "properties": {
+        "overall": {
+          "$ref": "#/definitions/RiskLevel"
+        },
         "date": {
           "title": "Date",
           "description": "Date of timeseries data point",
           "type": "string",
           "format": "date"
-        },
-        "overall": {
-          "$ref": "#/definitions/RiskLevel"
         }
       },
       "required": [
-        "date",
-        "overall"
+        "overall",
+        "date"
       ]
     }
   }
