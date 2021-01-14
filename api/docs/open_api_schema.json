@@ -1021,7 +1021,14 @@
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "testPositivityRatioDetails": {
-            "$ref": "#/components/schemas/TestPositivityRatioDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TestPositivityRatioDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1083,7 +1090,14 @@
             ]
           },
           "icuHeadroomDetails": {
-            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "icuCapacityRatio": {
             "title": "Icucapacityratio",
@@ -1186,12 +1200,26 @@
           },
           "lat": {
             "title": "Lat",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Latitude of point within the state or county"
           },
           "long": {
             "title": "Long",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Longitude of point within the state or county"
           },
           "locationId": {
@@ -1488,7 +1516,14 @@
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "testPositivityRatioDetails": {
-            "$ref": "#/components/schemas/TestPositivityRatioDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TestPositivityRatioDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1550,7 +1585,14 @@
             ]
           },
           "icuHeadroomDetails": {
-            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "icuCapacityRatio": {
             "title": "Icucapacityratio",
@@ -1845,7 +1887,14 @@
           },
           "metricsTimeseries": {
             "title": "Metricstimeseries",
-            "type": "array",
+            "anyOf": [
+              {
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "items": {
               "$ref": "#/components/schemas/MetricsTimeseriesRow"
             }

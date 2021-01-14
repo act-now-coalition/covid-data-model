@@ -115,10 +115,17 @@
     },
     "metricsTimeseries": {
       "title": "Metricstimeseries",
-      "type": "array",
       "items": {
         "$ref": "#/definitions/MetricsTimeseriesRow"
-      }
+      },
+      "anyOf": [
+        {
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "actualsTimeseries": {
       "title": "Actualstimeseries",
@@ -269,7 +276,14 @@
           ]
         },
         "testPositivityRatioDetails": {
-          "$ref": "#/definitions/TestPositivityRatioDetails"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/TestPositivityRatioDetails"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "caseDensity": {
           "title": "Casedensity",
@@ -331,7 +345,14 @@
           ]
         },
         "icuHeadroomDetails": {
-          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ICUHeadroomMetricDetails"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "icuCapacityRatio": {
           "title": "Icucapacityratio",
@@ -625,7 +646,14 @@
           ]
         },
         "testPositivityRatioDetails": {
-          "$ref": "#/definitions/TestPositivityRatioDetails"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/TestPositivityRatioDetails"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "caseDensity": {
           "title": "Casedensity",
@@ -687,7 +715,14 @@
           ]
         },
         "icuHeadroomDetails": {
-          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ICUHeadroomMetricDetails"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "icuCapacityRatio": {
           "title": "Icucapacityratio",
