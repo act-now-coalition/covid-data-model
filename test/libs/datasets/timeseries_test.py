@@ -538,8 +538,8 @@ def test_write_read_wide_dates_csv_with_annotation(tmpdir):
         CommonFields.ICU_BEDS: TimeseriesLiteral(
             [0, 2, 4],
             annotation=[
-                test_helpers.make_tag(date="2020-04-01", content="tag1"),
-                test_helpers.make_tag(date="2020-04-02", content="tag2"),
+                test_helpers.make_tag(date="2020-04-01"),
+                test_helpers.make_tag(type=TagType.ZSCORE_OUTLIER, date="2020-04-02"),
             ],
         ),
         CommonFields.CASES: [100, 200, 300],
@@ -560,8 +560,8 @@ def test_write_read_dataset_pointer_with_provenance_list(tmpdir):
             CommonFields.ICU_BEDS: TimeseriesLiteral(
                 [0, 2, 4],
                 annotation=[
-                    test_helpers.make_tag(date="2020-04-01", content="tag1"),
-                    test_helpers.make_tag(date="2020-04-02", content="tag2"),
+                    test_helpers.make_tag(date="2020-04-01"),
+                    test_helpers.make_tag(date="2020-04-02"),
                 ],
                 provenance=["prov1", "prov2"],
             ),
@@ -685,9 +685,9 @@ def test_one_region_annotations():
     region_tx = Region.from_state("TX")
     region_sf = Region.from_fips("06075")
     values = [100, 200, 300, 400]
-    tag1 = test_helpers.make_tag(content="tag1")
-    tag2a = test_helpers.make_tag(content="tag2a")
-    tag2b = test_helpers.make_tag(content="tag2b")
+    tag1 = test_helpers.make_tag(date="2020-04-01")
+    tag2a = test_helpers.make_tag(date="2020-04-02")
+    tag2b = test_helpers.make_tag(date="2020-04-03")
 
     dataset_tx_and_sf = test_helpers.build_dataset(
         {
@@ -974,9 +974,7 @@ def test_append_tags():
         CommonFields.CASES: cases_values,
     }
     dataset_in = test_helpers.build_dataset({region_sf: metrics_sf})
-    tag_sf_cases = test_helpers.make_tag(
-        TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02", "Truncate"
-    )
+    tag_sf_cases = test_helpers.make_tag(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02")
     tag_df = test_helpers.make_tag_df(region_sf, CommonFields.CASES, [tag_sf_cases])
     dataset_out = dataset_in.append_tag_df(tag_df)
     metrics_sf[CommonFields.CASES] = TimeseriesLiteral(cases_values, annotation=[tag_sf_cases])
@@ -1043,7 +1041,7 @@ def test_remove_outliers():
 
     # Expected result is the same series with the last value removed
     expected_tag = test_helpers.make_tag(
-        TagType.ZSCORE_OUTLIER, "2020-04-08", "Removed outlier 1000"
+        TagType.ZSCORE_OUTLIER, "2020-04-08", original_observation=1000.0,
     )
     expected_ts = TimeseriesLiteral([10.0] * 7, annotation=[expected_tag])
     expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})
@@ -1061,7 +1059,9 @@ def test_remove_outliers_threshold():
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=29)
 
     # Expected result is the same series with the last value removed
-    expected_tag = test_helpers.make_tag(TagType.ZSCORE_OUTLIER, "2020-04-08", "Removed outlier 30")
+    expected_tag = test_helpers.make_tag(
+        TagType.ZSCORE_OUTLIER, "2020-04-08", original_observation=30.0
+    )
     expected_ts = TimeseriesLiteral([1.0] * 7, annotation=[expected_tag])
     expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})
     test_helpers.assert_dataset_like(result, expected, drop_na_dates=True)
@@ -1181,17 +1181,15 @@ def test_combined_annotation():
     ts1a = TimeseriesLiteral(
         [0, 2, 4],
         annotation=[
-            test_helpers.make_tag(date="2020-04-01", content="ds1_a"),
-            test_helpers.make_tag(date="2020-04-02", content="ds1_b"),
+            test_helpers.make_tag(date="2020-04-01"),
+            test_helpers.make_tag(date="2020-04-02"),
         ],
     )
     ts1b = [100, 200, 300]
     ds1 = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts1a, CommonFields.CASES: ts1b}
     )
-    ts2a = TimeseriesLiteral(
-        [1, 3, 5], annotation=[test_helpers.make_tag(date="2020-04-01", content="ds2_a")],
-    )
+    ts2a = TimeseriesLiteral([1, 3, 5], annotation=[test_helpers.make_tag(date="2020-04-01")],)
     ts2b = [150, 250, 350]
     ds2 = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts2a, CommonFields.CASES: ts2b}

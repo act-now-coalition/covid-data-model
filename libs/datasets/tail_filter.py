@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, List, Mapping, Tuple
+from typing import ClassVar, List, Tuple
 import math
 import dataclasses
 
@@ -14,7 +14,9 @@ TagField = timeseries.TagField
 
 @dataclasses.dataclass
 class TailFilter:
-    _annotations: List[Mapping[str, Any]] = dataclasses.field(default_factory=list)
+    _annotations: timeseries.TagCollection = dataclasses.field(
+        default_factory=timeseries.TagCollection
+    )
 
     # Counts that track what the filter has done.
     skipped_too_short: int = 0
@@ -55,7 +57,7 @@ class TailFilter:
         return (
             tail_filter,
             dataclasses.replace(dataset, timeseries=timeseries_wide_variables).append_tag_df(
-                pd.DataFrame(tail_filter._annotations)
+                tail_filter._annotations.as_dataframe()
             ),
         )
 
@@ -105,26 +107,24 @@ class TailFilter:
             # series_in.iat[truncate_at] is the first value *not* returned
             assert TailFilter.FILTER_DATES_OLDEST <= truncate_at <= -1
             if count_observation_diff_under_threshold < TailFilter.COUNT_OBSERVATION_LONG:
-                annotation_type = TagType.CUMULATIVE_TAIL_TRUNCATED
+                annotation_type = timeseries.CumulativeTailTruncated
                 self.truncated += 1
             else:
-                annotation_type = TagType.CUMULATIVE_LONG_TAIL_TRUNCATED
+                annotation_type = timeseries.CumulativeLongTailTruncated
                 self.long_truncated += 1
             # Currently one annotation is created per series. Maybe it makes more sense to add
             # one for each dropped observation / real value?
             # https://github.com/covid-projections/covid-data-model/pull/855#issuecomment-747698288
-            self._annotations.append(
-                {
-                    TagField.LOCATION_ID: series_in.name[0],
-                    TagField.VARIABLE: series_in.name[1],
-                    TagField.TYPE: annotation_type,
-                    # TODO(tom): Having a formatted string deep in our pipeline is ugly. See TODO
-                    #  in the TagField class.
-                    TagField.CONTENT: f"Removed {count_observation_diff_under_threshold} observations that look "
-                    f"suspicious compared to mean diff of {mean:.1f} a few weeks ago.",
-                    TagField.DATE: series_in.index[truncate_at - 1],
-                }
+            self._annotations.add(
+                annotation_type(
+                    date=series_in.index[truncate_at - 1],
+                    original_observation=float(series_in.iat[truncate_at]),
+                ),
+                location_id=series_in.name[0],
+                variable=series_in.name[1],
             )
+            # TODO(tom): add count of removed observations or list of all removed or one
+            #  annotation per removed observations
             # Using integer position indexing where the upper bound is exclusive, like regular
             # Python indexing and unlike Pandas label (`loc` and `at`) indexing.
             return series_in.iloc[:truncate_at]

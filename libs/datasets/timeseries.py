@@ -1,4 +1,7 @@
+import collections
 import dataclasses
+import json
+from abc import ABC, abstractmethod
 import datetime
 import enum
 import pathlib
@@ -6,6 +9,7 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
+from typing import ClassVar
 from typing import Collection
 from typing import Dict
 from typing import Iterable
@@ -42,6 +46,8 @@ from backports.cached_property import cached_property
 _log = structlog.get_logger()
 
 
+# TODO(tom): Move all this tag stuff to a separate file, maybe called taglib so that code can
+#  import it and still use `tag` as a local name.
 @enum.unique
 class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     """The attributes of a tag, columns in a table with one row per tag."""
@@ -51,9 +57,6 @@ class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     VARIABLE = PdFields.VARIABLE
     # TYPE values must be a string from TagType
     TYPE = "tag_type"
-    # DATE may be a specific date in the timeseries or `pd.NaT`/None for a tag applicable to the
-    # entire timeseries.
-    DATE = CommonFields.DATE
     # CONTENT values vary depending on TYPE. They are currently human readable strings.
     # TODO(tom): Find a structured way to represent more than one attribute with a tag.
     #  Options include:
@@ -65,6 +68,7 @@ class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     #  * Allow a single string or an encoded JSON. This leaves reading provenance in the CSV
     #    easy, only complicating other tag types.
     CONTENT = "content"
+    DATE = "date"
 
 
 # Fields used as panda MultiIndex levels when tags are represented in a pd.Series
@@ -72,7 +76,6 @@ TAG_INDEX_FIELDS = [
     TagField.LOCATION_ID,
     TagField.VARIABLE,
     TagField.TYPE,
-    TagField.DATE,
 ]
 
 
@@ -94,6 +97,110 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
 
     # Provenance is a tag for a location_id-variable pair. It has DATE `pd.NaT` or None.
     PROVENANCE = PdFields.PROVENANCE
+
+
+@dataclass(frozen=True)
+class TagInTimeseries(ABC):
+    """Represents a tag in the context of a particular timeseries"""
+
+    # TODO(tom): Retire date as an attribute of TagInTimeseries because it is now optional and in
+    #  content.
+    date: pd.Timestamp
+
+    TAG_TYPE: ClassVar[TagType]
+
+    @property
+    def type(self) -> TagType:
+        return self.TAG_TYPE
+
+    @property
+    @abstractmethod
+    def content(self) -> str:
+        pass
+
+    @staticmethod
+    def make(tag_type: TagType, content: str) -> "TagInTimeseries":
+        if tag_type == TagType.PROVENANCE:
+            return ProvenanceTag(date=pd.NaT, source=content)
+
+        if tag_type == TagType.CUMULATIVE_TAIL_TRUNCATED:
+            return CumulativeTailTruncated.make_with_content(content)
+        elif tag_type == TagType.CUMULATIVE_LONG_TAIL_TRUNCATED:
+            return CumulativeLongTailTruncated.make_with_content(content)
+        elif tag_type == TagType.ZSCORE_OUTLIER:
+            return ZScoreOutlier.make_with_content(content)
+
+    def as_record(self, location_id: str, variable: CommonFields) -> Mapping[str, Any]:
+        return {
+            TagField.LOCATION_ID: location_id,
+            TagField.VARIABLE: variable,
+            TagField.TYPE: self.type,
+            TagField.CONTENT: self.content,
+        }
+
+
+@dataclass(frozen=True)
+class ProvenanceTag(TagInTimeseries):
+    source: str
+
+    TAG_TYPE = TagType.PROVENANCE
+
+    @property
+    def content(self) -> str:
+        return self.source
+
+
+@dataclass(frozen=True)
+class AnnotationWithDate(TagInTimeseries, ABC):
+    original_observation: float
+
+    @classmethod
+    def make_with_content(cls, content: str) -> "AnnotationWithDate":
+        content_parsed = json.loads(content)
+        date = pd.to_datetime(content_parsed.pop(TagField.DATE))
+        return cls(date=date, **content_parsed)
+
+    @property
+    def content(self) -> str:
+        return json.dumps(
+            {
+                "date": self.date.date().isoformat(),
+                "original_observation": self.original_observation,
+            }
+        )
+
+
+@dataclass(frozen=True)
+class CumulativeTailTruncated(AnnotationWithDate):
+    TAG_TYPE = TagType.CUMULATIVE_TAIL_TRUNCATED
+
+
+@dataclass(frozen=True)
+class CumulativeLongTailTruncated(AnnotationWithDate):
+    TAG_TYPE = TagType.CUMULATIVE_LONG_TAIL_TRUNCATED
+
+
+@dataclass(frozen=True)
+class ZScoreOutlier(AnnotationWithDate):
+    TAG_TYPE = TagType.ZSCORE_OUTLIER
+
+
+@dataclass(frozen=True)
+class TagCollection:
+    location_var_map: Mapping[Tuple, List[TagInTimeseries]] = dataclasses.field(
+        default_factory=lambda: collections.defaultdict(list)
+    )
+
+    def add(self, tag: TagInTimeseries, *, location_id: str, variable: CommonFields) -> None:
+        self.location_var_map[(location_id, variable)].append(tag)
+
+    def as_records(self) -> Iterable[Mapping]:
+        for (location_id, variable), tags in self.location_var_map.items():
+            for tag in tags:
+                yield tag.as_record(location_id, variable)
+
+    def as_dataframe(self) -> pd.DataFrame:
+        return pd.DataFrame.from_records(self.as_records())
 
 
 class DuplicateDataException(Exception):
@@ -118,16 +225,6 @@ class RegionLatestNotFound(IndexError):
 
 @final
 @dataclass(frozen=True)
-class TagInTimeseries:
-    """Represents a tag in the context of a particular timeseries"""
-
-    type: TagType
-    date: pd.Timestamp
-    content: str
-
-
-@final
-@dataclass(frozen=True)
 class OneRegionTimeseriesDataset:
     """A set of timeseries with values from one region."""
 
@@ -145,9 +242,7 @@ class OneRegionTimeseriesDataset:
 
     @property
     def provenance(self) -> Dict[str, str]:
-        provenance_series = self.tag.loc[:, [TagType.PROVENANCE]].droplevel(
-            [TagField.TYPE, TagField.DATE]
-        )
+        provenance_series = self.tag.loc[:, [TagType.PROVENANCE]].droplevel([TagField.TYPE])
         return provenance_series.to_dict()
 
     def annotations(self, metric: FieldName) -> List[TagInTimeseries]:
@@ -158,7 +253,7 @@ class OneRegionTimeseriesDataset:
         )
         return_value = []
         for row in self.tag.loc[annotation_mask].reset_index().itertuples():
-            return_value.append(TagInTimeseries(row.tag_type, row.date, row.content))
+            return_value.append(TagInTimeseries.make(row.tag_type, row.content))
         return return_value
 
     def __post_init__(self):
@@ -173,8 +268,7 @@ class OneRegionTimeseriesDataset:
         if CommonFields.DATE not in self.data.columns:
             raise ValueError("A timeseries must have a date column")
 
-        assert self.tag.index.names == [TagField.VARIABLE, TagField.TYPE, TagField.DATE]
-        assert self.tag.empty or self.tag.index.levels[2].is_all_dates
+        assert self.tag.index.names == [TagField.VARIABLE, TagField.TYPE]
 
     @property
     def date_indexed(self) -> pd.DataFrame:
@@ -366,7 +460,7 @@ class MultiRegionDataset:
     def provenance(self) -> pd.DataFrame:
         """A Series of str with a MultiIndex with names LOCATION_ID and VARIABLE"""
         provenance_tags = self.tag.loc[:, :, [TagType.PROVENANCE]]
-        return provenance_tags.droplevel([TagField.TYPE, TagField.DATE]).rename(PdFields.PROVENANCE)
+        return provenance_tags.droplevel([TagField.TYPE]).rename(PdFields.PROVENANCE)
 
     @cached_property
     def _geo_data(self) -> pd.DataFrame:
@@ -517,7 +611,6 @@ class MultiRegionDataset:
 
         new_index_df = provenance.index.to_frame()
         new_index_df[TagField.TYPE] = TagType.PROVENANCE
-        new_index_df[TagField.DATE] = pd.NaT
         tag_additions = provenance.copy()
         tag_additions.index = pd.MultiIndex.from_frame(new_index_df)
         # Make a sorted series. The order doesn't matter and sorting makes the order depend only on
@@ -567,7 +660,6 @@ class MultiRegionDataset:
             )
             if not provenance_series.empty:
                 provenance_df = provenance_series.reset_index()
-                provenance_df[TagField.DATE] = pd.NaT
                 provenance_df[TagField.TYPE] = TagType.PROVENANCE
                 tag_df_to_concat.append(provenance_df)
 
@@ -580,7 +672,6 @@ class MultiRegionDataset:
         )
 
         annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
-        annotations[TagField.DATE] = pd.to_datetime(annotations[TagField.DATE])
         tag_df_to_concat.append(annotations)
 
         return (
@@ -646,11 +737,6 @@ class MultiRegionDataset:
             self.tag.index.get_level_values(TagField.LOCATION_ID)
             .difference(self.timeseries.index.get_level_values(CommonFields.LOCATION_ID))
             .empty
-        )
-        # Make sure the date column contains only timestamps and NaT
-        assert (
-            self.tag.empty
-            or self.tag.index.levels[TAG_INDEX_FIELDS.index(TagField.DATE)].is_all_dates
         )
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
@@ -819,7 +905,7 @@ class MultiRegionDataset:
             .sort_index()
         )
         # Only keep tag information for timeseries in the new timeseries_wide_dates.
-        tag_mask = self.tag.reset_index([TagField.TYPE, TagField.DATE], drop=True).index.isin(
+        tag_mask = self.tag.reset_index([TagField.TYPE], drop=True).index.isin(
             timeseries_wide_dates.index
         )
         tag = self.tag.loc[tag_mask]
@@ -915,7 +1001,15 @@ class MultiRegionDataset:
          MultiRegionDataset.timeseries_rows (and methods like it) to include annotations so the
          code calling this method can be removed. Then delete this method.
         """
-        return self.tag.loc[self.tag.index.get_level_values(TagField.DATE).notna()].reset_index()
+        return self.tag.loc[
+            :,
+            :,
+            [
+                TagType.CUMULATIVE_TAIL_TRUNCATED,
+                TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
+                TagType.ZSCORE_OUTLIER,
+            ],
+        ].reset_index()
 
 
 def _remove_padded_nans(df, columns):
@@ -1017,26 +1111,22 @@ def drop_new_case_outliers(
     zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
     to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
 
-    new_tags = []
+    new_tags = TagCollection()
     # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
     # rows where to_exclude is True.
     assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     for idx, _ in to_exclude[to_exclude].iteritems():
-        new_tags.append(
-            {
-                TagField.LOCATION_ID: idx[0],
-                TagField.VARIABLE: CommonFields.NEW_CASES,
-                TagField.TYPE: TagType.ZSCORE_OUTLIER,
-                # TODO(tom): Having a formatted string deep in our pipeline is ugly. See TODO
-                #  in the TagField class.
-                TagField.CONTENT: f"Removed outlier {df_copy.at[idx, CommonFields.NEW_CASES]:.6g}",
-                TagField.DATE: idx[1],
-            }
+        new_tags.add(
+            ZScoreOutlier(
+                date=idx[1], original_observation=df_copy.at[idx, CommonFields.NEW_CASES],
+            ),
+            location_id=idx[0],
+            variable=CommonFields.NEW_CASES,
         )
     df_copy.loc[to_exclude, CommonFields.NEW_CASES] = np.nan
 
     new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy).append_tag_df(
-        pd.DataFrame(new_tags)
+        new_tags.as_dataframe()
     )
 
     return new_timeseries

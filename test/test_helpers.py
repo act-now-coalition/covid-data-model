@@ -44,11 +44,9 @@ class TimeseriesLiteral(UserList):
 def make_tag_df(
     region: Region, metric: CommonFields, records: List[timeseries.TagInTimeseries]
 ) -> pd.DataFrame:
-    df = pd.DataFrame.from_records(
-        [dataclasses.astuple(r) for r in records],
-        columns=[TagField.TYPE, TagField.DATE, TagField.CONTENT],
+    df = pd.DataFrame(
+        {TagField.TYPE: [r.type for r in records], TagField.CONTENT: [r.content for r in records],}
     )
-    df[TagField.DATE] = pd.to_datetime(df[TagField.DATE])
     df[TagField.LOCATION_ID] = region.location_id
     df[TagField.VARIABLE] = metric
     return df
@@ -58,8 +56,28 @@ def make_tag(
     type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED,
     date: Union[pd.Timestamp, str] = "2020-04-02",
     content: str = "taggy",
+    **kwargs,
 ) -> timeseries.TagInTimeseries:
-    return timeseries.TagInTimeseries(type, pd.to_datetime(date), content)
+    date: pd.Timestamp = pd.to_datetime(date)
+    if type == TagType.PROVENANCE:
+        assert content != "taggy"
+        return timeseries.ProvenanceTag(date=pd.NaT, source=content)
+    elif type == TagType.CUMULATIVE_TAIL_TRUNCATED:
+        assert content == "taggy"
+        if "original_observation" not in kwargs:
+            kwargs["original_observation"] = 10
+        return timeseries.CumulativeTailTruncated(date=date, **kwargs)
+    elif type == TagType.CUMULATIVE_LONG_TAIL_TRUNCATED:
+        assert content == "taggy"
+        if "original_observation" not in kwargs:
+            kwargs["original_observation"] = 10
+        return timeseries.CumulativeLongTailTruncated(date=date, **kwargs)
+    elif type == TagType.ZSCORE_OUTLIER:
+        if "original_observation" not in kwargs:
+            kwargs["original_observation"] = 10
+        return timeseries.ZScoreOutlier(date=date, **kwargs)
+    else:
+        raise ValueError("Unexpected tag type")
 
 
 def build_dataset(
@@ -118,7 +136,7 @@ def build_dataset(
         else:
             provenance_list = ts_literal.provenance
         records.extend(
-            timeseries.TagInTimeseries(timeseries.TagType.PROVENANCE, pd.NaT, provenance)
+            make_tag(timeseries.TagType.PROVENANCE, pd.NaT, provenance)
             for provenance in provenance_list
         )
         tags_to_concat.append(make_tag_df(region, var, records))
