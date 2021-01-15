@@ -103,10 +103,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
 class TagInTimeseries(ABC):
     """Represents a tag in the context of a particular timeseries"""
 
-    # TODO(tom): Retire date as an attribute of TagInTimeseries because it is now optional and in
-    #  content.
-    date: pd.Timestamp
-
+    # TAG_TYPE must be set by subclasses.
     TAG_TYPE: ClassVar[TagType]
 
     @property
@@ -121,7 +118,7 @@ class TagInTimeseries(ABC):
     @staticmethod
     def make(tag_type: TagType, content: str) -> "TagInTimeseries":
         if tag_type == TagType.PROVENANCE:
-            return ProvenanceTag(date=pd.NaT, source=content)
+            return ProvenanceTag(source=content)
 
         if tag_type == TagType.CUMULATIVE_TAIL_TRUNCATED:
             return CumulativeTailTruncated.make_with_content(content)
@@ -153,6 +150,7 @@ class ProvenanceTag(TagInTimeseries):
 @dataclass(frozen=True)
 class AnnotationWithDate(TagInTimeseries, ABC):
     original_observation: float
+    date: pd.Timestamp
 
     @classmethod
     def make_with_content(cls, content: str) -> "AnnotationWithDate":

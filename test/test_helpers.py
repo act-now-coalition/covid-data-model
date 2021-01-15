@@ -61,7 +61,7 @@ def make_tag(
     date: pd.Timestamp = pd.to_datetime(date)
     if type == TagType.PROVENANCE:
         assert content != "taggy"
-        return timeseries.ProvenanceTag(date=pd.NaT, source=content)
+        return timeseries.ProvenanceTag(source=content)
     elif type == TagType.CUMULATIVE_TAIL_TRUNCATED:
         assert content == "taggy"
         if "original_observation" not in kwargs:
