@@ -15,6 +15,7 @@ from typing import Dict
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
 from typing import Mapping
+from typing import MutableMapping
 from typing import Set
 from typing import Sequence
 from typing import Tuple
@@ -57,18 +58,8 @@ class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     VARIABLE = PdFields.VARIABLE
     # TYPE values must be a string from TagType
     TYPE = "tag_type"
-    # CONTENT values vary depending on TYPE. They are currently human readable strings.
-    # TODO(tom): Find a structured way to represent more than one attribute with a tag.
-    #  Options include:
-    #  * Require it always be a valid encoded JSON. This makes accessing values in
-    #    the JSON a hassle in code and manually reading the CSV more difficult because encoded JSON
-    #    have lots of , and " which will be escaped.
-    #  * Add extra attributes to TagField. This makes managing attributes that depend on the tag
-    #    type more tricky and complicates code that handle tags in bulk.
-    #  * Allow a single string or an encoded JSON. This leaves reading provenance in the CSV
-    #    easy, only complicating other tag types.
+    # CONTENT values vary depending on TYPE, either a JSON string or bare string.
     CONTENT = "content"
-    DATE = "date"
 
 
 # Fields used as panda MultiIndex levels when tags are represented in a pd.Series
@@ -85,18 +76,23 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
 
     Currently 'annotation' refers to tag types that must have a specific real value for DATE. Other
     tags (currently only PROVENANCE, but may be expanded for things such as storing a processing
-    step name) may have a DATE of `pd.NaT` or None. Putting the type of all tags in a single enum
+    step name) do not have a date field. Putting the type of all tags in a single enum
     makes it easy to represent all tags in the same structure but makes the concept of an
     'annotation type' less explicit in our code.
     """
 
-    # 'annotation' types, tags that must of a specific real value for DATE.
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
     ZSCORE_OUTLIER = "zscore_outlier"
 
-    # Provenance is a tag for a location_id-variable pair. It has DATE `pd.NaT` or None.
     PROVENANCE = PdFields.PROVENANCE
+
+
+ANNOTATION_TAG_TYPES = [
+    TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
+    TagType.CUMULATIVE_TAIL_TRUNCATED,
+    TagType.ZSCORE_OUTLIER,
+]
 
 
 @dataclass(frozen=True)
@@ -116,18 +112,18 @@ class TagInTimeseries(ABC):
         pass
 
     @staticmethod
-    def make(tag_type: TagType, content: str) -> "TagInTimeseries":
-        if tag_type == TagType.PROVENANCE:
-            return ProvenanceTag(source=content)
+    def make(tag_type: TagType, *, content: str) -> "TagInTimeseries":
+        """Given a `tag_type` and content, returns an instance of the appropriate class."""
+        return TAG_TYPE_TO_CLASS[tag_type].make_instance(content=content)
 
-        if tag_type == TagType.CUMULATIVE_TAIL_TRUNCATED:
-            return CumulativeTailTruncated.make_with_content(content)
-        elif tag_type == TagType.CUMULATIVE_LONG_TAIL_TRUNCATED:
-            return CumulativeLongTailTruncated.make_with_content(content)
-        elif tag_type == TagType.ZSCORE_OUTLIER:
-            return ZScoreOutlier.make_with_content(content)
+    @classmethod
+    @abstractmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        """Deserializes the content and returns an instance of the TagInTimeseries subclass."""
+        pass
 
     def as_record(self, location_id: str, variable: CommonFields) -> Mapping[str, Any]:
+        """Returns this tag in a record with the content serialized."""
         return {
             TagField.LOCATION_ID: location_id,
             TagField.VARIABLE: variable,
@@ -142,6 +138,10 @@ class ProvenanceTag(TagInTimeseries):
 
     TAG_TYPE = TagType.PROVENANCE
 
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        return ProvenanceTag(source=content)
+
     @property
     def content(self) -> str:
         return self.source
@@ -149,13 +149,15 @@ class ProvenanceTag(TagInTimeseries):
 
 @dataclass(frozen=True)
 class AnnotationWithDate(TagInTimeseries, ABC):
+    """Represents an annotation, a tag added when modifying or removing one or more observations"""
+
     original_observation: float
     date: pd.Timestamp
 
     @classmethod
-    def make_with_content(cls, content: str) -> "AnnotationWithDate":
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
         content_parsed = json.loads(content)
-        date = pd.to_datetime(content_parsed.pop(TagField.DATE))
+        date = pd.to_datetime(content_parsed.pop("date"))
         return cls(date=date, **content_parsed)
 
     @property
@@ -183,22 +185,35 @@ class ZScoreOutlier(AnnotationWithDate):
     TAG_TYPE = TagType.ZSCORE_OUTLIER
 
 
+TAG_TYPE_TO_CLASS = {
+    TagType.CUMULATIVE_TAIL_TRUNCATED: CumulativeTailTruncated,
+    TagType.CUMULATIVE_LONG_TAIL_TRUNCATED: CumulativeLongTailTruncated,
+    TagType.ZSCORE_OUTLIER: ZScoreOutlier,
+    TagType.PROVENANCE: ProvenanceTag,
+}
+
+
 @dataclass(frozen=True)
 class TagCollection:
-    location_var_map: Mapping[Tuple, List[TagInTimeseries]] = dataclasses.field(
+    """A collection of TagInTimeseries, organized by location and field name. The collection
+    object itself is frozen but the dict within it may be modified."""
+
+    _location_var_map: MutableMapping[Tuple, List[TagInTimeseries]] = dataclasses.field(
         default_factory=lambda: collections.defaultdict(list)
     )
 
     def add(self, tag: TagInTimeseries, *, location_id: str, variable: CommonFields) -> None:
-        self.location_var_map[(location_id, variable)].append(tag)
+        """Adds a tag to this collection."""
+        self._location_var_map[(location_id, variable)].append(tag)
 
-    def as_records(self) -> Iterable[Mapping]:
-        for (location_id, variable), tags in self.location_var_map.items():
+    def _as_records(self) -> Iterable[Mapping]:
+        for (location_id, variable), tags in self._location_var_map.items():
             for tag in tags:
                 yield tag.as_record(location_id, variable)
 
     def as_dataframe(self) -> pd.DataFrame:
-        return pd.DataFrame.from_records(self.as_records())
+        """Returns all tags in this collection in a DataFrame."""
+        return pd.DataFrame.from_records(self._as_records())
 
 
 class DuplicateDataException(Exception):
@@ -251,7 +266,7 @@ class OneRegionTimeseriesDataset:
         )
         return_value = []
         for row in self.tag.loc[annotation_mask].reset_index().itertuples():
-            return_value.append(TagInTimeseries.make(row.tag_type, row.content))
+            return_value.append(TagInTimeseries.make(row.tag_type, content=row.content))
         return return_value
 
     def __post_init__(self):
@@ -996,18 +1011,10 @@ class MultiRegionDataset:
         """Returns tags with a real DATE value in a DataFrame.
 
         TODO(tom): Currently the only callers of this function are writing annotations to disk.
-         MultiRegionDataset.timeseries_rows (and methods like it) to include annotations so the
-         code calling this method can be removed. Then delete this method.
+         Change MultiRegionDataset.timeseries_rows (and methods like it) to include annotations
+         so the code calling this method can be removed. Then delete this method.
         """
-        return self.tag.loc[
-            :,
-            :,
-            [
-                TagType.CUMULATIVE_TAIL_TRUNCATED,
-                TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
-                TagType.ZSCORE_OUTLIER,
-            ],
-        ].reset_index()
+        return self.tag.loc[:, :, ANNOTATION_TAG_TYPES].reset_index()
 
 
 def _remove_padded_nans(df, columns):
