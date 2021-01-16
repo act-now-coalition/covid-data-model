@@ -43,7 +43,7 @@ def test_tail_filter_stalled_timeseries():
         values_increasing,
         annotation=[
             test_helpers.make_tag(
-                TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-24", original_observation=123_000.0
+                TagType.CUMULATIVE_TAIL_TRUNCATED, date="2020-04-24", original_observation=123_000.0
             )
         ],
     )
