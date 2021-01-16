@@ -127,7 +127,6 @@ def _make_output_dataset(
         TagField.LOCATION_ID,
         TagField.VARIABLE,
         TagField.TYPE,
-        TagField.DATE,
     ]
     dataset_out = MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df)
     if source_columns:
@@ -136,18 +135,6 @@ def _make_output_dataset(
         # When there are two source_columns they usually contain the same provenance content.
         # Only keep one copy of it.
         output_tags = source_tags.drop_duplicates(ignore_index=True)
-        # I expect the DATE datetime level in dataset_in.tag to be a Timestamp column in
-        # source_tags but somehow it is sometimes changed to floats. This seems to happen when
-        # all the dates for `locations` and `source_columns` are NaT. Maybe it is a variation of
-        # https://github.com/pandas-dev/pandas/issues/12941 but I haven't found a simple way to
-        # reproduce the issue. To reproduce remove the patch below and wait for the
-        # is_all_dates check in MultiRegionDataset.__post_init__ to fail.
-        if output_tags[TagField.DATE].dtype == "float":
-            # For mysterious reasons output_tags._is_copy is sometimes a weakref to source_tags
-            # which causes the following assignment to trip a SettingWithCopy. Make a copy to
-            # work-around the problem.
-            output_tags = output_tags.copy()
-            output_tags.loc[:, TagField.DATE] = pd.to_datetime(output_tags.loc[:, TagField.DATE])
         dataset_out = dataset_out.append_tag_df(output_tags)
 
     return dataset_out
