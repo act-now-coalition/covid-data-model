@@ -974,7 +974,7 @@ def test_append_tags():
         CommonFields.CASES: cases_values,
     }
     dataset_in = test_helpers.build_dataset({region_sf: metrics_sf})
-    tag_sf_cases = test_helpers.make_tag(TagType.CUMULATIVE_TAIL_TRUNCATED, "2020-04-02")
+    tag_sf_cases = test_helpers.make_tag(TagType.CUMULATIVE_TAIL_TRUNCATED, date="2020-04-02")
     tag_df = test_helpers.make_tag_df(region_sf, CommonFields.CASES, [tag_sf_cases])
     dataset_out = dataset_in.append_tag_df(tag_df)
     metrics_sf[CommonFields.CASES] = TimeseriesLiteral(cases_values, annotation=[tag_sf_cases])
@@ -1041,7 +1041,7 @@ def test_remove_outliers():
 
     # Expected result is the same series with the last value removed
     expected_tag = test_helpers.make_tag(
-        TagType.ZSCORE_OUTLIER, "2020-04-08", original_observation=1000.0,
+        TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=1000.0,
     )
     expected_ts = TimeseriesLiteral([10.0] * 7, annotation=[expected_tag])
     expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})
@@ -1060,7 +1060,7 @@ def test_remove_outliers_threshold():
 
     # Expected result is the same series with the last value removed
     expected_tag = test_helpers.make_tag(
-        TagType.ZSCORE_OUTLIER, "2020-04-08", original_observation=30.0
+        TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=30.0
     )
     expected_ts = TimeseriesLiteral([1.0] * 7, annotation=[expected_tag])
     expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})

@@ -53,31 +53,14 @@ def make_tag_df(
 
 
 def make_tag(
-    type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED,
-    date: Union[pd.Timestamp, str] = "2020-04-02",
-    content: str = "taggy",
-    **kwargs,
+    type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
 ) -> timeseries.TagInTimeseries:
-    date: pd.Timestamp = pd.to_datetime(date)
-    if type == TagType.PROVENANCE:
-        assert content != "taggy"
-        return timeseries.ProvenanceTag(source=content)
-    elif type == TagType.CUMULATIVE_TAIL_TRUNCATED:
-        assert content == "taggy"
-        if "original_observation" not in kwargs:
-            kwargs["original_observation"] = 10
-        return timeseries.CumulativeTailTruncated(date=date, **kwargs)
-    elif type == TagType.CUMULATIVE_LONG_TAIL_TRUNCATED:
-        assert content == "taggy"
-        if "original_observation" not in kwargs:
-            kwargs["original_observation"] = 10
-        return timeseries.CumulativeLongTailTruncated(date=date, **kwargs)
-    elif type == TagType.ZSCORE_OUTLIER:
-        if "original_observation" not in kwargs:
-            kwargs["original_observation"] = 10
-        return timeseries.ZScoreOutlier(date=date, **kwargs)
-    else:
-        raise ValueError("Unexpected tag type")
+    if type in timeseries.ANNOTATION_TAG_TYPES:
+        # Force to the expected types and add defaults if not in kwargs
+        kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
+        kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
+
+    return timeseries.TAG_TYPE_TO_CLASS[type](**kwargs)
 
 
 def build_dataset(
@@ -136,7 +119,7 @@ def build_dataset(
         else:
             provenance_list = ts_literal.provenance
         records.extend(
-            make_tag(timeseries.TagType.PROVENANCE, pd.NaT, provenance)
+            make_tag(timeseries.TagType.PROVENANCE, source=provenance)
             for provenance in provenance_list
         )
         tags_to_concat.append(make_tag_df(region, var, records))
