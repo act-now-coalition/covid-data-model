@@ -45,22 +45,23 @@ class TimeseriesLiteral(UserList):
 def make_tag_df(
     region: Region, metric: CommonFields, records: List[timeseries.TagInTimeseries]
 ) -> pd.DataFrame:
-    df = pd.DataFrame.from_records(
-        [dataclasses.astuple(r) for r in records],
-        columns=[TagField.TYPE, TagField.DATE, TagField.CONTENT],
+    df = pd.DataFrame(
+        {TagField.TYPE: [r.type for r in records], TagField.CONTENT: [r.content for r in records],}
     )
-    df[TagField.DATE] = pd.to_datetime(df[TagField.DATE])
     df[TagField.LOCATION_ID] = region.location_id
     df[TagField.VARIABLE] = metric
     return df
 
 
 def make_tag(
-    type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED,
-    date: Union[pd.Timestamp, str] = "2020-04-02",
-    content: str = "taggy",
+    type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
 ) -> timeseries.TagInTimeseries:
-    return timeseries.TagInTimeseries(type, pd.to_datetime(date), content)
+    if type in timeseries.ANNOTATION_TAG_TYPES:
+        # Force to the expected types and add defaults if not in kwargs
+        kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
+        kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
+
+    return timeseries.TAG_TYPE_TO_CLASS[type](**kwargs)
 
 
 def build_dataset(
@@ -119,7 +120,7 @@ def build_dataset(
         else:
             provenance_list = ts_literal.provenance
         records.extend(
-            timeseries.TagInTimeseries(timeseries.TagType.PROVENANCE, pd.NaT, provenance)
+            make_tag(timeseries.TagType.PROVENANCE, source=provenance)
             for provenance in provenance_list
         )
         tags_to_concat.append(make_tag_df(region, var, records))

@@ -126,6 +126,27 @@ Notable exceptions:
  2. Any days with negative new cases are removed.
 """,
     )
+    vaccinesDistributed: Optional[int] = pydantic.Field(
+        None, description="Number of vaccine doses distributed."
+    )
+    vaccinationsInitiated: Optional[int] = pydantic.Field(
+        None,
+        description="""
+Number of vaccinations initiated.
+
+This value may vary by type of vaccine, but for Moderna and Pfizer, this indicates
+number of people vaccinated with the first dose.
+""",
+    )
+    vaccinationsCompleted: Optional[int] = pydantic.Field(
+        None,
+        description="""
+Number of vaccinations completed.
+
+This value may vary by type of vaccine, but for Moderna and Pfizer, this indicates
+number of people vaccinated with both the first and second dose.
+""",
+    )
 
 
 class ActualsTimeseriesRow(Actuals):
@@ -204,7 +225,7 @@ class Metrics(base_model.APIBaseModel):
         description="90th percentile confidence interval upper endpoint of the infection rate.",
     )
     icuHeadroomRatio: Optional[float] = pydantic.Field(...)
-    icuHeadroomDetails: ICUHeadroomMetricDetails = pydantic.Field(None)
+    icuHeadroomDetails: Optional[ICUHeadroomMetricDetails] = pydantic.Field(None)
     icuCapacityRatio: Optional[float] = pydantic.Field(...)
 
     @staticmethod

@@ -38,7 +38,12 @@
       ]
     },
     "level": {
-      "$ref": "#/definitions/AggregationLevel"
+      "description": "Level of region.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AggregationLevel"
+        }
+      ]
     },
     "lat": {
       "title": "Lat",
@@ -155,7 +160,12 @@
       "type": "object",
       "properties": {
         "source": {
-          "$ref": "#/definitions/TestPositivityRatioMethod"
+          "description": "Source data for test positivity ratio.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TestPositivityRatioMethod"
+            }
+          ]
         }
       },
       "required": [
@@ -190,7 +200,12 @@
           "type": "integer"
         },
         "currentIcuCovidMethod": {
-          "$ref": "#/definitions/CovidPatientsMethod"
+          "description": "Method used to determine number of current ICU patients with covid.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CovidPatientsMethod"
+            }
+          ]
         },
         "currentIcuNonCovid": {
           "title": "Currenticunoncovid",
@@ -198,7 +213,12 @@
           "type": "integer"
         },
         "currentIcuNonCovidMethod": {
-          "$ref": "#/definitions/NonCovidPatientsMethod"
+          "description": "Method used to determine number of current ICU patients without covid.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/NonCovidPatientsMethod"
+            }
+          ]
         }
       },
       "required": [
@@ -330,25 +350,60 @@
       "type": "object",
       "properties": {
         "overall": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Overall risk level for region.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "testPositivityRatio": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Test positivity ratio risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "caseDensity": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Case density risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "contactTracerCapacityRatio": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Contact tracer capacity ratio risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "infectionRate": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Infection rate risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "icuHeadroomRatio": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "ICU headroom ratio risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "icuCapacityRatio": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "ICU capacity ratio risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         }
       },
       "required": [
@@ -516,6 +571,21 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinesDistributed": {
+          "title": "Vaccinesdistributed",
+          "description": "Number of vaccine doses distributed.",
+          "type": "integer"
+        },
+        "vaccinationsInitiated": {
+          "title": "Vaccinationsinitiated",
+          "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n",
+          "type": "integer"
+        },
+        "vaccinationsCompleted": {
+          "title": "Vaccinationscompleted",
+          "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the both first and second dose.\n",
+          "type": "integer"
         }
       },
       "required": [
