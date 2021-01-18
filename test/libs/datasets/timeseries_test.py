@@ -234,16 +234,34 @@ def test_multiregion_provenance():
     )
     # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
     assert out.provenance.loc["iso1:us#fips:97111"].at["m1"] == "src11"
-    assert out.get_one_region(Region.from_fips("97111")).provenance["m1"] == "src11"
+    assert out.get_one_region(Region.from_fips("97111")).provenance["m1"] == ["src11"]
     assert out.provenance.loc["iso1:us#fips:97222"].at["m2"] == "src22"
-    assert out.get_one_region(Region.from_fips("97222")).provenance["m2"] == "src22"
+    assert out.get_one_region(Region.from_fips("97222")).provenance["m2"] == ["src22"]
     assert out.provenance.loc["iso1:us#fips:03"].at["m2"] == "src32"
-    assert out.get_one_region(Region.from_fips("03")).provenance["m2"] == "src32"
+    assert out.get_one_region(Region.from_fips("03")).provenance["m2"] == ["src32"]
 
     counties = out.get_counties_and_places(after=pd.to_datetime("2020-04-01"))
     assert "iso1:us#fips:03" not in counties.provenance.index
     assert counties.provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
-    assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == "src21"
+    assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == ["src21"]
+
+
+def test_one_region_multiple_provenance():
+    tag1 = test_helpers.make_tag(date="2020-04-01")
+    tag2 = test_helpers.make_tag(date="2020-04-02")
+    dataset_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.ICU_BEDS: TimeseriesLiteral(
+                [0, 2, 4], annotation=[tag1, tag2], provenance=["prov1", "prov2"],
+            ),
+            CommonFields.CASES: [100, 200, 300],
+        }
+    )
+
+    one_region = dataset_in.get_one_region(test_helpers.DEFAULT_REGION)
+
+    assert set(one_region.annotations(CommonFields.ICU_BEDS)) == {tag1, tag2}
+    assert sorted(one_region.provenance[CommonFields.ICU_BEDS]) == ["prov1", "prov2"]
 
 
 def test_append_regions():

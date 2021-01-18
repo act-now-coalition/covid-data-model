@@ -126,7 +126,7 @@ def test_annotation(rt_dataset, icu_dataset):
             CommonFields.CURRENT_ICU: [5, 5, 5],
             CommonFields.DEATHS: TimeseriesLiteral(
                 [2, 3, 2],
-                annotation=[test_helpers.make_tag(date="2020-04-01", content="Something happened")],
+                annotation=[test_helpers.make_tag(date="2020-04-01", original_observation=10.0)],
             ),
         },
         region=region,

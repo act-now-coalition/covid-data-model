@@ -98,33 +98,29 @@ def build_region_summary(
 
 
 def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotations:
-    assert one_region.tag.index.names == [TagField.VARIABLE, TagField.TYPE, TagField.DATE]
+    assert one_region.tag.index.names == [TagField.VARIABLE, TagField.TYPE]
     return Annotations(
-        cases=_build_metric_annotations(one_region.tag, CommonFields.CASES, log),
-        deaths=_build_metric_annotations(one_region.tag, CommonFields.DEATHS, log),
-        positiveTests=_build_metric_annotations(one_region.tag, CommonFields.POSITIVE_TESTS, log),
-        negativeTests=_build_metric_annotations(one_region.tag, CommonFields.NEGATIVE_TESTS, log),
+        cases=_build_metric_annotations(one_region, CommonFields.CASES, log),
+        deaths=_build_metric_annotations(one_region, CommonFields.DEATHS, log),
+        positiveTests=_build_metric_annotations(one_region, CommonFields.POSITIVE_TESTS, log),
+        negativeTests=_build_metric_annotations(one_region, CommonFields.NEGATIVE_TESTS, log),
         contactTracers=_build_metric_annotations(
-            one_region.tag, CommonFields.CONTACT_TRACERS_COUNT, log
+            one_region, CommonFields.CONTACT_TRACERS_COUNT, log
         ),
         hospitalBeds=_build_metric_annotations(
-            one_region.tag, CommonFields.HOSPITAL_BEDS_IN_USE_ANY, log
+            one_region, CommonFields.HOSPITAL_BEDS_IN_USE_ANY, log
         ),
-        icuBeds=_build_metric_annotations(one_region.tag, CommonFields.ICU_BEDS, log),
-        newCases=_build_metric_annotations(one_region.tag, CommonFields.NEW_CASES, log),
+        icuBeds=_build_metric_annotations(one_region, CommonFields.ICU_BEDS, log),
+        newCases=_build_metric_annotations(one_region, CommonFields.NEW_CASES, log),
     )
 
 
 def _build_metric_annotations(
-    tag_series: pd.Series, field_name: CommonFields, log
+    tag_series: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log
 ) -> Optional[MetricAnnotations]:
-    try:
-        metric_tag_df: pd.DataFrame = tag_series[field_name]
-    except KeyError:
-        return None
 
     sources_enum = []
-    for source_str in metric_tag_df.loc[[TagType.PROVENANCE]]:
+    for source_str in tag_series.provenance.get(field_name, []):
         source_enum = MetricSource.get(source_str)
         if source_enum is None:
             source_enum = MetricSource.OTHER
@@ -133,14 +129,10 @@ def _build_metric_annotations(
             )
         sources_enum.append(source_enum)
 
-    anomalies_tuples = (
-        metric_tag_df.loc[
-            [TagType.CUMULATIVE_TAIL_TRUNCATED, TagType.CUMULATIVE_LONG_TAIL_TRUNCATED]
-        ]
-        .reset_index()
-        .itertuples(index=False)
-    )
-    anomalies = [AnomalyAnnotation(date=t.date, description=t.content) for t in anomalies_tuples]
+    anomalies = tag_series.annotations(field_name)
+    anomalies = [
+        AnomalyAnnotation(date=t.date, description=f"{t.original_observation}") for t in anomalies
+    ]
 
     if not sources_enum and not anomalies:
         return None

@@ -254,18 +254,14 @@ class OneRegionTimeseriesDataset:
     )
 
     @property
-    def provenance(self) -> Dict[str, str]:
+    def provenance(self) -> Mapping[CommonFields, List[str]]:
         provenance_series = self.tag.loc[:, [TagType.PROVENANCE]].droplevel([TagField.TYPE])
-        return provenance_series.to_dict()
+        # https://stackoverflow.com/a/56065318
+        return provenance_series.groupby(level=0).agg(list).to_dict()
 
     def annotations(self, metric: FieldName) -> List[TagInTimeseries]:
-        # tag.loc slicing can't select rows that *don't* have a particular type so make a binary
-        # mask array.
-        annotation_mask = (self.tag.index.get_level_values(TagField.VARIABLE) == metric) & (
-            self.tag.index.get_level_values(TagField.TYPE) != TagType.PROVENANCE
-        )
         return_value = []
-        for row in self.tag.loc[annotation_mask].reset_index().itertuples():
+        for _, row in self.tag.loc[[metric], ANNOTATION_TAG_TYPES].reset_index().iterrows():
             return_value.append(TagInTimeseries.make(row.tag_type, content=row.content))
         return return_value
 
