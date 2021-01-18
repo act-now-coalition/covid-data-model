@@ -1,5 +1,4 @@
 from typing import List, Optional
-import re
 import enum
 import os
 import pathlib
@@ -80,19 +79,19 @@ def write_nested_csv(
     Args:
         data: list of data to write.
         output_path: Path of file to write to.
-        keys_to_skip: Keys to skip.  Keys can be regular expressions.
+        keys_to_skip: Keys to skip.  Keys can be flattened entries or top level keys.
 
     """
+    keys_to_skip = keys_to_skip or []
+
     if not data:
         raise ValueError("Cannot upload a 0 length list.")
-    header = flatten_dict(data[0]).keys()
-    if keys_to_skip:
-        header = [
-            column
-            for column in header
-            # Check that column does not match any regex of keys to skip.
-            if all([not re.match(regex, column) for regex in keys_to_skip])
-        ]
+
+    first_row = data[0]
+    first_row = {key: value for key, value in first_row.items() if key not in keys_to_skip}
+
+    header = flatten_dict(first_row).keys()
+    header = [column for column in header if column not in keys_to_skip]
 
     _logger.info(f"Writing to {output_path}")
     with output_path.open("w") as csvfile:
