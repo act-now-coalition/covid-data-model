@@ -157,7 +157,9 @@ class ActualsTimeseriesRow(Actuals):
 
 class AnomalyAnnotation(base_model.APIBaseModel):
     date: datetime.date = pydantic.Field(..., description="Date of anomaly")
-    description: str
+    original_observation: float = pydantic.Field(
+        ..., description="Original value on this date " "detected as anomalious."
+    )
 
 
 class MetricAnnotations(base_model.APIBaseModel):

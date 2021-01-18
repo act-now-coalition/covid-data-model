@@ -128,6 +128,8 @@ def test_annotation(rt_dataset, icu_dataset):
                 [2, 3, 2],
                 annotation=[test_helpers.make_tag(date="2020-04-01", original_observation=10.0)],
             ),
+            CommonFields.VACCINES_DISTRIBUTED: [None, 110, 220],
+            CommonFields.VACCINATIONS_INITIATED: [None, None, 100],
         },
         region=region,
         static={
@@ -160,7 +162,7 @@ def test_annotation(rt_dataset, icu_dataset):
 
     assert timeseries_for_region.annotations.deaths.sources == []
     assert timeseries_for_region.annotations.deaths.anomalies == [
-        AnomalyAnnotation(date="2020-04-01", description="Something happened")
+        AnomalyAnnotation(date="2020-04-01", original_observation=10.0)
     ]
 
     assert timeseries_for_region.annotations.contactTracers is None

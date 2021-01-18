@@ -131,7 +131,8 @@ def _build_metric_annotations(
 
     anomalies = tag_series.annotations(field_name)
     anomalies = [
-        AnomalyAnnotation(date=t.date, description=f"{t.original_observation}") for t in anomalies
+        AnomalyAnnotation(date=t.date, original_observation=t.original_observation)
+        for t in anomalies
     ]
 
     if not sources_enum and not anomalies:

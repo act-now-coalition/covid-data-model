@@ -83,7 +83,13 @@ def test_build_summary_for_fips(
             hospitalBeds=MetricAnnotations(sources=[MetricSource.OTHER], anomalies=[]),
             icuBeds=MetricAnnotations(sources=[MetricSource.OTHER], anomalies=[]),
             contactTracers=None,
-            newCases=None,
+            newCases=MetricAnnotations(
+                sources=[],
+                anomalies=[
+                    {"date": datetime.date(2020, 3, 17), "original_observation": 166.0},
+                    {"date": datetime.date(2020, 4, 15), "original_observation": 1737.0},
+                ],
+            ),
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),
         url="https://covidactnow.org/us/new_york-ny/county/bronx_county",

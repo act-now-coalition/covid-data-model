@@ -259,10 +259,10 @@ class OneRegionTimeseriesDataset:
         # https://stackoverflow.com/a/56065318
         return provenance_series.groupby(level=0).agg(list).to_dict()
 
-    def annotations(self, metric: FieldName) -> List[TagInTimeseries]:
+    def annotations(self, metric: FieldName) -> List[AnnotationWithDate]:
         return_value = []
         for _, row in self.tag.loc[[metric], ANNOTATION_TAG_TYPES].reset_index().iterrows():
-            return_value.append(TagInTimeseries.make(row.tag_type, content=row.content))
+            return_value.append(AnnotationWithDate.make(row.tag_type, content=row.content))
         return return_value
 
     def __post_init__(self):
