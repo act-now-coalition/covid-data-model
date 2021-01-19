@@ -213,7 +213,9 @@ def deploy_single_level(
     )
     output_path = path_builder.bulk_flattened_timeseries_data(FileType.CSV)
     deploy_csv_api_output(
-        flattened_timeseries, output_path, keys_to_skip=["actuals.date", "metrics.date"]
+        flattened_timeseries,
+        output_path,
+        keys_to_skip=["actuals.date", "metrics.date", "annotations"],
     )
 
     output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON)
@@ -224,7 +226,7 @@ def deploy_single_level(
     deploy_json_api_output(bulk_summaries, output_path)
 
     output_path = path_builder.bulk_summary(bulk_summaries, FileType.CSV)
-    deploy_csv_api_output(bulk_summaries, output_path)
+    deploy_csv_api_output(bulk_summaries, output_path, keys_to_skip=["annotations"])
 
 
 def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathlib.Path) -> None:
