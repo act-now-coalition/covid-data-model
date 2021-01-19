@@ -99,6 +99,9 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
             # aggregation_level=AggregationLevel.STATE)
             for name, dataset in data_sources.items()
         }
+
+    timeseries.DatasetMap.from_map(data_sources).write(path_prefix / "sources.csv")
+
     multiregion_dataset = timeseries.combined_datasets(
         data_sources,
         build_field_dataset_source(ALL_TIMESERIES_FEATURE_DEFINITION),
