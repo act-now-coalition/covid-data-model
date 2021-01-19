@@ -147,6 +147,7 @@ This value may vary by type of vaccine, but for Moderna and Pfizer, this indicat
 number of people vaccinated with both the first and second dose.
 """,
     )
+    # When adding a new "actual" field here remember to add a `FieldAnnotations` in `Annotations`.
 
 
 class ActualsTimeseriesRow(Actuals):
@@ -172,10 +173,9 @@ class FieldAnnotations(base_model.APIBaseModel):
 class Annotations(base_model.APIBaseModel):
     """Annotations for each field."""
 
+    # Keep this list of fields in sync with the fields in `Actuals`.
     cases: Optional[FieldAnnotations] = pydantic.Field(None, description="Annotations for cases")
-    deaths: Optional[FieldAnnotations] = pydantic.Field(
-        None, description="Annotations for deaths",
-    )
+    deaths: Optional[FieldAnnotations] = pydantic.Field(None, description="Annotations for deaths")
     positiveTests: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for positiveTests"
     )
@@ -192,7 +192,16 @@ class Annotations(base_model.APIBaseModel):
         None, description="Annotations for icuBeds"
     )
     newCases: Optional[FieldAnnotations] = pydantic.Field(
-        None, description="Annotations for newCases",
+        None, description="Annotations for newCases"
+    )
+    vaccinesDistributed: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinesDistributed"
+    )
+    vaccinationsInitiated: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsInitiated"
+    )
+    vaccinationsCompleted: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsCompleted"
     )
 
 
