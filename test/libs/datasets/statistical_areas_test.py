@@ -1,11 +1,15 @@
 import dataclasses
 
+import pytest
+import pandas as pd
+from covidactnow.datapublic.common_fields import CommonFields
+
 from libs.datasets import statistical_areas
 from libs.datasets.timeseries import MultiRegionDataset
-import pandas as pd
 
 from libs.pipeline import Region
 from test.dataset_utils_test import read_csv_and_index_fips_date
+from test import test_helpers
 
 
 def test_load_from_local_public_data():
@@ -60,3 +64,29 @@ def test_aggregate():
         pd.to_datetime("2020-05-03"): 6,
         pd.to_datetime("2020-05-04"): 4,
     }
+
+
+@pytest.mark.parametrize("reporting_ratio,expected_na", [(0.8, False), (0.91, True)])
+def test_aggregate_reporting_ratio(reporting_ratio, expected_na):
+    ny_region = Region.from_state("NY")
+    az_region = Region.from_state("AZ")
+    us_region = Region.from_iso1("us")
+    aggregate_map = {
+        ny_region: us_region,
+        az_region: us_region,
+    }
+    metrics = {ny_region: {CommonFields.CASES: [100]}, az_region: {CommonFields.CASES: [None]}}
+    static = {ny_region: {CommonFields.POPULATION: 900}, az_region: {CommonFields.POPULATION: 100}}
+    dataset = test_helpers.build_dataset(metrics, static_by_region_then_field_name=static)
+
+    agg = statistical_areas.CountyToCBSAAggregator(
+        county_map={ny_region.fips: us_region.fips, az_region.fips: us_region.fips},
+        cbsa_title_map={us_region.fips: "Stat Area 1"},
+        aggregations=[],
+    )
+    aggregation = agg.aggregate(dataset, reporting_ratio_required_to_aggregate=reporting_ratio)
+    cases = aggregation.timeseries[CommonFields.CASES]
+    if expected_na:
+        assert not len(cases)
+    else:
+        assert len(cases)
