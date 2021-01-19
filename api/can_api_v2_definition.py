@@ -20,8 +20,8 @@ class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
 
 
 class FieldSource(GetByValueMixin, enum.Enum):
-    """The data source of a metric. This enumeration lists the places from which CAN fetches
-    data. The source is tracked on a per metric and region timeseries basis."""
+    """The data source of a field (metric or actual). This enumeration lists the places from which
+    CAN fetches data. The source is tracked on a per field and region timeseries basis."""
 
     NYTimes = "NYTimes"
     CMSTesting = "CMSTesting"
