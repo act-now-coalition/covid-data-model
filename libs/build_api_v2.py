@@ -5,7 +5,7 @@ from api.can_api_v2_definition import (
     Actuals,
     ActualsTimeseriesRow,
     Annotations,
-    MetricAnnotations,
+    FieldAnnotations,
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
     Metrics,
@@ -20,13 +20,13 @@ from api.can_api_v2_definition import (
 from covidactnow.datapublic.common_fields import CommonFields
 
 from api.can_api_v2_definition import AnomalyAnnotation
-from api.can_api_v2_definition import MetricSource
+from api.can_api_v2_definition import FieldSource
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 
-METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in MetricSource enum"
+METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in FieldSource enum"
 
 
 USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
@@ -116,13 +116,13 @@ def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotation
 
 def _build_metric_annotations(
     tag_series: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log
-) -> Optional[MetricAnnotations]:
+) -> Optional[FieldAnnotations]:
 
     sources_enum = []
     for source_str in tag_series.provenance.get(field_name, []):
-        source_enum = MetricSource.get(source_str)
+        source_enum = FieldSource.get(source_str)
         if source_enum is None:
-            source_enum = MetricSource.OTHER
+            source_enum = FieldSource.OTHER
             log.info(
                 METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
             )
@@ -137,7 +137,7 @@ def _build_metric_annotations(
     if not sources_enum and not anomalies:
         return None
 
-    return MetricAnnotations(sources=sources_enum, anomalies=anomalies,)
+    return FieldAnnotations(sources=sources_enum, anomalies=anomalies,)
 
 
 def build_region_timeseries(

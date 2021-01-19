@@ -5,8 +5,8 @@ import structlog
 
 from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import Annotations
-from api.can_api_v2_definition import MetricAnnotations
-from api.can_api_v2_definition import MetricSource
+from api.can_api_v2_definition import FieldAnnotations
+from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import RegionSummary
 from libs.metrics import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
@@ -76,14 +76,14 @@ def test_build_summary_for_fips(
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
         ),
         annotations=Annotations(
-            cases=MetricAnnotations(sources=[MetricSource.OTHER], anomalies=[]),
-            deaths=MetricAnnotations(sources=[MetricSource.OTHER], anomalies=[]),
-            positiveTests=MetricAnnotations(sources=[MetricSource.VALORUM], anomalies=[]),
-            negativeTests=MetricAnnotations(sources=[MetricSource.VALORUM], anomalies=[]),
-            hospitalBeds=MetricAnnotations(sources=[MetricSource.OTHER], anomalies=[]),
-            icuBeds=MetricAnnotations(sources=[MetricSource.OTHER], anomalies=[]),
+            cases=FieldAnnotations(sources=[FieldSource.OTHER], anomalies=[]),
+            deaths=FieldAnnotations(sources=[FieldSource.OTHER], anomalies=[]),
+            positiveTests=FieldAnnotations(sources=[FieldSource.VALORUM], anomalies=[]),
+            negativeTests=FieldAnnotations(sources=[FieldSource.VALORUM], anomalies=[]),
+            hospitalBeds=FieldAnnotations(sources=[FieldSource.OTHER], anomalies=[]),
+            icuBeds=FieldAnnotations(sources=[FieldSource.OTHER], anomalies=[]),
             contactTracers=None,
-            newCases=MetricAnnotations(
+            newCases=FieldAnnotations(
                 sources=[],
                 anomalies=[
                     {"date": datetime.date(2020, 3, 17), "original_observation": 166.0},

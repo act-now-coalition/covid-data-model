@@ -19,7 +19,7 @@ class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
     OTHER = "other"
 
 
-class MetricSource(GetByValueMixin, enum.Enum):
+class FieldSource(GetByValueMixin, enum.Enum):
     """The data source of a metric. This enumeration lists the places from which CAN fetches
     data. The source is tracked on a per metric and region timeseries basis."""
 
@@ -162,36 +162,36 @@ class AnomalyAnnotation(base_model.APIBaseModel):
     )
 
 
-class MetricAnnotations(base_model.APIBaseModel):
+class FieldAnnotations(base_model.APIBaseModel):
     """Annotations associated with one field."""
 
-    sources: List[MetricSource]
+    sources: List[FieldSource]
     anomalies: List[AnomalyAnnotation]
 
 
 class Annotations(base_model.APIBaseModel):
     """Annotations for each field."""
 
-    cases: Optional[MetricAnnotations] = pydantic.Field(None, description="Annotations for cases")
-    deaths: Optional[MetricAnnotations] = pydantic.Field(
+    cases: Optional[FieldAnnotations] = pydantic.Field(None, description="Annotations for cases")
+    deaths: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for deaths",
     )
-    positiveTests: Optional[MetricAnnotations] = pydantic.Field(
+    positiveTests: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for positiveTests"
     )
-    negativeTests: Optional[MetricAnnotations] = pydantic.Field(
+    negativeTests: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for negativeTests"
     )
-    contactTracers: Optional[MetricAnnotations] = pydantic.Field(
+    contactTracers: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for contactTracers"
     )
-    hospitalBeds: Optional[MetricAnnotations] = pydantic.Field(
+    hospitalBeds: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for hospitalBeds"
     )
-    icuBeds: Optional[MetricAnnotations] = pydantic.Field(
+    icuBeds: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for icuBeds"
     )
-    newCases: Optional[MetricAnnotations] = pydantic.Field(
+    newCases: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for newCases",
     )
 
