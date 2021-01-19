@@ -233,7 +233,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -282,7 +282,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -919,7 +919,7 @@
           "vaccinationsCompleted": {
             "title": "Vaccinationscompleted",
             "type": "integer",
-            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the both first and second dose.\n"
+            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
           }
         },
         "description": "Known actuals data."
@@ -1705,7 +1705,7 @@
           "vaccinationsCompleted": {
             "title": "Vaccinationscompleted",
             "type": "integer",
-            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the both first and second dose.\n"
+            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
           },
           "date": {
             "title": "Date",
