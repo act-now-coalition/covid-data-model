@@ -29,8 +29,7 @@ cbsa_parameter = {
 5 Letter core-based statistical area (CBSA) Code.
 
 For a list of all CBSA codes, refer to the
-[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)
-provided by the USPTO.  This list includes the CBSA code and corresponding counties.
+[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.
 """,
     "schema": {"type": "string"},
 }
