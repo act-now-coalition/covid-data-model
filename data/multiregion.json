@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "8cca7b953c9d3df5e77a7a8d3a2fd83fc3f39139",
-    "branch": "main",
-    "is_dirty": false
+    "sha": "14df7a468ce366915c1841979de542b619dffb3e",
+    "branch": "drop-ccd-testing-data",
+    "is_dirty": true
   },
-  "updated_at": "2021-01-19T14:35:07.312603"
+  "updated_at": "2021-01-19T19:04:06.193019"
 }
