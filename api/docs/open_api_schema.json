@@ -233,7 +233,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -282,7 +282,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -905,6 +905,21 @@
               }
             ],
             "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n"
+          },
+          "vaccinesDistributed": {
+            "title": "Vaccinesdistributed",
+            "type": "integer",
+            "description": "Number of vaccine doses distributed."
+          },
+          "vaccinationsInitiated": {
+            "title": "Vaccinationsinitiated",
+            "type": "integer",
+            "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n"
+          },
+          "vaccinationsCompleted": {
+            "title": "Vaccinationscompleted",
+            "type": "integer",
+            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
           }
         },
         "description": "Known actuals data."
@@ -929,7 +944,12 @@
         "type": "object",
         "properties": {
           "source": {
-            "$ref": "#/components/schemas/TestPositivityRatioMethod"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TestPositivityRatioMethod"
+              }
+            ],
+            "description": "Source data for test positivity ratio."
           }
         },
         "description": "Details about how the test positivity ratio was calculated."
@@ -967,7 +987,12 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuCovidMethod": {
-            "$ref": "#/components/schemas/CovidPatientsMethod"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CovidPatientsMethod"
+              }
+            ],
+            "description": "Method used to determine number of current ICU patients with covid."
           },
           "currentIcuNonCovid": {
             "title": "Currenticunoncovid",
@@ -975,7 +1000,12 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuNonCovidMethod": {
-            "$ref": "#/components/schemas/NonCovidPatientsMethod"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NonCovidPatientsMethod"
+              }
+            ],
+            "description": "Method used to determine number of current ICU patients without covid."
           }
         },
         "description": "Details about how the ICU Headroom Metric was calculated."
@@ -1084,6 +1114,36 @@
         },
         "description": "Calculated metrics data based on known actuals."
       },
+      "RiskLevel": {
+        "title": "RiskLevel",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown\n *Extreme* - Severe outbreak"
+      },
+      "RiskLevelsRow": {
+        "title": "RiskLevelsRow",
+        "required": [
+          "overall"
+        ],
+        "type": "object",
+        "properties": {
+          "overall": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Overall risk level for region."
+          }
+        },
+        "description": "Base model for API output."
+      },
       "RegionTimeseriesRowWithHeader": {
         "title": "RegionTimeseriesRowWithHeader",
         "required": [
@@ -1094,7 +1154,8 @@
           "fips",
           "locationId",
           "actuals",
-          "metrics"
+          "metrics",
+          "riskLevels"
         ],
         "type": "object",
         "properties": {
@@ -1170,6 +1231,15 @@
               }
             ],
             "description": "Metrics for given day"
+          },
+          "riskLevels": {
+            "title": "Risklevels",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevelsRow"
+              }
+            ],
+            "description": "Risk Levels for given day"
           }
         },
         "description": "Prediction timeseries row with location information."
@@ -1193,18 +1263,6 @@
         ],
         "description": "An enumeration."
       },
-      "RiskLevel": {
-        "title": "RiskLevel",
-        "enum": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "description": "COVID Risk Level.\n\n## Risk Level Definitions\n *Low* - On track to contain COVID\n *Medium* - Slow disease growth\n *High* - At risk of outbreak\n *Critical* - Active or imminent outbreak\n *Unknown* - Risk unknown\n *Extreme* - Severe outbreak"
-      },
       "RiskLevels": {
         "title": "RiskLevels",
         "required": [
@@ -1219,25 +1277,60 @@
         "type": "object",
         "properties": {
           "overall": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Overall risk level for region."
           },
           "testPositivityRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Test positivity ratio risk level."
           },
           "caseDensity": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Case density risk level."
           },
           "contactTracerCapacityRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Contact tracer capacity ratio risk level."
           },
           "infectionRate": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Infection rate risk level."
           },
           "icuHeadroomRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "ICU headroom ratio risk level."
           },
           "icuCapacityRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "ICU capacity ratio risk level."
           }
         },
         "description": "COVID risk levels for a region."
@@ -1297,7 +1390,12 @@
             "description": "County name"
           },
           "level": {
-            "$ref": "#/components/schemas/AggregationLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AggregationLevel"
+              }
+            ],
+            "description": "Level of region."
           },
           "lat": {
             "title": "Lat",
@@ -1594,6 +1692,21 @@
             ],
             "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n"
           },
+          "vaccinesDistributed": {
+            "title": "Vaccinesdistributed",
+            "type": "integer",
+            "description": "Number of vaccine doses distributed."
+          },
+          "vaccinationsInitiated": {
+            "title": "Vaccinationsinitiated",
+            "type": "integer",
+            "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n"
+          },
+          "vaccinationsCompleted": {
+            "title": "Vaccinationscompleted",
+            "type": "integer",
+            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
+          },
           "date": {
             "title": "Date",
             "type": "string",
@@ -1606,19 +1719,24 @@
       "RiskLevelTimeseriesRow": {
         "title": "RiskLevelTimeseriesRow",
         "required": [
-          "date",
-          "overall"
+          "overall",
+          "date"
         ],
         "type": "object",
         "properties": {
+          "overall": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Overall risk level for region."
+          },
           "date": {
             "title": "Date",
             "type": "string",
             "description": "Date of timeseries data point",
             "format": "date"
-          },
-          "overall": {
-            "$ref": "#/components/schemas/RiskLevel"
           }
         },
         "description": "Timeseries data for risk levels. Currently only surfacing overall risk level for region."
@@ -1680,7 +1798,12 @@
             "description": "County name"
           },
           "level": {
-            "$ref": "#/components/schemas/AggregationLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AggregationLevel"
+              }
+            ],
+            "description": "Level of region."
           },
           "lat": {
             "title": "Lat",

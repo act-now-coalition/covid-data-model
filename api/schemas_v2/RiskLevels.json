@@ -4,25 +4,60 @@
   "type": "object",
   "properties": {
     "overall": {
-      "$ref": "#/definitions/RiskLevel"
+      "description": "Overall risk level for region.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      ]
     },
     "testPositivityRatio": {
-      "$ref": "#/definitions/RiskLevel"
+      "description": "Test positivity ratio risk level.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      ]
     },
     "caseDensity": {
-      "$ref": "#/definitions/RiskLevel"
+      "description": "Case density risk level.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      ]
     },
     "contactTracerCapacityRatio": {
-      "$ref": "#/definitions/RiskLevel"
+      "description": "Contact tracer capacity ratio risk level.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      ]
     },
     "infectionRate": {
-      "$ref": "#/definitions/RiskLevel"
+      "description": "Infection rate risk level.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      ]
     },
     "icuHeadroomRatio": {
-      "$ref": "#/definitions/RiskLevel"
+      "description": "ICU headroom ratio risk level.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      ]
     },
     "icuCapacityRatio": {
-      "$ref": "#/definitions/RiskLevel"
+      "description": "ICU capacity ratio risk level.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RiskLevel"
+        }
+      ]
     }
   },
   "required": [

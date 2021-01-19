@@ -100,6 +100,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
     CommonFields.VACCINES_DISTRIBUTED: [CDCVaccinesDataset],
     CommonFields.VACCINATIONS_INITIATED: [CDCVaccinesDataset],
+    CommonFields.VACCINATIONS_COMPLETED: [CDCVaccinesDataset],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {

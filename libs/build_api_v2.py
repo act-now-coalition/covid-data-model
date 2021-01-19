@@ -20,6 +20,9 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs import pipeline
 
 
+USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
+
+
 def _build_actuals(actual_data: dict) -> Actuals:
     """Generate actuals entry.
 
@@ -47,6 +50,11 @@ def _build_actuals(actual_data: dict) -> Actuals:
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
         newCases=actual_data[CommonFields.NEW_CASES],
+        vaccinesDistributed=actual_data[CommonFields.VACCINES_DISTRIBUTED],
+        vaccinationsInitiated=actual_data[CommonFields.VACCINATIONS_INITIATED],
+        # Vaccinations completed currently optional as data is not yet flowing through.
+        # This will allow us to include vaccines completed data as soon as its scraped.
+        vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
     )
 
 
@@ -87,8 +95,16 @@ def build_region_timeseries(
     for row in timeseries.yield_records():
         # Timeseries records don't have population
         row[CommonFields.POPULATION] = region_summary.population
-        actual = _build_actuals(row)
-        timeseries_row = ActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
+        actual = _build_actuals(row).dict()
+
+        # Don't include vaccinations in timeseries before first possible vaccination
+        # date to not bloat timeseries.
+        if row[CommonFields.DATE] < USA_VACCINATION_START_DATE:
+            del actual["vaccinesDistributed"]
+            del actual["vaccinationsInitiated"]
+            del actual["vaccinationsCompleted"]
+
+        timeseries_row = ActualsTimeseriesRow(**actual, date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
 
     metrics_rows = [
