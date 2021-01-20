@@ -37,7 +37,12 @@ class CountyToCBSAAggregator:
             for fips, cbsa_code in self.county_map.items()
         }
 
-        return timeseries.aggregate_regions(dataset_in, region_map, self.aggregations)
+        return timeseries.aggregate_regions(
+            dataset_in,
+            region_map,
+            self.aggregations,
+            reporting_ratio_required_to_aggregate=reporting_ratio_required_to_aggregate,
+        )
 
     @staticmethod
     def from_local_public_data() -> "CountyToCBSAAggregator":
