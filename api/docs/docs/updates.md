@@ -7,6 +7,14 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### Field level annotations
+_Added on 2021-01-19_
+
+The Annotations field has a FieldAnnotations for each field in `Actuals`. You can now access the
+data source(s) used to produce a field and list of dates where an anomalous observation was removed.
+The exact structure of the `AnomalyAnnotation` may be modified in the future.
+
+
 ### Vaccine data now available
 _Added on 2021-01-14_
 
