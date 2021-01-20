@@ -76,12 +76,12 @@ def test_build_summary_for_fips(
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
         ),
         annotations=Annotations(
-            cases=FieldAnnotations(sources=[FieldSource.OTHER], anomalies=[]),
-            deaths=FieldAnnotations(sources=[FieldSource.OTHER], anomalies=[]),
-            positiveTests=FieldAnnotations(sources=[FieldSource.VALORUM], anomalies=[]),
-            negativeTests=FieldAnnotations(sources=[FieldSource.VALORUM], anomalies=[]),
-            hospitalBeds=FieldAnnotations(sources=[FieldSource.OTHER], anomalies=[]),
-            icuBeds=FieldAnnotations(sources=[FieldSource.OTHER], anomalies=[]),
+            cases=FieldAnnotations(sources=[FieldSource.USA_FACTS], anomalies=[]),
+            deaths=FieldAnnotations(sources=[FieldSource.USA_FACTS], anomalies=[]),
+            positiveTests=None,
+            negativeTests=None,
+            hospitalBeds=FieldAnnotations(sources=[FieldSource.HHSHospital], anomalies=[]),
+            icuBeds=FieldAnnotations(sources=[FieldSource.HHSHospital], anomalies=[]),
             contactTracers=None,
             newCases=FieldAnnotations(
                 sources=[],
