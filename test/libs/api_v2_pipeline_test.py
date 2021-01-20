@@ -1,6 +1,9 @@
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
+from api.can_api_v2_definition import AnomalyAnnotation
+from api.can_api_v2_definition import FieldSource
+from libs import build_api_v2
 from libs.metrics import test_positivity
 from libs.datasets import timeseries
 from libs.pipeline import Region
@@ -9,6 +12,9 @@ from libs.datasets import combined_datasets
 from libs.datasets import AggregationLevel
 import pandas as pd
 import structlog
+
+from test import test_helpers
+from test.test_helpers import TimeseriesLiteral
 
 
 @pytest.fixture
@@ -107,3 +113,56 @@ def test_output_no_timeseries_rows(nyc_regional_input, tmp_path):
     all_timeseries_api = api_v2_pipeline.run_on_regions([regional_input])
 
     assert all_timeseries_api
+
+
+def test_annotation(rt_dataset, icu_dataset):
+    region = Region.from_state("IL")
+    ds = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral([100, 200, 300], provenance="NYTimes"),
+            CommonFields.NEW_CASES: [100, 100, 100],
+            CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
+            CommonFields.ICU_BEDS: TimeseriesLiteral([20, 20, 20], provenance="NotFound"),
+            CommonFields.CURRENT_ICU: [5, 5, 5],
+            CommonFields.DEATHS: TimeseriesLiteral(
+                [2, 3, 2],
+                annotation=[test_helpers.make_tag(date="2020-04-01", original_observation=10.0)],
+            ),
+            CommonFields.VACCINES_DISTRIBUTED: [None, 110, 220],
+            CommonFields.VACCINATIONS_INITIATED: [None, None, 100],
+        },
+        region=region,
+        static={
+            CommonFields.POPULATION: 100_000,
+            CommonFields.STATE: "IL",
+            CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
+        },
+    )
+    regional_input = api_v2_pipeline.RegionalInput.from_region_and_model_output(
+        region, ds, rt_dataset, icu_dataset
+    )
+
+    with structlog.testing.capture_logs() as logs:
+        timeseries_for_region = api_v2_pipeline.build_timeseries_for_region(regional_input)
+
+    assert logs == [
+        {
+            "location_id": region.location_id,
+            "field_name": CommonFields.ICU_BEDS,
+            "provenance": "NotFound",
+            "event": build_api_v2.METRIC_SOURCES_NOT_FOUND_MESSAGE,
+            "log_level": "info",
+        }
+    ]
+    assert timeseries_for_region.annotations.icuBeds.sources == [FieldSource.OTHER]
+    assert timeseries_for_region.annotations.icuBeds.anomalies == []
+
+    assert timeseries_for_region.annotations.cases.sources == [FieldSource.NYTimes]
+    assert timeseries_for_region.annotations.cases.anomalies == []
+
+    assert timeseries_for_region.annotations.deaths.sources == []
+    assert timeseries_for_region.annotations.deaths.anomalies == [
+        AnomalyAnnotation(date="2020-04-01", original_observation=10.0)
+    ]
+
+    assert timeseries_for_region.annotations.contactTracers is None

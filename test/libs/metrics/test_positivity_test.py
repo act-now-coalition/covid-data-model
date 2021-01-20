@@ -125,10 +125,10 @@ def test_recent_days():
     )
     test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
     assert all_methods.test_positivity.get_one_region(region_as).provenance == {
-        CommonFields.TEST_POSITIVITY: "pos"
+        CommonFields.TEST_POSITIVITY: ["pos"]
     }
     assert all_methods.test_positivity.get_one_region(region_tx).provenance == {
-        CommonFields.TEST_POSITIVITY: "pos_viral"
+        CommonFields.TEST_POSITIVITY: ["pos_viral"]
     }
 
     methods = _replace_methods_attribute(methods, recent_days=3)

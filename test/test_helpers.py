@@ -1,7 +1,8 @@
 import dataclasses
+from typing import List
+
 from collections import UserList
 from typing import Any
-from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
@@ -147,9 +148,14 @@ def build_default_region_dataset(
     *,
     region=DEFAULT_REGION,
     start_date="2020-04-01",
+    static: Optional[Mapping[FieldName, Any]] = None,
 ) -> timeseries.MultiRegionDataset:
     """Returns a `MultiRegionDataset` containing metrics in one region"""
-    return build_dataset({region: metrics}, start_date=start_date)
+    return build_dataset(
+        {region: metrics},
+        start_date=start_date,
+        static_by_region_then_field_name=({region: static} if static else None),
+    )
 
 
 def build_one_region_dataset(

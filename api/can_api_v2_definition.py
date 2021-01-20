@@ -19,6 +19,19 @@ class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
     OTHER = "other"
 
 
+class FieldSource(GetByValueMixin, enum.Enum):
+    """The data source of a field (metric or actual). This enumeration lists the places from which
+    CAN fetches data. The source is tracked on a per field and region timeseries basis."""
+
+    NYTimes = "NYTimes"
+    CMSTesting = "CMSTesting"
+    CDCTesting = "CDCTesting"
+    HHSTesting = "HHSTesting"
+    VALORUM = "Valorum"
+    COVID_TRACKING = "covid_tracking"
+    OTHER = "other"
+
+
 class TestPositivityRatioDetails(base_model.APIBaseModel):
     """Details about how the test positivity ratio was calculated."""
 
@@ -134,12 +147,62 @@ This value may vary by type of vaccine, but for Moderna and Pfizer, this indicat
 number of people vaccinated with both the first and second dose.
 """,
     )
+    # When adding a new "actual" field here remember to add a `FieldAnnotations` in `Annotations`.
 
 
 class ActualsTimeseriesRow(Actuals):
     """Actual data for a specific day."""
 
     date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
+
+
+class AnomalyAnnotation(base_model.APIBaseModel):
+    date: datetime.date = pydantic.Field(..., description="Date of anomaly")
+    original_observation: float = pydantic.Field(
+        ..., description="Original value on this date " "detected as anomalious."
+    )
+
+
+class FieldAnnotations(base_model.APIBaseModel):
+    """Annotations associated with one field."""
+
+    sources: List[FieldSource]
+    anomalies: List[AnomalyAnnotation]
+
+
+class Annotations(base_model.APIBaseModel):
+    """Annotations for each field."""
+
+    # Keep this list of fields in sync with the fields in `Actuals`.
+    cases: Optional[FieldAnnotations] = pydantic.Field(None, description="Annotations for cases")
+    deaths: Optional[FieldAnnotations] = pydantic.Field(None, description="Annotations for deaths")
+    positiveTests: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for positiveTests"
+    )
+    negativeTests: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for negativeTests"
+    )
+    contactTracers: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for contactTracers"
+    )
+    hospitalBeds: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for hospitalBeds"
+    )
+    icuBeds: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for icuBeds"
+    )
+    newCases: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for newCases"
+    )
+    vaccinesDistributed: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinesDistributed"
+    )
+    vaccinationsInitiated: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsInitiated"
+    )
+    vaccinationsCompleted: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsCompleted"
+    )
 
 
 class Metrics(base_model.APIBaseModel):
@@ -282,6 +345,7 @@ class RegionSummary(base_model.APIBaseModel):
     metrics: Metrics = pydantic.Field(...)
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
     actuals: Actuals = pydantic.Field(...)
+    annotations: Annotations = pydantic.Field(...)
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
 
