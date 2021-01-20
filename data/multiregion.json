@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "83ea11ea01c5f196df71904ba9a4b1bcbf92c204",
-    "branch": "update-cdc-testing-data-dc",
-    "is_dirty": true
-  },
-  "model_git_info": {
-    "sha": "001936cefd5b50c69c06a60cc9ab6b6ab95479e4",
-    "branch": "fix-aggregation-required-rate",
+    "sha": "686045b4bbf7a9288ea524651343a482c8dfbbae",
+    "branch": "main",
     "is_dirty": false
   },
-  "updated_at": "2021-01-19T23:20:14.164738"
+  "model_git_info": {
+    "sha": "2fa1972bf2c61313cface1a153f9dd6315d96612",
+    "branch": "main",
+    "is_dirty": false
+  },
+  "updated_at": "2021-01-20T00:31:24.446645"
 }
