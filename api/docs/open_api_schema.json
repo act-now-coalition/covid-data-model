@@ -1335,6 +1335,171 @@
         },
         "description": "COVID risk levels for a region."
       },
+      "FieldSource": {
+        "title": "FieldSource",
+        "enum": [
+          "NYTimes",
+          "CMSTesting",
+          "CDCTesting",
+          "HHSTesting",
+          "Valorum",
+          "covid_tracking",
+          "other"
+        ],
+        "description": "The data source of a field (metric or actual). This enumeration lists the places from which\nCAN fetches data. The source is tracked on a per field and region timeseries basis."
+      },
+      "AnomalyAnnotation": {
+        "title": "AnomalyAnnotation",
+        "required": [
+          "date",
+          "original_observation"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string",
+            "description": "Date of anomaly",
+            "format": "date"
+          },
+          "original_observation": {
+            "title": "Original Observation",
+            "type": "number",
+            "description": "Original value on this date detected as anomalous."
+          }
+        },
+        "description": "Base model for API output."
+      },
+      "FieldAnnotations": {
+        "title": "FieldAnnotations",
+        "required": [
+          "sources",
+          "anomalies"
+        ],
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldSource"
+            }
+          },
+          "anomalies": {
+            "title": "Anomalies",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnomalyAnnotation"
+            }
+          }
+        },
+        "description": "Annotations associated with one field."
+      },
+      "Annotations": {
+        "title": "Annotations",
+        "type": "object",
+        "properties": {
+          "cases": {
+            "title": "Cases",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for cases"
+          },
+          "deaths": {
+            "title": "Deaths",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for deaths"
+          },
+          "positiveTests": {
+            "title": "Positivetests",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for positiveTests"
+          },
+          "negativeTests": {
+            "title": "Negativetests",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for negativeTests"
+          },
+          "contactTracers": {
+            "title": "Contacttracers",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for contactTracers"
+          },
+          "hospitalBeds": {
+            "title": "Hospitalbeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for hospitalBeds"
+          },
+          "icuBeds": {
+            "title": "Icubeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for icuBeds"
+          },
+          "newCases": {
+            "title": "Newcases",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for newCases"
+          },
+          "vaccinesDistributed": {
+            "title": "Vaccinesdistributed",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinesDistributed"
+          },
+          "vaccinationsInitiated": {
+            "title": "Vaccinationsinitiated",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinationsInitiated"
+          },
+          "vaccinationsCompleted": {
+            "title": "Vaccinationscompleted",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinationsCompleted"
+          }
+        },
+        "description": "Annotations for each field."
+      },
       "RegionSummary": {
         "title": "RegionSummary",
         "required": [
@@ -1350,6 +1515,7 @@
           "metrics",
           "riskLevels",
           "actuals",
+          "annotations",
           "lastUpdatedDate",
           "url"
         ],
@@ -1446,6 +1612,9 @@
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
+          },
+          "annotations": {
+            "$ref": "#/components/schemas/Annotations"
           },
           "lastUpdatedDate": {
             "title": "Lastupdateddate",
@@ -1756,6 +1925,7 @@
           "metrics",
           "riskLevels",
           "actuals",
+          "annotations",
           "lastUpdatedDate",
           "url",
           "actualsTimeseries",
@@ -1854,6 +2024,9 @@
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
+          },
+          "annotations": {
+            "$ref": "#/components/schemas/Annotations"
           },
           "lastUpdatedDate": {
             "title": "Lastupdateddate",
