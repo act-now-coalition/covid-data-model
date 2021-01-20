@@ -27,8 +27,10 @@ class FieldSource(GetByValueMixin, enum.Enum):
     CMSTesting = "CMSTesting"
     CDCTesting = "CDCTesting"
     HHSTesting = "HHSTesting"
+    HHSHospital = "HHSHospital"
     VALORUM = "Valorum"
     COVID_TRACKING = "covid_tracking"
+    USA_FACTS = "USAFacts"
     OTHER = "other"
 
 
