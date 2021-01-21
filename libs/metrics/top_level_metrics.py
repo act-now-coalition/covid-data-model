@@ -15,6 +15,7 @@ from libs import series_utils
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.metrics import icu_headroom
 from libs.metrics import icu_capacity
+from libs.metrics import ratio_vaccinated
 
 Metrics = can_api_v2_definition.Metrics
 ICUHeadroomMetricDetails = can_api_v2_definition.ICUHeadroomMetricDetails
@@ -44,6 +45,8 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     INFECTION_RATE_CI90 = "infectionRateCI90"
     ICU_HEADROOM_RATIO = "icuHeadroomRatio"
     ICU_CAPACITY_RATIO = "icuCapacityRatio"
+    VACCINATIONS_INITIATED_RATIO = "vaccinationsInitiatedRatio"
+    VACCINATIONS_COMPLETED_RATIO = "vaccinationsCompletedRatio"
 
 
 def has_data_in_past_10_days(series: pd.Series) -> bool:
@@ -95,6 +98,9 @@ def calculate_metrics_for_timeseries(
 
     icu_capacity_ratio = icu_capacity.calculate_icu_capacity(data)
 
+    vaccines_initiated_ratio = ratio_vaccinated.calculate_ratio_initiated(timeseries)
+    vaccines_completed_ratio = ratio_vaccinated.calculate_ratio_completed(timeseries)
+
     top_level_metrics_data = {
         CommonFields.FIPS: fips,
         MetricsFields.CASE_DENSITY_RATIO: case_density,
@@ -104,6 +110,8 @@ def calculate_metrics_for_timeseries(
         MetricsFields.INFECTION_RATE_CI90: infection_rate_ci90,
         MetricsFields.ICU_HEADROOM_RATIO: icu_metric,
         MetricsFields.ICU_CAPACITY_RATIO: icu_capacity_ratio,
+        MetricsFields.VACCINATIONS_INITIATED_RATIO: vaccines_initiated_ratio,
+        MetricsFields.VACCINATIONS_COMPLETED_RATIO: vaccines_completed_ratio,
     }
     metrics = pd.DataFrame(top_level_metrics_data)
     metrics.index.name = CommonFields.DATE
