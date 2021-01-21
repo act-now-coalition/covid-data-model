@@ -31,6 +31,8 @@ INPUT_COLUMNS = [
     CommonFields.CURRENT_ICU,
     CommonFields.ICU_BEDS,
     CommonFields.CURRENT_ICU_TOTAL,
+    CommonFields.VACCINATIONS_INITIATED,
+    CommonFields.VACCINATIONS_COMPLETED,
 ]
 
 
@@ -54,15 +56,7 @@ def build_metrics_df(
         column_data: Column data with values.  Names of variables should match columns
             in `all_columns`. All lists must be the same length.
     """
-    metrics = [
-        "caseDensity",
-        "testPositivityRatio",
-        "contactTracerCapacityRatio",
-        "infectionRate",
-        "infectionRateCI90",
-        "icuHeadroomRatio",
-        "icuCapacityRatio",
-    ]
+    metrics = [metric for metric in top_level_metrics.MetricsFields]
     data = {column: metrics_data.get(column, np.nan) for column in metrics}
 
     max_len = max(len(value) for value in data.values() if isinstance(value, list))
@@ -255,22 +249,29 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
 
 
 def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
-    # All of positive_tests, negative_tests are empty. test_positivity has a real value. Make sure
-    # test_positivity is copied to the output and other metrics are produced.
-    data = (
-        "date,fips,new_cases,cases,test_positivity,positive_tests,negative_tests,contact_tracers_count,current_icu,icu_beds\n"
-        "2020-08-17,36,10,10,0.02,,,1,,\n"
-        "2020-08-18,36,10,20,0.03,,,2,,\n"
-        "2020-08-19,36,10,30,0.04,,,3,,\n"
-        "2020-08-20,36,10,40,0.05,,,4,,\n"
-    )
+    ny_region = Region.from_state("NY")
+    metrics = {
+        CommonFields.CASES: [10, 20, 30, 40],
+        CommonFields.NEW_CASES: [10, 10, 10, 10],
+        CommonFields.TEST_POSITIVITY: [0.02, 0.03, 0.04, 0.05],
+    }
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
         CommonFields.ICU_BEDS: 10,
     }
-    one_region = _fips_csv_to_one_region(data, Region.from_fips("36"), latest=latest)
+
+    one_region = build_one_region_dataset(
+        metrics,
+        start_date="2020-08-17",
+        timeseries_columns=INPUT_COLUMNS,
+        latest_override=latest,
+        region=ny_region,
+    )
+
+    # All of positive_tests, negative_tests are empty. test_positivity has a real value. Make sure
+    # test_positivity is copied to the output and other metrics are produced.
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, None, structlog.get_logger()
     )
@@ -280,7 +281,6 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
         start_date="2020-08-17",
         caseDensity=[10, 10, 10, 10],
         testPositivityRatio=[0.02, 0.03, 0.04, 0.05],
-        contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08],
     )
     pd.testing.assert_frame_equal(expected, results, check_dtype=False)
 
@@ -294,16 +294,20 @@ def test_top_level_metrics_with_rt():
         CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 25,
     }
-    data = (
-        "date,fips,new_cases,test_positivity,contact_tracers_count"
-        ",current_icu,current_icu_total,icu_beds\n"
-        "2020-08-17,36,,,1,,,\n"
-        "2020-08-18,36,10,0.1,2,,,\n"
-        "2020-08-19,36,,0.1,3,,,\n"
-        "2020-08-20,36,,0.1,4,,,\n"
-    )
-    one_region = _fips_csv_to_one_region(data, region, latest=latest)
 
+    metrics = {
+        CommonFields.NEW_CASES: [None, 10, None, None],
+        CommonFields.TEST_POSITIVITY: [None, 0.1, 0.1, 0.1],
+        CommonFields.CONTACT_TRACERS_COUNT: [1, 2, 3, 4],
+    }
+
+    one_region = build_one_region_dataset(
+        metrics,
+        start_date="2020-08-17",
+        timeseries_columns=INPUT_COLUMNS,
+        latest_override=latest,
+        region=region,
+    )
     data = (
         "date,fips,Rt_MAP_composite,Rt_ci95_composite\n"
         "2020-08-17,36,1.1,1.2\n"
