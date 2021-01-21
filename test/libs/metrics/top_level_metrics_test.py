@@ -150,6 +150,8 @@ def test_top_level_metrics_basic():
         CommonFields.CURRENT_ICU: [10, 10, 10, 10],
         CommonFields.CURRENT_ICU_TOTAL: [20, 20, 20, 20],
         CommonFields.ICU_BEDS: [None, None, None, None],
+        CommonFields.VACCINATIONS_INITIATED: [1000, 2000, None, 3000],
+        CommonFields.VACCINATIONS_COMPLETED: [100, 200, None, 300],
     }
     latest = {
         CommonFields.POPULATION: 100_000,
@@ -171,6 +173,8 @@ def test_top_level_metrics_basic():
         testPositivityRatio=[None, 0.1, 0.1, 0.1],
         contactTracerCapacityRatio=[0.02, 0.04, None, None],
         icuHeadroomRatio=[0.5, 0.5, 0.5, 0.5],
+        vaccinationsInitiatedRatio=[0.01, 0.02, None, 0.03],
+        vaccinationsCompletedRatio=[0.001, 0.002, None, 0.003],
     )
     pd.testing.assert_frame_equal(expected, results)
 

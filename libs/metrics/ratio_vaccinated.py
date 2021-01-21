@@ -12,7 +12,7 @@ def calculate_ratio_initiated(timeseries_df: timeseries.OneRegionTimeseriesDatas
     Returns: Series
     """
     population = timeseries_df.latest[CommonFields.POPULATION]
-    return timeseries_df.date_indexed[CommonFields.VACCINATIONS_COMPLETED] / population
+    return timeseries_df.date_indexed[CommonFields.VACCINATIONS_INITIATED] / population
 
 
 def calculate_ratio_completed(timeseries_df: timeseries.OneRegionTimeseriesDataset) -> pd.Series:
