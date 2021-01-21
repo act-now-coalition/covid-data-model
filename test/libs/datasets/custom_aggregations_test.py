@@ -12,6 +12,8 @@ def test_replace_dc_county(nyc_region):
     dataset = combined_datasets.load_us_timeseries_dataset().get_regions_subset(
         [nyc_region, dc_state_region, dc_county_region]
     )
+    # TODO(tom): Find some way to have this test read data that hasn't already gone
+    # through replace_dc_county_with_state_data and remove this hack.
     dc_state_rows = (
         dataset.timeseries.index.get_level_values("location_id") == dc_state_region.location_id
     )
