@@ -1,3 +1,4 @@
+from typing import Optional
 import uuid
 import urllib.parse
 import datetime
@@ -134,15 +135,20 @@ def _record_successful_request(request: dict, record: dict):
     registry.firehose_client.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
 
 
+def _get_query_parameter(request, key) -> Optional[str]:
+    query_parameters = urllib.parse.parse_qs(request["querystring"])
+    # parse query parameter by taking first api key in query string arg.
+    param = None
+    for param in query_parameters.get(key) or []:
+        break
+
+    return param
+
+
 def check_api_key_edge(event, context):
     request = event["Records"][0]["cf"]["request"]
 
-    query_parameters = urllib.parse.parse_qs(request["querystring"])
-    # parse query parameter by taking first api key in query string arg.
-    api_key = None
-    for api_key in query_parameters.get("apiKey") or []:
-        break
-
+    api_key = _get_query_parameter(request, "apiKey")
     if not api_key:
         return {"status": 403, "statusDescription": "Unauthorized"}
 
@@ -166,7 +172,20 @@ def check_api_key_edge(event, context):
 
     _record_successful_request(request, record)
 
-    # Return request, which forwards to S3 backend.
+    # Check for days back parameter and if included and a supported file,
+    # modify URI to point to file with truncated history. This is a simple way
+    # of expanding the API to add a bit of flexibility with the files we serve and
+    # let people query data that is more of a fixed size and is not unbounded in size.
+    days_back = _get_query_parameter(request, "daysBack")
+
+    # Currently only bulk timeseries json files support daysBack
+    days_back_supported_regex = "/v2/([a-z]+)\.timeseries\.json"
+    if days_back and re.match(days_back_supported_regex, request["uri"]):
+        uri = request["uri"]
+        *beginning, suffix = uri.split(".")
+        final_uri = ".".join([*beginning, f"{days_back}d", suffix])
+        request["uri"] = final_uri
+
     return request
 
 
