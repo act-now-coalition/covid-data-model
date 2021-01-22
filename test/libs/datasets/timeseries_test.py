@@ -1471,3 +1471,36 @@ def test_weighted_reporting_ratio(reporting_ratio, expected_na):
         assert not len(cases)
     else:
         assert len(cases)
+
+
+@pytest.mark.parametrize(
+    "initiated_values,initiated_expected", [([50, None], [50, None]), ([None, None], [50, 150])]
+)
+def test_backfill_vaccine_initiated(initiated_values, initiated_expected):
+    ny_region = Region.from_state("NY")
+    az_region = Region.from_state("AZ")
+
+    # Initiated has a hole, but since they're reporting some data we don't
+    # want to fill
+    ny_metrics = {
+        CommonFields.VACCINES_ADMINISTERED: [100, 200],
+        CommonFields.VACCINATIONS_INITIATED: initiated_values,
+        CommonFields.VACCINATIONS_COMPLETED: [50, 50],
+    }
+    az_metrics = {
+        CommonFields.VACCINES_ADMINISTERED: [100, 200],
+        CommonFields.VACCINATIONS_COMPLETED: [30, 40],
+        CommonFields.VACCINATIONS_INITIATED: [70, 160],
+    }
+    metrics = {ny_region: ny_metrics, az_region: az_metrics}
+    dataset = test_helpers.build_dataset(metrics)
+    result = timeseries.backfill_vaccine_data(dataset)
+    expected_ny = {
+        CommonFields.VACCINES_ADMINISTERED: [100, 200],
+        CommonFields.VACCINATIONS_COMPLETED: [50, 50],
+        CommonFields.VACCINATIONS_INITIATED: initiated_expected,
+    }
+    expected_metrics = {ny_region: expected_ny, az_region: az_metrics}
+    expected_dataset = test_helpers.build_dataset(expected_metrics)
+
+    test_helpers.assert_dataset_like(result, expected_dataset)

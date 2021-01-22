@@ -1150,6 +1150,26 @@ def drop_regions_without_population(
     return mrts.get_locations_subset(locations_with_population)
 
 
+def _compute_derived_vaccinations_initiated(dataset: MultiRegionDataset):
+    administered = dataset.timeseries[CommonFields.VACCINES_ADMINISTERED]
+    completed = dataset.timeseries[CommonFields.VACCINATIONS_COMPLETED]
+    derived_initiated = administered - completed
+    initiated = dataset.timeseries[CommonFields.VACCINATIONS_INITIATED]
+
+    return initiated.fillna(derived_initiated)
+
+
+def backfill_vaccine_data(dataset: MultiRegionDataset):
+    """Backfills vaccine data."""
+    derived_initiated = _compute_derived_vaccinations_initiated(dataset)
+
+    timeseries_copy = dataset.timeseries.copy()
+
+    timeseries_copy.loc[:, CommonFields.VACCINATIONS_INITIATED] = derived_initiated
+
+    return dataclasses.replace(dataset, timeseries=timeseries_copy)
+
+
 # Column for the aggregated location_id
 LOCATION_ID_AGG = "location_id_agg"
 
