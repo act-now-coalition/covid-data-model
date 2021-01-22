@@ -12,6 +12,15 @@ import {
 // Taken from https://ui.dev/validate-email-address-javascript/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const trackEmailSignupSuccess = () => {
+  ga('send', {
+    hitType: 'event',
+    eventCategory: 'API Register',
+    eventAction: 'Submit',
+    eventLabel: 'Success'
+  });
+}
+
 const SignupForm = () => {
   const [email, setEmail] = useState();
   const [apiKey, setApiKey] = useState("");
@@ -39,6 +48,7 @@ const SignupForm = () => {
         } else {
           setApiKey(data.api_key);
         }
+        trackEmailSignupSuccess();
       })
       .catch((err) => setErrorMessage("Must supply a valid email address"));
   };
