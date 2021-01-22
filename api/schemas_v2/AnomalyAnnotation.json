@@ -1,0 +1,22 @@
+{
+  "title": "AnomalyAnnotation",
+  "description": "Base model for API output.",
+  "type": "object",
+  "properties": {
+    "date": {
+      "title": "Date",
+      "description": "Date of anomaly",
+      "type": "string",
+      "format": "date"
+    },
+    "original_observation": {
+      "title": "Original Observation",
+      "description": "Original value on this date detected as anomalous.",
+      "type": "number"
+    }
+  },
+  "required": [
+    "date",
+    "original_observation"
+  ]
+}
