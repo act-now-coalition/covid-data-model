@@ -147,7 +147,6 @@ def build_timeseries_for_region(
     Returns: Summary with timeseries for region.
     """
     log = structlog.get_logger(location_id=regional_input.region.location_id)
-    fips_latest = regional_input.latest
 
     try:
         fips_timeseries = regional_input.timeseries
@@ -159,7 +158,7 @@ def build_timeseries_for_region(
         )
         risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(metrics_latest)
         region_summary = build_api_v2.build_region_summary(
-            fips_latest, metrics_latest, risk_levels, regional_input.region
+            regional_input.timeseries, metrics_latest, risk_levels, log
         )
         region_timeseries = build_api_v2.build_region_timeseries(
             region_summary, fips_timeseries, metrics_results, risk_timeseries
@@ -214,7 +213,9 @@ def deploy_single_level(
     )
     output_path = path_builder.bulk_flattened_timeseries_data(FileType.CSV)
     deploy_csv_api_output(
-        flattened_timeseries, output_path, keys_to_skip=["actuals.date", "metrics.date"]
+        flattened_timeseries,
+        output_path,
+        keys_to_skip=["actuals.date", "metrics.date", "annotations"],
     )
 
     output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON)
@@ -225,7 +226,7 @@ def deploy_single_level(
     deploy_json_api_output(bulk_summaries, output_path)
 
     output_path = path_builder.bulk_summary(bulk_summaries, FileType.CSV)
-    deploy_csv_api_output(bulk_summaries, output_path)
+    deploy_csv_api_output(bulk_summaries, output_path, keys_to_skip=["annotations"])
 
 
 def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathlib.Path) -> None:

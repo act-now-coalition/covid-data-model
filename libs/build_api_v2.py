@@ -4,6 +4,8 @@ import pandas as pd
 from api.can_api_v2_definition import (
     Actuals,
     ActualsTimeseriesRow,
+    Annotations,
+    FieldAnnotations,
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
     Metrics,
@@ -16,8 +18,18 @@ from api.can_api_v2_definition import (
     RiskLevelTimeseriesRow,
 )
 from covidactnow.datapublic.common_fields import CommonFields
+
+from api.can_api_v2_definition import AnomalyAnnotation
+from api.can_api_v2_definition import FieldSource
+from libs.datasets import timeseries
+from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs import pipeline
+
+
+METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in FieldSource enum"
+
+
+USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 
 
 def _build_actuals(actual_data: dict) -> Actuals:
@@ -47,15 +59,22 @@ def _build_actuals(actual_data: dict) -> Actuals:
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
         newCases=actual_data[CommonFields.NEW_CASES],
+        vaccinesDistributed=actual_data[CommonFields.VACCINES_DISTRIBUTED],
+        vaccinationsInitiated=actual_data[CommonFields.VACCINATIONS_INITIATED],
+        # Vaccinations completed currently optional as data is not yet flowing through.
+        # This will allow us to include vaccines completed data as soon as its scraped.
+        vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
     )
 
 
 def build_region_summary(
-    latest_values: dict,
+    one_region: timeseries.OneRegionTimeseriesDataset,
     latest_metrics: Optional[Metrics],
     risk_levels: RiskLevels,
-    region: pipeline.Region,
+    log,
 ) -> RegionSummary:
+    latest_values = one_region.latest
+    region = one_region.region
 
     actuals = _build_actuals(latest_values)
     return RegionSummary(
@@ -73,7 +92,52 @@ def build_region_summary(
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
         url=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
+        annotations=build_annotations(one_region, log),
     )
+
+
+def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotations:
+    assert one_region.tag.index.names == [TagField.VARIABLE, TagField.TYPE]
+    return Annotations(
+        cases=_build_metric_annotations(one_region, CommonFields.CASES, log),
+        deaths=_build_metric_annotations(one_region, CommonFields.DEATHS, log),
+        positiveTests=_build_metric_annotations(one_region, CommonFields.POSITIVE_TESTS, log),
+        negativeTests=_build_metric_annotations(one_region, CommonFields.NEGATIVE_TESTS, log),
+        contactTracers=_build_metric_annotations(
+            one_region, CommonFields.CONTACT_TRACERS_COUNT, log
+        ),
+        hospitalBeds=_build_metric_annotations(
+            one_region, CommonFields.HOSPITAL_BEDS_IN_USE_ANY, log
+        ),
+        icuBeds=_build_metric_annotations(one_region, CommonFields.ICU_BEDS, log),
+        newCases=_build_metric_annotations(one_region, CommonFields.NEW_CASES, log),
+    )
+
+
+def _build_metric_annotations(
+    tag_series: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log
+) -> Optional[FieldAnnotations]:
+
+    sources_enum = []
+    for source_str in tag_series.provenance.get(field_name, []):
+        source_enum = FieldSource.get(source_str)
+        if source_enum is None:
+            source_enum = FieldSource.OTHER
+            log.info(
+                METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
+            )
+        sources_enum.append(source_enum)
+
+    anomalies = tag_series.annotations(field_name)
+    anomalies = [
+        AnomalyAnnotation(date=t.date, original_observation=t.original_observation)
+        for t in anomalies
+    ]
+
+    if not sources_enum and not anomalies:
+        return None
+
+    return FieldAnnotations(sources=sources_enum, anomalies=anomalies,)
 
 
 def build_region_timeseries(
@@ -87,8 +151,16 @@ def build_region_timeseries(
     for row in timeseries.yield_records():
         # Timeseries records don't have population
         row[CommonFields.POPULATION] = region_summary.population
-        actual = _build_actuals(row)
-        timeseries_row = ActualsTimeseriesRow(**actual.dict(), date=row[CommonFields.DATE])
+        actual = _build_actuals(row).dict()
+
+        # Don't include vaccinations in timeseries before first possible vaccination
+        # date to not bloat timeseries.
+        if row[CommonFields.DATE] < USA_VACCINATION_START_DATE:
+            del actual["vaccinesDistributed"]
+            del actual["vaccinationsInitiated"]
+            del actual["vaccinationsCompleted"]
+
+        timeseries_row = ActualsTimeseriesRow(**actual, date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
 
     metrics_rows = [

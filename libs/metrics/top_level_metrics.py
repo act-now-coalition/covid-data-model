@@ -1,6 +1,8 @@
 from typing import Optional, Tuple
 import enum
 from datetime import timedelta
+
+import more_itertools
 import pandas as pd
 import numpy as np
 from covidactnow.datapublic import common_df
@@ -137,12 +139,18 @@ def copy_test_positivity(
 ) -> Tuple[pd.Series, TestPositivityRatioDetails]:
     data = dataset_in.date_indexed
     test_positivity = common_df.get_timeseries(data, CommonFields.TEST_POSITIVITY, EMPTY_TS)
-    provenance = dataset_in.provenance.get(CommonFields.TEST_POSITIVITY)
-    method = TestPositivityRatioMethod.get(provenance)
+    # Make a set to eliminate duplicates.
+    provenance = set(dataset_in.provenance.get(CommonFields.TEST_POSITIVITY, []))
+    method = None
+    if len(provenance) == 1:
+        method = TestPositivityRatioMethod.get(more_itertools.first(provenance))
+
     if method is None:
-        if provenance is not None:
-            log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
+        # Most likely there were zero provenance or the one wasn't found. Less likely, there were
+        # more than one unique values in provenance.
         method = TestPositivityRatioMethod.OTHER
+        if provenance:
+            log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
     return test_positivity, TestPositivityRatioDetails(source=method)
 
 

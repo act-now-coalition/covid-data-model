@@ -7,6 +7,30 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### Field level annotations
+_Added on 2021-01-19_
+
+The Annotations field has a FieldAnnotations for each field in `Actuals`. You can now access the
+data source(s) used to produce a field and list of dates where an anomalous observation was removed.
+The exact structure of the `AnomalyAnnotation` may be modified in the future.
+
+
+### Vaccine data now available
+_Added on 2021-01-14_
+
+Vaccine data is now available within the Covid Act Now API.
+
+Currently the data is available for states only, but county-level vaccination data is coming soon.
+
+Fields added:
+ * `vaccinesDistributed`: Total number of vaccine doses distributed.
+ * `vaccinationsInitiated`: Total number of people initiating vaccination. For a vaccine with a
+   2-dose regimen, this represents the first dose.
+ * `vaccinationsCompleted`: Total number of people completing vaccination - currently those
+    completing their second shot. 
+
+You can access these fields in both the `actuals` field and `actualsTimeseries` fields.
+
 ### View entire timeseries of risk levels for all regions
 _Added on 2020-12-22_
 

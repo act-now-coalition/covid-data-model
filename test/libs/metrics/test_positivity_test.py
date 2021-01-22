@@ -10,6 +10,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from freezegun import freeze_time
 
+from libs.datasets.tail_filter import TagType
 from test import test_helpers
 from libs.datasets import timeseries
 from libs.datasets.timeseries import DatasetName
@@ -124,10 +125,10 @@ def test_recent_days():
     )
     test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
     assert all_methods.test_positivity.get_one_region(region_as).provenance == {
-        CommonFields.TEST_POSITIVITY: "pos"
+        CommonFields.TEST_POSITIVITY: ["pos"]
     }
     assert all_methods.test_positivity.get_one_region(region_tx).provenance == {
-        CommonFields.TEST_POSITIVITY: "pos_viral"
+        CommonFields.TEST_POSITIVITY: ["pos_viral"]
     }
 
     methods = _replace_methods_attribute(methods, recent_days=3)
@@ -274,11 +275,11 @@ def test_provenance():
 def test_preserve_tags():
     region_as = Region.from_state("AS")
     region_tx = Region.from_state("TX")
-    tag1 = test_helpers.make_tag(date="2020-04-04", content="tag1")
-    tag2 = test_helpers.make_tag(date="2020-04-04", content="tag2")
-    tag_drop = test_helpers.make_tag(date="2020-04-04", content="expect-to-drop")
-    tag3 = test_helpers.make_tag(date="2020-04-04", content="tag3")
-    tag4 = test_helpers.make_tag(date="2020-04-04", content="tag4")
+    tag1 = test_helpers.make_tag(type=TagType.CUMULATIVE_LONG_TAIL_TRUNCATED, date="2020-04-04")
+    tag2 = test_helpers.make_tag(type=TagType.CUMULATIVE_TAIL_TRUNCATED, date="2020-04-04")
+    tag_drop = test_helpers.make_tag(type=TagType.ZSCORE_OUTLIER, date="2020-04-01")
+    tag3 = test_helpers.make_tag(type=TagType.ZSCORE_OUTLIER, date="2020-04-04")
+    tag4 = test_helpers.make_tag(type=TagType.ZSCORE_OUTLIER, date="2020-04-03")
     metrics_as = {
         CommonFields.POSITIVE_TESTS: TimeseriesLiteral(
             [1, 2, 3, 4], annotation=[tag1], provenance="pos"

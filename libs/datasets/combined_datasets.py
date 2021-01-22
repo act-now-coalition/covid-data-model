@@ -25,6 +25,7 @@ from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.cms_testing_dataset import CMSTestingDataset
+from libs.datasets.sources.can_scraper_state_providers import CANScraperStateProviders
 from libs.datasets.sources.cdc_testing_dataset import CDCTestingDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
@@ -65,49 +66,42 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [UsaFactsDataSource, NYTimesDataset],
+    CommonFields.CASES: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDataset],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
-        CovidCountyDataDataSource,
+        CANScraperStateProviders,
         CovidTrackingDataSource,
         TexasHospitalizations,
         HHSHospitalDataset,
     ],
     CommonFields.CURRENT_ICU: [
-        CovidCountyDataDataSource,
+        CANScraperStateProviders,
         CovidTrackingDataSource,
         TexasHospitalizations,
         HHSHospitalDataset,
     ],
-    CommonFields.CURRENT_ICU_TOTAL: [CovidCountyDataDataSource, HHSHospitalDataset,],
-    CommonFields.CURRENT_VENTILATED: [CovidCountyDataDataSource, CovidTrackingDataSource,],
-    CommonFields.DEATHS: [UsaFactsDataSource, NYTimesDataset],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [CovidCountyDataDataSource, HHSHospitalDataset,],
-    CommonFields.ICU_BEDS: [CovidCountyDataDataSource, HHSHospitalDataset,],
-    CommonFields.NEGATIVE_TESTS: [
-        CovidCountyDataDataSource,
-        CovidTrackingDataSource,
-        HHSTestingDataset,
-    ],
-    CommonFields.POSITIVE_TESTS: [
-        CovidCountyDataDataSource,
-        CovidTrackingDataSource,
-        HHSTestingDataset,
-    ],
+    CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalDataset],
+    CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
+    CommonFields.DEATHS: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDataset],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalDataset],
+    CommonFields.ICU_BEDS: [CANScraperStateProviders, HHSHospitalDataset],
+    CommonFields.NEGATIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
+    CommonFields.POSITIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
     CommonFields.TOTAL_TESTS: [CovidTrackingDataSource],
     # STAFFED_BEDS isn't used right now. Disable to ease refactoring.
-    # CommonFields.STAFFED_BEDS: [CovidCountyDataDataSource],
-    CommonFields.POSITIVE_TESTS_VIRAL: [CovidTrackingDataSource],
-    CommonFields.TOTAL_TESTS_VIRAL: [CovidTrackingDataSource],
+    # CommonFields.STAFFED_BEDS: [CANScraperStateProviders, CovidCountyDataDataSource],
+    CommonFields.POSITIVE_TESTS_VIRAL: [CANScraperStateProviders, CovidTrackingDataSource],
+    CommonFields.TOTAL_TESTS_VIRAL: [CANScraperStateProviders, CovidTrackingDataSource],
     CommonFields.POSITIVE_CASES_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TESTS_PEOPLE_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
     CommonFields.TEST_POSITIVITY_14D: [CMSTestingDataset],
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
-    CommonFields.VACCINES_DISTRIBUTED: [CDCVaccinesDataset],
-    CommonFields.VACCINATIONS_INITIATED: [CDCVaccinesDataset],
+    CommonFields.VACCINES_DISTRIBUTED: [CDCVaccinesDataset, CANScraperStateProviders],
+    CommonFields.VACCINATIONS_INITIATED: [CDCVaccinesDataset, CANScraperStateProviders],
+    CommonFields.VACCINATIONS_COMPLETED: [CDCVaccinesDataset, CANScraperStateProviders],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
@@ -119,7 +113,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
     # TODO(michael): We don't really trust the CCM bed numbers and would ideally remove them entirely.
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CovidCountyDataDataSource, CovidCareMapBeds, HHSHospitalDataset],
+    CommonFields.ICU_BEDS: [CovidCareMapBeds, HHSHospitalDataset],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
