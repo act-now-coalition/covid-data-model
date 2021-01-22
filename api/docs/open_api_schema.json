@@ -908,17 +908,38 @@
           },
           "vaccinesDistributed": {
             "title": "Vaccinesdistributed",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Number of vaccine doses distributed."
           },
           "vaccinationsInitiated": {
             "title": "Vaccinationsinitiated",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n"
           },
           "vaccinationsCompleted": {
             "title": "Vaccinationscompleted",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
           }
         },
@@ -944,12 +965,7 @@
         "type": "object",
         "properties": {
           "source": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TestPositivityRatioMethod"
-              }
-            ],
-            "description": "Source data for test positivity ratio."
+            "$ref": "#/components/schemas/TestPositivityRatioMethod"
           }
         },
         "description": "Details about how the test positivity ratio was calculated."
@@ -987,12 +1003,7 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuCovidMethod": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/CovidPatientsMethod"
-              }
-            ],
-            "description": "Method used to determine number of current ICU patients with covid."
+            "$ref": "#/components/schemas/CovidPatientsMethod"
           },
           "currentIcuNonCovid": {
             "title": "Currenticunoncovid",
@@ -1000,12 +1011,7 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuNonCovidMethod": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/NonCovidPatientsMethod"
-              }
-            ],
-            "description": "Method used to determine number of current ICU patients without covid."
+            "$ref": "#/components/schemas/NonCovidPatientsMethod"
           }
         },
         "description": "Details about how the ICU Headroom Metric was calculated."
@@ -1036,7 +1042,14 @@
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "testPositivityRatioDetails": {
-            "$ref": "#/components/schemas/TestPositivityRatioDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TestPositivityRatioDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1098,7 +1111,14 @@
             ]
           },
           "icuHeadroomDetails": {
-            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "icuCapacityRatio": {
             "title": "Icucapacityratio",
@@ -1110,6 +1130,30 @@
                 "type": "null"
               }
             ]
+          },
+          "vaccinationsInitiatedRatio": {
+            "title": "Vaccinationsinitiatedratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of population that has initiated vaccination."
+          },
+          "vaccinationsCompletedRatio": {
+            "title": "Vaccinationscompletedratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of population that has completed vaccination."
           }
         },
         "description": "Calculated metrics data based on known actuals."
@@ -1134,12 +1178,7 @@
         "type": "object",
         "properties": {
           "overall": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RiskLevel"
-              }
-            ],
-            "description": "Overall risk level for region."
+            "$ref": "#/components/schemas/RiskLevel"
           }
         },
         "description": "Base model for API output."
@@ -1152,6 +1191,8 @@
           "state",
           "county",
           "fips",
+          "lat",
+          "long",
           "locationId",
           "actuals",
           "metrics",
@@ -1201,12 +1242,26 @@
           },
           "lat": {
             "title": "Lat",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Latitude of point within the state or county"
           },
           "long": {
             "title": "Long",
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Longitude of point within the state or county"
           },
           "locationId": {
@@ -1277,60 +1332,25 @@
         "type": "object",
         "properties": {
           "overall": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RiskLevel"
-              }
-            ],
-            "description": "Overall risk level for region."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "testPositivityRatio": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RiskLevel"
-              }
-            ],
-            "description": "Test positivity ratio risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "caseDensity": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RiskLevel"
-              }
-            ],
-            "description": "Case density risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "contactTracerCapacityRatio": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RiskLevel"
-              }
-            ],
-            "description": "Contact tracer capacity ratio risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "infectionRate": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RiskLevel"
-              }
-            ],
-            "description": "Infection rate risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "icuHeadroomRatio": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RiskLevel"
-              }
-            ],
-            "description": "ICU headroom ratio risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "icuCapacityRatio": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RiskLevel"
-              }
-            ],
-            "description": "ICU capacity ratio risk level."
+            "$ref": "#/components/schemas/RiskLevel"
           }
         },
         "description": "COVID risk levels for a region."
@@ -1342,8 +1362,10 @@
           "CMSTesting",
           "CDCTesting",
           "HHSTesting",
+          "HHSHospital",
           "Valorum",
           "covid_tracking",
+          "USAFacts",
           "other"
         ],
         "description": "The data source of a field (metric or actual). This enumeration lists the places from which\nCAN fetches data. The source is tracked on a per field and region timeseries basis."
@@ -1379,6 +1401,7 @@
         "type": "object",
         "properties": {
           "sources": {
+            "title": "Sources",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FieldSource"
@@ -1556,12 +1579,7 @@
             "description": "County name"
           },
           "level": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AggregationLevel"
-              }
-            ],
-            "description": "Level of region."
+            "$ref": "#/components/schemas/AggregationLevel"
           },
           "lat": {
             "title": "Lat",
@@ -1672,7 +1690,14 @@
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "testPositivityRatioDetails": {
-            "$ref": "#/components/schemas/TestPositivityRatioDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TestPositivityRatioDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1734,7 +1759,14 @@
             ]
           },
           "icuHeadroomDetails": {
-            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "icuCapacityRatio": {
             "title": "Icucapacityratio",
@@ -1746,6 +1778,30 @@
                 "type": "null"
               }
             ]
+          },
+          "vaccinationsInitiatedRatio": {
+            "title": "Vaccinationsinitiatedratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of population that has initiated vaccination."
+          },
+          "vaccinationsCompletedRatio": {
+            "title": "Vaccinationscompletedratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of population that has completed vaccination."
           },
           "date": {
             "title": "Date",
@@ -1863,17 +1919,38 @@
           },
           "vaccinesDistributed": {
             "title": "Vaccinesdistributed",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Number of vaccine doses distributed."
           },
           "vaccinationsInitiated": {
             "title": "Vaccinationsinitiated",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n"
           },
           "vaccinationsCompleted": {
             "title": "Vaccinationscompleted",
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
           },
           "date": {
@@ -1894,12 +1971,7 @@
         "type": "object",
         "properties": {
           "overall": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RiskLevel"
-              }
-            ],
-            "description": "Overall risk level for region."
+            "$ref": "#/components/schemas/RiskLevel"
           },
           "date": {
             "title": "Date",
@@ -1968,12 +2040,7 @@
             "description": "County name"
           },
           "level": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AggregationLevel"
-              }
-            ],
-            "description": "Level of region."
+            "$ref": "#/components/schemas/AggregationLevel"
           },
           "lat": {
             "title": "Lat",
@@ -2048,7 +2115,14 @@
           },
           "metricsTimeseries": {
             "title": "Metricstimeseries",
-            "type": "array",
+            "anyOf": [
+              {
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "items": {
               "$ref": "#/components/schemas/MetricsTimeseriesRow"
             }

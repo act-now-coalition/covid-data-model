@@ -1,0 +1,64 @@
+{
+  "title": "FieldAnnotations",
+  "description": "Annotations associated with one field.",
+  "type": "object",
+  "properties": {
+    "sources": {
+      "title": "Sources",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/FieldSource"
+      }
+    },
+    "anomalies": {
+      "title": "Anomalies",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AnomalyAnnotation"
+      }
+    }
+  },
+  "required": [
+    "sources",
+    "anomalies"
+  ],
+  "definitions": {
+    "FieldSource": {
+      "title": "FieldSource",
+      "description": "The data source of a field (metric or actual). This enumeration lists the places from which\nCAN fetches data. The source is tracked on a per field and region timeseries basis.",
+      "enum": [
+        "NYTimes",
+        "CMSTesting",
+        "CDCTesting",
+        "HHSTesting",
+        "HHSHospital",
+        "Valorum",
+        "covid_tracking",
+        "USAFacts",
+        "other"
+      ]
+    },
+    "AnomalyAnnotation": {
+      "title": "AnomalyAnnotation",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "title": "Date",
+          "description": "Date of anomaly",
+          "type": "string",
+          "format": "date"
+        },
+        "original_observation": {
+          "title": "Original Observation",
+          "description": "Original value on this date detected as anomalous.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "date",
+        "original_observation"
+      ]
+    }
+  }
+}

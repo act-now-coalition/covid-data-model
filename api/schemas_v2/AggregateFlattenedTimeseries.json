@@ -165,17 +165,38 @@
         "vaccinesDistributed": {
           "title": "Vaccinesdistributed",
           "description": "Number of vaccine doses distributed.",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "vaccinationsInitiated": {
           "title": "Vaccinationsinitiated",
           "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "vaccinationsCompleted": {
           "title": "Vaccinationscompleted",
           "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -207,12 +228,7 @@
       "type": "object",
       "properties": {
         "source": {
-          "description": "Source data for test positivity ratio.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/TestPositivityRatioMethod"
-            }
-          ]
+          "$ref": "#/definitions/TestPositivityRatioMethod"
         }
       },
       "required": [
@@ -247,12 +263,7 @@
           "type": "integer"
         },
         "currentIcuCovidMethod": {
-          "description": "Method used to determine number of current ICU patients with covid.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/CovidPatientsMethod"
-            }
-          ]
+          "$ref": "#/definitions/CovidPatientsMethod"
         },
         "currentIcuNonCovid": {
           "title": "Currenticunoncovid",
@@ -260,12 +271,7 @@
           "type": "integer"
         },
         "currentIcuNonCovidMethod": {
-          "description": "Method used to determine number of current ICU patients without covid.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/NonCovidPatientsMethod"
-            }
-          ]
+          "$ref": "#/definitions/NonCovidPatientsMethod"
         }
       },
       "required": [
@@ -293,7 +299,14 @@
           ]
         },
         "testPositivityRatioDetails": {
-          "$ref": "#/definitions/TestPositivityRatioDetails"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/TestPositivityRatioDetails"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "caseDensity": {
           "title": "Casedensity",
@@ -355,10 +368,41 @@
           ]
         },
         "icuHeadroomDetails": {
-          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ICUHeadroomMetricDetails"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "icuCapacityRatio": {
           "title": "Icucapacityratio",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vaccinationsInitiatedRatio": {
+          "title": "Vaccinationsinitiatedratio",
+          "description": "Ratio of population that has initiated vaccination.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vaccinationsCompletedRatio": {
+          "title": "Vaccinationscompletedratio",
+          "description": "Ratio of population that has completed vaccination.",
           "anyOf": [
             {
               "type": "number"
@@ -397,12 +441,7 @@
       "type": "object",
       "properties": {
         "overall": {
-          "description": "Overall risk level for region.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/RiskLevel"
-            }
-          ]
+          "$ref": "#/definitions/RiskLevel"
         }
       },
       "required": [
@@ -457,12 +496,26 @@
         "lat": {
           "title": "Lat",
           "description": "Latitude of point within the state or county",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "long": {
           "title": "Long",
           "description": "Longitude of point within the state or county",
-          "type": "number"
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "locationId": {
           "title": "Locationid",
@@ -503,6 +556,8 @@
         "state",
         "county",
         "fips",
+        "lat",
+        "long",
         "locationId",
         "actuals",
         "metrics",

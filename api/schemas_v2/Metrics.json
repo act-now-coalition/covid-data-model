@@ -16,7 +16,14 @@
       ]
     },
     "testPositivityRatioDetails": {
-      "$ref": "#/definitions/TestPositivityRatioDetails"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/TestPositivityRatioDetails"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "caseDensity": {
       "title": "Casedensity",
@@ -78,10 +85,41 @@
       ]
     },
     "icuHeadroomDetails": {
-      "$ref": "#/definitions/ICUHeadroomMetricDetails"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "icuCapacityRatio": {
       "title": "Icucapacityratio",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "vaccinationsInitiatedRatio": {
+      "title": "Vaccinationsinitiatedratio",
+      "description": "Ratio of population that has initiated vaccination.",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "vaccinationsCompletedRatio": {
+      "title": "Vaccinationscompletedratio",
+      "description": "Ratio of population that has completed vaccination.",
       "anyOf": [
         {
           "type": "number"
@@ -120,12 +158,7 @@
       "type": "object",
       "properties": {
         "source": {
-          "description": "Source data for test positivity ratio.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/TestPositivityRatioMethod"
-            }
-          ]
+          "$ref": "#/definitions/TestPositivityRatioMethod"
         }
       },
       "required": [
@@ -160,12 +193,7 @@
           "type": "integer"
         },
         "currentIcuCovidMethod": {
-          "description": "Method used to determine number of current ICU patients with covid.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/CovidPatientsMethod"
-            }
-          ]
+          "$ref": "#/definitions/CovidPatientsMethod"
         },
         "currentIcuNonCovid": {
           "title": "Currenticunoncovid",
@@ -173,12 +201,7 @@
           "type": "integer"
         },
         "currentIcuNonCovidMethod": {
-          "description": "Method used to determine number of current ICU patients without covid.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/NonCovidPatientsMethod"
-            }
-          ]
+          "$ref": "#/definitions/NonCovidPatientsMethod"
         }
       },
       "required": [
