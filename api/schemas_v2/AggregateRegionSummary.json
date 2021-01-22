@@ -35,7 +35,12 @@
       "type": "object",
       "properties": {
         "source": {
-          "$ref": "#/definitions/TestPositivityRatioMethod"
+          "description": "Source data for test positivity ratio.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TestPositivityRatioMethod"
+            }
+          ]
         }
       },
       "required": [
@@ -70,7 +75,12 @@
           "type": "integer"
         },
         "currentIcuCovidMethod": {
-          "$ref": "#/definitions/CovidPatientsMethod"
+          "description": "Method used to determine number of current ICU patients with covid.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CovidPatientsMethod"
+            }
+          ]
         },
         "currentIcuNonCovid": {
           "title": "Currenticunoncovid",
@@ -78,7 +88,12 @@
           "type": "integer"
         },
         "currentIcuNonCovidMethod": {
-          "$ref": "#/definitions/NonCovidPatientsMethod"
+          "description": "Method used to determine number of current ICU patients without covid.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/NonCovidPatientsMethod"
+            }
+          ]
         }
       },
       "required": [
@@ -248,25 +263,60 @@
       "type": "object",
       "properties": {
         "overall": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Overall risk level for region.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "testPositivityRatio": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Test positivity ratio risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "caseDensity": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Case density risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "contactTracerCapacityRatio": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Contact tracer capacity ratio risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "infectionRate": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "Infection rate risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "icuHeadroomRatio": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "ICU headroom ratio risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         },
         "icuCapacityRatio": {
-          "$ref": "#/definitions/RiskLevel"
+          "description": "ICU capacity ratio risk level.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         }
       },
       "required": [
@@ -526,7 +576,6 @@
       "type": "object",
       "properties": {
         "sources": {
-          "title": "Sources",
           "type": "array",
           "items": {
             "$ref": "#/definitions/FieldSource"
@@ -691,11 +740,16 @@
           ]
         },
         "level": {
-          "$ref": "#/definitions/AggregationLevel"
+          "description": "Level of region.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AggregationLevel"
+            }
+          ]
         },
         "lat": {
           "title": "Lat",
-          "description": "Latitude of point within the state or county",
+          "description": "Latitude of point within the state or county. Currently a placeholder.",
           "anyOf": [
             {
               "type": "number"
@@ -712,7 +766,7 @@
         },
         "long": {
           "title": "Long",
-          "description": "Longitude of point within the state or county",
+          "description": "Longitude of point within the state or county. Currently a placeholder.",
           "anyOf": [
             {
               "type": "number"

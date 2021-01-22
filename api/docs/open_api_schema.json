@@ -965,7 +965,12 @@
         "type": "object",
         "properties": {
           "source": {
-            "$ref": "#/components/schemas/TestPositivityRatioMethod"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TestPositivityRatioMethod"
+              }
+            ],
+            "description": "Source data for test positivity ratio."
           }
         },
         "description": "Details about how the test positivity ratio was calculated."
@@ -1003,7 +1008,12 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuCovidMethod": {
-            "$ref": "#/components/schemas/CovidPatientsMethod"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CovidPatientsMethod"
+              }
+            ],
+            "description": "Method used to determine number of current ICU patients with covid."
           },
           "currentIcuNonCovid": {
             "title": "Currenticunoncovid",
@@ -1011,7 +1021,12 @@
             "description": "Current number of covid patients in icu."
           },
           "currentIcuNonCovidMethod": {
-            "$ref": "#/components/schemas/NonCovidPatientsMethod"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NonCovidPatientsMethod"
+              }
+            ],
+            "description": "Method used to determine number of current ICU patients without covid."
           }
         },
         "description": "Details about how the ICU Headroom Metric was calculated."
@@ -1178,7 +1193,12 @@
         "type": "object",
         "properties": {
           "overall": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Overall risk level for region."
           }
         },
         "description": "Base model for API output."
@@ -1332,25 +1352,60 @@
         "type": "object",
         "properties": {
           "overall": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Overall risk level for region."
           },
           "testPositivityRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Test positivity ratio risk level."
           },
           "caseDensity": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Case density risk level."
           },
           "contactTracerCapacityRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Contact tracer capacity ratio risk level."
           },
           "infectionRate": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Infection rate risk level."
           },
           "icuHeadroomRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "ICU headroom ratio risk level."
           },
           "icuCapacityRatio": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "ICU capacity ratio risk level."
           }
         },
         "description": "COVID risk levels for a region."
@@ -1401,7 +1456,6 @@
         "type": "object",
         "properties": {
           "sources": {
-            "title": "Sources",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FieldSource"
@@ -1579,7 +1633,12 @@
             "description": "County name"
           },
           "level": {
-            "$ref": "#/components/schemas/AggregationLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AggregationLevel"
+              }
+            ],
+            "description": "Level of region."
           },
           "lat": {
             "title": "Lat",
@@ -1591,7 +1650,7 @@
                 "type": "null"
               }
             ],
-            "description": "Latitude of point within the state or county"
+            "description": "Latitude of point within the state or county. Currently a placeholder."
           },
           "locationId": {
             "title": "Locationid",
@@ -1608,7 +1667,7 @@
                 "type": "null"
               }
             ],
-            "description": "Longitude of point within the state or county"
+            "description": "Longitude of point within the state or county. Currently a placeholder."
           },
           "population": {
             "title": "Population",
@@ -1971,7 +2030,12 @@
         "type": "object",
         "properties": {
           "overall": {
-            "$ref": "#/components/schemas/RiskLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Overall risk level for region."
           },
           "date": {
             "title": "Date",
@@ -2000,6 +2064,7 @@
           "annotations",
           "lastUpdatedDate",
           "url",
+          "metricsTimeseries",
           "actualsTimeseries",
           "riskLevelsTimeseries"
         ],
@@ -2040,7 +2105,12 @@
             "description": "County name"
           },
           "level": {
-            "$ref": "#/components/schemas/AggregationLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AggregationLevel"
+              }
+            ],
+            "description": "Level of region."
           },
           "lat": {
             "title": "Lat",
@@ -2052,7 +2122,7 @@
                 "type": "null"
               }
             ],
-            "description": "Latitude of point within the state or county"
+            "description": "Latitude of point within the state or county. Currently a placeholder."
           },
           "locationId": {
             "title": "Locationid",
@@ -2069,7 +2139,7 @@
                 "type": "null"
               }
             ],
-            "description": "Longitude of point within the state or county"
+            "description": "Longitude of point within the state or county. Currently a placeholder."
           },
           "population": {
             "title": "Population",
@@ -2115,14 +2185,7 @@
           },
           "metricsTimeseries": {
             "title": "Metricstimeseries",
-            "anyOf": [
-              {
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "array",
             "items": {
               "$ref": "#/components/schemas/MetricsTimeseriesRow"
             }

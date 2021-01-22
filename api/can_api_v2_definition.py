@@ -339,14 +339,14 @@ class RegionSummary(base_model.APIBaseModel):
 
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")
     lat: Optional[float] = pydantic.Field(
-        ..., description="Latitude of point within the state or county"
+        ..., description="Latitude of point within the state or county. Currently a placeholder."
     )
     locationId: str = pydantic.Field(
         ...,
         description="Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",
     )
     long: Optional[float] = pydantic.Field(
-        ..., description="Longitude of point within the state or county"
+        ..., description="Longitude of point within the state or county. Currently a placeholder."
     )
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
@@ -366,7 +366,7 @@ class RegionSummary(base_model.APIBaseModel):
 class RegionSummaryWithTimeseries(RegionSummary):
     """Summary data for a region with prediction timeseries data and actual timeseries data."""
 
-    metricsTimeseries: List[MetricsTimeseriesRow] = pydantic.Field(None)
+    metricsTimeseries: List[MetricsTimeseriesRow] = pydantic.Field(...)
     actualsTimeseries: List[ActualsTimeseriesRow] = pydantic.Field(...)
     riskLevelsTimeseries: List[RiskLevelTimeseriesRow] = pydantic.Field(...)
 

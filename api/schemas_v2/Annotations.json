@@ -147,7 +147,6 @@
       "type": "object",
       "properties": {
         "sources": {
-          "title": "Sources",
           "type": "array",
           "items": {
             "$ref": "#/definitions/FieldSource"
