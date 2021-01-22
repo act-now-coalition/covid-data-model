@@ -85,6 +85,8 @@ def test_build_api_output_for_intervention(nyc_regional_input, tmp_path):
     api_v2_pipeline.deploy_single_level(all_timeseries_api, AggregationLevel.COUNTY, county_output)
     expected_outputs = [
         "counties.timeseries.json",
+        "counties.timeseries.30d.json",
+        "counties.timeseries.90d.json",
         "counties.csv",
         "counties.timeseries.csv",
         "counties.json",
