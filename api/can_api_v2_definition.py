@@ -383,6 +383,26 @@ class RegionSummaryWithTimeseries(RegionSummary):
 
         return RegionSummary(**data)
 
+    def drop_dates_before(self, start_date: datetime.datetime) -> "RegionSummaryWithTimeseries":
+        """Returns a new instance with dates truncated before `start_date`.
+
+        Args:
+            start_date: Date that new timeseries should start on
+
+        Returns: RegionSummaryWithTimeseries
+        """
+        metrics_timeseries = [row for row in self.metricsTimeseries if row.date >= start_date]
+        actuals_timeseries = [row for row in self.actualsTimeseries if row.date >= start_date]
+        risk_levels_timeseries = [
+            row for row in self.riskLevelsTimeseries if row.date >= start_date
+        ]
+        updates = {
+            "metricsTimeseries": metrics_timeseries,
+            "actualsTimeseries": actuals_timeseries,
+            "riskLevelsTimeseries": risk_levels_timeseries,
+        }
+        return self.copy(update=updates)
+
 
 class AggregateRegionSummary(base_model.APIBaseModel):
     """Summary data for multiple regions."""
