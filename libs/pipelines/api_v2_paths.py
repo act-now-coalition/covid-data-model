@@ -1,3 +1,4 @@
+from typing import Optional
 import enum
 import dataclasses
 import pathlib
@@ -56,8 +57,14 @@ class APIOutputPathBuilder:
         self,
         aggregate_timeseries_summary: can_api_v2_definition.AggregateRegionSummaryWithTimeseries,
         file_type: FileType,
+        days_back: Optional[int] = None,
     ) -> str:
         assert file_type is FileType.JSON
+
+        if days_back:
+            # Including number of days that this file includes
+            return self.root / f"{self.region_key}.timeseries.{days_back}d.{file_type.suffix}"
+
         return self.root / f"{self.region_key}.timeseries.{file_type.suffix}"
 
     def bulk_summary(

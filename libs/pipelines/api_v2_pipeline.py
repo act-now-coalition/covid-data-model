@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
+import datetime
 import pathlib
 import time
 import pandas as pd
@@ -229,6 +230,19 @@ def deploy_single_level(
     output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON)
     deploy_json_api_output(bulk_timeseries, output_path)
 
+    for days_back in [30, 90]:
+        start_date = datetime.datetime.utcnow() + datetime.timedelta(days=-days_back)
+        truncated_timeseries = [
+            region_ts.drop_dates_before(start_date) for region_ts in all_timeseries
+        ]
+        truncated_bulk_timeseries = AggregateRegionSummaryWithTimeseries(
+            __root__=truncated_timeseries
+        )
+        output_path = path_builder.bulk_timeseries(
+            truncated_bulk_timeseries, FileType.JSON, days_back=days_back
+        )
+        deploy_json_api_output(truncated_bulk_timeseries, output_path)
+
     bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
     output_path = path_builder.bulk_summary(bulk_summaries, FileType.JSON)
     deploy_json_api_output(bulk_summaries, output_path)
@@ -251,7 +265,6 @@ def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathl
     # Excluding fields that are not specifically included in a model.
     # This lets a field be undefined and not included in the actual json.
     serialized_result = region_result.json(exclude_unset=True)
-
     output_path.write_text(serialized_result)
 
 

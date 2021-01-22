@@ -391,6 +391,7 @@ class RegionSummaryWithTimeseries(RegionSummary):
 
         Returns: RegionSummaryWithTimeseries
         """
+        start_date = start_date.date()
         metrics_timeseries = [row for row in self.metricsTimeseries if row.date >= start_date]
         actuals_timeseries = [row for row in self.actualsTimeseries if row.date >= start_date]
         risk_levels_timeseries = [
