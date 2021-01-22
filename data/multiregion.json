@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "fa2e5bc1c858edca6b80450f66b72baaf7b91cc2",
+    "sha": "e1e7e6b072db86e94b20fac72329c01be49c9d1e",
     "branch": "main",
-    "is_dirty": false
+    "is_dirty": true
   },
   "model_git_info": {
-    "sha": "dff4f486777dc9093f6e196f1131e2973fada98f",
-    "branch": "main",
+    "sha": "5a7df1d3e685e8867b72587a0cd9938fe01b6f39",
+    "branch": "backfill-vaccines-initiated",
     "is_dirty": false
   },
-  "updated_at": "2021-01-22T02:45:33.852653"
+  "updated_at": "2021-01-22T02:54:33.587544"
 }
