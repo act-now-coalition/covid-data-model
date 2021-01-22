@@ -121,14 +121,7 @@
           ]
         },
         "testPositivityRatioDetails": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/TestPositivityRatioDetails"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/TestPositivityRatioDetails"
         },
         "caseDensity": {
           "title": "Casedensity",
@@ -190,14 +183,7 @@
           ]
         },
         "icuHeadroomDetails": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ICUHeadroomMetricDetails"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
         },
         "icuCapacityRatio": {
           "title": "Icucapacityratio",
@@ -460,6 +446,21 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinesDistributed": {
+          "title": "Vaccinesdistributed",
+          "description": "Number of vaccine doses distributed.",
+          "type": "integer"
+        },
+        "vaccinationsInitiated": {
+          "title": "Vaccinationsinitiated",
+          "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n",
+          "type": "integer"
+        },
+        "vaccinationsCompleted": {
+          "title": "Vaccinationscompleted",
+          "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n",
+          "type": "integer"
         }
       },
       "required": [
@@ -472,6 +473,171 @@
         "icuBeds",
         "newCases"
       ]
+    },
+    "FieldSource": {
+      "title": "FieldSource",
+      "description": "The data source of a field (metric or actual). This enumeration lists the places from which\nCAN fetches data. The source is tracked on a per field and region timeseries basis.",
+      "enum": [
+        "NYTimes",
+        "CMSTesting",
+        "CDCTesting",
+        "HHSTesting",
+        "Valorum",
+        "covid_tracking",
+        "other"
+      ]
+    },
+    "AnomalyAnnotation": {
+      "title": "AnomalyAnnotation",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "title": "Date",
+          "description": "Date of anomaly",
+          "type": "string",
+          "format": "date"
+        },
+        "original_observation": {
+          "title": "Original Observation",
+          "description": "Original value on this date detected as anomalous.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "date",
+        "original_observation"
+      ]
+    },
+    "FieldAnnotations": {
+      "title": "FieldAnnotations",
+      "description": "Annotations associated with one field.",
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FieldSource"
+          }
+        },
+        "anomalies": {
+          "title": "Anomalies",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AnomalyAnnotation"
+          }
+        }
+      },
+      "required": [
+        "sources",
+        "anomalies"
+      ]
+    },
+    "Annotations": {
+      "title": "Annotations",
+      "description": "Annotations for each field.",
+      "type": "object",
+      "properties": {
+        "cases": {
+          "title": "Cases",
+          "description": "Annotations for cases",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "deaths": {
+          "title": "Deaths",
+          "description": "Annotations for deaths",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "positiveTests": {
+          "title": "Positivetests",
+          "description": "Annotations for positiveTests",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "negativeTests": {
+          "title": "Negativetests",
+          "description": "Annotations for negativeTests",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "contactTracers": {
+          "title": "Contacttracers",
+          "description": "Annotations for contactTracers",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "hospitalBeds": {
+          "title": "Hospitalbeds",
+          "description": "Annotations for hospitalBeds",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "icuBeds": {
+          "title": "Icubeds",
+          "description": "Annotations for icuBeds",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "newCases": {
+          "title": "Newcases",
+          "description": "Annotations for newCases",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinesDistributed": {
+          "title": "Vaccinesdistributed",
+          "description": "Annotations for vaccinesDistributed",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinationsInitiated": {
+          "title": "Vaccinationsinitiated",
+          "description": "Annotations for vaccinationsInitiated",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinationsCompleted": {
+          "title": "Vaccinationscompleted",
+          "description": "Annotations for vaccinationsCompleted",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        }
+      }
     },
     "RegionSummary": {
       "title": "RegionSummary",
@@ -570,6 +736,9 @@
         "actuals": {
           "$ref": "#/definitions/Actuals"
         },
+        "annotations": {
+          "$ref": "#/definitions/Annotations"
+        },
         "lastUpdatedDate": {
           "title": "Lastupdateddate",
           "description": "Date of latest data",
@@ -602,6 +771,7 @@
         "metrics",
         "riskLevels",
         "actuals",
+        "annotations",
         "lastUpdatedDate",
         "url"
       ]

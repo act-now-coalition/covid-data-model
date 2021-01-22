@@ -46,26 +46,12 @@
     "lat": {
       "title": "Lat",
       "description": "Latitude of point within the state or county",
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "type": "number"
     },
     "long": {
       "title": "Long",
       "description": "Longitude of point within the state or county",
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "type": "number"
     },
     "locationId": {
       "title": "Locationid",
@@ -106,8 +92,6 @@
     "state",
     "county",
     "fips",
-    "lat",
-    "long",
     "locationId",
     "actuals",
     "metrics",
@@ -269,6 +253,21 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinesDistributed": {
+          "title": "Vaccinesdistributed",
+          "description": "Number of vaccine doses distributed.",
+          "type": "integer"
+        },
+        "vaccinationsInitiated": {
+          "title": "Vaccinationsinitiated",
+          "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n",
+          "type": "integer"
+        },
+        "vaccinationsCompleted": {
+          "title": "Vaccinationscompleted",
+          "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n",
+          "type": "integer"
         }
       },
       "required": [
@@ -386,14 +385,7 @@
           ]
         },
         "testPositivityRatioDetails": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/TestPositivityRatioDetails"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/TestPositivityRatioDetails"
         },
         "caseDensity": {
           "title": "Casedensity",
@@ -455,14 +447,7 @@
           ]
         },
         "icuHeadroomDetails": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ICUHeadroomMetricDetails"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
         },
         "icuCapacityRatio": {
           "title": "Icucapacityratio",

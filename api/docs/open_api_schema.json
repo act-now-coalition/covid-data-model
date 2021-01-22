@@ -233,7 +233,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -282,7 +282,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[list of CBSA Codes](https://www.uspto.gov/web/offices/ac/ido/oeip/taf/cls_cbsa/cbsa_countyassoc.htm)\nprovided by the USPTO.  This list includes the CBSA code and corresponding counties.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -905,6 +905,21 @@
               }
             ],
             "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n"
+          },
+          "vaccinesDistributed": {
+            "title": "Vaccinesdistributed",
+            "type": "integer",
+            "description": "Number of vaccine doses distributed."
+          },
+          "vaccinationsInitiated": {
+            "title": "Vaccinationsinitiated",
+            "type": "integer",
+            "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n"
+          },
+          "vaccinationsCompleted": {
+            "title": "Vaccinationscompleted",
+            "type": "integer",
+            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
           }
         },
         "description": "Known actuals data."
@@ -1021,14 +1036,7 @@
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "testPositivityRatioDetails": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TestPositivityRatioDetails"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/TestPositivityRatioDetails"
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1090,14 +1098,7 @@
             ]
           },
           "icuHeadroomDetails": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
           },
           "icuCapacityRatio": {
             "title": "Icucapacityratio",
@@ -1151,8 +1152,6 @@
           "state",
           "county",
           "fips",
-          "lat",
-          "long",
           "locationId",
           "actuals",
           "metrics",
@@ -1202,26 +1201,12 @@
           },
           "lat": {
             "title": "Lat",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "number",
             "description": "Latitude of point within the state or county"
           },
           "long": {
             "title": "Long",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "number",
             "description": "Longitude of point within the state or county"
           },
           "locationId": {
@@ -1350,6 +1335,171 @@
         },
         "description": "COVID risk levels for a region."
       },
+      "FieldSource": {
+        "title": "FieldSource",
+        "enum": [
+          "NYTimes",
+          "CMSTesting",
+          "CDCTesting",
+          "HHSTesting",
+          "Valorum",
+          "covid_tracking",
+          "other"
+        ],
+        "description": "The data source of a field (metric or actual). This enumeration lists the places from which\nCAN fetches data. The source is tracked on a per field and region timeseries basis."
+      },
+      "AnomalyAnnotation": {
+        "title": "AnomalyAnnotation",
+        "required": [
+          "date",
+          "original_observation"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string",
+            "description": "Date of anomaly",
+            "format": "date"
+          },
+          "original_observation": {
+            "title": "Original Observation",
+            "type": "number",
+            "description": "Original value on this date detected as anomalous."
+          }
+        },
+        "description": "Base model for API output."
+      },
+      "FieldAnnotations": {
+        "title": "FieldAnnotations",
+        "required": [
+          "sources",
+          "anomalies"
+        ],
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldSource"
+            }
+          },
+          "anomalies": {
+            "title": "Anomalies",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnomalyAnnotation"
+            }
+          }
+        },
+        "description": "Annotations associated with one field."
+      },
+      "Annotations": {
+        "title": "Annotations",
+        "type": "object",
+        "properties": {
+          "cases": {
+            "title": "Cases",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for cases"
+          },
+          "deaths": {
+            "title": "Deaths",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for deaths"
+          },
+          "positiveTests": {
+            "title": "Positivetests",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for positiveTests"
+          },
+          "negativeTests": {
+            "title": "Negativetests",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for negativeTests"
+          },
+          "contactTracers": {
+            "title": "Contacttracers",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for contactTracers"
+          },
+          "hospitalBeds": {
+            "title": "Hospitalbeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for hospitalBeds"
+          },
+          "icuBeds": {
+            "title": "Icubeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for icuBeds"
+          },
+          "newCases": {
+            "title": "Newcases",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for newCases"
+          },
+          "vaccinesDistributed": {
+            "title": "Vaccinesdistributed",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinesDistributed"
+          },
+          "vaccinationsInitiated": {
+            "title": "Vaccinationsinitiated",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinationsInitiated"
+          },
+          "vaccinationsCompleted": {
+            "title": "Vaccinationscompleted",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinationsCompleted"
+          }
+        },
+        "description": "Annotations for each field."
+      },
       "RegionSummary": {
         "title": "RegionSummary",
         "required": [
@@ -1365,6 +1515,7 @@
           "metrics",
           "riskLevels",
           "actuals",
+          "annotations",
           "lastUpdatedDate",
           "url"
         ],
@@ -1462,6 +1613,9 @@
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
           },
+          "annotations": {
+            "$ref": "#/components/schemas/Annotations"
+          },
           "lastUpdatedDate": {
             "title": "Lastupdateddate",
             "type": "string",
@@ -1518,14 +1672,7 @@
             "description": "Ratio of people who test positive calculated using a 7-day rolling average."
           },
           "testPositivityRatioDetails": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TestPositivityRatioDetails"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/TestPositivityRatioDetails"
           },
           "caseDensity": {
             "title": "Casedensity",
@@ -1587,14 +1734,7 @@
             ]
           },
           "icuHeadroomDetails": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/ICUHeadroomMetricDetails"
           },
           "icuCapacityRatio": {
             "title": "Icucapacityratio",
@@ -1721,6 +1861,21 @@
             ],
             "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n"
           },
+          "vaccinesDistributed": {
+            "title": "Vaccinesdistributed",
+            "type": "integer",
+            "description": "Number of vaccine doses distributed."
+          },
+          "vaccinationsInitiated": {
+            "title": "Vaccinationsinitiated",
+            "type": "integer",
+            "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n"
+          },
+          "vaccinationsCompleted": {
+            "title": "Vaccinationscompleted",
+            "type": "integer",
+            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
+          },
           "date": {
             "title": "Date",
             "type": "string",
@@ -1770,6 +1925,7 @@
           "metrics",
           "riskLevels",
           "actuals",
+          "annotations",
           "lastUpdatedDate",
           "url",
           "actualsTimeseries",
@@ -1869,6 +2025,9 @@
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
           },
+          "annotations": {
+            "$ref": "#/components/schemas/Annotations"
+          },
           "lastUpdatedDate": {
             "title": "Lastupdateddate",
             "type": "string",
@@ -1889,14 +2048,7 @@
           },
           "metricsTimeseries": {
             "title": "Metricstimeseries",
-            "anyOf": [
-              {
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "array",
             "items": {
               "$ref": "#/components/schemas/MetricsTimeseriesRow"
             }

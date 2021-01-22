@@ -16,14 +16,7 @@
       ]
     },
     "testPositivityRatioDetails": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/TestPositivityRatioDetails"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "$ref": "#/definitions/TestPositivityRatioDetails"
     },
     "caseDensity": {
       "title": "Casedensity",
@@ -85,14 +78,7 @@
       ]
     },
     "icuHeadroomDetails": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/ICUHeadroomMetricDetails"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "$ref": "#/definitions/ICUHeadroomMetricDetails"
     },
     "icuCapacityRatio": {
       "title": "Icucapacityratio",
