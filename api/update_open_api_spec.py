@@ -40,6 +40,17 @@ state_parameter = {
     "description": "2 Letter State Cocde",
     "schema": {"type": "string"},
 }
+days_back_parameter = {
+    "name": "daysBack",
+    "in": "query",
+    "required": False,
+    "description": """
+Number of days back to include in timeseries.
+
+If not specified includes all history. Currently limited to 30 or 90 days.
+""",
+    "schema": {"type": "string", "enum": ["30", "90"]},
+}
 
 
 @dataclasses.dataclass
@@ -65,7 +76,7 @@ class APIEndpoint:
             "required": True,
             "schema": {"type": "string"},
         }
-        parameters = self.parameters + [security]
+        parameters = [security] + self.parameters
         content_type = "application/csv" if self.endpoint.endswith(".csv") else "application/json"
         return {
             "parameters": parameters,
@@ -121,7 +132,7 @@ ALL_COUNTY_SUMMARY_CSV = APIEndpoint(
 )
 ALL_COUNTY_TIMESERIES = APIEndpoint(
     endpoint="/counties.timeseries.json",
-    parameters=[],
+    parameters=[days_back_parameter],
     tags=[COUNTY_TAG],
     description="Region summaries with timeseries for all counties",
     summary="All counties timeseries",
@@ -171,7 +182,7 @@ ALL_STATE_SUMMARY_CSV = APIEndpoint(
 )
 ALL_STATE_TIMESERIES = APIEndpoint(
     endpoint="/states.timeseries.json",
-    parameters=[],
+    parameters=[days_back_parameter],
     tags=[STATE_TAG],
     description="Region summaries with timeseries for all states",
     summary="All states timeseries",
@@ -220,7 +231,7 @@ ALL_CBSA_SUMMARY_CSV = APIEndpoint(
 )
 ALL_CBSA_TIMESERIES = APIEndpoint(
     endpoint="/cbsas.timeseries.json",
-    parameters=[],
+    parameters=[days_back_parameter],
     tags=[CBSA_TAG],
     description="Region summaries with timeseries for all CBSAs",
     summary="All CBSAs timeseries",

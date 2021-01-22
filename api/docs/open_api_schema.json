@@ -35,9 +35,8 @@
       },
       "parameters": [
         {
-          "name": "fips",
-          "in": "path",
-          "description": "5 Letter County FIPS code",
+          "name": "apiKey",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -48,8 +47,9 @@
           }
         },
         {
-          "name": "apiKey",
-          "in": "query",
+          "name": "fips",
+          "in": "path",
+          "description": "5 Letter County FIPS code",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -84,9 +84,8 @@
       },
       "parameters": [
         {
-          "name": "fips",
-          "in": "path",
-          "description": "5 Letter County FIPS code",
+          "name": "apiKey",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -97,8 +96,9 @@
           }
         },
         {
-          "name": "apiKey",
-          "in": "query",
+          "name": "fips",
+          "in": "path",
+          "description": "5 Letter County FIPS code",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -133,9 +133,8 @@
       },
       "parameters": [
         {
-          "name": "state",
-          "in": "path",
-          "description": "2 Letter State Cocde",
+          "name": "apiKey",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -146,8 +145,9 @@
           }
         },
         {
-          "name": "apiKey",
-          "in": "query",
+          "name": "state",
+          "in": "path",
+          "description": "2 Letter State Cocde",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -182,9 +182,8 @@
       },
       "parameters": [
         {
-          "name": "state",
-          "in": "path",
-          "description": "2 Letter State Cocde",
+          "name": "apiKey",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -195,8 +194,9 @@
           }
         },
         {
-          "name": "apiKey",
-          "in": "query",
+          "name": "state",
+          "in": "path",
+          "description": "2 Letter State Cocde",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -231,9 +231,8 @@
       },
       "parameters": [
         {
-          "name": "cbsa_code",
-          "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
+          "name": "apiKey",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -244,8 +243,9 @@
           }
         },
         {
-          "name": "apiKey",
-          "in": "query",
+          "name": "cbsa_code",
+          "in": "path",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -280,9 +280,8 @@
       },
       "parameters": [
         {
-          "name": "cbsa_code",
-          "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
+          "name": "apiKey",
+          "in": "query",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -293,8 +292,9 @@
           }
         },
         {
-          "name": "apiKey",
-          "in": "query",
+          "name": "cbsa_code",
+          "in": "path",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -409,6 +409,23 @@
           "explode": false,
           "allowReserved": false,
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "daysBack",
+          "in": "query",
+          "description": "\nNumber of days back to include in timeseries.\n\nIf not specified includes all history. Currently limited to 30 or 90 days.\n",
+          "required": false,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "enum": [
+              "30",
+              "90"
+            ],
             "type": "string"
           }
         }
@@ -555,6 +572,23 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "daysBack",
+          "in": "query",
+          "description": "\nNumber of days back to include in timeseries.\n\nIf not specified includes all history. Currently limited to 30 or 90 days.\n",
+          "required": false,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "enum": [
+              "30",
+              "90"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -697,6 +731,23 @@
           "explode": false,
           "allowReserved": false,
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "daysBack",
+          "in": "query",
+          "description": "\nNumber of days back to include in timeseries.\n\nIf not specified includes all history. Currently limited to 30 or 90 days.\n",
+          "required": false,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "enum": [
+              "30",
+              "90"
+            ],
             "type": "string"
           }
         }
