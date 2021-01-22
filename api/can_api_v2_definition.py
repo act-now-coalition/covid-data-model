@@ -241,6 +241,13 @@ class Metrics(base_model.APIBaseModel):
     icuHeadroomDetails: Optional[ICUHeadroomMetricDetails] = pydantic.Field(None)
     icuCapacityRatio: Optional[float] = pydantic.Field(...)
 
+    vaccinationsInitiatedRatio: Optional[float] = pydantic.Field(
+        None, description=("Ratio of population that has initiated vaccination.")
+    )
+    vaccinationsCompletedRatio: Optional[float] = pydantic.Field(
+        None, description=("Ratio of population that has completed vaccination.")
+    )
+
     @staticmethod
     def empty():
         """Returns an empty Metrics object."""

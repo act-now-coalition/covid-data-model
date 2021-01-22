@@ -163,10 +163,15 @@ def build_region_timeseries(
         timeseries_row = ActualsTimeseriesRow(**actual, date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
 
-    metrics_rows = [
-        MetricsTimeseriesRow(**metric_row)
-        for metric_row in metrics_timeseries.to_dict(orient="records")
-    ]
+    metrics_rows = []
+    for metric_row in metrics_timeseries.to_dict(orient="records"):
+        # Don't include vaccinations in timeseries before first possible vaccination
+        # date to not bloat timeseries.
+        if metric_row[CommonFields.DATE] < USA_VACCINATION_START_DATE:
+            del metric_row["vaccinationsInitiatedRatio"]
+            del metric_row["vaccinationsCompletedRatio"]
+        metrics_rows.append(MetricsTimeseriesRow(**metric_row))
+
     risk_level_rows = [
         RiskLevelTimeseriesRow(**row) for row in risk_level_timeseries.to_dict(orient="records")
     ]

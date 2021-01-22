@@ -99,9 +99,9 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
     CommonFields.TEST_POSITIVITY_14D: [CMSTestingDataset],
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
-    CommonFields.VACCINES_DISTRIBUTED: [CDCVaccinesDataset, CANScraperStateProviders],
-    CommonFields.VACCINATIONS_INITIATED: [CDCVaccinesDataset, CANScraperStateProviders],
-    CommonFields.VACCINATIONS_COMPLETED: [CDCVaccinesDataset, CANScraperStateProviders],
+    CommonFields.VACCINES_DISTRIBUTED: [CANScraperStateProviders, CDCVaccinesDataset],
+    CommonFields.VACCINATIONS_INITIATED: [CANScraperStateProviders, CDCVaccinesDataset],
+    CommonFields.VACCINATIONS_COMPLETED: [CANScraperStateProviders, CDCVaccinesDataset],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {

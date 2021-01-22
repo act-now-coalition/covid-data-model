@@ -130,6 +130,7 @@ def test_annotation(rt_dataset, icu_dataset):
             ),
             CommonFields.VACCINES_DISTRIBUTED: [None, 110, 220],
             CommonFields.VACCINATIONS_INITIATED: [None, None, 100],
+            CommonFields.VACCINATIONS_COMPLETED: [None, None, 50],
         },
         region=region,
         static={
