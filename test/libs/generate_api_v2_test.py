@@ -124,6 +124,14 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_datase
         else:
             assert "vaccinationsInitiated" in row_data
 
+    # Test vaccination fields aren't in before start date
+    for row in region_timeseries.metricsTimeseries:
+        row_data = row.dict(exclude_unset=True)
+        if row.date < build_api_v2.USA_VACCINATION_START_DATE.date():
+            assert "vaccinationsInitiatedRatio" not in row_data
+        else:
+            assert "vaccinationsInitiatedRatio" in row_data
+
     summary = build_api_v2.build_region_summary(nyc_timeseries, latest_metric, risk_levels, log)
 
     assert summary.dict() == region_timeseries.region_summary.dict()

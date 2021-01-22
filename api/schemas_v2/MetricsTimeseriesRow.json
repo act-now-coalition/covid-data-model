@@ -16,7 +16,14 @@
       ]
     },
     "testPositivityRatioDetails": {
-      "$ref": "#/definitions/TestPositivityRatioDetails"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/TestPositivityRatioDetails"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "caseDensity": {
       "title": "Casedensity",
@@ -78,10 +85,41 @@
       ]
     },
     "icuHeadroomDetails": {
-      "$ref": "#/definitions/ICUHeadroomMetricDetails"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ICUHeadroomMetricDetails"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "icuCapacityRatio": {
       "title": "Icucapacityratio",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "vaccinationsInitiatedRatio": {
+      "title": "Vaccinationsinitiatedratio",
+      "description": "Ratio of population that has initiated vaccination.",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "vaccinationsCompletedRatio": {
+      "title": "Vaccinationscompletedratio",
+      "description": "Ratio of population that has completed vaccination.",
       "anyOf": [
         {
           "type": "number"

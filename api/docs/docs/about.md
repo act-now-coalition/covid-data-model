@@ -2,7 +2,7 @@
 id: about
 title: Covid Act Now API
 sidebar_label: About
-description: The Covid Act Now API provides Coronavirus data and metrics for all 50 US states and 3000+ counties updated daily.
+description: Latest Covid-19 data and metrics. Power dashboards, websites, and apps.  Data tracking all US states, counties, and metros.  Register for an API key.
 slug: /
 ---
 

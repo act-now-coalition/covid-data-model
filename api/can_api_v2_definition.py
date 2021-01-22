@@ -241,6 +241,13 @@ class Metrics(base_model.APIBaseModel):
     icuHeadroomDetails: Optional[ICUHeadroomMetricDetails] = pydantic.Field(None)
     icuCapacityRatio: Optional[float] = pydantic.Field(...)
 
+    vaccinationsInitiatedRatio: Optional[float] = pydantic.Field(
+        None, description=("Ratio of population that has initiated vaccination.")
+    )
+    vaccinationsCompletedRatio: Optional[float] = pydantic.Field(
+        None, description=("Ratio of population that has completed vaccination.")
+    )
+
     @staticmethod
     def empty():
         """Returns an empty Metrics object."""
@@ -332,14 +339,14 @@ class RegionSummary(base_model.APIBaseModel):
 
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")
     lat: Optional[float] = pydantic.Field(
-        ..., description="Latitude of point within the state or county"
+        ..., description="Latitude of point within the state or county. Currently a placeholder."
     )
     locationId: str = pydantic.Field(
         ...,
         description="Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",
     )
     long: Optional[float] = pydantic.Field(
-        ..., description="Longitude of point within the state or county"
+        ..., description="Longitude of point within the state or county. Currently a placeholder."
     )
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
@@ -359,7 +366,7 @@ class RegionSummary(base_model.APIBaseModel):
 class RegionSummaryWithTimeseries(RegionSummary):
     """Summary data for a region with prediction timeseries data and actual timeseries data."""
 
-    metricsTimeseries: List[MetricsTimeseriesRow] = pydantic.Field(None)
+    metricsTimeseries: List[MetricsTimeseriesRow] = pydantic.Field(...)
     actualsTimeseries: List[ActualsTimeseriesRow] = pydantic.Field(...)
     riskLevelsTimeseries: List[RiskLevelTimeseriesRow] = pydantic.Field(...)
 
@@ -400,8 +407,12 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
         ...,
         description="Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
     )
-    lat: float = pydantic.Field(None, description="Latitude of point within the state or county")
-    long: float = pydantic.Field(None, description="Longitude of point within the state or county")
+    lat: Optional[float] = pydantic.Field(
+        ..., description="Latitude of point within the state or county"
+    )
+    long: Optional[float] = pydantic.Field(
+        ..., description="Longitude of point within the state or county"
+    )
     locationId: str = pydantic.Field(
         ...,
         description="Location ID as defined here: https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes",
