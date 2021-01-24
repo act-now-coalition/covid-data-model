@@ -37,7 +37,7 @@ df_regions = df_regions.reset_index()  # Move location_id to from index to regul
 df_regions["id"] = df_regions[CommonFields.LOCATION_ID]
 
 # These columns are from OneRegion... missing LOCATION_ID of timeseries.TAG_INDEX_FIELDS
-TAG_TABLE_COLUMNS = [TagField.VARIABLE, TagField.TYPE, TagField.DATE, TagField.CONTENT]
+TAG_TABLE_COLUMNS = [TagField.VARIABLE, TagField.TYPE, TagField.CONTENT]
 
 
 app.layout = html.Div(
@@ -88,12 +88,8 @@ def update_figure(selected_rows):
     one_region = ds.get_one_region(
         pipeline.Region.from_location_id(more_itertools.one(selected_rows))
     )
-    interesting_ts = one_region.data.set_index(CommonFields.DATE)[
-        [c for c in one_region.data.columns if ("test" in c or c in ("cases", "deaths"))]
-    ]
-    fig = px.scatter(
-        interesting_ts.diff().reset_index(), x="date", y=interesting_ts.columns.to_list()
-    )
+    interesting_ts = one_region.data.set_index(CommonFields.DATE).select_dtypes(include="number")
+    fig = px.scatter(interesting_ts.reset_index(), x="date", y=interesting_ts.columns.to_list())
     tag_df = one_region.tag.reset_index()
     assert list(tag_df.columns) == TAG_TABLE_COLUMNS
     return fig, tag_df.to_dict("records")
