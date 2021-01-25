@@ -15,6 +15,7 @@ import pyseir.cli
 import pyseir.run
 
 from api import update_open_api_spec
+from api import data_overview_builder
 from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.metrics import test_positivity
@@ -49,13 +50,20 @@ def main():
     default="api/docs/open_api_schema.json",
 )
 @click.option(
+    "--data-overview-path",
+    "-d",
+    type=pathlib.Path,
+    help="Path of data overview documentation page.",
+    default="api/docs/docs/data.md",
+)
+@click.option(
     "--schemas-output-dir",
     "-s",
     type=pathlib.Path,
     help="Output directory json-schema outputs.",
     default="api/schemas_v2/",
 )
-def update_v2_schemas(api_output_path, schemas_output_dir):
+def update_schemas(api_output_path, data_overview_path, schemas_output_dir):
     """Updates all public facing API schemas."""
     spec = update_open_api_spec.construct_open_api_spec()
     api_output_path.write_text(json.dumps(spec, indent=2))
@@ -65,6 +73,10 @@ def update_v2_schemas(api_output_path, schemas_output_dir):
         path = schemas_output_dir / f"{schema.__name__}.json"
         _logger.info(f"Updating schema {schema} to {path}")
         path.write_text(schema.schema_json(indent=2))
+
+    _logger.info(f"Updating data overview page -> {data_overview_path}")
+    output = data_overview_builder.build_sections()
+    data_overview_path.write_text(output)
 
 
 @main.command()

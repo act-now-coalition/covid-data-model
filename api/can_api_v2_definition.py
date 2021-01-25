@@ -91,13 +91,12 @@ class Actuals(base_model.APIBaseModel):
     """Known actuals data."""
 
     cases: Optional[int] = pydantic.Field(
-        ..., description="Cumulative number of confirmed or suspected cases"
+        ..., description="Cumulative confirmed or suspected cases."
     )
     deaths: Optional[int] = pydantic.Field(
         ...,
         description=(
-            "Cumulative number of deaths that are suspected or "
-            "confirmed to have been caused by COVID-19"
+            "Cumulative deaths that are suspected or confirmed to have been caused by COVID-19."
         ),
     )
     positiveTests: Optional[int] = pydantic.Field(
@@ -108,10 +107,28 @@ class Actuals(base_model.APIBaseModel):
     )
     contactTracers: Optional[int] = pydantic.Field(..., description="Number of Contact Tracers")
     hospitalBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
-        ..., description="Information about hospital bed utilization"
+        ...,
+        description="""
+Information about acute bed utilization details.
+
+Fields:
+ * capacity - Current staffed acute bed capacity.
+ * currentUsageTotal - Total number of acute beds currently in use
+ * currentUsageCovid - Number of acute beds currently in use by COVID patients.
+ * typicalUsageRate - Typical acute bed utilization rate.
+""",
     )
     icuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
-        ..., description="Information about ICU bed utilization"
+        ...,
+        description="""
+Information about ICU bed utilization details.
+
+Fields:
+ * capacity - Current staffed ICU bed capacity.
+ * currentUsageTotal - Total number of ICU beds currently in use
+ * currentUsageCovid - Number of ICU beds currently in use by COVID patients.
+ * typicalUsageRate - Typical ICU utilization rate.
+""",
     )
     newCases: Optional[int] = pydantic.Field(
         ...,
@@ -121,11 +138,14 @@ New confirmed or suspected cases.
 New cases are a processed timeseries of cases - summing new cases may not equal
 the cumulative case count.
 
-Notable exceptions:
+Processing steps:
  1. If a region does not report cases for a period of time, the first day
     cases start reporting again will not be included. This day likely includes
     multiple days worth of cases and can be misleading to the overall series.
  2. Any days with negative new cases are removed.
+ 3. An outlier detection filter is applied to the timeseries, removing any data points that
+    seem improbable given recent case numbers.  Many times this is due to a backfill of
+    previously unreported cases.
 """,
     )
     vaccinesDistributed: Optional[int] = pydantic.Field(
@@ -136,7 +156,7 @@ Notable exceptions:
         description="""
 Number of vaccinations initiated.
 
-This value may vary by type of vaccine, but for Moderna and Pfizer, this indicates
+This value may vary by type of vaccine, but for Moderna and Pfizer this indicates
 number of people vaccinated with the first dose.
 """,
     )
@@ -145,7 +165,7 @@ number of people vaccinated with the first dose.
         description="""
 Number of vaccinations completed.
 
-This value may vary by type of vaccine, but for Moderna and Pfizer, this indicates
+This value may vary by type of vaccine, but for Moderna and Pfizer this indicates
 number of people vaccinated with both the first and second dose.
 """,
     )
@@ -239,7 +259,10 @@ class Metrics(base_model.APIBaseModel):
     )
     icuHeadroomRatio: Optional[float] = pydantic.Field(...)
     icuHeadroomDetails: Optional[ICUHeadroomMetricDetails] = pydantic.Field(None)
-    icuCapacityRatio: Optional[float] = pydantic.Field(...)
+    icuCapacityRatio: Optional[float] = pydantic.Field(
+        ...,
+        description="Ratio of staffed intensive care unit (ICU) beds that are currently in use.",
+    )
 
     vaccinationsInitiatedRatio: Optional[float] = pydantic.Field(
         None, description=("Ratio of population that has initiated vaccination.")
