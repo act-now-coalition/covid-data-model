@@ -22,9 +22,11 @@ Learn how to query:
 - **[Historic values for all states, counties, and metros](#historic-values-for-all-states-counties-or-metros)**
 - **[Current and historic values for an individual state, county, or metro area](#individual-locations)**
 
+Details on the contents of each endpoint are available in the [API Reference](/api)
+
 ### Current values for all states, counties, or metros
 
-These endpoints contain the latest available data for all states, counties, and cbsas (metros).
+These endpoints contain the latest available data (a single, scalar value per field) for all states, counties, and CBSAs (metros).
 
 Each file contains all locations in the region type.
 For example, `https://api.covidactnow.org/v2/counties.csv?apiKey=YOUR_KEY_HERE` contains all US counties.
@@ -49,7 +51,7 @@ https://api.covidactnow.org/v2/cbsas.json?apiKey=YOUR_KEY_HERE
 
 ### Historic values for all states, counties, or metros
 
-These files contain the entire history for all states, counties, and cbsas (metros).
+These files contain the entire history (a timeseries for every field) for all states, counties, and cbsas (metros).
 
 #### CSV format
 
