@@ -20,25 +20,24 @@ RiskLevels = can_api_v2_definition.RiskLevels
 class Fields:
     actuals: List[str]
     metrics: List[str]
-    risk_levels: List[str]
 
 
-CASES_FIELDS = Fields(
-    ["cases", "newCases"],
-    ["caseDensity", "infectionRate", "infectionRateCI90"],
-    ["infectionRate", "caseDensity"],
-)
+CASES_FIELDS = Fields(["cases", "newCases"], ["caseDensity", "infectionRate", "infectionRateCI90"],)
 
-DEATHS_FIELDS = Fields(["deaths"], [], [])
+DEATHS_FIELDS = Fields(["deaths"], [])
 
 HOSPITALIZATIONS_FIELDS = Fields(
-    ["icuBeds", "hospitalBeds"], ["icuCapacityRatio", "icuHeadroomRatio"], []
+    ["icuBeds", "hospitalBeds"], ["icuCapacityRatio", "icuHeadroomRatio"],
 )
 
 VACCINATION_FIELDS = Fields(
     ["vaccinesDistributed", "vaccinationsInitiated", "vaccinationsCompleted"],
     ["vaccinationsInitiatedRatio", "vaccinationsCompletedRatio"],
-    [],
+)
+
+
+TESTING_FIELDS = Fields(
+    ["positiveTests", "negativeTests"], ["testPositivityRatio", "testPositivityRatioDetails"],
 )
 
 
@@ -56,9 +55,10 @@ CASE_DESCRIPTION = """
 """
 SECTIONS = [
     Section("Cases", CASES_FIELDS),
-    Section("Deaths", DEATHS_FIELDS),
+    Section("Tests", TESTING_FIELDS),
     Section("Hospitalizations", HOSPITALIZATIONS_FIELDS),
     Section("Vaccinations", VACCINATION_FIELDS),
+    Section("Deaths", DEATHS_FIELDS),
 ]
 
 
@@ -99,17 +99,12 @@ def build_section_block(section: Section):
     metrics_fields = "\n".join(
         _format_field(Metrics, field_name, "metrics") for field_name in section.fields.metrics
     )
-    risk_levels_fields = "\n".join(
-        _format_field(RiskLevels, field_name, "riskLevels")
-        for field_name in section.fields.risk_levels
-    )
 
     template = f"""
 ## {section.name}
 
 {actuals_fields}
 {metrics_fields}
-
     """
     return template
 
