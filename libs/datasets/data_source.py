@@ -30,6 +30,7 @@ class DataSource(object):
         self.provenance = provenance
 
     @classmethod
+    @lru_cache(None)
     def local(cls) -> "DataSource":
         """Builds data from local covid-public-data github repo.
 

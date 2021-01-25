@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
@@ -33,6 +35,7 @@ class TestAndTraceData(data_source.DataSource):
         return data
 
     @classmethod
+    @lru_cache(None)
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH

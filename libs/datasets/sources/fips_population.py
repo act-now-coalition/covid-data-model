@@ -1,4 +1,6 @@
 import pathlib
+from functools import lru_cache
+
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
@@ -53,6 +55,7 @@ class FIPSPopulation(data_source.DataSource):
         super().__init__(data)
 
     @classmethod
+    @lru_cache(None)
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         return cls(data_root / cls.FILE_PATH)

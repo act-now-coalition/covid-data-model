@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
@@ -15,6 +17,7 @@ class CMSTestingDataset(data_source.DataSource):
     COMMON_FIELD_MAP = {f: f for f in {CommonFields.TEST_POSITIVITY_14D}}
 
     @classmethod
+    @lru_cache(None)
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH

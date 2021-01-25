@@ -27,6 +27,7 @@ class HHSHospitalDataset(data_source.DataSource):
     }
 
     @classmethod
+    @lru_cache(None)
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH

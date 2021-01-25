@@ -1,4 +1,7 @@
-from itertools import chain
+from typing import Dict
+from typing import List
+from typing import Mapping
+from typing import NewType
 from typing import Optional
 import logging
 import pathlib
@@ -9,6 +12,7 @@ import structlog
 
 import click
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldName
 
 from libs import google_sheet_helpers
 from libs import pipeline
@@ -19,7 +23,6 @@ from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
     ALL_FIELDS_FEATURE_DEFINITION,
 )
-from libs.datasets.timeseries import DatasetName
 from libs.datasets import timeseries
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
@@ -31,6 +34,11 @@ import pyseir.icu.utils
 from pyseir.icu import infer_icu
 
 TailFilter = tail_filter.TailFilter
+
+
+FieldDatasetsDict = NewType(
+    "FieldDatasetsDict", Dict[FieldName, List[timeseries.MultiRegionDataset]]
+)
 
 
 CUMULATIVE_FIELDS_TO_FILTER = [
@@ -83,26 +91,16 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
-    data_source_classes = set(
-        chain(
-            chain.from_iterable(ALL_FIELDS_FEATURE_DEFINITION.values()),
-            chain.from_iterable(ALL_TIMESERIES_FEATURE_DEFINITION.values()),
-        )
-    )
-    data_sources = {
-        data_source_cls.SOURCE_NAME: data_source_cls.local().multi_region_dataset()
-        for data_source_cls in data_source_classes
-    }
+    timeseries_field_datasets = build_field_datasets(ALL_TIMESERIES_FEATURE_DEFINITION)
+    static_field_datasets = build_field_datasets(ALL_FIELDS_FEATURE_DEFINITION)
     if state or fips:
-        data_sources = {
-            name: dataset.get_subset(state=state, fips=fips)
-            # aggregation_level=AggregationLevel.STATE)
-            for name, dataset in data_sources.items()
-        }
+        timeseries_field_datasets = filter_field_datasets(
+            timeseries_field_datasets, state=state, fips=fips
+        )
+        static_field_datasets = filter_field_datasets(static_field_datasets, state=state, fips=fips)
+
     multiregion_dataset = timeseries.combined_datasets(
-        data_sources,
-        build_field_dataset_source(ALL_TIMESERIES_FEATURE_DEFINITION),
-        build_field_dataset_source(ALL_FIELDS_FEATURE_DEFINITION),
+        timeseries_field_datasets, static_field_datasets
     )
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
     _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
@@ -237,12 +235,22 @@ def update_case_based_icu_utilization_weights():
         json.dump(output, f, indent=2, sort_keys=True)
 
 
-def build_field_dataset_source(feature_definition_config):
+def build_field_datasets(
+    feature_definition_config: combined_datasets.FeatureDataSourceMap,
+) -> FieldDatasetsDict:
     feature_definition = {
         # timeseries.combined_datasets has the highest priority first.
         # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
-        field_name: list(reversed(list(DatasetName(cls.SOURCE_NAME) for cls in classes)))
+        field_name: list(reversed(list(cls.local().multi_region_dataset() for cls in classes)))
         for field_name, classes in feature_definition_config.items()
         if classes
     }
     return feature_definition
+
+
+def filter_field_datasets(field_datasets: FieldDatasetsDict, *, state, fips) -> FieldDatasetsDict:
+    assert state or fips
+    return {
+        field_name: [ds.get_subset(state=state, fips=fips) for ds in datasets]
+        for field_name, datasets in field_datasets.items()
+    }

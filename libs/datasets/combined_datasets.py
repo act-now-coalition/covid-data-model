@@ -53,6 +53,11 @@ FeatureDataSourceMap = NewType(
 )
 
 
+class HHSHospitalDatasetOnlyTX(HHSHospitalDataset):
+    def multi_region_dataset(self) -> MultiRegionDataset:
+        return super().multi_region_dataset().get_subset(state="TX")
+
+
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
 # support overlaying values. i.e. a row of
@@ -81,6 +86,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         TexasHospitalizations,
         HHSHospitalDataset,
+        HHSHospitalDatasetOnlyTX,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalDataset],
     CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],

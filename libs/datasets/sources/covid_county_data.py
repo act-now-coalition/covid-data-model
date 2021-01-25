@@ -156,6 +156,7 @@ class CovidCountyDataDataSource(data_source.DataSource):
         return df, provenance_series
 
     @classmethod
+    @lru_cache(None)
     def local(cls):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
