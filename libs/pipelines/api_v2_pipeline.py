@@ -1,14 +1,12 @@
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 import pathlib
-import time
 import pandas as pd
 import pydantic
 import structlog
 
 import pyseir.run
 from libs.metrics import test_positivity
-from libs import timing_utils
 from libs.pipelines.api_v2_paths import APIOutputPathBuilder
 from libs.pipelines.api_v2_paths import FileType
 from api.can_api_v2_definition import AggregateRegionSummary
