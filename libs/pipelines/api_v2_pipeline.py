@@ -6,13 +6,11 @@ import pydantic
 import structlog
 
 import pyseir.run
-from libs import timing_utils
 from libs.metrics import test_positivity
 from libs.pipelines.api_v2_paths import APIOutputPathBuilder
 from libs.pipelines.api_v2_paths import FileType
 from api.can_api_v2_definition import AggregateRegionSummary
 from api.can_api_v2_definition import AggregateRegionSummaryWithTimeseries
-from api.can_api_v2_definition import AggregateFlattenedTimeseries
 from api.can_api_v2_definition import Metrics
 from api.can_api_v2_definition import RegionSummaryWithTimeseries
 from api.can_api_v2_definition import RegionSummary
@@ -187,8 +185,6 @@ def deploy_single_level(
 
     path_builder = APIOutputPathBuilder(output_root, level)
     path_builder.make_directories()
-    timing_kwargs = {"region_level": path_builder.level.value}
-
     # Filter all timeseries to just aggregate level.
     all_timeseries = [output for output in all_timeseries if output.level is level]
     all_summaries = [output.region_summary for output in all_timeseries]
@@ -199,69 +195,54 @@ def deploy_single_level(
 
     logger.info(f"Deploying {level.value} output to {output_root}")
 
-    with timing_utils.time("All summaries", **timing_kwargs):
-        for summary in all_summaries:
-            output_path = path_builder.single_summary(summary, FileType.JSON)
-            deploy_json_api_output(summary, output_path)
+    for summary in all_summaries:
+        output_path = path_builder.single_summary(summary, FileType.JSON)
+        deploy_json_api_output(summary, output_path)
 
-    with timing_utils.time("All timeseries", **timing_kwargs):
-        for timeseries in all_timeseries:
-            output_path = path_builder.single_timeseries(timeseries, FileType.JSON)
-            deploy_json_api_output(timeseries, output_path)
+    for timeseries in all_timeseries:
+        output_path = path_builder.single_timeseries(timeseries, FileType.JSON)
+        deploy_json_api_output(timeseries, output_path)
 
-    with timing_utils.time("Flattened timeseries", **timing_kwargs):
-        bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
-        bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
-        flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
-
-    deploy_bulk_files(path_builder, bulk_timeseries, bulk_summaries, flattened_timeseries)
+    deploy_bulk_files(path_builder, all_timeseries, all_summaries)
 
     if level is AggregationLevel.COUNTY:
         for state in set(record.state for record in all_summaries):
             state_timeseries = [record for record in all_timeseries if record.state == state]
-            state_bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=state_timeseries)
             state_summaries = [record for record in all_summaries if record.state == state]
-            state_bulk_summaries = AggregateRegionSummary(__root__=state_summaries)
-            flattened_state_rows = [
-                row for row in flattened_timeseries.__root__ if row.state == state
-            ]
-            flattened_state_timeseries = AggregateFlattenedTimeseries(__root__=flattened_state_rows)
-            deploy_bulk_files(
-                path_builder,
-                state_bulk_timeseries,
-                state_bulk_summaries,
-                flattened_state_timeseries,
-                state=state,
-            )
+            deploy_bulk_files(path_builder, state_timeseries, state_summaries, state=state)
 
 
 def deploy_bulk_files(
     path_builder,
-    bulk_timeseries: List[RegionSummaryWithTimeseries],
-    bulk_summaries: List[RegionSummary],
-    flattened_timeseries,
+    all_timeseries: List[RegionSummaryWithTimeseries],
+    all_summaries: List[RegionSummary],
     state: Optional[str] = None,
 ):
 
-    with timing_utils.time("bulk timeseries csv"):
-        output_path = path_builder.bulk_flattened_timeseries_data(FileType.CSV, state=state)
-        deploy_csv_api_output(
-            flattened_timeseries,
-            output_path,
-            keys_to_skip=[
-                "actuals.date",
-                "metrics.date",
-                "annotations",
-                # TODO: Remove once solution to prevent order of CSV Columns from changing is done.
-                # https://trello.com/c/H8PPYLFD/818-preserve-ordering-of-csv-columns
-                "metrics.vaccinationsInitiatedRatio",
-                "metrics.vaccinationsCompletedRatio",
-            ],
-        )
+    timing_kwargs = {"region_level": path_builder.level.value, "state": state}
 
-    with timing_utils.time("bulk timeseries json"):
-        output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON, state=state)
-        deploy_json_api_output(bulk_timeseries, output_path)
+    bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=all_timeseries)
+    bulk_summaries = AggregateRegionSummary(__root__=all_summaries)
+
+    flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
+
+    output_path = path_builder.bulk_flattened_timeseries_data(FileType.CSV, state=state)
+    deploy_csv_api_output(
+        flattened_timeseries,
+        output_path,
+        keys_to_skip=[
+            "actuals.date",
+            "metrics.date",
+            "annotations",
+            # TODO: Remove once solution to prevent order of CSV Columns from changing is done.
+            # https://trello.com/c/H8PPYLFD/818-preserve-ordering-of-csv-columns
+            "metrics.vaccinationsInitiatedRatio",
+            "metrics.vaccinationsCompletedRatio",
+        ],
+    )
+
+    output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON, state=state)
+    deploy_json_api_output(bulk_timeseries, output_path)
 
     output_path = path_builder.bulk_summary(bulk_summaries, FileType.JSON, state=state)
     deploy_json_api_output(bulk_summaries, output_path)

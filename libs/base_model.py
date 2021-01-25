@@ -1,11 +1,8 @@
 import pydantic
 import simplejson
-import ujson
-import orjson
 
 
 def _nan_safe_json_dumps(*args, **kwargs):
-    return orjson.dumps(*args, option=orjson.OPT_SERIALIZE_NUMPY, **kwargs).decode("utf-8")
     return simplejson.dumps(*args, **kwargs, ignore_nan=True)
 
 
