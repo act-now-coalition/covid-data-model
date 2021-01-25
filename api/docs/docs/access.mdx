@@ -3,95 +3,108 @@ id: access
 title: Accessing the API
 description: Register for the Covid Act Now API.
 ---
-import SignupForm from '@site/src/components/SignupForm';
 
-## Getting Started
+import SignupForm from "@site/src/components/SignupForm";
+
+## Sign up
 
 <SignupForm />
 
-
-## Examples
+## Getting started
 
 In the examples below, replace `YOUR_KEY_HERE` with the API key from Step 1 above.
 
-### State summary data CSV
+The Covid Act Now API has coverage for states, counties, and metro areas (CBSAs). You can query the data in CSV or JSON formats.
 
-A CSV file containing the latest data and metrics for all states.
+Learn how to query:
+
+- **[Current values for all states, counties, and metros](#current-values-for-all-states-counties-or-metros)**
+- **[Historic values for all states, counties, and metros](#historic-values-for-all-states-counties-or-metros)**
+- **[Current and historic values for an individual state, county, or metro area](#individual-locations)**
+
+### Current values for all states, counties, or metros
+
+These endpoints contain the latest available data for all states, counties, and cbsas (metros).
+
+Each file contains all locations in the region type.
+For example, `https://api.covidactnow.org/v2/counties.csv?apiKey=YOUR_KEY_HERE` contains all US counties.
+
+#### CSV format
 
 ```
 https://api.covidactnow.org/v2/states.csv?apiKey=YOUR_KEY_HERE
-```
-
-[More details](/api#tag/State-Data/paths/~1states.csv?apiKey={apiKey}/get)
-
-### County summary data CSV
-
-A CSV file containing the latest data and metrics for all counties.
-
-```
 https://api.covidactnow.org/v2/counties.csv?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/cbsas.csv?apiKey=YOUR_KEY_HERE
 ```
 
-[More details](/api#tag/County-Data/paths/~1counties.csv?apiKey={apiKey}/get)
+Read the API Reference for [/v2/states.csv](/api/#tag/State-Data/paths/~1states.csv?apiKey={apiKey}/get), [/v2/counties.csv](/api#tag/County-Data/paths/~1counties.csv?apiKey={apiKey}/get), [/v2/cbsas.csv](/api#tag/CBSA-Data/paths/~1cbsa~1{cbsa_code}.json?apiKey={apiKey}/get).
 
-### Historical data for all states CSV
+#### JSON format
 
-A CSV file containing the latest data and metrics for all states.
+```
+https://api.covidactnow.org/v2/states.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/counties.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/cbsas.json?apiKey=YOUR_KEY_HERE
+```
+
+### Historic values for all states, counties, or metros
+
+These files contain the entire history for all states, counties, and cbsas (metros).
+
+#### CSV format
 
 ```
 https://api.covidactnow.org/v2/states.timeseries.csv?apiKey=YOUR_KEY_HERE
-```
-
-[More details](/api#tag/State-Data/paths/~1states.timeseries.csv?apiKey={apiKey}/get)
-
-### Historical data for all counties CSV
-
-A CSV file containing historical data and metrics for all counties.
-
-```
 https://api.covidactnow.org/v2/counties.timeseries.csv?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/cbsas.timeseries.csv?apiKey=YOUR_KEY_HERE
 ```
 
-[More details](/api#tag/County-Data/paths/~1counties.timeseries.csv?apiKey={apiKey}/get)
+Read the API reference for [/v2/states.timeseries.csv](/api#tag/State-Data/paths/~1states.timeseries.csv?apiKey={apiKey}/get), [/v2/counties.timeseries.csv](/api#tag/County-Data/paths/~1counties.timeseries.csv?apiKey={apiKey}/get),
+[/v2/cbsas.timeseries.csv](/api#tag/CBSA-Data/paths/~1cbsas.timeseries.csv?apiKey={apiKey}/get)
 
-### Historical data for all states
-
-A json file containing timeseries data for all states.
+#### JSON format
 
 ```bash
 https://api.covidactnow.org/v2/states.timeseries.json?apiKey=YOUR_KEY_HERE
-```
-
-[More details](/api#tag/State-Data/paths/~1states.timeseries.json?apiKey={apiKey}/get)
-
-### Historical data for all counties
-
-A json file containing timeseries data for all counties.
-
-```bash
 https://api.covidactnow.org/v2/counties.timeseries.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/cbsas.timeseries.json?apiKey=YOUR_KEY_HERE
 ```
 
-[More details](/api#tag/County-Data/paths/~1counties.timeseries.json?apiKey={apiKey}/get)
+:::note
+
+As ``/v2/counties.timeseries.json`` contains historic data for every county, it is very large. If you are looking for counties in a single state, consider
+downloading [counties for a single state](#all-counties-in-a-state).
+
+:::
 
 
-### Specific state or county summary and timeseries data
+### Individual Locations
 
-You can also query data for a specific state or county.
+It's easy to query a single state, county, or metro area.
 
-```bash
-# Historical county data
-https://api.covidactnow.org/v2/county/{fips}.timeseries.json?apiKey=YOUR_KEY_HERE
+#### Current Values
 
-# Summary of latest county data
-https://api.covidactnow.org/v2/county/{fips}.json?apiKey=YOUR_KEY_HERE
-
-# Historical state data
+```
 https://api.covidactnow.org/v2/state/{state}.timeseries.json?apiKey=YOUR_KEY_HERE
-
-# Summary of latest state data
-https://api.covidactnow.org/v2/state/{state}.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/county/{fips}.timeseries.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/cbsa/{cbsa_code}.timeseries.json?apiKey=YOUR_KEY_HERE
 ```
 
+#### Historic Values
 
-For full documentation of available endpoints, refer to the [API Reference](/api).
+```
+https://api.covidactnow.org/v2/state/{state}.timeseries.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/county/{fips}.timeseries.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/cbsa/{cbsa_code}.timeseries.json?apiKey=YOUR_KEY_HERE
+```
+
+#### All counties in a state
+
+You can also query all counties for a single state.
+
+```
+https://api.covidactnow.org/v2/county/{state}.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/county/{state}.csv?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/county/{state}.timeseries.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/county/{state}.timeseries.csv?apiKey=YOUR_KEY_HERE
+```
