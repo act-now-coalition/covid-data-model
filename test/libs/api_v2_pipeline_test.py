@@ -90,12 +90,17 @@ def test_build_api_output_for_intervention(nyc_regional_input, tmp_path):
         "counties.json",
         "county/36061.json",
         "county/36061.timeseries.json",
+        "county/NY.timeseries.json",
+        "county/NY.timeseries.csv",
+        "county/NY.json",
+        "county/NY.csv",
     ]
 
     output_paths = [
         str(path.relative_to(tmp_path)) for path in tmp_path.glob("**/*") if not path.is_dir()
     ]
     assert set(output_paths) == set(expected_outputs)
+    assert 0
 
 
 def test_output_no_timeseries_rows(nyc_regional_input, tmp_path):
