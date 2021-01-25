@@ -67,20 +67,44 @@ Processing steps:
 * JSON file fields: ``metrics.infectionRateCI90``, ``metricsTimeseries.infectionRateCI90``
 
 
-
     
 
-## Deaths
+## Tests
 
-### Deaths
+### Positive Tests
 
-  Cumulative deaths that are suspected or confirmed to have been caused by COVID-19
+  Cumulative positive test results to date
 
 **Where to access**  
-* CSV column names: ``actuals.deaths``
-* JSON file fields: ``actuals.deaths``, ``actualsTimeseries.deaths``
+* CSV column names: ``actuals.positiveTests``
+* JSON file fields: ``actuals.positiveTests``, ``actualsTimeseries.positiveTests``
 
 
+### Negative Tests
+
+  Cumulative negative test results to date
+
+**Where to access**  
+* CSV column names: ``actuals.negativeTests``
+* JSON file fields: ``actuals.negativeTests``, ``actualsTimeseries.negativeTests``
+
+
+### Test Positivity Ratio
+
+  Ratio of people who test positive calculated using a 7-day rolling average.
+
+**Where to access**  
+* CSV column names: ``metrics.testPositivityRatio``
+* JSON file fields: ``metrics.testPositivityRatio``, ``metricsTimeseries.testPositivityRatio``
+
+
+### Test Positivity Ratio Details
+
+  
+
+**Where to access**  
+* CSV column names: ``metrics.testPositivityRatioDetails``
+* JSON file fields: ``metrics.testPositivityRatioDetails``, ``metricsTimeseries.testPositivityRatioDetails``
 
 
     
@@ -133,7 +157,6 @@ Fields:
 **Where to access**  
 * CSV column names: ``metrics.icuHeadroomRatio``
 * JSON file fields: ``metrics.icuHeadroomRatio``, ``metricsTimeseries.icuHeadroomRatio``
-
 
 
     
@@ -189,6 +212,19 @@ number of people vaccinated with both the first and second dose.
 **Where to access**  
 * CSV column names: ``metrics.vaccinationsCompletedRatio``
 * JSON file fields: ``metrics.vaccinationsCompletedRatio``, ``metricsTimeseries.vaccinationsCompletedRatio``
+
+
+    
+
+## Deaths
+
+### Deaths
+
+  Cumulative deaths that are suspected or confirmed to have been caused by COVID-19.
+
+**Where to access**  
+* CSV column names: ``actuals.deaths``
+* JSON file fields: ``actuals.deaths``, ``actualsTimeseries.deaths``
 
 
 

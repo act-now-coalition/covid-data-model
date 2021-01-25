@@ -194,7 +194,7 @@
         },
         "deaths": {
           "title": "Deaths",
-          "description": "Cumulative deaths that are suspected or confirmed to have been caused by COVID-19",
+          "description": "Cumulative deaths that are suspected or confirmed to have been caused by COVID-19.",
           "anyOf": [
             {
               "type": "integer"
