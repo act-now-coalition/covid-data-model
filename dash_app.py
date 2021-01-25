@@ -1,3 +1,7 @@
+import collections
+from itertools import chain
+from typing import MutableMapping
+
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -7,11 +11,13 @@ import more_itertools
 import plotly.express as px
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import PdFields
 from dash.dependencies import Input, Output
 
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
+from libs.datasets import data_source
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagType
 from libs.datasets.timeseries import TagField
@@ -39,10 +45,46 @@ df_regions["id"] = df_regions[CommonFields.LOCATION_ID]
 # These columns are from OneRegion... missing LOCATION_ID of timeseries.TAG_INDEX_FIELDS
 TAG_TABLE_COLUMNS = [TagField.VARIABLE, TagField.TYPE, TagField.CONTENT]
 
+field_def = {
+    field: ", ".join(cls.__name__ for cls in clses)
+    for field, clses in combined_datasets.ALL_TIMESERIES_FEATURE_DEFINITION.items()
+}
+
+
+field_provider = {field: ", ".join(cls_list) for field, cls_list in combined_datasets.foo().items()}
+
+fields = (
+    pd.concat(
+        {
+            "definition": pd.Series(field_def),
+            "source": pd.Series(field_provider),
+            "provenance": pd.Series({k: ", ".join(v) for k, v in ds.provenance_map().items()}),
+        },
+        axis=1,
+    )
+    .rename_axis(index=PdFields.VARIABLE)
+    .reset_index()
+)
+
 
 app.layout = html.Div(
     children=[
         html.H1(children="CAN Data"),
+        dash_table.DataTable(
+            id="datatable-sources",
+            columns=[{"name": i, "id": i} for i in fields.columns],
+            cell_selectable=False,
+            page_size=10,
+            row_selectable=False,
+            data=fields.reset_index().to_dict("records"),
+            editable=False,
+            filter_action="native",
+            sort_action="native",
+            sort_mode="multi",
+            page_action="native",
+            style_table={"height": "300px", "overflowY": "auto"},
+        ),
+        html.Hr(),  # Stop graph drawing over table pageination control.
         dash_table.DataTable(
             id="datatable-regions",
             columns=[

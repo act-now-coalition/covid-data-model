@@ -454,8 +454,8 @@ class MultiRegionDataset:
     # considered constant, such as population and hospital beds.
     static: pd.DataFrame = _EMPTY_REGIONAL_ATTRIBUTES_DF
 
-    # A Series of tag CONTENT values having index with levels LOCATION_ID, VARIABLE, TYPE,
-    # DATE. Rows with identical index values may exist.
+    # A Series of tag CONTENT values having index with levels TAG_INDEX_FIELDS (LOCATION_ID,
+    # VARIABLE, TYPE). Rows with identical index values may exist.
     tag: pd.Series = _EMPTY_TAG_SERIES
 
     @property
@@ -1013,6 +1013,12 @@ class MultiRegionDataset:
          so the code calling this method can be removed. Then delete this method.
         """
         return self.tag.loc[:, :, ANNOTATION_TAG_TYPES].reset_index()
+
+    def provenance_map(self) -> Mapping[CommonFields, Set[str]]:
+        """Returns a mapping from field name to set of provenances."""
+        return (
+            self.tag.loc[:, :, [TagType.PROVENANCE]].groupby(TagField.VARIABLE).apply(set).to_dict()
+        )
 
 
 def _remove_padded_nans(df, columns):

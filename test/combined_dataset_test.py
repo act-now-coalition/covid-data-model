@@ -194,3 +194,8 @@ def test_make_latest_from_timeseries_dont_touch_county():
         "county": "Smith Countzz",
     }
     assert get_latest(Region.from_state("WY")) == {"m1": 3}
+
+
+def test_foo():
+    f = combined_datasets.foo()
+    assert "UsaFactsDataSource" in f[CommonFields.CASES]
