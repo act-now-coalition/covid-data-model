@@ -1,3 +1,4 @@
+from typing import Optional
 import enum
 import dataclasses
 import pathlib
@@ -56,17 +57,32 @@ class APIOutputPathBuilder:
         self,
         aggregate_timeseries_summary: can_api_v2_definition.AggregateRegionSummaryWithTimeseries,
         file_type: FileType,
+        state: Optional[str] = None,
     ) -> str:
         assert file_type is FileType.JSON
+
+        if state:
+            return self.region_subdir / f"{state}.timeseries.{file_type.suffix}"
+
         return self.root / f"{self.region_key}.timeseries.{file_type.suffix}"
 
     def bulk_summary(
-        self, aggregate_summary: can_api_v2_definition.AggregateRegionSummary, file_type: FileType
+        self,
+        aggregate_summary: can_api_v2_definition.AggregateRegionSummary,
+        file_type: FileType,
+        state: Optional[str] = None,
     ) -> str:
+        if state:
+            return self.region_subdir / f"{state}.{file_type.suffix}"
+
         return self.root / f"{self.region_key}.{file_type.suffix}"
 
-    def bulk_flattened_timeseries_data(self, file_type):
+    def bulk_flattened_timeseries_data(self, file_type, state: Optional[str] = None):
         assert file_type is FileType.CSV
+
+        if state:
+            return self.region_subdir / f"{state}.timeseries.{file_type.suffix}"
+
         return self.root / f"{self.region_key}.timeseries.{file_type.suffix}"
 
     def single_summary(self, region_summary: can_api_v2_definition.RegionSummary, file_type):
