@@ -11,12 +11,6 @@ from functools import lru_cache
 class DataSource(object):
     """Represents a single dataset source, loads data and cleans data."""
 
-    # Subclass must implement custom class of fields in dataset.
-    class Fields(object):
-        pass
-
-    INDEX_FIELD_MAP = None
-
     COMMON_FIELD_MAP = None
 
     # Name of dataset source
@@ -27,6 +21,14 @@ class DataSource(object):
 
     def __init__(self, data: pd.DataFrame):
         self.data = data
+
+    @classmethod
+    def make_dataset(cls) -> MultiRegionDataset:
+        """Builds data from local covid-public-data github repo.
+
+        Returns: Instantiated class with data loaded.
+        """
+        return cls.local().multi_region_dataset()
 
     @classmethod
     def local(cls) -> "DataSource":
