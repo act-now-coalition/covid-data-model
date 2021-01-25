@@ -1,6 +1,5 @@
 from typing import Dict
 from typing import List
-from typing import Mapping
 from typing import NewType
 from typing import Optional
 import logging
