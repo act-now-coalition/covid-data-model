@@ -826,7 +826,7 @@
                 "type": "null"
               }
             ],
-            "description": "Cumulative number of confirmed or suspected cases"
+            "description": "Cumulative confirmed or suspected cases."
           },
           "deaths": {
             "title": "Deaths",
@@ -838,7 +838,7 @@
                 "type": "null"
               }
             ],
-            "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19"
+            "description": "Cumulative deaths that are suspected or confirmed to have been caused by COVID-19"
           },
           "positiveTests": {
             "title": "Positivetests",
@@ -883,7 +883,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
-            "description": "Information about hospital bed utilization"
+            "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * typicalUsageRate - Typical acute bed utilization rate.\n"
           },
           "icuBeds": {
             "title": "Icubeds",
@@ -892,7 +892,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
-            "description": "Information about ICU bed utilization"
+            "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n * typicalUsageRate - Typical ICU utilization rate.\n"
           },
           "newCases": {
             "title": "Newcases",
@@ -904,7 +904,7 @@
                 "type": "null"
               }
             ],
-            "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n"
+            "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n 3. An outlier detection filter is applied to the timeseries, removing any data points that\n    seem improbable given recent case numbers.  Many times this is due to a backfill of\n    previously unreported cases.\n"
           },
           "vaccinesDistributed": {
             "title": "Vaccinesdistributed",
@@ -928,7 +928,7 @@
                 "type": "null"
               }
             ],
-            "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n"
+            "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer this indicates\nnumber of people vaccinated with the first dose.\n"
           },
           "vaccinationsCompleted": {
             "title": "Vaccinationscompleted",
@@ -940,7 +940,7 @@
                 "type": "null"
               }
             ],
-            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
+            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer this indicates\nnumber of people vaccinated with both the first and second dose.\n"
           }
         },
         "description": "Known actuals data."
@@ -1144,7 +1144,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
@@ -1836,7 +1837,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
@@ -1896,7 +1898,7 @@
                 "type": "null"
               }
             ],
-            "description": "Cumulative number of confirmed or suspected cases"
+            "description": "Cumulative confirmed or suspected cases."
           },
           "deaths": {
             "title": "Deaths",
@@ -1908,7 +1910,7 @@
                 "type": "null"
               }
             ],
-            "description": "Cumulative number of deaths that are suspected or confirmed to have been caused by COVID-19"
+            "description": "Cumulative deaths that are suspected or confirmed to have been caused by COVID-19"
           },
           "positiveTests": {
             "title": "Positivetests",
@@ -1953,7 +1955,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
-            "description": "Information about hospital bed utilization"
+            "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * typicalUsageRate - Typical acute bed utilization rate.\n"
           },
           "icuBeds": {
             "title": "Icubeds",
@@ -1962,7 +1964,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
-            "description": "Information about ICU bed utilization"
+            "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n * typicalUsageRate - Typical ICU utilization rate.\n"
           },
           "newCases": {
             "title": "Newcases",
@@ -1974,7 +1976,7 @@
                 "type": "null"
               }
             ],
-            "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nNotable exceptions:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n"
+            "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n 3. An outlier detection filter is applied to the timeseries, removing any data points that\n    seem improbable given recent case numbers.  Many times this is due to a backfill of\n    previously unreported cases.\n"
           },
           "vaccinesDistributed": {
             "title": "Vaccinesdistributed",
@@ -1998,7 +2000,7 @@
                 "type": "null"
               }
             ],
-            "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with the first dose.\n"
+            "description": "\nNumber of vaccinations initiated.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer this indicates\nnumber of people vaccinated with the first dose.\n"
           },
           "vaccinationsCompleted": {
             "title": "Vaccinationscompleted",
@@ -2010,7 +2012,7 @@
                 "type": "null"
               }
             ],
-            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer, this indicates\nnumber of people vaccinated with both the first and second dose.\n"
+            "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer this indicates\nnumber of people vaccinated with both the first and second dose.\n"
           },
           "date": {
             "title": "Date",
