@@ -24,7 +24,9 @@ class TestAndTraceData(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    COMMON_FIELD_MAP = {f: f for f in [CommonFields.CONTACT_TRACERS_COUNT]}
+    EXPECTED_FIELDS = [
+        CommonFields.CONTACT_TRACERS_COUNT,
+    ]
 
     @classmethod
     def standardize_data(cls, data):

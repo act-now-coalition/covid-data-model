@@ -13,9 +13,9 @@ class CANLocationPageURLS(data_source.DataSource):
 
     SOURCE_NAME = "can_urls"
 
-    INDEX_FIELD_MAP = {f: f for f in STATIC_INDEX_FIELDS}
-
-    COMMON_FIELD_MAP = {f: f for f in {CommonFields.CAN_LOCATION_PAGE_URL,}}
+    EXPECTED_FIELDS = [
+        CommonFields.CAN_LOCATION_PAGE_URL,
+    ]
 
     @classmethod
     @lru_cache(None)

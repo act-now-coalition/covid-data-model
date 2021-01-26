@@ -11,14 +11,6 @@ from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 class HHSTestingDataset(data_source.DataSource):
     SOURCE_NAME = "HHSTesting"
 
-    DATA_PATH = "data/testing-hhs/timeseries-common.csv"
+    COMMON_DF_CSV_PATH = "data/testing-hhs/timeseries-common.csv"
 
-    COMMON_FIELD_MAP = {f: f for f in {CommonFields.NEGATIVE_TESTS, CommonFields.POSITIVE_TESTS,}}
-
-    @classmethod
-    @lru_cache(None)
-    def make_dataset(cls) -> timeseries.MultiRegionDataset:
-        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        input_path = data_root / cls.DATA_PATH
-        data = common_df.read_csv(input_path).reset_index()
-        return cls.make_timeseries_dataset(data)
+    EXPECTED_FIELDS = [CommonFields.NEGATIVE_TESTS, CommonFields.POSITIVE_TESTS]

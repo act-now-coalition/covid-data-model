@@ -12,16 +12,12 @@ class CDCVaccinesDataset(data_source.DataSource):
 
     DATA_PATH = "data/vaccines-cdc/timeseries-common.csv"
 
-    # TODO: Remove constants(https://trello.com/c/uPQXBuDg/777-remove-unused-datasource-constants)
-    COMMON_FIELD_MAP = {
-        f: f
-        for f in {
-            CommonFields.VACCINES_ALLOCATED,
-            CommonFields.VACCINES_DISTRIBUTED,
-            CommonFields.VACCINATIONS_INITIATED,
-            CommonFields.VACCINATIONS_COMPLETED,
-        }
-    }
+    EXPECTED_FIELDS = [
+        CommonFields.VACCINES_ALLOCATED,
+        CommonFields.VACCINES_DISTRIBUTED,
+        CommonFields.VACCINATIONS_INITIATED,
+        CommonFields.VACCINATIONS_COMPLETED,
+    ]
 
     @classmethod
     @lru_cache(None)

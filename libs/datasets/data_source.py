@@ -1,7 +1,10 @@
 from typing import Type, Optional
 
 import pandas as pd
+from covidactnow.datapublic import common_df
 
+from libs.datasets import dataset_utils
+from libs.datasets import timeseries
 from libs.datasets.dataset_utils import STATIC_INDEX_FIELDS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets.timeseries import MultiRegionDataset
@@ -11,31 +14,21 @@ from functools import lru_cache
 class DataSource(object):
     """Represents a single dataset source, loads data and cleans data."""
 
-    COMMON_FIELD_MAP = None
-
     # Name of dataset source
     SOURCE_NAME = None
 
-    # Indicates if NYC data is aggregated into one NYC county or not.
-    HAS_AGGREGATED_NYC_BOROUGH = False
+    EXPECTED_FIELDS = None
 
-    def __init__(self, data: pd.DataFrame):
-        self.data = data
+    COMMON_DF_CSV_PATH = None
 
     @classmethod
-    def make_dataset(cls) -> MultiRegionDataset:
-        """Builds data from local covid-public-data github repo.
-
-        Returns: Instantiated class with data loaded.
-        """
-        return cls.local().multi_region_dataset()
-
-    def local(cls) -> "DataSource":
-        """Builds data from local covid-public-data github repo.
-
-        Returns: Instantiated class with data loaded.
-        """
-        raise NotImplementedError("Subclass must implement")
+    @lru_cache(None)
+    def make_dataset(cls) -> timeseries.MultiRegionDataset:
+        assert cls.COMMON_DF_CSV_PATH, f"No path in {cls}"
+        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        input_path = data_root / cls.COMMON_DF_CSV_PATH
+        data = common_df.read_csv(input_path, set_index=False)
+        return cls.make_timeseries_dataset(data)
 
     @classmethod
     def make_static_dataset(cls, data: pd.DataFrame) -> MultiRegionDataset:
@@ -43,21 +36,7 @@ class DataSource(object):
 
     @classmethod
     def make_timeseries_dataset(cls, data: pd.DataFrame) -> MultiRegionDataset:
+        if cls.EXPECTED_FIELDS:
+            data = data[data.columns.intersection(cls.EXPECTED_FIELDS + TIMESERIES_INDEX_FIELDS)]
+            # TODO(tom): Warn about unexpected fields?
         return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)
-
-    def multi_region_dataset(self) -> MultiRegionDataset:
-        if set(self.INDEX_FIELD_MAP.keys()) == set(TIMESERIES_INDEX_FIELDS):
-            return self.make_timeseries_dataset(self.data)
-
-        if set(self.INDEX_FIELD_MAP.keys()) == set(STATIC_INDEX_FIELDS):
-            return self.make_static_dataset(self.data)
-
-        raise ValueError("Unexpected index fields")
-
-    @classmethod
-    def _rename_to_common_fields(cls: Type["DataSource"], df: pd.DataFrame) -> pd.DataFrame:
-        """Returns a copy of the DataFrame with only common columns in the class field maps."""
-        all_fields_map = {**cls.COMMON_FIELD_MAP, **cls.INDEX_FIELD_MAP}
-        to_common_fields = {value: key for key, value in all_fields_map.items()}
-        final_columns = to_common_fields.values()
-        return df.rename(columns=to_common_fields)[final_columns]

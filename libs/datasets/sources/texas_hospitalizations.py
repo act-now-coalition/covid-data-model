@@ -9,19 +9,7 @@ from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 
 
 class TexasHospitalizations(data_source.DataSource):
-    DATA_PATH = "data/states/tx/tx_fips_hospitalizations.csv"
+    COMMON_DF_CSV_PATH = "data/states/tx/tx_fips_hospitalizations.csv"
     SOURCE_NAME = "tx_hosp"
 
-    COMMON_FIELD_MAP = {
-        CommonFields.CURRENT_HOSPITALIZED: CommonFields.CURRENT_HOSPITALIZED,
-        CommonFields.CURRENT_ICU: CommonFields.CURRENT_ICU,
-    }
-
-    @classmethod
-    @lru_cache(None)
-    def make_dataset(cls) -> timeseries.MultiRegionDataset:
-        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        input_path = data_root / cls.DATA_PATH
-        data = common_df.read_csv(input_path).reset_index()
-        # Column names are already CommonFields so don't need to rename
-        return cls.make_timeseries_dataset(data)
+    EXPECTED_FIELDS = [CommonFields.CURRENT_HOSPITALIZED, CommonFields.CURRENT_ICU]
