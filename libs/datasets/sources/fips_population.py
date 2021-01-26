@@ -1,4 +1,6 @@
 import pathlib
+from functools import lru_cache
+
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
@@ -41,12 +43,13 @@ class FIPSPopulation(data_source.DataSource):
     }
 
     @classmethod
+    @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         data = pd.read_csv(data_root / cls.FILE_PATH, dtype={"fips": str})
         data["fips"] = data.fips.str.zfill(5)
         data = cls.standardize_data(data)
-        return timeseries.MultiRegionDataset.new_without_timeseries().add_fips_static_df(data)
+        return cls.make_static_dataset(data)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
@@ -76,7 +79,7 @@ class FIPSPopulation(data_source.DataSource):
         states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(ABBREV_US_FIPS)
         states_aggregated[cls.Fields.COUNTY] = None
 
-        common_fields_data = cls._rename_to_common_fields(pd.concat([data, states_aggregated]))
+        common_fields_data = pd.concat([data, states_aggregated])
         return common_fields_data
 
 

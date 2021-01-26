@@ -1,9 +1,10 @@
+from functools import lru_cache
+
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
 from libs.datasets import timeseries
-from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 
 
 class CDCVaccinesDataset(data_source.DataSource):
@@ -23,10 +24,9 @@ class CDCVaccinesDataset(data_source.DataSource):
     }
 
     @classmethod
+    @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
         data = common_df.read_csv(input_path, set_index=False)
-        return timeseries.MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(
-            cls.SOURCE_NAME
-        )
+        return cls.make_timeseries_dataset(data)

@@ -87,7 +87,7 @@ def test_get_county_name():
     "data_source_cls", [CovidTrackingDataSource, NYTimesDataset, TexasHospitalizations,],
 )
 def test_unique_timeseries(data_source_cls):
-    dataset = data_source_cls.local().multi_region_dataset()
+    dataset = data_source_cls.make_dataset()
     # Check for duplicate rows with the same INDEX_FIELDS. Sort by index so duplicates are next to
     # each other in the message if the assert fails.
     timeseries_data = dataset.timeseries.sort_index()
@@ -101,7 +101,7 @@ def test_unique_timeseries(data_source_cls):
     "data_source_cls", [CovidTrackingDataSource],
 )
 def test_expected_field_in_sources(data_source_cls):
-    dataset = data_source_cls.local().multi_region_dataset()
+    dataset = data_source_cls.make_dataset()
 
     assert not dataset.timeseries.empty
     assert not dataset.static.empty

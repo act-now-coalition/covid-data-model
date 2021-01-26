@@ -12,8 +12,6 @@ class HHSHospitalDataset(data_source.DataSource):
 
     DATA_PATH = "data/hospital-hhs/timeseries-common.csv"
 
-    INDEX_FIELD_MAP = {f: f for f in TIMESERIES_INDEX_FIELDS}
-
     COMMON_FIELD_MAP = {
         f: f
         for f in {
@@ -27,12 +25,9 @@ class HHSHospitalDataset(data_source.DataSource):
     }
 
     @classmethod
-    def local(cls):
+    @lru_cache(None)
+    def make_dataset(cls) -> MultiRegionDataset:
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
         data = common_df.read_csv(input_path, set_index=False)
-        return cls(data)
-
-    @lru_cache(None)
-    def multi_region_dataset(self) -> MultiRegionDataset:
-        return super().multi_region_dataset().latest_in_static(CommonFields.ICU_BEDS)
+        return cls.make_timeseries_dataset(data).latest_in_static(CommonFields.ICU_BEDS)

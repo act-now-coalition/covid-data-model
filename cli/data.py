@@ -90,7 +90,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
         )
     )
     data_sources = {
-        data_source_cls.SOURCE_NAME: data_source_cls.local().multi_region_dataset()
+        data_source_cls.SOURCE_NAME: data_source_cls.make_dataset()
         for data_source_cls in data_source_classes
     }
     if state or fips:

@@ -15,19 +15,14 @@ class NYTimesDataset(data_source.DataSource):
 
     HAS_AGGREGATED_NYC_BOROUGH = True
 
-    INDEX_FIELD_MAP = {f: f for f in TIMESERIES_INDEX_FIELDS}
-
     COMMON_FIELD_MAP = {f: f for f in {CommonFields.CASES, CommonFields.DEATHS,}}
 
     @classmethod
-    def local(cls):
+    @lru_cache(None)
+    def make_dataset(cls) -> MultiRegionDataset:
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
         data = common_df.read_csv(input_path).reset_index()
-        return cls(cls._rename_to_common_fields(data))
-
-    @lru_cache(None)
-    def multi_region_dataset(self) -> MultiRegionDataset:
         # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
         # Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
-        return super().multi_region_dataset().remove_regions(ALL_NYC_REGIONS)
+        return cls.make_timeseries_dataset(data).remove_regions(ALL_NYC_REGIONS)

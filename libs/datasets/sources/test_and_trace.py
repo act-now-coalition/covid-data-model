@@ -1,8 +1,11 @@
+from functools import lru_cache
+
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
+from libs.datasets import timeseries
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 
@@ -21,21 +24,19 @@ class TestAndTraceData(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    INDEX_FIELD_MAP = {f: f for f in TIMESERIES_INDEX_FIELDS}
-
     COMMON_FIELD_MAP = {f: f for f in [CommonFields.CONTACT_TRACERS_COUNT]}
 
     @classmethod
     def standardize_data(cls, data):
         data[cls.Fields.COUNTRY] = "USA"
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.STATE.value
-        data = cls._rename_to_common_fields(data)
         return data
 
     @classmethod
-    def local(cls):
+    @lru_cache(None)
+    def make_dataset(cls) -> timeseries.MultiRegionDataset:
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.DATA_PATH
         data = pd.read_csv(input_path, parse_dates=[cls.Fields.DATE], dtype={cls.Fields.FIPS: str})
         data = cls.standardize_data(data)
-        return cls(data)
+        return cls.make_timeseries_dataset(data)

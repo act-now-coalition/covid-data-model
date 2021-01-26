@@ -30,7 +30,6 @@ class DataSource(object):
         """
         return cls.local().multi_region_dataset()
 
-    @classmethod
     def local(cls) -> "DataSource":
         """Builds data from local covid-public-data github repo.
 
@@ -38,16 +37,20 @@ class DataSource(object):
         """
         raise NotImplementedError("Subclass must implement")
 
-    @lru_cache(None)
+    @classmethod
+    def make_static_dataset(cls, data: pd.DataFrame) -> MultiRegionDataset:
+        return MultiRegionDataset.new_without_timeseries().add_fips_static_df(data)
+
+    @classmethod
+    def make_timeseries_dataset(cls, data: pd.DataFrame) -> MultiRegionDataset:
+        return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)
+
     def multi_region_dataset(self) -> MultiRegionDataset:
         if set(self.INDEX_FIELD_MAP.keys()) == set(TIMESERIES_INDEX_FIELDS):
-            dataset = MultiRegionDataset.from_fips_timeseries_df(self.data).add_provenance_all(
-                self.SOURCE_NAME
-            )
-            return dataset
+            return self.make_timeseries_dataset(self.data)
 
         if set(self.INDEX_FIELD_MAP.keys()) == set(STATIC_INDEX_FIELDS):
-            return MultiRegionDataset.new_without_timeseries().add_fips_static_df(self.data)
+            return self.make_static_dataset(self.data)
 
         raise ValueError("Unexpected index fields")
 
