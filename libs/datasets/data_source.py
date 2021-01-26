@@ -1,4 +1,4 @@
-from typing import Type, Optional
+from typing import Type
 
 import pandas as pd
 
