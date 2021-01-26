@@ -1,6 +1,5 @@
-from typing import Dict
 from typing import List
-from typing import NewType
+from typing import Mapping
 from typing import Optional
 import logging
 import pathlib
@@ -33,11 +32,6 @@ import pyseir.icu.utils
 from pyseir.icu import infer_icu
 
 TailFilter = tail_filter.TailFilter
-
-
-FieldDatasetsDict = NewType(
-    "FieldDatasetsDict", Dict[FieldName, List[timeseries.MultiRegionDataset]]
-)
 
 
 CUMULATIVE_FIELDS_TO_FILTER = [
@@ -90,13 +84,12 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
-    timeseries_field_datasets = build_field_datasets(ALL_TIMESERIES_FEATURE_DEFINITION)
-    static_field_datasets = build_field_datasets(ALL_FIELDS_FEATURE_DEFINITION)
-    if state or fips:
-        timeseries_field_datasets = filter_field_datasets(
-            timeseries_field_datasets, state=state, fips=fips
-        )
-        static_field_datasets = filter_field_datasets(static_field_datasets, state=state, fips=fips)
+    timeseries_field_datasets = load_datasets_by_field(
+        ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
+    )
+    static_field_datasets = load_datasets_by_field(
+        ALL_FIELDS_FEATURE_DEFINITION, state=state, fips=fips
+    )
 
     multiregion_dataset = timeseries.combined_datasets(
         timeseries_field_datasets, static_field_datasets
@@ -234,22 +227,20 @@ def update_case_based_icu_utilization_weights():
         json.dump(output, f, indent=2, sort_keys=True)
 
 
-def build_field_datasets(
-    feature_definition_config: combined_datasets.FeatureDataSourceMap,
-) -> FieldDatasetsDict:
+def load_datasets_by_field(
+    feature_definition_config: combined_datasets.FeatureDataSourceMap, *, state, fips
+) -> Mapping[FieldName, List[timeseries.MultiRegionDataset]]:
+    def _load_dataset(data_source_cls) -> timeseries.MultiRegionDataset:
+        dataset = data_source_cls.local().multi_region_dataset()
+        if state or fips:
+            dataset = dataset.get_subset(state=state, fips=fips)
+        return dataset
+
     feature_definition = {
-        # timeseries.combined_datasets has the highest priority first.
+        # Put the highest priority first, as expected by timeseries.combined_datasets.
         # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
-        field_name: list(reversed(list(cls.local().multi_region_dataset() for cls in classes)))
+        field_name: list(reversed(list(_load_dataset(cls) for cls in classes)))
         for field_name, classes in feature_definition_config.items()
         if classes
     }
     return feature_definition
-
-
-def filter_field_datasets(field_datasets: FieldDatasetsDict, *, state, fips) -> FieldDatasetsDict:
-    assert state or fips
-    return {
-        field_name: [ds.get_subset(state=state, fips=fips) for ds in datasets]
-        for field_name, datasets in field_datasets.items()
-    }
