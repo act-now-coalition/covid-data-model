@@ -34,4 +34,4 @@ class CovidTrackingDataSource(data_source.DataSource):
     def local(cls) -> "CovidTrackingDataSource":
         data = common_df.read_csv(cls.INPUT_PATH).reset_index()
         # Column names are already CommonFields so don't need to rename
-        return cls(data, provenance=None)
+        return cls(data)
