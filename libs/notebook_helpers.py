@@ -4,7 +4,6 @@ import os
 import pandas as pd
 
 from libs.datasets import dataset_utils
-from libs.datasets.sources import covid_county_data
 from libs.datasets.sources import covid_tracking_source
 from libs.datasets.sources import nytimes_dataset
 from libs.datasets.sources import texas_hospitalizations
