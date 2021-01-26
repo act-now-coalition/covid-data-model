@@ -32,7 +32,6 @@ def set_covid_data_public():
 def load_data_sources_by_name() -> Dict[str, pd.DataFrame]:
 
     sources = [
-        covid_county_data.CovidCountyDataDataSource,
         texas_hospitalizations.TexasHospitalizations,
         covid_tracking_source.CovidTrackingDataSource,
         nytimes_dataset.NYTimesDataset,
