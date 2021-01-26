@@ -1016,6 +1016,7 @@ class MultiRegionDataset:
 
     def provenance_map(self) -> Mapping[CommonFields, Set[str]]:
         """Returns a mapping from field name to set of provenances."""
+        assert TAG_INDEX_FIELDS[2] == TagField.TYPE
         return (
             self.tag.loc[:, :, [TagType.PROVENANCE]].groupby(TagField.VARIABLE).apply(set).to_dict()
         )

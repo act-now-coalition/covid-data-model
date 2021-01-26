@@ -4,7 +4,6 @@ import os
 import pandas as pd
 
 from libs.datasets import dataset_utils
-from libs.datasets.sources import covid_county_data
 from libs.datasets.sources import covid_tracking_source
 from libs.datasets.sources import nytimes_dataset
 from libs.datasets.sources import texas_hospitalizations
@@ -32,7 +31,6 @@ def set_covid_data_public():
 def load_data_sources_by_name() -> Dict[str, pd.DataFrame]:
 
     sources = [
-        covid_county_data.CovidCountyDataDataSource,
         texas_hospitalizations.TexasHospitalizations,
         covid_tracking_source.CovidTrackingDataSource,
         nytimes_dataset.NYTimesDataset,

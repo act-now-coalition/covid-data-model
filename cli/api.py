@@ -55,7 +55,7 @@ def main():
     help="Output directory json-schema outputs.",
     default="api/schemas_v2/",
 )
-def update_v2_schemas(api_output_path, schemas_output_dir):
+def update_schemas(api_output_path, schemas_output_dir):
     """Updates all public facing API schemas."""
     spec = update_open_api_spec.construct_open_api_spec()
     api_output_path.write_text(json.dumps(spec, indent=2))
