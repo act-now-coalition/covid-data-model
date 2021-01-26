@@ -1,4 +1,4 @@
-from typing import Type, Optional
+from typing import Type
 
 import pandas as pd
 
@@ -25,9 +25,8 @@ class DataSource(object):
     # Indicates if NYC data is aggregated into one NYC county or not.
     HAS_AGGREGATED_NYC_BOROUGH = False
 
-    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.Series] = None):
+    def __init__(self, data: pd.DataFrame):
         self.data = data
-        self.provenance = provenance
 
     @classmethod
     @lru_cache(None)
@@ -44,11 +43,6 @@ class DataSource(object):
             dataset = MultiRegionDataset.from_fips_timeseries_df(self.data).add_provenance_all(
                 self.SOURCE_NAME
             )
-            # TODO(tom): DataSource.provenance is only set by
-            # CovidCountyDataDataSource.synthesize_test_metrics. Factor it out into something
-            # that reads and creates a MultiRegionDataset.
-            # if self.provenance is not None:
-            #     dataset.add_fips_provenance(self.provenance)
             return dataset
 
         if set(self.INDEX_FIELD_MAP.keys()) == set(STATIC_INDEX_FIELDS):

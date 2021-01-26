@@ -1455,3 +1455,49 @@ def test_weighted_reporting_ratio(reporting_ratio, expected_na):
         assert not len(cases)
     else:
         assert len(cases)
+
+
+def test_provenance_map():
+    region_tx = Region.from_state("TX")
+    region_sf = Region.from_fips("06075")
+    tag1 = test_helpers.make_tag(date="2020-04-01")
+    tag2 = test_helpers.make_tag(date="2020-04-02")
+    dataset = test_helpers.build_dataset(
+        {
+            region_tx: {
+                CommonFields.ICU_BEDS: TimeseriesLiteral(
+                    [2, 4], annotation=[tag1, tag2], provenance=["prov1", "prov2"],
+                ),
+                CommonFields.CASES: TimeseriesLiteral([200, 300], provenance="prov1"),
+            },
+            region_sf: {
+                CommonFields.ICU_BEDS: TimeseriesLiteral([2, 4], provenance="prov2",),
+                CommonFields.CASES: TimeseriesLiteral([200, 300], provenance="prov3"),
+                CommonFields.DEATHS: TimeseriesLiteral([1, 2], provenance="prov1"),
+            },
+        }
+    )
+
+    assert dataset.provenance_map() == {
+        CommonFields.ICU_BEDS: {"prov1", "prov2"},
+        CommonFields.CASES: {"prov1", "prov3"},
+        CommonFields.DEATHS: {"prov1"},
+    }
+
+
+def test_provenance_map_empty():
+    region_tx = Region.from_state("TX")
+    region_sf = Region.from_fips("06075")
+    tag1 = test_helpers.make_tag(date="2020-04-01")
+    tag2 = test_helpers.make_tag(date="2020-04-02")
+    dataset = test_helpers.build_dataset(
+        {
+            region_tx: {
+                CommonFields.ICU_BEDS: TimeseriesLiteral([2, 4], annotation=[tag1, tag2]),
+                CommonFields.CASES: [200, 300],
+            },
+            region_sf: {CommonFields.ICU_BEDS: [2, 4],},
+        }
+    )
+
+    assert dataset.provenance_map() == {}
