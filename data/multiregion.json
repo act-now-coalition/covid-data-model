@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "c1bfc54083349ef3d280d22650ffe0220dce75f7",
-    "branch": "main",
-    "is_dirty": false
+    "sha": "04234d02d467c387adebf889e4b92866d89f796b",
+    "branch": "tgb-datasource-rm-constants",
+    "is_dirty": true
   },
-  "updated_at": "2021-01-26T15:02:25.896378"
+  "updated_at": "2021-01-26T23:02:09.757545"
 }
