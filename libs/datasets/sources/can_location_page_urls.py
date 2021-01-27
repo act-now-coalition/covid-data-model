@@ -5,7 +5,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import timeseries
-from libs.datasets.dataset_utils import STATIC_INDEX_FIELDS
 
 
 class CANLocationPageURLS(data_source.DataSource):

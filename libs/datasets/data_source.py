@@ -1,11 +1,14 @@
-from typing import Type, Optional
+import pathlib
+from typing import List
+from typing import Optional
+from typing import Union
 
 import pandas as pd
 from covidactnow.datapublic import common_df
+from covidactnow.datapublic.common_fields import CommonFields
 
 from libs.datasets import dataset_utils
 from libs.datasets import timeseries
-from libs.datasets.dataset_utils import STATIC_INDEX_FIELDS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets.timeseries import MultiRegionDataset
 from functools import lru_cache
@@ -17,9 +20,11 @@ class DataSource(object):
     # Name of dataset source
     SOURCE_NAME = None
 
-    EXPECTED_FIELDS = None
+    # Fields expected in the DataFrame loaded by common_df.read_csv
+    EXPECTED_FIELDS: Optional[List[CommonFields]] = None
 
-    COMMON_DF_CSV_PATH = None
+    # Path of the CSV to be loaded by the default `make_dataset` implementation.
+    COMMON_DF_CSV_PATH: Optional[Union[pathlib.Path, str]] = None
 
     @classmethod
     @lru_cache(None)

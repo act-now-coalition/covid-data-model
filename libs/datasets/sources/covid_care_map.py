@@ -5,7 +5,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import timeseries
-from libs.datasets.dataset_utils import STATIC_INDEX_FIELDS
 
 
 class CovidCareMapBeds(data_source.DataSource):
@@ -13,17 +12,14 @@ class CovidCareMapBeds(data_source.DataSource):
 
     SOURCE_NAME = "CCM"
 
-    COMMON_FIELD_MAP = {
-        f: f
-        for f in {
-            CommonFields.STAFFED_BEDS,
-            CommonFields.LICENSED_BEDS,
-            CommonFields.ICU_BEDS,
-            CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
-            CommonFields.ICU_TYPICAL_OCCUPANCY_RATE,
-            CommonFields.MAX_BED_COUNT,
-        }
-    }
+    EXPECTED_FIELDS = [
+        CommonFields.STAFFED_BEDS,
+        CommonFields.LICENSED_BEDS,
+        CommonFields.ICU_BEDS,
+        CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE,
+        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE,
+        CommonFields.MAX_BED_COUNT,
+    ]
 
     @classmethod
     @lru_cache(None)

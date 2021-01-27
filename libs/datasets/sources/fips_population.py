@@ -37,10 +37,7 @@ class FIPSPopulation(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    COMMON_FIELD_MAP = {
-        CommonFields.POPULATION: Fields.POPULATION,
-        CommonFields.COUNTY: CommonFields.COUNTY,  # COUNTY isn't in the LatestValueDataset.INDEX_FIELDS
-    }
+    EXPECTED_FIELDS = [CommonFields.POPULATION, CommonFields.COUNTY]
 
     @classmethod
     @lru_cache(None)
