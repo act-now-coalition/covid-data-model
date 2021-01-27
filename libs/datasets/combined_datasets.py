@@ -52,6 +52,7 @@ FeatureDataSourceMap = NewType(
 )
 
 
+# TODO(tom): Replace with something easier to read when fixing https://trello.com/c/VP9NRpJe/778
 class HHSHospitalDatasetOnlyTX(HHSHospitalDataset):
     @classmethod
     @functools.lru_cache(None)

@@ -20,18 +20,19 @@ _log = structlog.get_logger()
 class DataSource(object):
     """Represents a single dataset source; loads data and produces a MultiRegionDataset."""
 
-    # Name of dataset source
+    # Name of source
+    # TODO(tom): Make an enum of these.
     SOURCE_NAME = None
 
-    # Fields expected in the DataFrame loaded by common_df.read_csv
+    # Fields expected to be in the DataFrame loaded by common_df.read_csv
     EXPECTED_FIELDS: Optional[List[CommonFields]] = None
 
     # Path of the CSV to be loaded by the default `make_dataset` implementation.
     COMMON_DF_CSV_PATH: Optional[Union[pathlib.Path, str]] = None
 
-    # Fields that are ignored when warning about missing and extra fields. By default the some
-    # fields that contain redundant information about the location are ignored because cleaning
-    # them up isn't worth the effort.
+    # Fields that are ignored when warning about missing and extra fields. By default some fields
+    # that contain redundant information about the location are ignored because cleaning them up
+    # isn't worth the effort.
     IGNORED_FIELDS = (CommonFields.COUNTY, CommonFields.COUNTRY, CommonFields.STATE)
 
     @classmethod
@@ -43,13 +44,14 @@ class DataSource(object):
         input_path = data_root / cls.COMMON_DF_CSV_PATH
         data = common_df.read_csv(input_path, set_index=False)
         expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
+        # Keep only the expected fields.
         found_expected_fields = data.columns.intersection(expected_fields)
+        data = data[found_expected_fields]
         extra_fields = data.columns.difference(expected_fields).difference(cls.IGNORED_FIELDS)
         missing_fields = expected_fields.difference(data.columns).difference(cls.IGNORED_FIELDS)
-        data = data[found_expected_fields]
         if not extra_fields.empty:
             _log.info(
-                "DataSource produced extra unexpected fields",
+                "DataSource produced extra unexpected fields, which were dropped.",
                 cls=cls.SOURCE_NAME,
                 extra_fields=extra_fields,
             )
