@@ -1,16 +1,19 @@
 from dataclasses import dataclass
 from typing import Any
+from typing import Collection
 from typing import Dict, Type, List, NewType
 import functools
 import pathlib
 from typing import Optional
 
 import pandas as pd
+import numpy as np
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 
+from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
@@ -38,6 +41,8 @@ from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
 
 # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
+from libs.pipeline import RegionMask
+
 _log = structlog.get_logger()
 
 
@@ -73,7 +78,7 @@ class HHSHospitalDatasetOnlyTX(HHSHospitalDataset):
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDataset],
+    CommonFields.CASES: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDataset,],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
@@ -208,3 +213,27 @@ class RegionalData:
         if county:
             return f"{county}, {state}"
         return state
+
+
+def region_masks_to_location_ids(
+    *, include: RegionMask = None, exclude: RegionMask = None
+) -> Collection[str]:
+    assert include or exclude, "At least one of include or exclude must be set"
+
+    us_static = load_us_timeseries_dataset().static
+
+    if include:
+        rows_include = dataset_utils.make_rows_key(
+            us_static, aggregation_level=include.level, states=include.states,
+        )
+    else:
+        rows_include = np.ones(us_static.shape)
+
+    if exclude:
+        rows_exclude = dataset_utils.make_rows_key(
+            us_static, aggregation_level=exclude.level, states=exclude.states,
+        )
+    else:
+        rows_exclude = np.zeros(us_static.shape)
+
+    return us_static.loc[rows_include & ~rows_exclude, :].index
