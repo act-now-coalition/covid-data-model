@@ -12,7 +12,7 @@ from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 
 from libs.pipeline import Region
-from test.dataset_utils_test import read_csv_and_index_fips_date
+from tests.dataset_utils_test import read_csv_and_index_fips_date
 import pytest
 
 # Tests to make sure that combined datasets are building data with unique indexes

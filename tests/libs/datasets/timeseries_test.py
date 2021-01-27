@@ -20,10 +20,10 @@ from libs.datasets import dataset_pointer
 from libs.datasets import timeseries
 from libs.datasets.timeseries import TagType
 from libs.pipeline import Region
-from test import test_helpers
-from test.dataset_utils_test import read_csv_and_index_fips
-from test.dataset_utils_test import read_csv_and_index_fips_date
-from test.test_helpers import TimeseriesLiteral
+from tests import test_helpers
+from tests.dataset_utils_test import read_csv_and_index_fips
+from tests.dataset_utils_test import read_csv_and_index_fips_date
+from tests.test_helpers import TimeseriesLiteral
 
 
 # turns all warnings into errors for this module

@@ -13,8 +13,8 @@ from libs.datasets import AggregationLevel
 import pandas as pd
 import structlog
 
-from test import test_helpers
-from test.test_helpers import TimeseriesLiteral
+from tests import test_helpers
+from tests.test_helpers import TimeseriesLiteral
 
 
 @pytest.fixture
