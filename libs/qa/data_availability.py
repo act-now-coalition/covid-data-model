@@ -43,8 +43,8 @@ def build_data_availability_report(data: pd.DataFrame) -> pd.DataFrame:
     Returns:
     """
     if "population" not in data.columns:
-        pop = fips_population.FIPSPopulation.local()
-        pop_map = pop.data.set_index("fips")["population"]
+        pop = fips_population.FIPSPopulation.make_dataset()
+        pop_map = pop.static.set_index("fips")["population"]
         data["population"] = data["fips"].map(pop_map)
 
     def classify_row(row):

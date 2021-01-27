@@ -37,7 +37,7 @@ def load_data_sources_by_name() -> Dict[str, pd.DataFrame]:
     ]
     source_map = {}
     for source_cls in sources:
-        dataset = source_cls.local().multi_region_dataset().static_and_timeseries_latest_with_fips()
+        dataset = source_cls.make_dataset().static_and_timeseries_latest_with_fips()
 
         dataset["source"] = source_cls.__name__
         source_map[source_cls.__name__] = dataset
