@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from covidactnow.datapublic import common_df
 from libs.datasets import data_source
 from libs.datasets import dataset_utils
@@ -17,6 +19,7 @@ class ForecastHubDataset(data_source.DataSource):
     }
 
     @classmethod
+    @lru_cache(None)
     def local(cls):
         """
         This currently returns an empty DataFrame because _rename_to_common_fields restricts

@@ -29,6 +29,7 @@ class DataSource(object):
         self.data = data
 
     @classmethod
+    @lru_cache(None)
     def local(cls) -> "DataSource":
         """Builds data from local covid-public-data github repo.
 
