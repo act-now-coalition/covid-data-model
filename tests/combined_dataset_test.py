@@ -223,7 +223,7 @@ def test_dataclass_include_exclude():
     ca_counties_without_la_source = combined_datasets.datasource_regions(
         orig_data_source_cls,
         RegionMask(AggregationLevel.COUNTY, states=["CA"]),
-        exclude="iso1:us#iso2:us-ca#fips:06037",
+        exclude=Region.from_fips("06037"),
     )
     ds = ca_counties_without_la_source.make_dataset()
     assert "iso1:us#iso2:us-tx" not in ds.static.index
@@ -233,6 +233,6 @@ def test_dataclass_include_exclude():
 
     # Just Cook County, IL
     ds = combined_datasets.datasource_regions(
-        orig_data_source_cls, include="iso1:us#iso2:us-il#fips:17031"
+        orig_data_source_cls, include=Region.from_fips("17031")
     ).make_dataset()
     assert ds.static.index.to_list() == ["iso1:us#iso2:us-il#fips:17031"]

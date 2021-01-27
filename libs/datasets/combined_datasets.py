@@ -52,7 +52,7 @@ class RegionLatestNotFound(IndexError):
     pass
 
 
-RegionMaskOrLocationIds = NewType("RegionMaskOrLocationIds", Union[RegionMask, str, List[str]])
+RegionMaskOrRegions = NewType("RegionMaskOrRegions", Union[RegionMask, Region, Collection[Region]])
 
 
 @final
@@ -71,8 +71,8 @@ class DataSourceAndRegionMasks:
     """
 
     data_source_cls: Type[data_source.DataSource]
-    include: Optional[RegionMaskOrLocationIds] = None
-    exclude: Optional[RegionMaskOrLocationIds] = None
+    include: Optional[RegionMaskOrRegions] = None
+    exclude: Optional[RegionMaskOrRegions] = None
 
     @property
     def EXPECTED_FIELDS(self):
@@ -88,16 +88,13 @@ class DataSourceAndRegionMasks:
         """Returns the dataset of the wrapped DataSource class, with a subset of the regions."""
         dataset = self.data_source_cls.make_dataset()
 
-        def _get_location_ids(
-            region_mask_or_location_ids: RegionMaskOrLocationIds,
-        ) -> Collection[str]:
-            if isinstance(region_mask_or_location_ids, RegionMask):
-                return region_mask_to_location_ids(region_mask_or_location_ids)
-            elif isinstance(region_mask_or_location_ids, str):
-                return [region_mask_or_location_ids]
+        def _get_location_ids(region_mask_or_regions: RegionMaskOrRegions,) -> Collection[str]:
+            if isinstance(region_mask_or_regions, RegionMask):
+                return region_mask_to_location_ids(region_mask_or_regions)
+            elif isinstance(region_mask_or_regions, Region):
+                return [region_mask_or_regions.location_id]
             else:
-                assert isinstance(region_mask_or_location_ids, List)
-                return region_mask_or_location_ids
+                return [r.location_id for r in region_mask_or_regions]
 
         if self.include:
             dataset = dataset.get_locations_subset(_get_location_ids(self.include))
@@ -108,9 +105,9 @@ class DataSourceAndRegionMasks:
 
 def datasource_regions(
     data_source_cls: Type[data_source.DataSource],
-    include: Optional[Union[RegionMask, str]] = None,
+    include: Optional[RegionMaskOrRegions] = None,
     *,
-    exclude: Optional[Union[RegionMask, str]] = None,
+    exclude: Optional[RegionMaskOrRegions] = None,
 ) -> DataSourceAndRegionMasks:
     assert include or exclude
     return DataSourceAndRegionMasks(data_source_cls, include=include, exclude=exclude)
