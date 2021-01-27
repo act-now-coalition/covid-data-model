@@ -8,10 +8,10 @@ from pyseir.rt.constants import InferRtConstants
 # Historical data file, prepared in each API snapshot, including key metrics and inferred Rt values
 # TODO update process to save this periodically in this locaiton
 # TODO find out why VI data appears to be broken in latest file
-HISTORICAL_DATA_FILE = "test/data/historical/merged_results.csv"
+HISTORICAL_DATA_FILE = "tests/data/historical/merged_results.csv"
 
 # Forecast data
-FORECAST_DATA_FILE = "test/data/forecasts/timeseries-common.csv"
+FORECAST_DATA_FILE = "tests/data/forecasts/timeseries-common.csv"
 
 # Manually label bad data corrections so they can be automatically applied
 DATA_CORRECTIONS = {

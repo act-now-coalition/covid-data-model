@@ -205,7 +205,7 @@ def test_historical_peaks_positivity_to_real_cfr():
     """
     if not MAKE_PLOTS:
         return
-    peaks = pd.read_csv("test/data/historical/historical_peaks.csv")
+    peaks = pd.read_csv("tests/data/historical/historical_peaks.csv")
     early_peaks = peaks[peaks["when"] == "Apr-May"].copy()
     late_peaks = peaks[peaks["when"] == "Jun-Jul"].copy()
 

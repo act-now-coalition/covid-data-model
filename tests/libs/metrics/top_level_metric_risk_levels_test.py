@@ -3,7 +3,7 @@ import pandas as pd
 from libs.metrics.top_level_metric_risk_levels import RiskLevel
 from libs.metrics import top_level_metric_risk_levels as metric_risk_levels
 from libs.metrics import top_level_metrics
-from test.libs.metrics import top_level_metrics_test
+from tests.libs.metrics import top_level_metrics_test
 
 
 def test_calc_risk_level_below_limit():
