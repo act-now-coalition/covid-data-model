@@ -12,6 +12,8 @@ class NYTimesDataset(data_source.DataSource):
 
     EXPECTED_FIELDS = [CommonFields.CASES, CommonFields.DEATHS]
 
+    IGNORED_FIELDS = data_source.DataSource.IGNORED_FIELDS + (CommonFields.STATE_FULL_NAME,)
+
     @classmethod
     @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:

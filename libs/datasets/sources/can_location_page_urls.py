@@ -8,9 +8,9 @@ from libs.datasets import timeseries
 
 
 class CANLocationPageURLS(data_source.DataSource):
-    STATIC_CSV = "data/misc/can_location_page_urls.csv"
-
     SOURCE_NAME = "can_urls"
+
+    STATIC_CSV = "data/misc/can_location_page_urls.csv"
 
     EXPECTED_FIELDS = [
         CommonFields.CAN_LOCATION_PAGE_URL,

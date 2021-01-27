@@ -28,4 +28,4 @@ class CovidCareMapBeds(data_source.DataSource):
         input_path = data_root / cls.STATIC_CSV
         # Can't use common_df.read_csv because it expects a date column
         data = pd.read_csv(input_path, dtype={CommonFields.FIPS: str})
-        return cls.make_static_dataset(data)
+        return timeseries.MultiRegionDataset.new_without_timeseries().add_fips_static_df(data)

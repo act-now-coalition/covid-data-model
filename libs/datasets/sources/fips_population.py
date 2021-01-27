@@ -46,7 +46,7 @@ class FIPSPopulation(data_source.DataSource):
         data = pd.read_csv(data_root / cls.FILE_PATH, dtype={"fips": str})
         data["fips"] = data.fips.str.zfill(5)
         data = cls.standardize_data(data)
-        return cls.make_static_dataset(data)
+        return timeseries.MultiRegionDataset.new_without_timeseries().add_fips_static_df(data)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:

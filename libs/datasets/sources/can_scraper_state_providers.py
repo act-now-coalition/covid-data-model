@@ -8,7 +8,11 @@ class CANScraperStateProviders(data_source.DataSource):
     COMMON_DF_CSV_PATH = "data/can-scrapers-state-providers/timeseries-common.csv"
 
     EXPECTED_FIELDS = [
+        CommonFields.STAFFED_BEDS,
+        CommonFields.CASES,
+        CommonFields.DEATHS,
         CommonFields.VACCINES_ALLOCATED,
+        CommonFields.VACCINES_ADMINISTERED,
         CommonFields.VACCINES_DISTRIBUTED,
         CommonFields.VACCINATIONS_INITIATED,
         CommonFields.VACCINATIONS_COMPLETED,
