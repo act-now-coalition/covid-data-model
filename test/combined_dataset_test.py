@@ -18,8 +18,6 @@ import pytest
 # Tests to make sure that combined datasets are building data with unique indexes
 # If this test is failing, it means that there is one of the data sources that
 # is returning multiple values for a single row.
-
-
 @pytest.mark.slow
 def test_unique_index_values_us_timeseries():
     us_dataset = combined_datasets.load_us_timeseries_dataset()
@@ -87,7 +85,7 @@ def test_get_county_name():
     "data_source_cls", [CovidTrackingDataSource, NYTimesDataset, TexasHospitalizations,],
 )
 def test_unique_timeseries(data_source_cls):
-    dataset = data_source_cls.local().multi_region_dataset()
+    dataset = data_source_cls.make_dataset()
     # Check for duplicate rows with the same INDEX_FIELDS. Sort by index so duplicates are next to
     # each other in the message if the assert fails.
     timeseries_data = dataset.timeseries.sort_index()
@@ -101,7 +99,7 @@ def test_unique_timeseries(data_source_cls):
     "data_source_cls", [CovidTrackingDataSource],
 )
 def test_expected_field_in_sources(data_source_cls):
-    dataset = data_source_cls.local().multi_region_dataset()
+    dataset = data_source_cls.make_dataset()
 
     assert not dataset.timeseries.empty
     assert not dataset.static.empty
@@ -192,3 +190,13 @@ def test_make_latest_from_timeseries_dont_touch_county():
         "county": "Smith Countzz",
     }
     assert get_latest(Region.from_state("WY")) == {"m1": 3}
+
+
+def test_combined_datasets_uses_only_expected_fields():
+    """Checks that field sources in combined_datasets appear in the corresponding EXPECTED_FIELDS"""
+    for field_name, sources in combined_datasets.ALL_TIMESERIES_FEATURE_DEFINITION.items():
+        for source in sources:
+            assert field_name in source.EXPECTED_FIELDS, (
+                f"{source.SOURCE_NAME} is in combined_datasets for {field_name} but the field "
+                f"is not in the {source.SOURCE_NAME} EXPECTED_FIELDS."
+            )

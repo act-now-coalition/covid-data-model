@@ -66,7 +66,7 @@ def update_forecasts(filename):
     """Updates external forecasts to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
     data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-    data_path = forecast_hub.ForecastHubDataset.DATA_PATH
+    data_path = forecast_hub.ForecastHubDataset.COMMON_DF_CSV_PATH
     shutil.copy(data_root / data_path, path_prefix / filename)
     _logger.info(f"Updating External Forecasts at {path_prefix / filename}")
 
@@ -231,7 +231,7 @@ def load_datasets_by_field(
     feature_definition_config: combined_datasets.FeatureDataSourceMap, *, state, fips
 ) -> Mapping[FieldName, List[timeseries.MultiRegionDataset]]:
     def _load_dataset(data_source_cls) -> timeseries.MultiRegionDataset:
-        dataset = data_source_cls.local().multi_region_dataset()
+        dataset = data_source_cls.make_dataset()
         if state or fips:
             dataset = dataset.get_subset(state=state, fips=fips)
         return dataset
