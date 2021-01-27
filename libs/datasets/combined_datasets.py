@@ -14,9 +14,11 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from typing_extensions import final
 
+from libs.datasets import custom_aggregations
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
+from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalDataset
@@ -59,6 +61,8 @@ RegionMaskOrRegions = NewType("RegionMaskOrRegions", Union[RegionMask, Region, C
 @dataclass(frozen=True)
 class DataSourceAndRegionMasks:
     """Represents a DataSource class and include/exclude region masks.
+
+    Use function `datasource_regions` to create instance of this class.
 
     Instances of this class can be used in the same places where the DataSource type (not
     instances of the DataSource) are used.
@@ -109,7 +113,11 @@ def datasource_regions(
     *,
     exclude: Optional[RegionMaskOrRegions] = None,
 ) -> DataSourceAndRegionMasks:
-    assert include or exclude
+    """Creates an instance of the `DataSourceAndRegionMasks` class."""
+    assert include or exclude, (
+        "At least one of include or exclude must be set. If neither are "
+        "needed use the DataSource class directly."
+    )
     return DataSourceAndRegionMasks(data_source_cls, include=include, exclude=exclude)
 
 
@@ -117,6 +125,11 @@ FeatureDataSourceMap = NewType(
     "FeatureDataSourceMap",
     Dict[FieldName, List[Union[DataSourceAndRegionMasks, Type[data_source.DataSource]]]],
 )
+
+
+# NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
+# Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
+NYTimesDatasetWithoutNYC = datasource_regions(NYTimesDataset, exclude=ALL_NYC_REGIONS)
 
 
 # Below are two instances of feature definitions. These define
@@ -132,7 +145,7 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDataset,],
+    CommonFields.CASES: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDatasetWithoutNYC],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
@@ -147,11 +160,10 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         TexasHospitalizations,
         HHSHospitalDataset,
-        datasource_regions(HHSHospitalDataset, RegionMask(states=["TX"])),
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalDataset],
     CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
-    CommonFields.DEATHS: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDataset],
+    CommonFields.DEATHS: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDatasetWithoutNYC],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalDataset],
     CommonFields.ICU_BEDS: [CANScraperStateProviders, HHSHospitalDataset],
     CommonFields.NEGATIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
