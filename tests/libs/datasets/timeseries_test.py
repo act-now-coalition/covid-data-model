@@ -1457,31 +1457,6 @@ def test_weighted_reporting_ratio(reporting_ratio, expected_na):
         assert len(cases)
 
 
-def test_datasets_map_write_read(tmpdir):
-    csv_path = pathlib.Path(tmpdir) / "multi_dataset.csv"
-
-    region_tx = Region.from_state("TX")
-    region_sf = Region.from_fips("06075")
-    values = [100, 200, 300, 400]
-    ts_with_tag = TimeseriesLiteral(values, annotation=[test_helpers.make_tag()])
-
-    ds_a = test_helpers.build_dataset(
-        {
-            region_tx: {CommonFields.CASES: ts_with_tag},
-            region_sf: {CommonFields.CASES: [10, 20, 30, 40]},
-        }
-    )
-    ds_a_name = DatasetName("ds_a")
-    ds_b = test_helpers.build_dataset({region_sf: {CommonFields.CASES: ts_with_tag}})
-    ds_b_name = DatasetName("ds_b")
-
-    map_to_write = timeseries.DatasetMap.from_map({ds_a_name: ds_a, ds_b_name: ds_b})
-
-    map_to_write.write(csv_path)
-
-    map_read = timeseries.DatasetMap.from_csv()
-
-
 def test_provenance_map():
     region_tx = Region.from_state("TX")
     region_sf = Region.from_fips("06075")

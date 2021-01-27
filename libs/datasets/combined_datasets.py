@@ -1,11 +1,8 @@
-import collections
 from dataclasses import dataclass
-from itertools import chain
 from typing import Any
 from typing import Dict, Type, List, NewType
 import functools
 import pathlib
-from typing import Mapping
 from typing import Optional
 
 import pandas as pd
@@ -175,18 +172,6 @@ def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:
     # https://stackoverflow.com/a/17841321/341400
     joined = fips_var_grouped.agg(lambda col: ";".join(col))
     return joined
-
-
-def foo() -> Mapping[CommonFields, List[str]]:
-    data_source_classes = set(chain.from_iterable(ALL_TIMESERIES_FEATURE_DEFINITION.values()))
-
-    field_provider = collections.defaultdict(list)
-    cls: data_source.DataSource
-    for cls in data_source_classes:
-        for field in cls.COMMON_FIELD_MAP.keys():
-            field_provider[field].append(cls.__name__)
-
-    return field_provider
 
 
 @dataclass(frozen=True)

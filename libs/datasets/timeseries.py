@@ -1448,30 +1448,6 @@ class DatasetName(str):
     pass
 
 
-@dataclass(frozen=True)
-class DatasetMap:
-    _map: Mapping[DatasetName, MultiRegionDataset]
-
-    @staticmethod
-    def from_map(dataset_map: Mapping[DatasetName, MultiRegionDataset]) -> "DatasetMap":
-        return DatasetMap(_map=dataset_map)
-
-    @staticmethod
-    def from_csv() -> "DatasetMap":
-        return DatasetMap(_map=dataset_map)
-
-    def write(self, output_path: pathlib.Path):
-        """Writes a map from DatasetName to dataset, used for debugging test positivity."""
-        all_datasets_df = pd.concat(
-            {name: ds.timeseries_rows() for name, ds in self._map.items()},
-            names=[PdFields.DATASET, CommonFields.LOCATION_ID, PdFields.VARIABLE],
-        )
-        all_methods = all_datasets_df.reorder_levels(
-            [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DATASET]
-        ).sort_index()
-        all_methods.to_csv(output_path, index=True, float_format="%.07g")
-
-
 def _to_datasets_wide_dates_map(
     datasets: Iterable[MultiRegionDataset],
 ) -> Mapping[MultiRegionDataset, pd.DataFrame]:
