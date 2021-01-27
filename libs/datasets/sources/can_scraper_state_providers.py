@@ -7,18 +7,22 @@ class CANScraperStateProviders(data_source.DataSource):
 
     COMMON_DF_CSV_PATH = "data/can-scrapers-state-providers/timeseries-common.csv"
 
-    EXPECTED_FIELDS = [
-        CommonFields.STAFFED_BEDS,
-        CommonFields.CASES,
-        CommonFields.DEATHS,
-        CommonFields.VACCINES_ALLOCATED,
-        CommonFields.VACCINES_ADMINISTERED,
-        CommonFields.VACCINES_DISTRIBUTED,
-        CommonFields.VACCINATIONS_INITIATED,
-        CommonFields.VACCINATIONS_COMPLETED,
-        CommonFields.TOTAL_TESTS_VIRAL,
-        CommonFields.ICU_BEDS,
-        CommonFields.CURRENT_HOSPITALIZED,
-        CommonFields.POSITIVE_TESTS_VIRAL,
-        CommonFields.CURRENT_ICU,
-    ]
+    INDEX_FIELD_MAP = {f: f for f in TIMESERIES_INDEX_FIELDS}
+
+    # TODO: Remove constants(https://trello.com/c/uPQXBuDg/777-remove-unused-datasource-constants)
+    COMMON_FIELD_MAP = {
+        f: f
+        for f in {
+            CommonFields.VACCINES_ALLOCATED,
+            CommonFields.VACCINES_DISTRIBUTED,
+            CommonFields.VACCINATIONS_INITIATED,
+            CommonFields.VACCINATIONS_COMPLETED,
+        }
+    }
+
+    @classmethod
+    def local(cls):
+        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        input_path = data_root / cls.DATA_PATH
+        data = common_df.read_csv(input_path, set_index=False)
+        return cls(data)

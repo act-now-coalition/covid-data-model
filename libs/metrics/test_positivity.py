@@ -378,9 +378,7 @@ class AllMethods:
         # Make a dataset object with one metric, containing for each region the timeseries
         # from the highest priority dataset that has recent data.
         test_positivity = timeseries.combined_datasets(
-            calculated_dataset_recent_map,
-            {CommonFields.TEST_POSITIVITY: list(calculated_dataset_recent_map.keys())},
-            {},
+            {CommonFields.TEST_POSITIVITY: list(calculated_dataset_recent_map.values())}, {}
         )
         return AllMethods(
             all_methods_datasets=calculated_dataset_all_map, test_positivity=test_positivity

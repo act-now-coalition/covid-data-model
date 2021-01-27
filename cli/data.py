@@ -83,26 +83,15 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
-    data_source_classes = set(
-        chain(
-            chain.from_iterable(ALL_FIELDS_FEATURE_DEFINITION.values()),
-            chain.from_iterable(ALL_TIMESERIES_FEATURE_DEFINITION.values()),
-        )
+    timeseries_field_datasets = load_datasets_by_field(
+        ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
     )
-    data_sources = {
-        data_source_cls.SOURCE_NAME: data_source_cls.make_dataset()
-        for data_source_cls in data_source_classes
-    }
-    if state or fips:
-        data_sources = {
-            name: dataset.get_subset(state=state, fips=fips)
-            # aggregation_level=AggregationLevel.STATE)
-            for name, dataset in data_sources.items()
-        }
+    static_field_datasets = load_datasets_by_field(
+        ALL_FIELDS_FEATURE_DEFINITION, state=state, fips=fips
+    )
+
     multiregion_dataset = timeseries.combined_datasets(
-        data_sources,
-        build_field_dataset_source(ALL_TIMESERIES_FEATURE_DEFINITION),
-        build_field_dataset_source(ALL_FIELDS_FEATURE_DEFINITION),
+        timeseries_field_datasets, static_field_datasets
     )
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
     _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
@@ -237,11 +226,19 @@ def update_case_based_icu_utilization_weights():
         json.dump(output, f, indent=2, sort_keys=True)
 
 
-def build_field_dataset_source(feature_definition_config):
+def load_datasets_by_field(
+    feature_definition_config: combined_datasets.FeatureDataSourceMap, *, state, fips
+) -> Mapping[FieldName, List[timeseries.MultiRegionDataset]]:
+    def _load_dataset(data_source_cls) -> timeseries.MultiRegionDataset:
+        dataset = data_source_cls.make_dataset()
+        if state or fips:
+            dataset = dataset.get_subset(state=state, fips=fips)
+        return dataset
+
     feature_definition = {
-        # timeseries.combined_datasets has the highest priority first.
+        # Put the highest priority first, as expected by timeseries.combined_datasets.
         # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
-        field_name: list(reversed(list(DatasetName(cls.SOURCE_NAME) for cls in classes)))
+        field_name: list(reversed(list(_load_dataset(cls) for cls in classes)))
         for field_name, classes in feature_definition_config.items()
         if classes
     }
