@@ -5,15 +5,15 @@ from typing import Dict, Type, List, NewType
 import functools
 import pathlib
 from typing import Optional
+from typing import Union
 
 import pandas as pd
-import numpy as np
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
+from typing_extensions import final
 
-from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
@@ -52,17 +52,74 @@ class RegionLatestNotFound(IndexError):
     pass
 
 
+RegionMaskOrLocationIds = NewType("RegionMaskOrLocationIds", Union[RegionMask, str, List[str]])
+
+
+@final
+@dataclass(frozen=True)
+class DataSourceAndRegionMasks:
+    """Represents a DataSource class and include/exclude region masks.
+
+    Instances of this class can be used in the same places where the DataSource type (not
+    instances of the DataSource) are used.
+
+    Using this class depends on an existing source of all location_ids. Currently it depends on
+    the existing combined data and is used to produce a new combined data. A recursive data
+    dependency isn't great but works and we don't otherwise have a stable source of locations to
+    use for filtering. Fixing this could be part of
+    https://trello.com/c/2Pa4DMyu/836-trim-down-the-timeseriesindexfields
+    """
+
+    data_source_cls: Type[data_source.DataSource]
+    include: Optional[RegionMaskOrLocationIds] = None
+    exclude: Optional[RegionMaskOrLocationIds] = None
+
+    @property
+    def EXPECTED_FIELDS(self):
+        """Returns the same property of the wrapped DataSource class."""
+        return self.data_source_cls.EXPECTED_FIELDS
+
+    @property
+    def SOURCE_NAME(self):
+        """Returns the same property of the wrapped DataSource class."""
+        return self.data_source_cls.SOURCE_NAME
+
+    def make_dataset(self) -> MultiRegionDataset:
+        """Returns the dataset of the wrapped DataSource class, with a subset of the regions."""
+        dataset = self.data_source_cls.make_dataset()
+
+        def _get_location_ids(
+            region_mask_or_location_ids: RegionMaskOrLocationIds,
+        ) -> Collection[str]:
+            if isinstance(region_mask_or_location_ids, RegionMask):
+                return region_mask_to_location_ids(region_mask_or_location_ids)
+            elif isinstance(region_mask_or_location_ids, str):
+                return [region_mask_or_location_ids]
+            else:
+                assert isinstance(region_mask_or_location_ids, List)
+                return region_mask_or_location_ids
+
+        if self.include:
+            dataset = dataset.get_locations_subset(_get_location_ids(self.include))
+        if self.exclude:
+            dataset = dataset.remove_locations(_get_location_ids(self.exclude))
+        return dataset
+
+
+def datasource_regions(
+    data_source_cls: Type[data_source.DataSource],
+    include: Optional[Union[RegionMask, str]] = None,
+    *,
+    exclude: Optional[Union[RegionMask, str]] = None,
+) -> DataSourceAndRegionMasks:
+    assert include or exclude
+    return DataSourceAndRegionMasks(data_source_cls, include=include, exclude=exclude)
+
+
 FeatureDataSourceMap = NewType(
-    "FeatureDataSourceMap", Dict[FieldName, List[Type[data_source.DataSource]]]
+    "FeatureDataSourceMap",
+    Dict[FieldName, List[Union[DataSourceAndRegionMasks, Type[data_source.DataSource]]]],
 )
-
-
-# TODO(tom): Replace with something easier to read when fixing https://trello.com/c/VP9NRpJe/778
-class HHSHospitalDatasetOnlyTX(HHSHospitalDataset):
-    @classmethod
-    @functools.lru_cache(None)
-    def make_dataset(cls) -> MultiRegionDataset:
-        return super().make_dataset().get_subset(state="TX")
 
 
 # Below are two instances of feature definitions. These define
@@ -93,7 +150,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         TexasHospitalizations,
         HHSHospitalDataset,
-        HHSHospitalDatasetOnlyTX,
+        datasource_regions(HHSHospitalDataset, RegionMask(states=["TX"])),
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalDataset],
     CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
@@ -215,25 +272,12 @@ class RegionalData:
         return state
 
 
-def region_masks_to_location_ids(
-    *, include: RegionMask = None, exclude: RegionMask = None
-) -> Collection[str]:
-    assert include or exclude, "At least one of include or exclude must be set"
-
+def region_mask_to_location_ids(region_mask: RegionMask) -> Collection[str]:
+    """Uses the existing combined dataset to transform `region_mask` into a list of location_id."""
     us_static = load_us_timeseries_dataset().static
 
-    if include:
-        rows_include = dataset_utils.make_rows_key(
-            us_static, aggregation_level=include.level, states=include.states,
-        )
-    else:
-        rows_include = np.ones(us_static.shape)
+    rows_key = dataset_utils.make_rows_key(
+        us_static, aggregation_level=region_mask.level, states=region_mask.states,
+    )
 
-    if exclude:
-        rows_exclude = dataset_utils.make_rows_key(
-            us_static, aggregation_level=exclude.level, states=exclude.states,
-        )
-    else:
-        rows_exclude = np.zeros(us_static.shape)
-
-    return us_static.loc[rows_include & ~rows_exclude, :].index
+    return us_static.loc[rows_key, :].index
