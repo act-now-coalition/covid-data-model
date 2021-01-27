@@ -7,4 +7,6 @@ class TestAndTraceData(data_source.DataSource):
 
     COMMON_DF_CSV_PATH = "data/test-and-trace/state_data.csv"
 
-    EXPECTED_FIELDS = [CommonFields.CONTACT_TRACERS_COUNT]
+    EXPECTED_FIELDS = [
+        CommonFields.CONTACT_TRACERS_COUNT,
+    ]

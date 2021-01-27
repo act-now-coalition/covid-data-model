@@ -53,8 +53,10 @@ FeatureDataSourceMap = NewType(
 
 
 class HHSHospitalDatasetOnlyTX(HHSHospitalDataset):
-    def multi_region_dataset(self) -> MultiRegionDataset:
-        return super().multi_region_dataset().get_subset(state="TX")
+    @classmethod
+    @functools.lru_cache(None)
+    def make_dataset(cls) -> MultiRegionDataset:
+        return super().make_dataset().get_subset(state="TX")
 
 
 # Below are two instances of feature definitions. These define

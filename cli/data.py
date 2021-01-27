@@ -1,4 +1,5 @@
-from itertools import chain
+from typing import List
+from typing import Mapping
 from typing import Optional
 import logging
 import pathlib
@@ -9,6 +10,7 @@ import structlog
 
 import click
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldName
 
 from libs import google_sheet_helpers
 from libs import pipeline
@@ -19,7 +21,6 @@ from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
     ALL_FIELDS_FEATURE_DEFINITION,
 )
-from libs.datasets.timeseries import DatasetName
 from libs.datasets import timeseries
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
@@ -65,7 +66,7 @@ def update_forecasts(filename):
     """Updates external forecasts to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
     data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-    data_path = forecast_hub.ForecastHubDataset.DATA_PATH
+    data_path = forecast_hub.ForecastHubDataset.COMMON_DF_CSV_PATH
     shutil.copy(data_root / data_path, path_prefix / filename)
     _logger.info(f"Updating External Forecasts at {path_prefix / filename}")
 
