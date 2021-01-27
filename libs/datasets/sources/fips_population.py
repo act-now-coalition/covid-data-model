@@ -1,9 +1,12 @@
 import pathlib
+from functools import lru_cache
+
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
+from libs.datasets import timeseries
 from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS, ABBREV_US_UNKNOWN_COUNTY_FIPS
 from libs.datasets.dataset_utils import AggregationLevel
 
@@ -34,28 +37,16 @@ class FIPSPopulation(data_source.DataSource):
         AGGREGATE_LEVEL = "aggregate_level"
         COUNTRY = "country"
 
-    INDEX_FIELD_MAP = {
-        CommonFields.COUNTRY: Fields.COUNTRY,
-        CommonFields.STATE: Fields.STATE,
-        CommonFields.FIPS: Fields.FIPS,
-        CommonFields.AGGREGATE_LEVEL: Fields.AGGREGATE_LEVEL,
-    }
-
-    COMMON_FIELD_MAP = {
-        CommonFields.POPULATION: Fields.POPULATION,
-        CommonFields.COUNTY: CommonFields.COUNTY,  # COUNTY isn't in the LatestValueDataset.INDEX_FIELDS
-    }
-
-    def __init__(self, path):
-        data = pd.read_csv(path, dtype={"fips": str})
-        data["fips"] = data.fips.str.zfill(5)
-        data = self.standardize_data(data)
-        super().__init__(data)
+    EXPECTED_FIELDS = [CommonFields.POPULATION, CommonFields.COUNTY]
 
     @classmethod
-    def local(cls):
+    @lru_cache(None)
+    def make_dataset(cls) -> timeseries.MultiRegionDataset:
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        return cls(data_root / cls.FILE_PATH)
+        data = pd.read_csv(data_root / cls.FILE_PATH, dtype={"fips": str})
+        data["fips"] = data.fips.str.zfill(5)
+        data = cls.standardize_data(data)
+        return timeseries.MultiRegionDataset.new_without_timeseries().add_fips_static_df(data)
 
     @classmethod
     def standardize_data(cls, data: pd.DataFrame) -> pd.DataFrame:
@@ -85,7 +76,7 @@ class FIPSPopulation(data_source.DataSource):
         states_aggregated[cls.Fields.FIPS] = states_aggregated[cls.Fields.STATE].map(ABBREV_US_FIPS)
         states_aggregated[cls.Fields.COUNTY] = None
 
-        common_fields_data = cls._rename_to_common_fields(pd.concat([data, states_aggregated]))
+        common_fields_data = pd.concat([data, states_aggregated])
         return common_fields_data
 
 

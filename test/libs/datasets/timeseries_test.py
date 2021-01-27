@@ -19,7 +19,6 @@ from libs.datasets import dataset_pointer
 
 from libs.datasets import timeseries
 from libs.datasets.timeseries import TagType
-from libs.datasets.timeseries import DatasetName
 from libs.pipeline import Region
 from test import test_helpers
 from test.dataset_utils_test import read_csv_and_index_fips
@@ -1173,11 +1172,7 @@ def test_combined_timeseries():
     ).add_provenance_csv(
         io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:10100,m1,ds110100prov\n")
     )
-    combined = timeseries.combined_datasets(
-        {DatasetName("ds1"): ds1, DatasetName("ds2"): ds2},
-        {FieldName("m1"): [DatasetName("ds1"), DatasetName("ds2")]},
-        {},
-    )
+    combined = timeseries.combined_datasets({FieldName("m1"): [ds1, ds2]}, {})
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,m1\n"
@@ -1212,12 +1207,8 @@ def test_combined_annotation():
     ds2 = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts2a, CommonFields.CASES: ts2b}
     )
-    ds1_name = DatasetName("ds1")
-    ds2_name = DatasetName("ds2")
     combined = timeseries.combined_datasets(
-        {ds1_name: ds1, ds2_name: ds2},
-        {CommonFields.ICU_BEDS: [ds1_name, ds2_name], CommonFields.CASES: [ds2_name, ds1_name]},
-        {},
+        {CommonFields.ICU_BEDS: [ds1, ds2], CommonFields.CASES: [ds2, ds1]}, {}
     )
 
     expected = test_helpers.build_default_region_dataset(
@@ -1242,12 +1233,11 @@ def test_combined_missing_field():
             "iso1:us#fips:97111,2020-04-04,Bar County,county,111\n"
         )
     )
-    dataset_map = {DatasetName("ts1"): ts1, DatasetName("ts2"): ts2}
     # m1 is output, m2 is dropped.
-    field_source_map = {FieldName("m1"): list(dataset_map.keys())}
+    field_source_map = {FieldName("m1"): [ts1, ts2]}
 
     # Check that combining finishes and produces the expected result.
-    combined_1 = timeseries.combined_datasets(dataset_map, field_source_map, {})
+    combined_1 = timeseries.combined_datasets(field_source_map, {})
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,m1\n"
@@ -1260,9 +1250,7 @@ def test_combined_missing_field():
     # Because there is only one source for the output timeseries reversing the source list
     # produces the same output.
     combined_2 = timeseries.combined_datasets(
-        dataset_map,
-        {name: reversed(source_list) for name, source_list in field_source_map.items()},
-        {},
+        {name: list(reversed(source_list)) for name, source_list in field_source_map.items()}, {}
     )
     test_helpers.assert_dataset_like(expected, combined_2)
 
@@ -1282,11 +1270,7 @@ def test_combined_static():
             "iso1:us#fips:97222,,Foo County,county,222\n"
         )
     )
-    combined = timeseries.combined_datasets(
-        {DatasetName("ds1"): ds1, DatasetName("ds2"): ds2},
-        {},
-        {FieldName("s1"): [DatasetName("ds1"), DatasetName("ds2")]},
-    )
+    combined = timeseries.combined_datasets({}, {FieldName("s1"): [ds1, ds2]})
     expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO("location_id,date,s1\n" "iso1:us#cbsa:10100,,111\n" "iso1:us#fips:97222,,22\n")
     )

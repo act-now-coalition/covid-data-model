@@ -55,6 +55,14 @@ FeatureDataSourceMap = NewType(
 )
 
 
+# TODO(tom): Replace with something easier to read when fixing https://trello.com/c/VP9NRpJe/778
+class HHSHospitalDatasetOnlyTX(HHSHospitalDataset):
+    @classmethod
+    @functools.lru_cache(None)
+    def make_dataset(cls) -> MultiRegionDataset:
+        return super().make_dataset().get_subset(state="TX")
+
+
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
 # support overlaying values. i.e. a row of
@@ -83,6 +91,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CovidTrackingDataSource,
         TexasHospitalizations,
         HHSHospitalDataset,
+        HHSHospitalDatasetOnlyTX,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalDataset],
     CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
