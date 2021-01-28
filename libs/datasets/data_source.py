@@ -1,64 +1,65 @@
-from typing import Type, Optional
+import pathlib
+from typing import List
+from typing import Optional
+from typing import Union
 
-import pandas as pd
+import structlog
+from covidactnow.datapublic import common_df
+from covidactnow.datapublic.common_fields import CommonFields
 
-from libs.datasets.dataset_utils import STATIC_INDEX_FIELDS
+from libs.datasets import dataset_utils
+from libs.datasets import timeseries
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets.timeseries import MultiRegionDataset
 from functools import lru_cache
+import pandas as pd
+
+_log = structlog.get_logger()
 
 
 class DataSource(object):
-    """Represents a single dataset source, loads data and cleans data."""
+    """Represents a single dataset source; loads data and produces a MultiRegionDataset."""
 
-    # Subclass must implement custom class of fields in dataset.
-    class Fields(object):
-        pass
-
-    INDEX_FIELD_MAP = None
-
-    COMMON_FIELD_MAP = None
-
-    # Name of dataset source
+    # Name of source
+    # TODO(tom): Make an enum of these.
     SOURCE_NAME = None
 
-    # Indicates if NYC data is aggregated into one NYC county or not.
-    HAS_AGGREGATED_NYC_BOROUGH = False
+    # Fields expected to be in the DataFrame loaded by common_df.read_csv
+    EXPECTED_FIELDS: Optional[List[CommonFields]] = None
 
-    def __init__(self, data: pd.DataFrame, provenance: Optional[pd.Series] = None):
-        self.data = data
-        self.provenance = provenance
+    # Path of the CSV to be loaded by the default `make_dataset` implementation.
+    COMMON_DF_CSV_PATH: Optional[Union[pathlib.Path, str]] = None
+
+    # Fields that are ignored when warning about missing and extra fields. By default some fields
+    # that contain redundant information about the location are ignored because cleaning them up
+    # isn't worth the effort.
+    IGNORED_FIELDS = (CommonFields.COUNTY, CommonFields.COUNTRY, CommonFields.STATE)
 
     @classmethod
-    def local(cls) -> "DataSource":
-        """Builds data from local covid-public-data github repo.
-
-        Returns: Instantiated class with data loaded.
-        """
-        raise NotImplementedError("Subclass must implement")
-
     @lru_cache(None)
-    def multi_region_dataset(self) -> MultiRegionDataset:
-        if set(self.INDEX_FIELD_MAP.keys()) == set(TIMESERIES_INDEX_FIELDS):
-            dataset = MultiRegionDataset.from_fips_timeseries_df(self.data).add_provenance_all(
-                self.SOURCE_NAME
+    def make_dataset(cls) -> timeseries.MultiRegionDataset:
+        """Default implementation of make_dataset that loads timeseries data from a CSV."""
+        assert cls.COMMON_DF_CSV_PATH, f"No path in {cls}"
+        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        input_path = data_root / cls.COMMON_DF_CSV_PATH
+        data = common_df.read_csv(input_path, set_index=False)
+        expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
+        # Keep only the expected fields.
+        found_expected_fields = data.columns.intersection(expected_fields)
+        data = data[found_expected_fields]
+        extra_fields = data.columns.difference(expected_fields).difference(cls.IGNORED_FIELDS)
+        missing_fields = expected_fields.difference(data.columns).difference(cls.IGNORED_FIELDS)
+        if not extra_fields.empty:
+            _log.info(
+                "DataSource produced extra unexpected fields, which were dropped.",
+                cls=cls.SOURCE_NAME,
+                extra_fields=extra_fields,
             )
-            # TODO(tom): DataSource.provenance is only set by
-            # CovidCountyDataDataSource.synthesize_test_metrics. Factor it out into something
-            # that reads and creates a MultiRegionDataset.
-            # if self.provenance is not None:
-            #     dataset.add_fips_provenance(self.provenance)
-            return dataset
+        if not missing_fields.empty:
+            _log.info(
+                "DataSource failed to produce all expected fields",
+                cls=cls.SOURCE_NAME,
+                missing_fields=missing_fields,
+            )
 
-        if set(self.INDEX_FIELD_MAP.keys()) == set(STATIC_INDEX_FIELDS):
-            return MultiRegionDataset.new_without_timeseries().add_fips_static_df(self.data)
-
-        raise ValueError("Unexpected index fields")
-
-    @classmethod
-    def _rename_to_common_fields(cls: Type["DataSource"], df: pd.DataFrame) -> pd.DataFrame:
-        """Returns a copy of the DataFrame with only common columns in the class field maps."""
-        all_fields_map = {**cls.COMMON_FIELD_MAP, **cls.INDEX_FIELD_MAP}
-        to_common_fields = {value: key for key, value in all_fields_map.items()}
-        final_columns = to_common_fields.values()
-        return df.rename(columns=to_common_fields)[final_columns]
+        return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)

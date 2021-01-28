@@ -14,8 +14,8 @@ from libs.datasets import timeseries
 from pyseir import cli
 
 from pyseir.rt import infer_rt
-from test.mocks.inference import load_data
-from test.mocks.inference.load_data import RateChange
+from tests.mocks.inference import load_data
+from tests.mocks.inference.load_data import RateChange
 
 
 # turns all warnings into errors for this module

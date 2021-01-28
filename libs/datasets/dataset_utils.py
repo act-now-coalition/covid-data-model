@@ -170,12 +170,6 @@ def aggregate_and_get_nonmatching(data, groupby_fields, from_aggregation, to_agg
     return non_matching
 
 
-def build_fips_data_frame():
-    from libs.datasets.sources.fips_population import FIPSPopulation
-
-    return FIPSPopulation.local().data
-
-
 def add_county_using_fips(data, fips_data):
     is_county = data.aggregate_level == AggregationLevel.COUNTY.value
     # Only want to add county names to county level data, so we'll slice out the county

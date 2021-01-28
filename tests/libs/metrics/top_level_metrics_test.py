@@ -14,9 +14,9 @@ from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.pipeline import Region
 
-from test.dataset_utils_test import read_csv_and_index_fips_date
-from test.test_helpers import DEFAULT_REGION
-from test.test_helpers import build_one_region_dataset
+from tests.dataset_utils_test import read_csv_and_index_fips_date
+from tests.test_helpers import DEFAULT_REGION
+from tests.test_helpers import build_one_region_dataset
 
 
 # Columns used for building input dataframes in tests. It covers the fields

@@ -8,6 +8,7 @@ represents a geographical area (state, county, metro area, etc).
 import re
 import warnings
 from dataclasses import dataclass
+from typing import List
 from typing import Mapping
 from typing import Optional
 
@@ -178,6 +179,13 @@ class Region:
         if len(self.fips) != 5 and len(self.fips) != 7:
             raise ValueError(f"No state for {self}")
         return Region.from_fips(self.fips[:2])
+
+
+@final
+@dataclass(frozen=True)
+class RegionMask:
+    level: Optional[AggregationLevel] = None
+    states: Optional[List[str]] = None
 
 
 def us_states_to_country_map() -> Mapping[Region, Region]:

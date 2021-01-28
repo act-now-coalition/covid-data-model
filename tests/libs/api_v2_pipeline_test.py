@@ -13,8 +13,8 @@ from libs.datasets import AggregationLevel
 import pandas as pd
 import structlog
 
-from test import test_helpers
-from test.test_helpers import TimeseriesLiteral
+from tests import test_helpers
+from tests.test_helpers import TimeseriesLiteral
 
 
 @pytest.fixture
@@ -90,6 +90,10 @@ def test_build_api_output_for_intervention(nyc_regional_input, tmp_path):
         "counties.json",
         "county/36061.json",
         "county/36061.timeseries.json",
+        "county/NY.timeseries.json",
+        "county/NY.timeseries.csv",
+        "county/NY.json",
+        "county/NY.csv",
     ]
 
     output_paths = [

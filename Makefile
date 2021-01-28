@@ -5,7 +5,7 @@ setup-dev: requirements.txt requirements_test.txt
 	pre-commit install
 
 unittest:
-	pytest -n 2 test/
+	pytest -n 2 tests/
 
 lint:
 	pytest --pylint -m pylint --pylint-jobs=2 .
