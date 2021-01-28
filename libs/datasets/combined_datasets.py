@@ -63,8 +63,9 @@ class DataSourceAndRegionMasks:
 
     Use function `datasource_regions` to create instance of this class.
 
-    Instances of this class can be used in the same places where the DataSource type (not
-    instances of the DataSource) are used.
+    Instances of this class can be used in the same places where a DataSource subclass/type (not
+    instances of the DataSource) are used. In other words DataSourceAndRegionMasks instances
+    implement the same interface as the DataSource type.
 
     Using this class depends on an existing source of all location_ids. Currently it depends on
     the existing combined data and is used to produce a new combined data. A recursive data
@@ -79,16 +80,19 @@ class DataSourceAndRegionMasks:
 
     @property
     def EXPECTED_FIELDS(self):
-        """Returns the same property of the wrapped DataSource class."""
+        """Implements the same interface as the wrapped DataSource class."""
         return self.data_source_cls.EXPECTED_FIELDS
 
     @property
     def SOURCE_NAME(self):
-        """Returns the same property of the wrapped DataSource class."""
+        """Implements the same interface as the wrapped DataSource class."""
         return self.data_source_cls.SOURCE_NAME
 
     def make_dataset(self) -> MultiRegionDataset:
-        """Returns the dataset of the wrapped DataSource class, with a subset of the regions."""
+        """Returns the dataset of the wrapped DataSource class, with a subset of the regions.
+
+        This method implements the same interface as the wrapped DataSource class.
+        """
         dataset = self.data_source_cls.make_dataset()
 
         def _get_location_ids(region_mask_or_regions: RegionMaskOrRegions,) -> Collection[str]:
