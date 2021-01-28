@@ -1494,7 +1494,7 @@ def test_backfill_vaccine_initiated(initiated_values, initiated_expected):
     }
     metrics = {ny_region: ny_metrics, az_region: az_metrics}
     dataset = test_helpers.build_dataset(metrics)
-    result = timeseries.backfill_vaccine_data(dataset)
+    result = timeseries.backfill_vaccination_initiated(dataset)
     expected_ny = {
         CommonFields.VACCINES_ADMINISTERED: [100, 200],
         CommonFields.VACCINATIONS_COMPLETED: [50, 50],

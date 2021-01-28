@@ -1150,7 +1150,14 @@ def drop_regions_without_population(
     return mrts.get_locations_subset(locations_with_population)
 
 
-def backfill_vaccine_data(dataset: MultiRegionDataset):
+def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDataset:
+    """Backfills vaccination initiated data from total doses administered and total completed.
+
+    Args:
+        dataset: Input dataset.
+
+    Returns: New dataset with backfilled data.
+    """
     fields = [
         CommonFields.VACCINES_ADMINISTERED,
         CommonFields.VACCINATIONS_INITIATED,
