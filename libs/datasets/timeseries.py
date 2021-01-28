@@ -1150,22 +1150,55 @@ def drop_regions_without_population(
     return mrts.get_locations_subset(locations_with_population)
 
 
-def _compute_derived_vaccinations_initiated(dataset: MultiRegionDataset):
-    administered = dataset.timeseries[CommonFields.VACCINES_ADMINISTERED]
-    completed = dataset.timeseries[CommonFields.VACCINATIONS_COMPLETED]
-    derived_initiated = administered - completed
-    initiated = dataset.timeseries[CommonFields.VACCINATIONS_INITIATED]
-
-    return initiated.fillna(derived_initiated)
-
-
 def backfill_vaccine_data(dataset: MultiRegionDataset):
-    """Backfills vaccine data."""
-    derived_initiated = _compute_derived_vaccinations_initiated(dataset)
+    fields = [
+        CommonFields.VACCINES_ADMINISTERED,
+        CommonFields.VACCINATIONS_INITIATED,
+        CommonFields.VACCINATIONS_COMPLETED,
+    ]
+    df = dataset.timeseries_wide_dates().loc[(slice(None), fields), :]
+    df_var_first = df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
 
+    administered = df_var_first.loc[CommonFields.VACCINES_ADMINISTERED]
+    inititiated = df_var_first.loc[[CommonFields.VACCINATIONS_INITIATED]]
+    completed = df_var_first.loc[[CommonFields.VACCINATIONS_COMPLETED]]
+
+    computed_initiated = administered - completed
+    # Rename index value to be initiated
+    computed_initiated = computed_initiated.rename(
+        index={CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_INITIATED}
+    )
+
+    locations = df.index.get_level_values(CommonFields.LOCATION_ID).unique()
+    locations_with_initiated = (
+        inititiated.notna()
+        .any(axis="columns")
+        .index.get_level_values(CommonFields.LOCATION_ID)
+        .unique()
+    )
+    locations_without_initiated = locations.difference(locations_with_initiated)
+
+    combined_initiated_df = pd.concat(
+        [
+            inititiated.loc[
+                (slice(CommonFields.VACCINATIONS_INITIATED), locations_with_initiated), :
+            ],
+            computed_initiated.loc[
+                (slice(CommonFields.VACCINATIONS_INITIATED), locations_without_initiated), :
+            ],
+        ]
+    )
+
+    combined_initiated_df = combined_initiated_df.reorder_levels(
+        [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    )
+    initiated_dataset = MultiRegionDataset.from_timeseries_wide_dates_df(combined_initiated_df)
+
+    # locations that are na for all vaccinations initiated
     timeseries_copy = dataset.timeseries.copy()
-
-    timeseries_copy.loc[:, CommonFields.VACCINATIONS_INITIATED] = derived_initiated
+    timeseries_copy.loc[:, CommonFields.VACCINATIONS_INITIATED] = initiated_dataset.timeseries.loc[
+        :, CommonFields.VACCINATIONS_INITIATED
+    ]
 
     return dataclasses.replace(dataset, timeseries=timeseries_copy)
 
