@@ -2,7 +2,6 @@ boto3==1.15.6
 scipy==1.4.1
 numba==0.51.2
 astroid==2.4.1
-certifi==2019.11.28
 chardet==3.0.4
 cycler==0.10.0
 idna==2.9
@@ -17,7 +16,6 @@ matplotlib==3.2.1
 mccabe==0.6.1
 numpy==1.18.2
 pandas==1.0.3
-plotly==4.5.4
 pyshp==2.1.0
 pymc3==3.8
 requests==2.23.0
@@ -54,3 +52,24 @@ xlrd==1.2.0  # For panda's read_excel method
 numexpr==2.7.1
 
 backports.cached-property==1.0.0.post2
+
+
+# Mostly for dash_app.py
+Brotli==1.0.7
+certifi==2020.6.20
+dash==1.14.0
+dash-core-components==1.10.2
+dash-html-components==1.0.3
+dash-renderer==1.6.0
+dash-table==4.9.0
+Flask==1.1.2
+Flask-Compress==1.5.0
+future==0.18.2
+itsdangerous==1.1.0
+Jinja2==2.11.2
+MarkupSafe==1.1.1
+plotly==4.9.0
+PyYAML==5.3.1
+retrying==1.3.3
+six==1.15.0
+Werkzeug==1.0.1
