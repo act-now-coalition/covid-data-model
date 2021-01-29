@@ -8,6 +8,7 @@ import pathlib
 import re
 from dataclasses import dataclass
 from functools import lru_cache
+from itertools import chain
 from typing import Any
 from typing import ClassVar
 from typing import Collection
@@ -417,7 +418,7 @@ _EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
     [],
     dtype="float",
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
-    columns=pd.Index([], name=CommonFields.DATE),
+    columns=pd.DatetimeIndex([], name=CommonFields.DATE),
 )
 
 
@@ -454,8 +455,8 @@ class MultiRegionDataset:
     # considered constant, such as population and hospital beds.
     static: pd.DataFrame = _EMPTY_REGIONAL_ATTRIBUTES_DF
 
-    # A Series of tag CONTENT values having index with levels LOCATION_ID, VARIABLE, TYPE,
-    # DATE. Rows with identical index values may exist.
+    # A Series of tag CONTENT values having index with levels TAG_INDEX_FIELDS (LOCATION_ID,
+    # VARIABLE, TYPE). Rows with identical index values may exist.
     tag: pd.Series = _EMPTY_TAG_SERIES
 
     @property
@@ -515,6 +516,8 @@ class MultiRegionDataset:
             .reindex(columns=date_range)
             .rename_axis(columns=CommonFields.DATE)
         )
+        if not timeseries_wide.columns.is_all_dates:
+            raise ValueError(f"Problem with {start_date} to {end_date}... {str(self.timeseries)}")
         return timeseries_wide
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
@@ -1012,6 +1015,13 @@ class MultiRegionDataset:
         """
         return self.tag.loc[:, :, ANNOTATION_TAG_TYPES].reset_index()
 
+    def provenance_map(self) -> Mapping[CommonFields, Set[str]]:
+        """Returns a mapping from field name to set of provenances."""
+        assert TAG_INDEX_FIELDS[2] == TagField.TYPE
+        return (
+            self.tag.loc[:, :, [TagType.PROVENANCE]].groupby(TagField.VARIABLE).apply(set).to_dict()
+        )
+
 
 def _remove_padded_nans(df, columns):
     if df[columns].isna().all(axis=None):
@@ -1148,6 +1158,67 @@ def drop_regions_without_population(
             "Dropping unexpected regions without populaton", location_ids=sorted(unexpected_drops)
         )
     return mrts.get_locations_subset(locations_with_population)
+
+
+def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDataset:
+    """Backfills vaccination initiated data from total doses administered and total completed.
+
+    Args:
+        dataset: Input dataset.
+
+    Returns: New dataset with backfilled data.
+    """
+    fields = [
+        CommonFields.VACCINES_ADMINISTERED,
+        CommonFields.VACCINATIONS_INITIATED,
+        CommonFields.VACCINATIONS_COMPLETED,
+    ]
+    df = dataset.timeseries_wide_dates().loc[(slice(None), fields), :]
+    df_var_first = df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
+
+    administered = df_var_first.loc[CommonFields.VACCINES_ADMINISTERED]
+    inititiated = df_var_first.loc[[CommonFields.VACCINATIONS_INITIATED]]
+    completed = df_var_first.loc[[CommonFields.VACCINATIONS_COMPLETED]]
+
+    computed_initiated = administered - completed
+
+    # Rename index value to be initiated
+    computed_initiated = computed_initiated.rename(
+        index={CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_INITIATED}
+    )
+
+    locations = df.index.get_level_values(CommonFields.LOCATION_ID).unique()
+    locations_with_initiated = (
+        inititiated.notna()
+        .any(axis="columns")
+        .index.get_level_values(CommonFields.LOCATION_ID)
+        .unique()
+    )
+    locations_without_initiated = locations.difference(locations_with_initiated)
+
+    combined_initiated_df = pd.concat(
+        [
+            inititiated.loc[
+                (slice(CommonFields.VACCINATIONS_INITIATED), locations_with_initiated), :
+            ],
+            computed_initiated.loc[
+                (slice(CommonFields.VACCINATIONS_INITIATED), locations_without_initiated), :
+            ],
+        ]
+    )
+
+    combined_initiated_df = combined_initiated_df.reorder_levels(
+        [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    )
+    initiated_dataset = MultiRegionDataset.from_timeseries_wide_dates_df(combined_initiated_df)
+
+    # locations that are na for all vaccinations initiated
+    timeseries_copy = dataset.timeseries.copy()
+    timeseries_copy.loc[:, CommonFields.VACCINATIONS_INITIATED] = initiated_dataset.timeseries.loc[
+        :, CommonFields.VACCINATIONS_INITIATED
+    ]
+
+    return dataclasses.replace(dataset, timeseries=timeseries_copy)
 
 
 # Column for the aggregated location_id
@@ -1439,10 +1510,15 @@ class DatasetName(str):
 
 
 def _to_datasets_wide_dates_map(
-    datasets: Mapping[DatasetName, MultiRegionDataset]
-) -> Mapping[DatasetName, pd.DataFrame]:
-    """Turns a mapping of datasets to a mapping of DataFrame with identical date columns."""
-    datasets_wide = {name: ds.timeseries_wide_dates() for name, ds in datasets.items()}
+    datasets: Iterable[MultiRegionDataset],
+) -> Mapping[MultiRegionDataset, pd.DataFrame]:
+    """Turns an iterable of datasets to a mapping of DataFrame with identical date columns.
+
+    The mapping depends on MultiRegionDataset being hashable by id.
+    """
+    datasets_wide = {ds: ds.timeseries_wide_dates() for ds in datasets}
+    if not datasets_wide:
+        return {}
     # Find the earliest and latest dates to make a range covering all timeseries.
     dates = pd.DatetimeIndex(
         np.hstack(
@@ -1456,24 +1532,26 @@ def _to_datasets_wide_dates_map(
         end_date = dates.max()
         input_date_range = pd.date_range(start=start_date, end=end_date, name=CommonFields.DATE)
     datasets_wide_reindexed = {
-        name: df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID]).reindex(
+        ds: df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID]).reindex(
             columns=input_date_range
         )
-        for name, df in datasets_wide.items()
+        for ds, df in datasets_wide.items()
     }
     return datasets_wide_reindexed
 
 
 def combined_datasets(
-    datasets: Mapping[DatasetName, MultiRegionDataset],
-    timeseries_field_dataset_source: Mapping[FieldName, List[DatasetName]],
-    static_field_dataset_source: Mapping[FieldName, List[DatasetName]],
+    timeseries_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
+    static_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
 ) -> MultiRegionDataset:
-    """Creates a dataset that contains the given fields copied from `datasets`.
+    """Creates a dataset that gets each field from a list of datasets.
 
     For each region, the timeseries from the first dataset in the list with a real value is returned.
     """
-    datasets_wide = _to_datasets_wide_dates_map(datasets)
+    # MultiRegionDataset in `timeseries_field_datasets` will be looked up in `datasets_wide` by id.
+    datasets_wide = _to_datasets_wide_dates_map(
+        chain.from_iterable(timeseries_field_datasets.values())
+    )
     # TODO(tom): Consider how to factor out the timeseries and static processing. For example,
     #  create rows with the entire timeseries and tags then use groupby(location_id).first().
     #  Or maybe do something with groupby(location_id).apply if it is fast enough.
@@ -1482,12 +1560,12 @@ def combined_datasets(
     timeseries_dfs = []
     # A list of Series that will be concat-ed
     tag_series = []
-    for field, dataset_names in timeseries_field_dataset_source.items():
+    for field, datasets in timeseries_field_datasets.items():
         # Iterate through the datasets for this field. For each dataset add location_id with data
         # in field to location_id_so_far iff the location_id is not already there.
         location_id_so_far = pd.Index([])
-        for dataset_name in dataset_names:
-            field_wide_df = datasets_wide[dataset_name].loc[[field], :]
+        for dataset in datasets:
+            field_wide_df = datasets_wide[dataset].loc[[field], :]
             assert field_wide_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
             location_ids = field_wide_df.index.get_level_values(CommonFields.LOCATION_ID)
             # Select the locations in `dataset_name` that have a timeseries for `field` and are
@@ -1495,13 +1573,13 @@ def combined_datasets(
             selected_location_id = location_ids.difference(location_id_so_far)
             timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
             location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-            tag_series.append(datasets[dataset_name].tag.loc[selected_location_id, [field]])
+            tag_series.append(dataset.tag.loc[selected_location_id, [field]])
 
     static_series = []
-    for field, dataset_names in static_field_dataset_source.items():
+    for field, dataset_list in static_field_datasets.items():
         static_column_so_far = None
-        for dataset_name in dataset_names:
-            dataset_column = datasets[dataset_name].static.get(field)
+        for dataset in dataset_list:
+            dataset_column = dataset.static.get(field)
             if dataset_column is None:
                 continue
             dataset_column = dataset_column.dropna()

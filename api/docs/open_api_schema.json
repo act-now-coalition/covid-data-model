@@ -594,6 +594,202 @@
         }
       ]
     },
+    "/county/{state}.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "County Data"
+        ],
+        "summary": "Counties summary in state (json)",
+        "description": "Region summaries for all counties in a state",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "state",
+          "in": "path",
+          "description": "2 Letter State Cocde",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/county/{state}.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "County Data"
+        ],
+        "summary": "Counties summary in state (csv)",
+        "description": "Region summaries for all counties in a state",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "state",
+          "in": "path",
+          "description": "2 Letter State Cocde",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/county/{state}.timeseries.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "County Data"
+        ],
+        "summary": "Counties timeseries in state",
+        "description": "Region summaries with timeseries for all counties in a state",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "state",
+          "in": "path",
+          "description": "2 Letter State Cocde",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/county/{state}.timeseries.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "County Data"
+        ],
+        "summary": "Counties timeseries in state (csv)",
+        "description": "Region summaries with timeseries for all counties in a state",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateFlattenedTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "state",
+          "in": "path",
+          "description": "2 Letter State Cocde",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
     "/cbsas.json?apiKey={apiKey}": {
       "get": {
         "tags": [

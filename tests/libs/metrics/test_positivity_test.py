@@ -11,14 +11,14 @@ from covidactnow.datapublic.common_fields import FieldName
 from freezegun import freeze_time
 
 from libs.datasets.tail_filter import TagType
-from test import test_helpers
+from tests import test_helpers
+from tests.test_helpers import TimeseriesLiteral
 from libs.datasets import timeseries
 from libs.datasets.timeseries import DatasetName
 from libs.metrics.test_positivity import Method
 from libs.metrics.test_positivity import AllMethods
 from libs.metrics.test_positivity import DivisionMethod
 from libs.metrics import test_positivity
-from test.test_helpers import TimeseriesLiteral
 from libs.pipeline import Region
 
 

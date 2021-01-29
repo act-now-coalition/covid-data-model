@@ -5,7 +5,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.timeseries import TagType
 from libs.datasets.tail_filter import TailFilter
 
-from test import test_helpers
+from tests import test_helpers
 
 
 def _assert_tail_filter_counts(

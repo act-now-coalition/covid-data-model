@@ -8,8 +8,8 @@ from libs.datasets import statistical_areas
 from libs.datasets.timeseries import MultiRegionDataset
 
 from libs.pipeline import Region
-from test.dataset_utils_test import read_csv_and_index_fips_date
-from test import test_helpers
+from tests.dataset_utils_test import read_csv_and_index_fips_date
+from tests import test_helpers
 
 
 def test_load_from_local_public_data():

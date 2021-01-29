@@ -1,4 +1,5 @@
-from itertools import chain
+from typing import List
+from typing import Mapping
 from typing import Optional
 import logging
 import pathlib
@@ -9,6 +10,7 @@ import structlog
 
 import click
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldName
 
 from libs import google_sheet_helpers
 from libs import pipeline
@@ -19,7 +21,6 @@ from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
     ALL_FIELDS_FEATURE_DEFINITION,
 )
-from libs.datasets.timeseries import DatasetName
 from libs.datasets import timeseries
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
@@ -65,7 +66,7 @@ def update_forecasts(filename):
     """Updates external forecasts to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
     data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-    data_path = forecast_hub.ForecastHubDataset.DATA_PATH
+    data_path = forecast_hub.ForecastHubDataset.COMMON_DF_CSV_PATH
     shutil.copy(data_root / data_path, path_prefix / filename)
     _logger.info(f"Updating External Forecasts at {path_prefix / filename}")
 
@@ -83,31 +84,21 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
-    data_source_classes = set(
-        chain(
-            chain.from_iterable(ALL_FIELDS_FEATURE_DEFINITION.values()),
-            chain.from_iterable(ALL_TIMESERIES_FEATURE_DEFINITION.values()),
-        )
+    timeseries_field_datasets = load_datasets_by_field(
+        ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
     )
-    data_sources = {
-        data_source_cls.SOURCE_NAME: data_source_cls.local().multi_region_dataset()
-        for data_source_cls in data_source_classes
-    }
-    if state or fips:
-        data_sources = {
-            name: dataset.get_subset(state=state, fips=fips)
-            # aggregation_level=AggregationLevel.STATE)
-            for name, dataset in data_sources.items()
-        }
+    static_field_datasets = load_datasets_by_field(
+        ALL_FIELDS_FEATURE_DEFINITION, state=state, fips=fips
+    )
+
     multiregion_dataset = timeseries.combined_datasets(
-        data_sources,
-        build_field_dataset_source(ALL_TIMESERIES_FEATURE_DEFINITION),
-        build_field_dataset_source(ALL_FIELDS_FEATURE_DEFINITION),
+        timeseries_field_datasets, static_field_datasets
     )
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
     _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
+    multiregion_dataset = timeseries.backfill_vaccination_initiated(multiregion_dataset)
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
@@ -237,11 +228,19 @@ def update_case_based_icu_utilization_weights():
         json.dump(output, f, indent=2, sort_keys=True)
 
 
-def build_field_dataset_source(feature_definition_config):
+def load_datasets_by_field(
+    feature_definition_config: combined_datasets.FeatureDataSourceMap, *, state, fips
+) -> Mapping[FieldName, List[timeseries.MultiRegionDataset]]:
+    def _load_dataset(data_source_cls) -> timeseries.MultiRegionDataset:
+        dataset = data_source_cls.make_dataset()
+        if state or fips:
+            dataset = dataset.get_subset(state=state, fips=fips)
+        return dataset
+
     feature_definition = {
-        # timeseries.combined_datasets has the highest priority first.
+        # Put the highest priority first, as expected by timeseries.combined_datasets.
         # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
-        field_name: list(reversed(list(DatasetName(cls.SOURCE_NAME) for cls in classes)))
+        field_name: list(reversed(list(_load_dataset(cls) for cls in classes)))
         for field_name, classes in feature_definition_config.items()
         if classes
     }

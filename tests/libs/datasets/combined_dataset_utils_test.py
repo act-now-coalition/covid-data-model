@@ -8,7 +8,7 @@ from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.pipeline import Region
 from libs.qa.common_df_diff import DatasetDiff
-from test import test_helpers
+from tests import test_helpers
 
 
 def test_persist_and_load_dataset(tmp_path, nyc_fips):

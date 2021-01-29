@@ -240,7 +240,7 @@ def assert_dataset_like(
     pd.testing.assert_frame_equal(
         latest1, latest2, check_like=True, check_dtype=False, check_less_precise=check_less_precise
     )
-    # Somehow test/libs/datasets/combined_dataset_utils_test.py::test_update_and_load has
+    # Somehow tests/libs/datasets/combined_dataset_utils_test.py::test_update_and_load has
     # two provenance Series that are empty but assert_series_equal fails with message
     # 'Attribute "inferred_type" are different'. Don't call it when both series are empty.
     if not (ds1.provenance.empty and ds2.provenance.empty):

@@ -1,22 +1,25 @@
 from dataclasses import dataclass
 from typing import Any
+from typing import Collection
 from typing import Dict, Type, List, NewType
 import functools
 import pathlib
 from typing import Optional
+from typing import Union
 
 import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
+from typing_extensions import final
 
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
+from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
-from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalDataset
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
@@ -39,6 +42,8 @@ from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
 
 # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
+from libs.pipeline import RegionMask
+
 _log = structlog.get_logger()
 
 
@@ -48,9 +53,86 @@ class RegionLatestNotFound(IndexError):
     pass
 
 
+RegionMaskOrRegions = NewType("RegionMaskOrRegions", Union[RegionMask, Region, Collection[Region]])
+
+
+@final
+@dataclass(frozen=True)
+class DataSourceAndRegionMasks:
+    """Represents a DataSource class and include/exclude region masks.
+
+    Use function `datasource_regions` to create instance of this class.
+
+    Instances of this class can be used in the same places where a DataSource subclass/type (not
+    instances of the DataSource) are used. In other words DataSourceAndRegionMasks instances
+    implement the same interface as the DataSource type.
+
+    Using this class depends on an existing source of all location_ids. Currently it depends on
+    the existing combined data and is used to produce a new combined data. A recursive data
+    dependency isn't great but works and we don't otherwise have a stable source of locations to
+    use for filtering. Fixing this could be part of
+    https://trello.com/c/2Pa4DMyu/836-trim-down-the-timeseriesindexfields
+    """
+
+    data_source_cls: Type[data_source.DataSource]
+    include: Optional[RegionMaskOrRegions] = None
+    exclude: Optional[RegionMaskOrRegions] = None
+
+    @property
+    def EXPECTED_FIELDS(self):
+        """Implements the same interface as the wrapped DataSource class."""
+        return self.data_source_cls.EXPECTED_FIELDS
+
+    @property
+    def SOURCE_NAME(self):
+        """Implements the same interface as the wrapped DataSource class."""
+        return self.data_source_cls.SOURCE_NAME
+
+    def make_dataset(self) -> MultiRegionDataset:
+        """Returns the dataset of the wrapped DataSource class, with a subset of the regions.
+
+        This method implements the same interface as the wrapped DataSource class.
+        """
+        dataset = self.data_source_cls.make_dataset()
+
+        def _get_location_ids(region_mask_or_regions: RegionMaskOrRegions,) -> Collection[str]:
+            if isinstance(region_mask_or_regions, RegionMask):
+                return region_mask_to_location_ids(region_mask_or_regions)
+            elif isinstance(region_mask_or_regions, Region):
+                return [region_mask_or_regions.location_id]
+            else:
+                return [r.location_id for r in region_mask_or_regions]
+
+        if self.include:
+            dataset = dataset.get_locations_subset(_get_location_ids(self.include))
+        if self.exclude:
+            dataset = dataset.remove_locations(_get_location_ids(self.exclude))
+        return dataset
+
+
+def datasource_regions(
+    data_source_cls: Type[data_source.DataSource],
+    include: Optional[RegionMaskOrRegions] = None,
+    *,
+    exclude: Optional[RegionMaskOrRegions] = None,
+) -> DataSourceAndRegionMasks:
+    """Creates an instance of the `DataSourceAndRegionMasks` class."""
+    assert include or exclude, (
+        "At least one of include or exclude must be set. If neither are "
+        "needed use the DataSource class directly."
+    )
+    return DataSourceAndRegionMasks(data_source_cls, include=include, exclude=exclude)
+
+
 FeatureDataSourceMap = NewType(
-    "FeatureDataSourceMap", Dict[FieldName, List[Type[data_source.DataSource]]]
+    "FeatureDataSourceMap",
+    Dict[FieldName, List[Union[DataSourceAndRegionMasks, Type[data_source.DataSource]]]],
 )
+
+
+# NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
+# Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
+NYTimesDatasetWithoutNYC = datasource_regions(NYTimesDataset, exclude=ALL_NYC_REGIONS)
 
 
 # Below are two instances of feature definitions. These define
@@ -66,7 +148,7 @@ FeatureDataSourceMap = NewType(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDataset],
+    CommonFields.CASES: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDatasetWithoutNYC],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
@@ -84,7 +166,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalDataset],
     CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
-    CommonFields.DEATHS: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDataset],
+    CommonFields.DEATHS: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDatasetWithoutNYC],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalDataset],
     CommonFields.ICU_BEDS: [CANScraperStateProviders, HHSHospitalDataset],
     CommonFields.NEGATIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
@@ -100,16 +182,17 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.TEST_POSITIVITY_14D: [CMSTestingDataset],
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
     CommonFields.VACCINES_DISTRIBUTED: [CANScraperStateProviders, CDCVaccinesDataset],
+    CommonFields.VACCINES_ADMINISTERED: [CANScraperStateProviders],
     CommonFields.VACCINATIONS_INITIATED: [CANScraperStateProviders, CDCVaccinesDataset],
     CommonFields.VACCINATIONS_COMPLETED: [CANScraperStateProviders, CDCVaccinesDataset],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.AGGREGATE_LEVEL: [FIPSPopulation, CovidCountyDataDataSource],
-    CommonFields.COUNTRY: [FIPSPopulation, CovidCountyDataDataSource],
-    CommonFields.COUNTY: [FIPSPopulation, CovidCountyDataDataSource],
-    CommonFields.FIPS: [FIPSPopulation, CovidCountyDataDataSource],
-    CommonFields.STATE: [FIPSPopulation, CovidCountyDataDataSource],
+    CommonFields.AGGREGATE_LEVEL: [FIPSPopulation],
+    CommonFields.COUNTRY: [FIPSPopulation],
+    CommonFields.COUNTY: [FIPSPopulation],
+    CommonFields.FIPS: [FIPSPopulation],
+    CommonFields.STATE: [FIPSPopulation],
     CommonFields.POPULATION: [FIPSPopulation],
     # TODO(michael): We don't really trust the CCM bed numbers and would ideally remove them entirely.
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
@@ -200,3 +283,14 @@ class RegionalData:
         if county:
             return f"{county}, {state}"
         return state
+
+
+def region_mask_to_location_ids(region_mask: RegionMask) -> Collection[str]:
+    """Uses the existing combined dataset to transform `region_mask` into a list of location_id."""
+    us_static = load_us_timeseries_dataset().static
+
+    rows_key = dataset_utils.make_rows_key(
+        us_static, aggregation_level=region_mask.level, states=region_mask.states,
+    )
+
+    return us_static.loc[rows_key, :].index

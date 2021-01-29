@@ -59,8 +59,8 @@ def _build_actuals(actual_data: dict) -> Actuals:
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
         newCases=actual_data[CommonFields.NEW_CASES],
-        vaccinesDistributed=actual_data[CommonFields.VACCINES_DISTRIBUTED],
-        vaccinationsInitiated=actual_data[CommonFields.VACCINATIONS_INITIATED],
+        vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
+        vaccinationsInitiated=actual_data.get(CommonFields.VACCINATIONS_INITIATED),
         # Vaccinations completed currently optional as data is not yet flowing through.
         # This will allow us to include vaccines completed data as soon as its scraped.
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),

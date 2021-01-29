@@ -3,24 +3,24 @@ import re
 
 import structlog
 
+from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets, CommonFields
 from libs.datasets import timeseries
 from libs.datasets.combined_datasets import provenance_wide_metrics_to_series
-from libs.datasets.sources.covid_county_data import CovidCountyDataDataSource
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
+from libs.datasets.sources.usa_facts import UsaFactsDataSource
 
 from libs.pipeline import Region
-from test.dataset_utils_test import read_csv_and_index_fips_date
+from libs.pipeline import RegionMask
+from tests.dataset_utils_test import read_csv_and_index_fips_date
 import pytest
 
 # Tests to make sure that combined datasets are building data with unique indexes
 # If this test is failing, it means that there is one of the data sources that
 # is returning multiple values for a single row.
-
-
 @pytest.mark.slow
 def test_unique_index_values_us_timeseries():
     us_dataset = combined_datasets.load_us_timeseries_dataset()
@@ -85,11 +85,10 @@ def test_get_county_name():
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "data_source_cls",
-    [CovidTrackingDataSource, CovidCountyDataDataSource, NYTimesDataset, TexasHospitalizations,],
+    "data_source_cls", [CovidTrackingDataSource, NYTimesDataset, TexasHospitalizations,],
 )
 def test_unique_timeseries(data_source_cls):
-    dataset = data_source_cls.local().multi_region_dataset()
+    dataset = data_source_cls.make_dataset()
     # Check for duplicate rows with the same INDEX_FIELDS. Sort by index so duplicates are next to
     # each other in the message if the assert fails.
     timeseries_data = dataset.timeseries.sort_index()
@@ -100,10 +99,10 @@ def test_unique_timeseries(data_source_cls):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "data_source_cls", [CovidTrackingDataSource, CovidCountyDataDataSource],
+    "data_source_cls", [CovidTrackingDataSource],
 )
 def test_expected_field_in_sources(data_source_cls):
-    dataset = data_source_cls.local().multi_region_dataset()
+    dataset = data_source_cls.make_dataset()
 
     assert not dataset.timeseries.empty
     assert not dataset.static.empty
@@ -194,3 +193,46 @@ def test_make_latest_from_timeseries_dont_touch_county():
         "county": "Smith Countzz",
     }
     assert get_latest(Region.from_state("WY")) == {"m1": 3}
+
+
+def test_combined_datasets_uses_only_expected_fields():
+    """Checks that field sources in combined_datasets appear in the corresponding EXPECTED_FIELDS"""
+    for field_name, sources in combined_datasets.ALL_TIMESERIES_FEATURE_DEFINITION.items():
+        for source in sources:
+            assert field_name in source.EXPECTED_FIELDS, (
+                f"{source.SOURCE_NAME} is in combined_datasets for {field_name} but the field "
+                f"is not in the {source.SOURCE_NAME} EXPECTED_FIELDS."
+            )
+
+
+def test_dataclass_include_exclude():
+    orig_data_source_cls = UsaFactsDataSource
+    orig_ds = orig_data_source_cls.make_dataset()
+    assert "iso1:us#iso2:us-tx" in orig_ds.static.index
+    assert "iso1:us#iso2:us-ny" in orig_ds.static.index
+
+    ny_source = combined_datasets.datasource_regions(
+        orig_data_source_cls, RegionMask(states=["NY"])
+    )
+    assert ny_source.SOURCE_NAME == orig_data_source_cls.SOURCE_NAME
+    assert ny_source.EXPECTED_FIELDS == orig_data_source_cls.EXPECTED_FIELDS
+    ny_ds = ny_source.make_dataset()
+    assert "iso1:us#iso2:us-tx" not in ny_ds.static.index
+    assert "iso1:us#iso2:us-ny" in ny_ds.static.index
+
+    ca_counties_without_la_source = combined_datasets.datasource_regions(
+        orig_data_source_cls,
+        RegionMask(AggregationLevel.COUNTY, states=["CA"]),
+        exclude=Region.from_fips("06037"),
+    )
+    ds = ca_counties_without_la_source.make_dataset()
+    assert "iso1:us#iso2:us-tx" not in ds.static.index
+    assert "iso1:us#iso2:us-ca" not in ds.static.index
+    assert "iso1:us#iso2:us-ca#fips:06045" in ds.static.index
+    assert "iso1:us#iso2:us-ca#fips:06037" not in ds.static.index
+
+    # Just Cook County, IL
+    ds = combined_datasets.datasource_regions(
+        orig_data_source_cls, include=Region.from_fips("17031")
+    ).make_dataset()
+    assert ds.static.index.to_list() == ["iso1:us#iso2:us-il#fips:17031"]
