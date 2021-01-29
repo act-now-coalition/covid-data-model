@@ -44,16 +44,11 @@ TESTING_FIELDS = Fields(
 
 @dataclasses.dataclass
 class Section:
-
     name: str
     fields: List[pydantic.Field]
     description: str = ""
 
 
-CASE_DESCRIPTION = """
-
-
-"""
 SECTIONS = [
     Section("Cases", CASES_FIELDS),
     Section("Tests", TESTING_FIELDS),
