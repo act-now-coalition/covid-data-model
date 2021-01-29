@@ -121,9 +121,7 @@ information.
 We host an API documentation site available in [api/docs](api/docs).  It is a static site built using [Docusaurus 2](https://v2.docusaurus.io/).
 
 Additionally, we define the API output using [pydantic](https://pydantic-docs.helpmanual.io)
-schemas and generate Open API specs (default output
-[api/docs/open_api_schema.json](api/docs/open_api_schema.json) and json-schema
-outputs (default output [api/schemas_v2/](api/schemas_v2).
+schemas and generate Open API specs (default output [api/docs/open_api_schema.json](api/docs/open_api_schema.json) and json-schema outputs (default output [api/schemas_v2/](api/schemas_v2).
 
 When modifying the API schema, run `./run.py api update-schemas` to update the schemas.
 
