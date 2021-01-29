@@ -1176,11 +1176,12 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
     df = dataset.timeseries_wide_dates().loc[(slice(None), fields), :]
     df_var_first = df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
 
-    administered = df_var_first.loc[[CommonFields.VACCINES_ADMINISTERED]]
+    administered = df_var_first.loc[CommonFields.VACCINES_ADMINISTERED]
     inititiated = df_var_first.loc[[CommonFields.VACCINATIONS_INITIATED]]
     completed = df_var_first.loc[[CommonFields.VACCINATIONS_COMPLETED]]
 
     computed_initiated = administered - completed
+
     # Rename index value to be initiated
     computed_initiated = computed_initiated.rename(
         index={CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_INITIATED}
