@@ -8,8 +8,6 @@ from typing import List
 import re
 import dataclasses
 
-import pydantic
-
 from api import can_api_v2_definition
 
 Actuals = can_api_v2_definition.Actuals
@@ -45,7 +43,7 @@ TESTING_FIELDS = Fields(
 @dataclasses.dataclass
 class Section:
     name: str
-    fields: List[pydantic.Field]
+    fields: Fields
     description: str = ""
 
 
