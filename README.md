@@ -133,8 +133,13 @@ $ cd api/docs
 $ yarn
 ```
 
-Start server locally
+Start server locally:
 ```bash
 $ cd api/docs
 $ yarn start
+```
+
+Deploy update to [apidocs.covidactnow.org](https://apidocs.covidactnow.org):
+```bash
+$ tools/deploy-docs.sh
 ```
