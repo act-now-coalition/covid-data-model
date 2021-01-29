@@ -5,6 +5,7 @@ By default this is shown on the docs site.
 
 """
 from typing import List
+import re
 import dataclasses
 
 import pydantic
@@ -63,7 +64,8 @@ SECTIONS = [
 
 
 def split_camel_case(text):
-    return "".join(x if x.islower() else " " + x for x in text)
+    # Camel case split function from https://stackoverflow.com/a/37697078
+    return " ".join(re.sub("([A-Z][a-z]+)", r" \1", re.sub("([A-Z]+)", r" \1", text)).split())
 
 
 def indent(text, indent=2):
@@ -88,8 +90,7 @@ def build_section_block(section: Section):
 
 **Where to access**{space}
 * CSV column names: ``{field_prefix}.{field_name}``
-* JSON file fields: ``{field_prefix}.{field_name}``, ``{field_prefix}Timeseries.{field_name}``
-
+* JSON file fields: ``{field_prefix}.{field_name}``, ``{field_prefix}Timeseries.*.{field_name}``
 """
         return field_fmt
 
@@ -105,7 +106,7 @@ def build_section_block(section: Section):
 
 {actuals_fields}
 {metrics_fields}
-    """
+"""
     return template
 
 
@@ -114,12 +115,10 @@ def build_sections(sections: List[Section] = SECTIONS):
 
     return f"""---
 id: data
-title: Data
+title: Data Definitions
 ---
 
 Read more about the data included in the Covid Act Now API.
-
-
 
 {blocks}
 """

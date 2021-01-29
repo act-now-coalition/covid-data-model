@@ -1,11 +1,9 @@
 ---
 id: data
-title: Data
+title: Data Definitions
 ---
 
 Read more about the data included in the Covid Act Now API.
-
-
 
 
 ## Cases
@@ -16,8 +14,7 @@ Read more about the data included in the Covid Act Now API.
 
 **Where to access**  
 * CSV column names: ``actuals.cases``
-* JSON file fields: ``actuals.cases``, ``actualsTimeseries.cases``
-
+* JSON file fields: ``actuals.cases``, ``actualsTimeseries.*.cases``
 
 ### New Cases
 
@@ -37,8 +34,7 @@ Processing steps:
 
 **Where to access**  
 * CSV column names: ``actuals.newCases``
-* JSON file fields: ``actuals.newCases``, ``actualsTimeseries.newCases``
-
+* JSON file fields: ``actuals.newCases``, ``actualsTimeseries.*.newCases``
 
 ### Case Density
 
@@ -46,8 +42,7 @@ Processing steps:
 
 **Where to access**  
 * CSV column names: ``metrics.caseDensity``
-* JSON file fields: ``metrics.caseDensity``, ``metricsTimeseries.caseDensity``
-
+* JSON file fields: ``metrics.caseDensity``, ``metricsTimeseries.*.caseDensity``
 
 ### Infection Rate
 
@@ -55,19 +50,17 @@ Processing steps:
 
 **Where to access**  
 * CSV column names: ``metrics.infectionRate``
-* JSON file fields: ``metrics.infectionRate``, ``metricsTimeseries.infectionRate``
+* JSON file fields: ``metrics.infectionRate``, ``metricsTimeseries.*.infectionRate``
 
-
-### Infection Rate C I 9 0
+### Infection Rate Ci90
 
   90th percentile confidence interval upper endpoint of the infection rate.
 
 **Where to access**  
 * CSV column names: ``metrics.infectionRateCI90``
-* JSON file fields: ``metrics.infectionRateCI90``, ``metricsTimeseries.infectionRateCI90``
+* JSON file fields: ``metrics.infectionRateCI90``, ``metricsTimeseries.*.infectionRateCI90``
 
 
-    
 
 ## Tests
 
@@ -77,8 +70,7 @@ Processing steps:
 
 **Where to access**  
 * CSV column names: ``actuals.positiveTests``
-* JSON file fields: ``actuals.positiveTests``, ``actualsTimeseries.positiveTests``
-
+* JSON file fields: ``actuals.positiveTests``, ``actualsTimeseries.*.positiveTests``
 
 ### Negative Tests
 
@@ -86,8 +78,7 @@ Processing steps:
 
 **Where to access**  
 * CSV column names: ``actuals.negativeTests``
-* JSON file fields: ``actuals.negativeTests``, ``actualsTimeseries.negativeTests``
-
+* JSON file fields: ``actuals.negativeTests``, ``actualsTimeseries.*.negativeTests``
 
 ### Test Positivity Ratio
 
@@ -95,8 +86,7 @@ Processing steps:
 
 **Where to access**  
 * CSV column names: ``metrics.testPositivityRatio``
-* JSON file fields: ``metrics.testPositivityRatio``, ``metricsTimeseries.testPositivityRatio``
-
+* JSON file fields: ``metrics.testPositivityRatio``, ``metricsTimeseries.*.testPositivityRatio``
 
 ### Test Positivity Ratio Details
 
@@ -104,10 +94,9 @@ Processing steps:
 
 **Where to access**  
 * CSV column names: ``metrics.testPositivityRatioDetails``
-* JSON file fields: ``metrics.testPositivityRatioDetails``, ``metricsTimeseries.testPositivityRatioDetails``
+* JSON file fields: ``metrics.testPositivityRatioDetails``, ``metricsTimeseries.*.testPositivityRatioDetails``
 
 
-    
 
 ## Hospitalizations
 
@@ -123,8 +112,7 @@ Fields:
 
 **Where to access**  
 * CSV column names: ``actuals.icuBeds``
-* JSON file fields: ``actuals.icuBeds``, ``actualsTimeseries.icuBeds``
-
+* JSON file fields: ``actuals.icuBeds``, ``actualsTimeseries.*.icuBeds``
 
 ### Hospital Beds
 
@@ -138,8 +126,7 @@ Fields:
 
 **Where to access**  
 * CSV column names: ``actuals.hospitalBeds``
-* JSON file fields: ``actuals.hospitalBeds``, ``actualsTimeseries.hospitalBeds``
-
+* JSON file fields: ``actuals.hospitalBeds``, ``actualsTimeseries.*.hospitalBeds``
 
 ### Icu Capacity Ratio
 
@@ -147,8 +134,7 @@ Fields:
 
 **Where to access**  
 * CSV column names: ``metrics.icuCapacityRatio``
-* JSON file fields: ``metrics.icuCapacityRatio``, ``metricsTimeseries.icuCapacityRatio``
-
+* JSON file fields: ``metrics.icuCapacityRatio``, ``metricsTimeseries.*.icuCapacityRatio``
 
 ### Icu Headroom Ratio
 
@@ -156,10 +142,9 @@ Fields:
 
 **Where to access**  
 * CSV column names: ``metrics.icuHeadroomRatio``
-* JSON file fields: ``metrics.icuHeadroomRatio``, ``metricsTimeseries.icuHeadroomRatio``
+* JSON file fields: ``metrics.icuHeadroomRatio``, ``metricsTimeseries.*.icuHeadroomRatio``
 
 
-    
 
 ## Vaccinations
 
@@ -169,8 +154,7 @@ Fields:
 
 **Where to access**  
 * CSV column names: ``actuals.vaccinesDistributed``
-* JSON file fields: ``actuals.vaccinesDistributed``, ``actualsTimeseries.vaccinesDistributed``
-
+* JSON file fields: ``actuals.vaccinesDistributed``, ``actualsTimeseries.*.vaccinesDistributed``
 
 ### Vaccinations Initiated
 
@@ -181,8 +165,7 @@ number of people vaccinated with the first dose.
 
 **Where to access**  
 * CSV column names: ``actuals.vaccinationsInitiated``
-* JSON file fields: ``actuals.vaccinationsInitiated``, ``actualsTimeseries.vaccinationsInitiated``
-
+* JSON file fields: ``actuals.vaccinationsInitiated``, ``actualsTimeseries.*.vaccinationsInitiated``
 
 ### Vaccinations Completed
 
@@ -193,8 +176,7 @@ number of people vaccinated with both the first and second dose.
 
 **Where to access**  
 * CSV column names: ``actuals.vaccinationsCompleted``
-* JSON file fields: ``actuals.vaccinationsCompleted``, ``actualsTimeseries.vaccinationsCompleted``
-
+* JSON file fields: ``actuals.vaccinationsCompleted``, ``actualsTimeseries.*.vaccinationsCompleted``
 
 ### Vaccinations Initiated Ratio
 
@@ -202,8 +184,7 @@ number of people vaccinated with both the first and second dose.
 
 **Where to access**  
 * CSV column names: ``metrics.vaccinationsInitiatedRatio``
-* JSON file fields: ``metrics.vaccinationsInitiatedRatio``, ``metricsTimeseries.vaccinationsInitiatedRatio``
-
+* JSON file fields: ``metrics.vaccinationsInitiatedRatio``, ``metricsTimeseries.*.vaccinationsInitiatedRatio``
 
 ### Vaccinations Completed Ratio
 
@@ -211,10 +192,9 @@ number of people vaccinated with both the first and second dose.
 
 **Where to access**  
 * CSV column names: ``metrics.vaccinationsCompletedRatio``
-* JSON file fields: ``metrics.vaccinationsCompletedRatio``, ``metricsTimeseries.vaccinationsCompletedRatio``
+* JSON file fields: ``metrics.vaccinationsCompletedRatio``, ``metricsTimeseries.*.vaccinationsCompletedRatio``
 
 
-    
 
 ## Deaths
 
@@ -224,8 +204,7 @@ number of people vaccinated with both the first and second dose.
 
 **Where to access**  
 * CSV column names: ``actuals.deaths``
-* JSON file fields: ``actuals.deaths``, ``actualsTimeseries.deaths``
+* JSON file fields: ``actuals.deaths``, ``actualsTimeseries.*.deaths``
 
 
 
-    
