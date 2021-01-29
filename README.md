@@ -114,3 +114,29 @@ There are a variety of output artifacts to paths described in pyseir/utils.py.
 The main artifact is the ensemble_result which contains the output information
 for each `suppression policy -> model compartment` as well as capacity
 information.
+
+
+### Documentation
+
+We host an API documentation site available in [api/docs](api/docs).  It is a static site built using [Docusaurus 2](https://v2.docusaurus.io/).
+
+Additionally, we define the API output using [pydantic](https://pydantic-docs.helpmanual.io)
+schemas and generate Open API specs (default output
+[api/docs/open_api_schema.json](api/docs/open_api_schema.json) and json-schema
+outputs (default output [api/schemas_v2/](api/schemas_v2).
+
+When modifying the API schema, run `./run.py api update-schemas` to update the schemas.
+
+#### Simple setup
+
+Build environment:
+```bash
+$ cd api/docs
+$ yarn
+```
+
+Start server locally
+```bash
+$ cd api/docs
+$ yarn start
+```
