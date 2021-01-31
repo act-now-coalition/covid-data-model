@@ -6,13 +6,10 @@ description: Latest Covid-19 data and metrics. Power dashboards, websites, and a
 slug: /
 ---
 
-Welcome to the documentation for the Covid Act Now API.
-
-These docs describe version 2 of the API.
-Documentation for the previous version of the API is available [here](https://github.com/covid-projections/covid-data-model/blob/main/api/README.V1.md).
+The Covid Act Now API provides access to all of our data tracking all US states, counties, and metros. See [data definitions](/data-definitions) for all included data.
 
 The API provides the same data that powers [Covid Act Now](https://covidactnow.org)
-but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools.
+but in easily digestible CSV or JSON files, intended for consumption by other COVID websites, models, and tools.
 
 :::note
 
