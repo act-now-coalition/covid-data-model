@@ -26,8 +26,7 @@ function APIReference() {
             expandSingleSchemaField: false,
             expandResponses: "all",
             pathInMiddlePanel: true,
-            scrollYOffset: 60, 
-            nativeScrollbars: true,
+            scrollYOffset: 60,
             menuToggle: true
           }}
         />

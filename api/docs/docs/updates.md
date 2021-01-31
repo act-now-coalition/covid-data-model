@@ -14,7 +14,6 @@ The Annotations field has a FieldAnnotations for each field in `Actuals`. You ca
 data source(s) used to produce a field and list of dates where an anomalous observation was removed.
 The exact structure of the `AnomalyAnnotation` may be modified in the future.
 
-
 ### Vaccine data now available
 _Added on 2021-01-14_
 
@@ -28,6 +27,8 @@ Fields added:
    2-dose regimen, this represents the first dose.
  * `vaccinationsCompleted`: Total number of people completing vaccination - currently those
     completing their second shot. 
+* `vaccinationsInitiatedRatio`: Ratio of population that has initiated vaccination.
+* `vaccinationsCompletedRatio`: Ratio of population that has completed vaccination.
 
 You can access these fields in both the `actuals` field and `actualsTimeseries` fields.
 
