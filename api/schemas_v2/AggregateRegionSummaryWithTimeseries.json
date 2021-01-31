@@ -71,7 +71,7 @@
       "properties": {
         "currentIcuCovid": {
           "title": "Currenticucovid",
-          "description": "Current number of covid patients in icu.",
+          "description": "Current number of covid patients in the ICU.",
           "type": "integer"
         },
         "currentIcuCovidMethod": {
@@ -476,7 +476,7 @@
         },
         "newCases": {
           "title": "Newcases",
-          "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n 3. An outlier detection filter is applied to the timeseries, removing any data points that\n    seem improbable given recent case numbers.  Many times this is due to a backfill of\n    previously unreported cases.\n",
+          "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. We remove any days with negative new cases.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported cases.\n",
           "anyOf": [
             {
               "type": "integer"
@@ -936,7 +936,7 @@
         },
         "newCases": {
           "title": "Newcases",
-          "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time, the first day\n    cases start reporting again will not be included. This day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. Any days with negative new cases are removed.\n 3. An outlier detection filter is applied to the timeseries, removing any data points that\n    seem improbable given recent case numbers.  Many times this is due to a backfill of\n    previously unreported cases.\n",
+          "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. We remove any days with negative new cases.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported cases.\n",
           "anyOf": [
             {
               "type": "integer"

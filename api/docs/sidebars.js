@@ -2,7 +2,7 @@ module.exports = {
   mainSidebar: [
     "about",
     "access",
-    "data",
+    "data-definitions",
     "updates",
     "migration",
     "contact",

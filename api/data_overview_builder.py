@@ -107,7 +107,7 @@ def build_sections(sections: List[Section] = SECTIONS):
     blocks = "\n".join(build_section_block(section) for section in sections)
 
     return f"""---
-id: data
+id: data-definitions
 title: Data Definitions
 ---
 

@@ -195,7 +195,7 @@
       "properties": {
         "currentIcuCovid": {
           "title": "Currenticucovid",
-          "description": "Current number of covid patients in icu.",
+          "description": "Current number of covid patients in the ICU.",
           "type": "integer"
         },
         "currentIcuCovidMethod": {

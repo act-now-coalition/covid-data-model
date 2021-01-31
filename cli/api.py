@@ -54,7 +54,7 @@ def main():
     "-d",
     type=pathlib.Path,
     help="Path of data overview documentation page.",
-    default="api/docs/docs/data.md",
+    default="api/docs/docs/data-definitions.md",
 )
 @click.option(
     "--schemas-output-dir",

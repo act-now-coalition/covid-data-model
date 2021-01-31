@@ -61,7 +61,7 @@ class ICUHeadroomMetricDetails(base_model.APIBaseModel):
     """Details about how the ICU Headroom Metric was calculated."""
 
     currentIcuCovid: int = pydantic.Field(
-        ..., description="Current number of covid patients in icu."
+        ..., description="Current number of covid patients in the ICU."
     )
     currentIcuCovidMethod: CovidPatientsMethod = pydantic.Field(
         ..., description="Method used to determine number of current ICU patients with covid."
@@ -139,13 +139,13 @@ New cases are a processed timeseries of cases - summing new cases may not equal
 the cumulative case count.
 
 Processing steps:
- 1. If a region does not report cases for a period of time, the first day
-    cases start reporting again will not be included. This day likely includes
+ 1. If a region does not report cases for a period of time but then begins reporting again,
+    we will exclude the first day that reporting recommences. This first day likely includes
     multiple days worth of cases and can be misleading to the overall series.
- 2. Any days with negative new cases are removed.
- 3. An outlier detection filter is applied to the timeseries, removing any data points that
-    seem improbable given recent case numbers.  Many times this is due to a backfill of
-    previously unreported cases.
+ 2. We remove any days with negative new cases.
+ 3. We apply an outlier detection filter to the timeseries, which removes any data
+    points that seem improbable given recent numbers. Many times this is due to
+    backfill of previously unreported cases.
 """,
     )
     vaccinesDistributed: Optional[int] = pydantic.Field(
