@@ -109,8 +109,10 @@ def _run_query(database: str, query: str,) -> List[dict]:
         # For the first page, set header
         if not header:
             header = rows[0]
-
-        data = rows[1:]
+            data = rows[1:]
+        else:
+            # For pages without header, use all rows
+            data = rows
 
         for row in data:
             record = {}
