@@ -92,23 +92,32 @@ def _run_query(database: str, query: str,) -> List[dict]:
 
     response_query_result = client.get_query_results(QueryExecutionId=query_id)
 
-    # Parse query results
-    rows = response_query_result["ResultSet"]["Rows"]
-    rows = [row["Data"] for row in rows]
-    # All items in each row has a dictionary of {"VarCharValue": <value>}.
-    rows = [[item["VarCharValue"] for item in row] for row in rows]
-
-    header = rows[0]
-
-    data = rows[1:]
+    results_paginator = client.get_paginator("get_query_results")
+    results_iter = results_paginator.paginate(
+        QueryExecutionId=query_id, PaginationConfig={"PageSize": 1000}
+    )
 
     results = []
-    for row in data:
-        record = {}
-        for i, value in enumerate(header):
-            record[value] = row[i]
+    header = None
+    for results_page in results_iter:
+        # Parse query results
+        rows = results_page["ResultSet"]["Rows"]
+        rows = [row["Data"] for row in rows]
+        # All items in each row has a dictionary of {"VarCharValue": <value>}.
+        rows = [[item["VarCharValue"] for item in row] for row in rows]
 
-        results.append(record)
+        # For the first page, set header
+        if not header:
+            header = rows[0]
+
+        data = rows[1:]
+
+        for row in data:
+            record = {}
+            for i, value in enumerate(header):
+                record[value] = row[i]
+
+            results.append(record)
 
     return results
 
