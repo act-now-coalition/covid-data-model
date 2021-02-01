@@ -90,8 +90,6 @@ def _run_query(database: str, query: str,) -> List[dict]:
     if response["Status"]["State"] != "SUCCEEDED":
         raise CloudWatchQueryError()
 
-    response_query_result = client.get_query_results(QueryExecutionId=query_id)
-
     results_paginator = client.get_paginator("get_query_results")
     results_iter = results_paginator.paginate(
         QueryExecutionId=query_id, PaginationConfig={"PageSize": 1000}
