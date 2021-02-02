@@ -185,6 +185,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.VACCINES_ADMINISTERED: [CANScraperStateProviders],
     CommonFields.VACCINATIONS_INITIATED: [CANScraperStateProviders, CDCVaccinesDataset],
     CommonFields.VACCINATIONS_COMPLETED: [CANScraperStateProviders, CDCVaccinesDataset],
+    CommonFields.VACCINATIONS_INITIATED_PCT: [CANScraperStateProviders],
+    CommonFields.VACCINATIONS_COMPLETED_PCT: [CANScraperStateProviders],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
