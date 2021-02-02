@@ -964,11 +964,11 @@ class MultiRegionDataset:
         )
         static_sorted.to_csv(pointer.path_static())
 
-    def drop_column_if_present(self, column: str) -> "MultiRegionDataset":
+    def drop_column_if_present(self, column: CommonFields) -> "MultiRegionDataset":
         """Drops the specified column from the timeseries if it exists"""
         return self.drop_columns_if_present([column])
 
-    def drop_columns_if_present(self, columns: List[str]) -> "MultiRegionDataset":
+    def drop_columns_if_present(self, columns: List[CommonFields]) -> "MultiRegionDataset":
         """Drops the specified columns from the timeseries if they exist"""
         timeseries_df = self.timeseries.drop(columns, axis="columns", errors="ignore")
         static_df = self.static.drop(columns, axis="columns", errors="ignore")
