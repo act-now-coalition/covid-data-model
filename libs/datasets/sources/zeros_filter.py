@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Collection
 
 import structlog
@@ -17,6 +18,13 @@ DROPPING_TIMESERIES_WITH_ONLY_ZEROS = "Dropping timeseries with only zeros"
 def drop_all_zero_timeseries(
     ds_in: timeseries.MultiRegionDataset, fields: Collection[CommonFields]
 ) -> timeseries.MultiRegionDataset:
+    """Returns a dataset with `fields` timeseries dropped if they contain only NA and 0.
+
+    When first built this is dropping a timeseries in Loving County, TX which has so few people
+    that the all-zero timeseries is likely accurate. It may be worth only applying this to
+    locations with a population over some threshold. Or perhaps an automatic filter isn't worth
+    the trouble after all :-(
+    """
     ts_wide = ds_in.timeseries_wide_dates()
 
     # Separate into timeseries in `fields` and all others.
@@ -40,9 +48,6 @@ def drop_all_zero_timeseries(
     # dropped timeseries but keeping the provenance tags doesn't seem to be a problem. Maybe it'd
     # be cleaner to add a method 'MultiRegionDataset.drop_timeseries' similar to 'remove_regions' or
     # move this into 'MultiRegionDataset' similar to 'drop_stale_timeseries'.
-    ds_out = (
-        timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(ts_wide_out)
-        .append_tag_df(ds_in.tag.reset_index())
-        .add_static_values(ds_in.static.reset_index())
+    return dataclasses.replace(
+        ds_in, timeseries=ts_wide_out.stack().unstack(PdFields.VARIABLE).sort_index()
     )
-    return ds_out
