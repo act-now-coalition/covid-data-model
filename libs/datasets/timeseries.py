@@ -1685,8 +1685,13 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     # TODO(tom): Preserve provenance and other tags from the original vaccination fields.
     # ds_in_wide_dates / dataset.static.loc[:, CommonFields.POPULATION] doesn't seem to align the
     # location_id correctly so be more explicit with `div`:
-    derived_pct_df = ds_in_wide_dates.div(
-        ds_in.static.loc[:, CommonFields.POPULATION], level=CommonFields.LOCATION_ID, axis="index"
+    derived_pct_df = (
+        ds_in_wide_dates.div(
+            ds_in.static.loc[:, CommonFields.POPULATION],
+            level=CommonFields.LOCATION_ID,
+            axis="index",
+        )
+        * 100.0
     )
     derived_pct_df = derived_pct_df.rename(index=field_map, level=PdFields.VARIABLE)
     # Make a dataset containing only the derived percentage metrics.

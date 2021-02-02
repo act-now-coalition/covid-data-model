@@ -1553,7 +1553,7 @@ def test_derive_vaccine_pct():
     # SF does not have any vaccination metrics that can be transformed to a percentage so for it
     # the input and output are the same.
     sf_timeseries = {
-        CommonFields.VACCINATIONS_COMPLETED_PCT: [0.001, 0.01],
+        CommonFields.VACCINATIONS_COMPLETED_PCT: [0.1, 1],
     }
     static_data_map = {
         region_tx: {CommonFields.POPULATION: 100_000},
@@ -1571,8 +1571,8 @@ def test_derive_vaccine_pct():
         {
             region_tx: {
                 **tx_timeseries_in,
-                CommonFields.VACCINATIONS_INITIATED_PCT: [0.01, 0.02],
-                CommonFields.VACCINATIONS_COMPLETED_PCT: [None, 0.01],
+                CommonFields.VACCINATIONS_INITIATED_PCT: [1, 2],
+                CommonFields.VACCINATIONS_COMPLETED_PCT: [None, 1],
             },
             region_sf: sf_timeseries,
         },
