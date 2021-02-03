@@ -964,11 +964,15 @@ class MultiRegionDataset:
         )
         static_sorted.to_csv(pointer.path_static())
 
-    def drop_column_if_present(self, column: str) -> "MultiRegionDataset":
+    def drop_column_if_present(self, column: CommonFields) -> "MultiRegionDataset":
         """Drops the specified column from the timeseries if it exists"""
-        timeseries_df = self.timeseries.drop(column, axis="columns", errors="ignore")
-        static_df = self.static.drop(column, axis="columns", errors="ignore")
-        tag = self.tag[self.tag.index.get_level_values(PdFields.VARIABLE) != column]
+        return self.drop_columns_if_present([column])
+
+    def drop_columns_if_present(self, columns: List[CommonFields]) -> "MultiRegionDataset":
+        """Drops the specified columns from the timeseries if they exist"""
+        timeseries_df = self.timeseries.drop(columns, axis="columns", errors="ignore")
+        static_df = self.static.drop(columns, axis="columns", errors="ignore")
+        tag = self.tag[~self.tag.index.get_level_values(PdFields.VARIABLE).isin(columns)]
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
@@ -1665,3 +1669,40 @@ def aggregate_puerto_rico_from_counties(dataset: MultiRegionDataset) -> MultiReg
             patched_static.at[pr_location_id, field] = aggregated_value
 
     return dataclasses.replace(dataset, static=patched_static)
+
+
+def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+    """Returns a new dataset containing everything all the input and vaccination percentage
+    metrics derived from the corresponding non-percentage field where not already set."""
+    field_map = {
+        CommonFields.VACCINATIONS_INITIATED: CommonFields.VACCINATIONS_INITIATED_PCT,
+        CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_COMPLETED_PCT,
+    }
+    ds_in_wide_dates = ds_in.timeseries_wide_dates()
+    ds_in_wide_dates = ds_in_wide_dates.loc[
+        ds_in_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(field_map.keys())
+    ]
+    # TODO(tom): Preserve provenance and other tags from the original vaccination fields.
+    # ds_in_wide_dates / dataset.static.loc[:, CommonFields.POPULATION] doesn't seem to align the
+    # location_id correctly so be more explicit with `div`:
+    derived_pct_df = (
+        ds_in_wide_dates.div(
+            ds_in.static.loc[:, CommonFields.POPULATION],
+            level=CommonFields.LOCATION_ID,
+            axis="index",
+        )
+        * 100.0
+    )
+    derived_pct_df = derived_pct_df.rename(index=field_map, level=PdFields.VARIABLE)
+    # Make a dataset containing only the derived percentage metrics.
+    ds_derived_pct = MultiRegionDataset.from_timeseries_wide_dates_df(derived_pct_df)
+
+    # Combine the derived percentage with any percentages in ds_in to make a dataset containing
+    # only the percentage metrics.
+    # Possible optimization: Replace the combine+drop+join with a single function that copies from
+    # ds_derived_pct only where a timeseries is all NaN in the original dataset.
+    ds_list = [ds_in, ds_derived_pct]
+    ds_all_pct = combined_datasets({field_pct: ds_list for field_pct in field_map.values()}, {})
+
+    dataset_without_pct = ds_in.drop_columns_if_present(list(field_map.values()))
+    return dataset_without_pct.join_columns(ds_all_pct)
