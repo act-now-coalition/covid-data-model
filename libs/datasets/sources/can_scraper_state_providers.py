@@ -21,4 +21,6 @@ class CANScraperStateProviders(data_source.DataSource):
         CommonFields.CURRENT_HOSPITALIZED,
         CommonFields.POSITIVE_TESTS_VIRAL,
         CommonFields.CURRENT_ICU,
+        CommonFields.VACCINATIONS_INITIATED_PCT,
+        CommonFields.VACCINATIONS_COMPLETED_PCT,
     ]
