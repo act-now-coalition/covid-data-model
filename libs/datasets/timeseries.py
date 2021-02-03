@@ -1246,6 +1246,12 @@ WEIGHTED_AGGREGATIONS = (
     StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_7D, CommonFields.POPULATION),
     StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_14D, CommonFields.POPULATION),
     StaticWeightedAverageAggregation(
+        CommonFields.VACCINATIONS_INITIATED_PCT, CommonFields.POPULATION
+    ),
+    StaticWeightedAverageAggregation(
+        CommonFields.VACCINATIONS_COMPLETED_PCT, CommonFields.POPULATION
+    ),
+    StaticWeightedAverageAggregation(
         CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE, CommonFields.MAX_BED_COUNT
     ),
     StaticWeightedAverageAggregation(
