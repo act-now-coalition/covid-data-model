@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "c58ce24e895a4584ac754cb1041187f5dd548958",
+    "sha": "e5fc7fc65fd85a9ee594698fc7c4eac0cb109b8a",
     "branch": "main",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "aad38109d09dc79e2b19bb26aaa27472079dd7b5",
-    "branch": "tgb-846-vaccine-pct-combined-data",
+    "sha": "759d174e3dbe30baf2c4eab4033a9fe679d0cfb8",
+    "branch": "main",
     "is_dirty": false
   },
-  "updated_at": "2021-02-03T00:00:08.093911"
+  "updated_at": "2021-02-03T00:40:12.348250"
 }
