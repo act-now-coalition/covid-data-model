@@ -1622,10 +1622,22 @@
         ],
         "description": "The data source of a field (metric or actual). This enumeration lists the places from which\nCAN fetches data. The source is tracked on a per field and region timeseries basis."
       },
+      "TagType": {
+        "title": "TagType",
+        "enum": [
+          "cumulative_tail_truncated",
+          "cumulative_long_tail_truncated",
+          "zscore_outlier",
+          "provenance"
+        ],
+        "type": "string",
+        "description": "Values that may appear in TagField.TYPE.\n\nCurrently 'annotation' refers to tag types that must have a specific real value for DATE. Other\ntags (currently only PROVENANCE, but may be expanded for things such as storing a processing\nstep name) do not have a date field. Putting the type of all tags in a single enum\nmakes it easy to represent all tags in the same structure but makes the concept of an\n'annotation type' less explicit in our code."
+      },
       "AnomalyAnnotation": {
         "title": "AnomalyAnnotation",
         "required": [
           "date",
+          "tag_type",
           "original_observation"
         ],
         "type": "object",
@@ -1635,6 +1647,14 @@
             "type": "string",
             "description": "Date of anomaly",
             "format": "date"
+          },
+          "tag_type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TagType"
+              }
+            ],
+            "description": "Anomaly type"
           },
           "original_observation": {
             "title": "Original Observation",
