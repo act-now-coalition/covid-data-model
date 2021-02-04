@@ -121,6 +121,7 @@ def test_output_no_timeseries_rows(nyc_regional_input, tmp_path):
 
 def test_annotation(rt_dataset, icu_dataset):
     region = Region.from_state("IL")
+    tag = test_helpers.make_tag(date="2020-04-01", original_observation=10.0)
     ds = test_helpers.build_default_region_dataset(
         {
             CommonFields.CASES: TimeseriesLiteral([100, 200, 300], provenance="NYTimes"),
@@ -128,10 +129,7 @@ def test_annotation(rt_dataset, icu_dataset):
             CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
             CommonFields.ICU_BEDS: TimeseriesLiteral([20, 20, 20], provenance="NotFound"),
             CommonFields.CURRENT_ICU: [5, 5, 5],
-            CommonFields.DEATHS: TimeseriesLiteral(
-                [2, 3, 2],
-                annotation=[test_helpers.make_tag(date="2020-04-01", original_observation=10.0)],
-            ),
+            CommonFields.DEATHS: TimeseriesLiteral([2, 3, 2], annotation=[tag],),
             CommonFields.VACCINES_DISTRIBUTED: [None, 110, 220],
             CommonFields.VACCINATIONS_INITIATED: [None, None, 100],
             CommonFields.VACCINATIONS_COMPLETED: [None, None, 50],
@@ -167,7 +165,7 @@ def test_annotation(rt_dataset, icu_dataset):
 
     assert timeseries_for_region.annotations.deaths.sources == []
     assert timeseries_for_region.annotations.deaths.anomalies == [
-        AnomalyAnnotation(date="2020-04-01", original_observation=10.0)
+        AnomalyAnnotation(date="2020-04-01", original_observation=10.0, tag_type=tag.TAG_TYPE)
     ]
 
     assert timeseries_for_region.annotations.contactTracers is None
