@@ -725,6 +725,9 @@ class MultiRegionDataset:
         wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
 
+        # Each element of output_series will be a column in the returned DataFrame. There is at
+        # least one column for each tag type in self.tag. If a timeseries has multiple tags with
+        # the same type additional columns are added.
         output_series = []
         for tag_type, tag_series in self.tag.groupby(TagField.TYPE, sort=False):
             tag_series = tag_series.droplevel(TagField.TYPE)
