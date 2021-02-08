@@ -500,26 +500,24 @@ class MultiRegionDataset:
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
         wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
 
-        tag_columns = pd.Series(False, index=wide_dates_df.columns)
+        # Iterate through all known tag types. The following are populated while iterating.
+        tag_columns_mask = pd.Series(False, index=wide_dates_df.columns)
         tag_df_to_concat = []
         for tag_type in TagType:
-            # Extract provenance columns from wide date DataFrame so all columns are dates. This
-            # parses the column names created in `timeseries_rows`.
-            provenance_column_mask = wide_dates_df.columns.str.match(
-                r"\A" + tag_type + r"(-\d+)?\Z"
-            )
-            if provenance_column_mask.any():
-                provenance_columns = wide_dates_df.loc[:, provenance_column_mask]
-                provenance_series = (
-                    provenance_columns.stack().reset_index(-1, drop=True).rename(TagField.CONTENT)
-                )
-                tag_columns = tag_columns | provenance_column_mask
-                if not provenance_series.empty:
-                    provenance_df = provenance_series.reset_index()
-                    provenance_df[TagField.TYPE] = tag_type
-                    tag_df_to_concat.append(provenance_df)
+            # Extract tag_type columns from the wide date DataFrame. This parses the column names
+            # created in `timeseries_rows`.
+            tag_column_mask = wide_dates_df.columns.str.match(r"\A" + tag_type + r"(-\d+)?\Z")
+            if tag_column_mask.any():
+                tag_columns = wide_dates_df.loc[:, tag_column_mask]
+                tag_series = tag_columns.stack().reset_index(-1, drop=True).rename(TagField.CONTENT)
+                tag_columns_mask = tag_columns_mask | tag_column_mask
+                if not tag_series.empty:
+                    tag_df = tag_series.reset_index()
+                    tag_df[TagField.TYPE] = tag_type
+                    tag_df_to_concat.append(tag_df)
 
-        wide_dates_df = wide_dates_df.loc[:, ~tag_columns]
+        # Assume all columns that didn't match a tag_type are dates.
+        wide_dates_df = wide_dates_df.loc[:, ~tag_columns_mask]
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
         wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
 
@@ -527,13 +525,8 @@ class MultiRegionDataset:
             pointer.path_static(), dtype={CommonFields.FIPS: str}, low_memory=False
         )
 
-        annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
-        tag_df_to_concat.append(annotations)
-
-        return (
-            MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df)
-            .add_static_values(static_df)
-            .append_tag_df(pd.concat(tag_df_to_concat))
+        dataset = MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df).add_static_values(
+            static_df
         )
         if tag_df_to_concat:
             dataset = dataset.append_tag_df(pd.concat(tag_df_to_concat))
