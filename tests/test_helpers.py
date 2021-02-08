@@ -6,6 +6,7 @@ from typing import Any
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import TypeVar
 from typing import Union
 
 import more_itertools
@@ -19,6 +20,7 @@ from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagField
 from libs.datasets.taglib import TagType
+from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 
 
@@ -28,6 +30,18 @@ DEFAULT_FIPS = "97222"
 DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
 
 
+T = TypeVar("T")
+
+
+def _to_list(list_or_scalar: Union[None, T, List[T]]) -> List[T]:
+    if isinstance(list_or_scalar, List):
+        return list_or_scalar
+    elif list_or_scalar:
+        return [list_or_scalar]
+    else:
+        return []
+
+
 class TimeseriesLiteral(UserList):
     """Represents a timeseries literal, a sequence of floats and provenance string."""
 
@@ -35,11 +49,13 @@ class TimeseriesLiteral(UserList):
         self,
         ts_list,
         *,
-        provenance: Union[str, List[str]] = "",
+        provenance: Union[None, str, List[str]] = None,
+        source_url: Union[None, UrlStr, List[UrlStr]] = None,
         annotation: Sequence[taglib.TagInTimeseries] = (),
     ):
         super().__init__(ts_list)
-        self.provenance = provenance
+        self.provenance = _to_list(provenance)
+        self.source_url = _to_list(source_url)
         self.annotation = annotation
 
 
@@ -114,15 +130,10 @@ def build_dataset(
             continue
 
         records = list(ts_literal.annotation)
-        if not ts_literal.provenance:
-            provenance_list = []
-        elif isinstance(ts_literal.provenance, str):
-            provenance_list = [ts_literal.provenance]
-        else:
-            provenance_list = ts_literal.provenance
         records.extend(
-            make_tag(TagType.PROVENANCE, source=provenance) for provenance in provenance_list
+            make_tag(TagType.PROVENANCE, source=provenance) for provenance in ts_literal.provenance
         )
+        records.extend(make_tag(TagType.SOURCE_URL, source=url) for url in ts_literal.source_url)
         tags_to_concat.append(make_tag_df(region, var, records))
 
     if tags_to_concat:

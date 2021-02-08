@@ -19,6 +19,7 @@ from libs.datasets import dataset_pointer
 
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagType
+from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 from tests import test_helpers
 from tests.dataset_utils_test import read_csv_and_index_fips
@@ -1580,3 +1581,28 @@ def test_derive_vaccine_pct():
     )
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_write_read_dataset_pointer_with_source_url(tmpdir):
+    pointer = _make_dataset_pointer(tmpdir)
+
+    ts1a = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01"),
+            test_helpers.make_tag(date="2020-04-02"),
+        ],
+        source_url=UrlStr("http://foo.com/"),
+    )
+    ts1b = [100, 200, 300]
+    dataset_in = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts1a, CommonFields.CASES: ts1b}
+    )
+
+    dataset_in.write_to_dataset_pointer(pointer)
+
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+
+    test_helpers.assert_dataset_like(dataset_read, dataset_in)
+
+    assert dataset_read.get_one_region(test_helpers.DEFAULT_REGION).source_url

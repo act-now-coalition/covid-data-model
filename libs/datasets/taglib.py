@@ -98,22 +98,28 @@ class ProvenanceTag(TagInTimeseries):
 
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        return ProvenanceTag(source=content)
+        return cls(source=content)
 
     @property
     def content(self) -> str:
         return self.source
 
 
+class UrlStr(str):
+    """"""
+
+    pass
+
+
 @dataclass(frozen=True)
 class SourceUrl(TagInTimeseries):
-    source: str
+    source: UrlStr
 
     TAG_TYPE = TagType.SOURCE_URL
 
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        return SourceUrl(source=content)
+        return cls(source=UrlStr(content))
 
     @property
     def content(self) -> str:
@@ -163,6 +169,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED: CumulativeLongTailTruncated,
     TagType.ZSCORE_OUTLIER: ZScoreOutlier,
     TagType.PROVENANCE: ProvenanceTag,
+    TagType.SOURCE_URL: SourceUrl,
 }
 
 
