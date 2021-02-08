@@ -11,8 +11,7 @@ from dash.dependencies import Input, Output
 from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets.tail_filter import TagType
-from libs.datasets.timeseries import TagField
-
+from libs.datasets.taglib import TagField
 
 EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 

@@ -15,9 +15,10 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import taglib
 from libs.datasets import timeseries
-from libs.datasets.timeseries import TagField
-from libs.datasets.timeseries import TagType
+from libs.datasets.taglib import TagField
+from libs.datasets.taglib import TagType
 from libs.pipeline import Region
 
 
@@ -35,7 +36,7 @@ class TimeseriesLiteral(UserList):
         ts_list,
         *,
         provenance: Union[str, List[str]] = "",
-        annotation: Sequence[timeseries.TagInTimeseries] = (),
+        annotation: Sequence[taglib.TagInTimeseries] = (),
     ):
         super().__init__(ts_list)
         self.provenance = provenance
@@ -43,7 +44,7 @@ class TimeseriesLiteral(UserList):
 
 
 def make_tag_df(
-    region: Region, metric: CommonFields, records: List[timeseries.TagInTimeseries]
+    region: Region, metric: CommonFields, records: List[taglib.TagInTimeseries]
 ) -> pd.DataFrame:
     df = pd.DataFrame(
         {TagField.TYPE: [r.type for r in records], TagField.CONTENT: [r.content for r in records],}
@@ -55,13 +56,13 @@ def make_tag_df(
 
 def make_tag(
     type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
-) -> timeseries.TagInTimeseries:
+) -> taglib.TagInTimeseries:
     if type in timeseries.ANNOTATION_TAG_TYPES:
         # Force to the expected types and add defaults if not in kwargs
         kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
 
-    return timeseries.TAG_TYPE_TO_CLASS[type](**kwargs)
+    return taglib.TAG_TYPE_TO_CLASS[type](**kwargs)
 
 
 def build_dataset(
@@ -120,8 +121,7 @@ def build_dataset(
         else:
             provenance_list = ts_literal.provenance
         records.extend(
-            make_tag(timeseries.TagType.PROVENANCE, source=provenance)
-            for provenance in provenance_list
+            make_tag(TagType.PROVENANCE, source=provenance) for provenance in provenance_list
         )
         tags_to_concat.append(make_tag_df(region, var, records))
 

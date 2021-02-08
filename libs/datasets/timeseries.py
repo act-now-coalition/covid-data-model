@@ -1,31 +1,23 @@
-import collections
 import dataclasses
-import json
-from abc import ABC, abstractmethod
 import datetime
-import enum
 import pathlib
 import re
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import chain
 from typing import Any
-from typing import ClassVar
 from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
 from typing import Mapping
-from typing import MutableMapping
 from typing import Set
 from typing import Sequence
 from typing import Tuple
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import PdFields
-from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
 
@@ -41,26 +33,19 @@ from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import NON_NUMERIC_COLUMNS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
+from libs.datasets import taglib
+from libs.datasets.taglib import TagField
+from libs.datasets.taglib import TagType
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
+
 
 _log = structlog.get_logger()
 
 
 # TODO(tom): Move all this tag stuff to a separate file, maybe called taglib so that code can
 #  import it and still use `tag` as a local name.
-@enum.unique
-class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
-    """The attributes of a tag, columns in a table with one row per tag."""
-
-    LOCATION_ID = CommonFields.LOCATION_ID
-    # VARIABLE values should be a metric name, typically one in CommonFields.
-    VARIABLE = PdFields.VARIABLE
-    # TYPE values must be a string from TagType
-    TYPE = "tag_type"
-    # CONTENT values vary depending on TYPE, either a JSON string or bare string.
-    CONTENT = "content"
 
 
 # Fields used as panda MultiIndex levels when tags are represented in a pd.Series
@@ -70,151 +55,11 @@ TAG_INDEX_FIELDS = [
     TagField.TYPE,
 ]
 
-
-@enum.unique
-class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
-    """Values that may appear in TagField.TYPE.
-
-    Currently 'annotation' refers to tag types that must have a specific real value for DATE. Other
-    tags (currently only PROVENANCE, but may be expanded for things such as storing a processing
-    step name) do not have a date field. Putting the type of all tags in a single enum
-    makes it easy to represent all tags in the same structure but makes the concept of an
-    'annotation type' less explicit in our code.
-    """
-
-    CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
-    CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
-    ZSCORE_OUTLIER = "zscore_outlier"
-
-    PROVENANCE = PdFields.PROVENANCE
-
-
 ANNOTATION_TAG_TYPES = [
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
     TagType.CUMULATIVE_TAIL_TRUNCATED,
     TagType.ZSCORE_OUTLIER,
 ]
-
-
-@dataclass(frozen=True)
-class TagInTimeseries(ABC):
-    """Represents a tag in the context of a particular timeseries"""
-
-    # TAG_TYPE must be set by subclasses.
-    TAG_TYPE: ClassVar[TagType]
-
-    @property
-    def type(self) -> TagType:
-        return self.TAG_TYPE
-
-    @property
-    @abstractmethod
-    def content(self) -> str:
-        pass
-
-    @staticmethod
-    def make(tag_type: TagType, *, content: str) -> "TagInTimeseries":
-        """Given a `tag_type` and content, returns an instance of the appropriate class."""
-        return TAG_TYPE_TO_CLASS[tag_type].make_instance(content=content)
-
-    @classmethod
-    @abstractmethod
-    def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        """Deserializes the content and returns an instance of the TagInTimeseries subclass."""
-        pass
-
-    def as_record(self, location_id: str, variable: CommonFields) -> Mapping[str, Any]:
-        """Returns this tag in a record with the content serialized."""
-        return {
-            TagField.LOCATION_ID: location_id,
-            TagField.VARIABLE: variable,
-            TagField.TYPE: self.type,
-            TagField.CONTENT: self.content,
-        }
-
-
-@dataclass(frozen=True)
-class ProvenanceTag(TagInTimeseries):
-    source: str
-
-    TAG_TYPE = TagType.PROVENANCE
-
-    @classmethod
-    def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        return ProvenanceTag(source=content)
-
-    @property
-    def content(self) -> str:
-        return self.source
-
-
-@dataclass(frozen=True)
-class AnnotationWithDate(TagInTimeseries, ABC):
-    """Represents an annotation, a tag added when modifying or removing one or more observations"""
-
-    original_observation: float
-    date: pd.Timestamp
-
-    @classmethod
-    def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        content_parsed = json.loads(content)
-        date = pd.to_datetime(content_parsed.pop("date"))
-        return cls(date=date, **content_parsed)
-
-    @property
-    def content(self) -> str:
-        return json.dumps(
-            {
-                "date": self.date.date().isoformat(),
-                "original_observation": self.original_observation,
-            }
-        )
-
-
-@dataclass(frozen=True)
-class CumulativeTailTruncated(AnnotationWithDate):
-    TAG_TYPE = TagType.CUMULATIVE_TAIL_TRUNCATED
-
-
-@dataclass(frozen=True)
-class CumulativeLongTailTruncated(AnnotationWithDate):
-    TAG_TYPE = TagType.CUMULATIVE_LONG_TAIL_TRUNCATED
-
-
-@dataclass(frozen=True)
-class ZScoreOutlier(AnnotationWithDate):
-    TAG_TYPE = TagType.ZSCORE_OUTLIER
-
-
-TAG_TYPE_TO_CLASS = {
-    TagType.CUMULATIVE_TAIL_TRUNCATED: CumulativeTailTruncated,
-    TagType.CUMULATIVE_LONG_TAIL_TRUNCATED: CumulativeLongTailTruncated,
-    TagType.ZSCORE_OUTLIER: ZScoreOutlier,
-    TagType.PROVENANCE: ProvenanceTag,
-}
-
-
-@dataclass(frozen=True)
-class TagCollection:
-    """A collection of TagInTimeseries, organized by location and field name. The collection
-    object itself is frozen but the dict within it may be modified."""
-
-    _location_var_map: MutableMapping[Tuple, List[TagInTimeseries]] = dataclasses.field(
-        default_factory=lambda: collections.defaultdict(list)
-    )
-
-    def add(self, tag: TagInTimeseries, *, location_id: str, variable: CommonFields) -> None:
-        """Adds a tag to this collection."""
-        self._location_var_map[(location_id, variable)].append(tag)
-
-    def _as_records(self) -> Iterable[Mapping]:
-        for (location_id, variable), tags in self._location_var_map.items():
-            for tag in tags:
-                yield tag.as_record(location_id, variable)
-
-    def as_dataframe(self) -> pd.DataFrame:
-        """Returns all tags in this collection in a DataFrame."""
-        return pd.DataFrame.from_records(self._as_records())
 
 
 class DuplicateDataException(Exception):
@@ -260,10 +105,10 @@ class OneRegionTimeseriesDataset:
         # https://stackoverflow.com/a/56065318
         return provenance_series.groupby(level=0).agg(list).to_dict()
 
-    def annotations(self, metric: FieldName) -> List[AnnotationWithDate]:
+    def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
         return_value = []
         for _, row in self.tag.loc[[metric], ANNOTATION_TAG_TYPES].reset_index().iterrows():
-            return_value.append(AnnotationWithDate.make(row.tag_type, content=row.content))
+            return_value.append(taglib.AnnotationWithDate.make(row.tag_type, content=row.content))
         return return_value
 
     def __post_init__(self):
@@ -1126,13 +971,13 @@ def drop_new_case_outliers(
     zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
     to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
 
-    new_tags = TagCollection()
+    new_tags = taglib.TagCollection()
     # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
     # rows where to_exclude is True.
     assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     for idx, _ in to_exclude[to_exclude].iteritems():
         new_tags.add(
-            ZScoreOutlier(
+            taglib.ZScoreOutlier(
                 date=idx[1], original_observation=df_copy.at[idx, CommonFields.NEW_CASES],
             ),
             location_id=idx[0],
