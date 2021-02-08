@@ -6,7 +6,10 @@ description: Latest Covid-19 data and metrics. Power dashboards, websites, and a
 slug: /
 ---
 
-The Covid Act Now API provides access to all of our data tracking all US states, counties, and metros. See [data definitions](/data-definitions) for all included data.
+The Covid Act Now API provides access to all of our data tracking all US states, counties, and metros. It includes data and metrics for [cases](/data-definitions#cases), 
+[vaccinations](/data-definitions#vaccinations), [tests](/data-definitions#tests), 
+[hospitalizations](/data-definitions#hospitalizations), and [deaths](/data-definitions#deaths). 
+ See [data definitions](/data-definitions) for all included data.
 
 The API provides the same data that powers [Covid Act Now](https://covidactnow.org)
 but in easily digestible CSV or JSON files, intended for consumption by other COVID websites, models, and tools.
