@@ -18,7 +18,7 @@ from libs.datasets import combined_datasets
 from libs.datasets import dataset_pointer
 
 from libs.datasets import timeseries
-from libs.datasets.timeseries import TagType
+from libs.datasets.taglib import TagType
 from libs.pipeline import Region
 from tests import test_helpers
 from tests.dataset_utils_test import read_csv_and_index_fips
