@@ -50,6 +50,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     ZSCORE_OUTLIER = "zscore_outlier"
 
     PROVENANCE = PdFields.PROVENANCE
+    SOURCE_URL = "source_url"
 
 
 @dataclass(frozen=True)
@@ -98,6 +99,21 @@ class ProvenanceTag(TagInTimeseries):
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
         return ProvenanceTag(source=content)
+
+    @property
+    def content(self) -> str:
+        return self.source
+
+
+@dataclass(frozen=True)
+class SourceUrl(TagInTimeseries):
+    source: str
+
+    TAG_TYPE = TagType.SOURCE_URL
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        return SourceUrl(source=content)
 
     @property
     def content(self) -> str:
