@@ -44,10 +44,6 @@ from backports.cached_property import cached_property
 _log = structlog.get_logger()
 
 
-# TODO(tom): Move all this tag stuff to a separate file, maybe called taglib so that code can
-#  import it and still use `tag` as a local name.
-
-
 # Fields used as panda MultiIndex levels when tags are represented in a pd.Series
 TAG_INDEX_FIELDS = [
     TagField.LOCATION_ID,
