@@ -500,23 +500,24 @@ class MultiRegionDataset:
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
         wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
 
-        # Extract provenance columns from wide date DataFrame so all columns are dates. This
-        # parses the column names created in `timeseries_rows`.
-        provenance_column_mask = wide_dates_df.columns.str.match(
-            r"\A" + TagType.PROVENANCE + r"(-\d+)?\Z"
-        )
+        # Iterate through all known tag types. The following are populated while iterating.
+        tag_columns_mask = pd.Series(False, index=wide_dates_df.columns)
         tag_df_to_concat = []
-        if provenance_column_mask.any():
-            provenance_columns = wide_dates_df.loc[:, provenance_column_mask]
-            provenance_series = (
-                provenance_columns.stack().reset_index(-1, drop=True).rename(TagField.CONTENT)
-            )
-            if not provenance_series.empty:
-                provenance_df = provenance_series.reset_index()
-                provenance_df[TagField.TYPE] = TagType.PROVENANCE
-                tag_df_to_concat.append(provenance_df)
+        for tag_type in TagType:
+            # Extract tag_type columns from the wide date DataFrame. This parses the column names
+            # created in `timeseries_rows`.
+            tag_column_mask = wide_dates_df.columns.str.match(r"\A" + tag_type + r"(-\d+)?\Z")
+            if tag_column_mask.any():
+                tag_columns = wide_dates_df.loc[:, tag_column_mask]
+                tag_series = tag_columns.stack().reset_index(-1, drop=True).rename(TagField.CONTENT)
+                tag_columns_mask = tag_columns_mask | tag_column_mask
+                if not tag_series.empty:
+                    tag_df = tag_series.reset_index()
+                    tag_df[TagField.TYPE] = tag_type
+                    tag_df_to_concat.append(tag_df)
 
-        wide_dates_df = wide_dates_df.loc[:, ~provenance_column_mask]
+        # Assume all columns that didn't match a tag_type are dates.
+        wide_dates_df = wide_dates_df.loc[:, ~tag_columns_mask]
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
         wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
 
@@ -524,14 +525,18 @@ class MultiRegionDataset:
             pointer.path_static(), dtype={CommonFields.FIPS: str}, low_memory=False
         )
 
-        annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
-        tag_df_to_concat.append(annotations)
+        # TODO(tom): Delete this once annotation file is retired
+        if pointer.path_annotation().is_file():
+            annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
+            tag_df_to_concat.append(annotations)
 
-        return (
-            MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df)
-            .add_static_values(static_df)
-            .append_tag_df(pd.concat(tag_df_to_concat))
+        dataset = MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df).add_static_values(
+            static_df
         )
+        if tag_df_to_concat:
+            dataset = dataset.append_tag_df(pd.concat(tag_df_to_concat))
+
+        return dataset
 
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -725,22 +730,24 @@ class MultiRegionDataset:
         wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
 
-        if not self.provenance.empty:
-            # Add one or more columns with the provenance tag(s) for each timeseries
-            # (identified by a <location_id, variable> pair).
-            # From https://stackoverflow.com/a/38369722
-            provenance_columns = (
-                self.provenance.groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE])
-                .apply(lambda df: df.reset_index(drop=True))
-                .unstack()
-                # The first provenance column has the same name as when there was only support
-                # for a single column. Extra columns are named "provenance-1", "provenance-2", ...
-                # These column names are parsed in `read_from_pointer`.
-                .rename(columns=lambda i: TagType.PROVENANCE + ("" if i == 0 else f"-{i}"))
-            )
-            return pd.concat([provenance_columns, wide_dates], axis=1)
-        else:
-            return wide_dates
+        # Each element of output_series will be a column in the returned DataFrame. There is at
+        # least one column for each tag type in self.tag. If a timeseries has multiple tags with
+        # the same type additional columns are added.
+        output_series = []
+        for tag_type, tag_series in self.tag.groupby(TagField.TYPE, sort=False):
+            tag_series = tag_series.droplevel(TagField.TYPE)
+            duplicates = tag_series.index.duplicated()
+            output_series.append(tag_series.loc[~duplicates].rename(tag_type))
+            i = 1
+            while duplicates.any():
+                tag_series = tag_series.loc[duplicates]
+                duplicates = tag_series.index.duplicated()
+                output_series.append(tag_series.loc[~duplicates].rename(f"{str(tag_type)}-{i}"))
+                i += 1
+
+        output_series.append(wide_dates)
+
+        return pd.concat(output_series, axis=1)
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
@@ -798,7 +805,10 @@ class MultiRegionDataset:
         csv_buf = re.sub(r",+\n", r"\n", csv_buf)
         pointer.path_wide_dates().write_text(csv_buf)
 
-        self.annotations_as_dataframe().to_csv(pointer.path_annotation(), index=False)
+        # TODO(tom) Remove once annotations file is retired.
+        if pointer.path_annotation().exists():
+            # annotations are not written to this file any longer so remove it to avoid duplication.
+            pointer.path_annotation().unlink()
 
         static_sorted = common_df.index_and_sort(
             self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
@@ -850,15 +860,6 @@ class MultiRegionDataset:
 
     def get_county_name(self, *, region: pipeline.Region) -> str:
         return self.static.at[region.location_id, CommonFields.COUNTY]
-
-    def annotations_as_dataframe(self) -> pd.DataFrame:
-        """Returns tags with a real DATE value in a DataFrame.
-
-        TODO(tom): Currently the only callers of this function are writing annotations to disk.
-         Change MultiRegionDataset.timeseries_rows (and methods like it) to include annotations
-         so the code calling this method can be removed. Then delete this method.
-        """
-        return self.tag.loc[:, :, ANNOTATION_TAG_TYPES].reset_index()
 
     def provenance_map(self) -> Mapping[CommonFields, Set[str]]:
         """Returns a mapping from field name to set of provenances."""

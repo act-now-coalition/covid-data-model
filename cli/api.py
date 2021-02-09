@@ -115,9 +115,6 @@ def generate_test_positivity(
     test_positivity_results.test_positivity.timeseries_rows().to_csv(
         output_dir / final_result, index=True, float_format="%.05g"
     )
-    test_positivity_results.test_positivity.annotations_as_dataframe().to_csv(
-        output_dir / str(final_result).replace(".csv", "-annotations.csv"), index=False
-    )
 
 
 def _write_dataset_map(
