@@ -50,6 +50,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     ZSCORE_OUTLIER = "zscore_outlier"
 
     PROVENANCE = PdFields.PROVENANCE
+    SOURCE_URL = "source_url"
 
 
 @dataclass(frozen=True)
@@ -97,7 +98,31 @@ class ProvenanceTag(TagInTimeseries):
 
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        return ProvenanceTag(source=content)
+        return cls(source=content)
+
+    @property
+    def content(self) -> str:
+        return self.source
+
+
+class UrlStr(str):
+    """Wraps str to provide some type safety."""
+
+    # If we need to do more with URLs consider replacing UrlStr with https://pypi.org/project/yarl/
+    pass
+
+
+# TODO(tom): Consider merging source_url into provenance. See
+#  https://github.com/covid-projections/covid-data-model/pull/935#pullrequestreview-587070370
+@dataclass(frozen=True)
+class SourceUrl(TagInTimeseries):
+    source: UrlStr
+
+    TAG_TYPE = TagType.SOURCE_URL
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        return cls(source=UrlStr(content))
 
     @property
     def content(self) -> str:
@@ -147,6 +172,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED: CumulativeLongTailTruncated,
     TagType.ZSCORE_OUTLIER: ZScoreOutlier,
     TagType.PROVENANCE: ProvenanceTag,
+    TagType.SOURCE_URL: SourceUrl,
 }
 
 

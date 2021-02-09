@@ -36,6 +36,7 @@ from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets import taglib
 from libs.datasets.taglib import TagField
 from libs.datasets.taglib import TagType
+from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
@@ -100,6 +101,12 @@ class OneRegionTimeseriesDataset:
         provenance_series = self.tag.loc[:, [TagType.PROVENANCE]].droplevel([TagField.TYPE])
         # https://stackoverflow.com/a/56065318
         return provenance_series.groupby(level=0).agg(list).to_dict()
+
+    @property
+    def source_url(self) -> Mapping[CommonFields, List[UrlStr]]:
+        source_url_series = self.tag.loc[:, [TagType.SOURCE_URL]].droplevel([TagField.TYPE])
+        # https://stackoverflow.com/a/56065318
+        return source_url_series.groupby(level=0).agg(list).to_dict()
 
     def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
         return_value = []
