@@ -1,4 +1,6 @@
 from covidactnow.datapublic.common_fields import CommonFields
+
+# TODO(tom): Remove this really ugly import from the covid-data-public repo.
 from scripts import update_cdc_vaccine_data
 
 from libs.datasets import data_source
