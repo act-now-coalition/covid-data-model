@@ -38,7 +38,7 @@ class DataSource(object):
     IGNORED_FIELDS = (CommonFields.COUNTY, CommonFields.COUNTRY, CommonFields.STATE)
 
     @classmethod
-    def _get_data(cls) -> pd.DataFrame:
+    def _load_data(cls) -> pd.DataFrame:
         assert cls.COMMON_DF_CSV_PATH, f"No path in {cls}"
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.COMMON_DF_CSV_PATH
@@ -48,7 +48,7 @@ class DataSource(object):
     @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         """Default implementation of make_dataset that loads timeseries data from a CSV."""
-        data = cls._get_data()
+        data = cls._load_data()
         expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
         # Keep only the expected fields.
         found_expected_fields = data.columns.intersection(expected_fields)
@@ -82,10 +82,11 @@ class CanScraperBase(DataSource):
     @staticmethod
     @lru_cache(None)
     def _get_covid_county_dataset() -> ccd_helpers.CovidCountyDataset:
+        # TODO(tom): Rename CovidCountyDataset to CanScraperLoader or the something like that.
         return ccd_helpers.CovidCountyDataset.load(fetch=False)
 
     @classmethod
-    def _get_data(cls) -> pd.DataFrame:
+    def _load_data(cls) -> pd.DataFrame:
         assert cls.TRANSFORM_METHOD
         ccd_dataset = CanScraperBase._get_covid_county_dataset()
         return cls.TRANSFORM_METHOD(ccd_dataset)
