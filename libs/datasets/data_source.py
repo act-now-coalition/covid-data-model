@@ -1,4 +1,5 @@
 import pathlib
+from typing import Callable
 from typing import List
 from typing import Optional
 from typing import Union
@@ -75,8 +76,8 @@ class DataSource(object):
 #  instances of DataSourceAndRegionMasks
 class CanScraperBase(DataSource):
     # The method called to transform the DataFrame returned by CovidCountyDataset into what is
-    # consumed by DataSource.make_dataset. Set in subclasses.
-    TRANSFORM_METHOD = None
+    # consumed by DataSource.make_dataset. Must be set in subclasses.
+    TRANSFORM_METHOD: Callable[[pd.DataFrame], pd.DataFrame]
 
     @staticmethod
     @lru_cache(None)
