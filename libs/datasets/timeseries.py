@@ -525,6 +525,11 @@ class MultiRegionDataset:
             pointer.path_static(), dtype={CommonFields.FIPS: str}, low_memory=False
         )
 
+        # TODO(tom): Delete this once annotation file is retired
+        if pointer.path_annotation().is_file():
+            annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
+            tag_df_to_concat.append(annotations)
+
         dataset = MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df).add_static_values(
             static_df
         )
@@ -800,7 +805,10 @@ class MultiRegionDataset:
         csv_buf = re.sub(r",+\n", r"\n", csv_buf)
         pointer.path_wide_dates().write_text(csv_buf)
 
-        self.annotations_as_dataframe().to_csv(pointer.path_annotation(), index=False)
+        # TODO(tom) Remove once annotations file is retired.
+        if pointer.path_annotation().exists():
+            # annotations are not written to this file any longer so remove it to avoid duplication.
+            pointer.path_annotation().unlink()
 
         static_sorted = common_df.index_and_sort(
             self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
@@ -852,15 +860,6 @@ class MultiRegionDataset:
 
     def get_county_name(self, *, region: pipeline.Region) -> str:
         return self.static.at[region.location_id, CommonFields.COUNTY]
-
-    def annotations_as_dataframe(self) -> pd.DataFrame:
-        """Returns tags with a real DATE value in a DataFrame.
-
-        TODO(tom): Currently the only callers of this function are writing annotations to disk.
-         Change MultiRegionDataset.timeseries_rows (and methods like it) to include annotations
-         so the code calling this method can be removed. Then delete this method.
-        """
-        return self.tag.loc[:, :, ANNOTATION_TAG_TYPES].reset_index()
 
     def provenance_map(self) -> Mapping[CommonFields, Set[str]]:
         """Returns a mapping from field name to set of provenances."""

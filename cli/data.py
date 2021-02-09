@@ -190,9 +190,6 @@ def run_bad_tails_filter(output_path: pathlib.Path):
     _, dataset_out = TailFilter.run(us_dataset, CUMULATIVE_FIELDS_TO_FILTER)
     log.info("Writing output")
     dataset_out.timeseries_rows().to_csv(output_path, index=True, float_format="%.05g")
-    dataset_out.annotations_as_dataframe().to_csv(
-        str(output_path).replace(".csv", "-annotations.csv"), index=False
-    )
 
 
 @main.command()
