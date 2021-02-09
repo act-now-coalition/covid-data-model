@@ -112,6 +112,8 @@ class UrlStr(str):
     pass
 
 
+# TODO(tom): Consider merging source_url into provenance. See
+#  https://github.com/covid-projections/covid-data-model/pull/935#pullrequestreview-587070370
 @dataclass(frozen=True)
 class SourceUrl(TagInTimeseries):
     source: UrlStr
