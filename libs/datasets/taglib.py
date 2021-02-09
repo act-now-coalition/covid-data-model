@@ -106,8 +106,9 @@ class ProvenanceTag(TagInTimeseries):
 
 
 class UrlStr(str):
-    """"""
+    """Wraps str to provide some type safety."""
 
+    # If we need to do more with URLs consider replacing UrlStr with https://pypi.org/project/yarl/
     pass
 
 
