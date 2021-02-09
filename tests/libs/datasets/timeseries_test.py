@@ -1586,6 +1586,9 @@ def test_derive_vaccine_pct():
 
 def test_write_read_dataset_pointer_with_source_url(tmpdir):
     pointer = _make_dataset_pointer(tmpdir)
+    url_str1 = UrlStr("http://foo.com/1")
+    url_str2 = UrlStr("http://foo.com/2")
+    url_str3 = UrlStr("http://foo.com/3")
 
     ts1a = TimeseriesLiteral(
         [0, 2, 4],
@@ -1593,9 +1596,9 @@ def test_write_read_dataset_pointer_with_source_url(tmpdir):
             test_helpers.make_tag(date="2020-04-01"),
             test_helpers.make_tag(date="2020-04-02"),
         ],
-        source_url=UrlStr("http://foo.com/"),
+        source_url=url_str1,
     )
-    ts1b = [100, 200, 300]
+    ts1b = TimeseriesLiteral([100, 200, 300], source_url=[url_str2, url_str3])
     dataset_in = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts1a, CommonFields.CASES: ts1b}
     )
@@ -1605,5 +1608,7 @@ def test_write_read_dataset_pointer_with_source_url(tmpdir):
     dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
 
     test_helpers.assert_dataset_like(dataset_read, dataset_in)
-
-    assert dataset_read.get_one_region(test_helpers.DEFAULT_REGION).source_url
+    source_url_read = dataset_read.get_one_region(test_helpers.DEFAULT_REGION).source_url
+    assert source_url_read[CommonFields.ICU_BEDS] == [url_str1]
+    # Copy to a set because the order of the URLs in the source_url may change.
+    assert set(source_url_read[CommonFields.CASES]) == {url_str2, url_str3}
