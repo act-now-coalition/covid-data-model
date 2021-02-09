@@ -37,13 +37,17 @@ class DataSource(object):
     IGNORED_FIELDS = (CommonFields.COUNTY, CommonFields.COUNTRY, CommonFields.STATE)
 
     @classmethod
-    @lru_cache(None)
-    def make_dataset(cls) -> timeseries.MultiRegionDataset:
-        """Default implementation of make_dataset that loads timeseries data from a CSV."""
+    def _get_data(cls) -> pd.DataFrame:
         assert cls.COMMON_DF_CSV_PATH, f"No path in {cls}"
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.COMMON_DF_CSV_PATH
-        data = common_df.read_csv(input_path, set_index=False)
+        return common_df.read_csv(input_path, set_index=False)
+
+    @classmethod
+    @lru_cache(None)
+    def make_dataset(cls) -> timeseries.MultiRegionDataset:
+        """Default implementation of make_dataset that loads timeseries data from a CSV."""
+        data = cls._get_data()
         expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
         # Keep only the expected fields.
         found_expected_fields = data.columns.intersection(expected_fields)
@@ -70,7 +74,8 @@ class DataSource(object):
 # TODO(tom): Clean up the mess that is subclasses of DataSource and
 #  instances of DataSourceAndRegionMasks
 class CanScraperBase(DataSource):
-    # Set in subclasses
+    # The method called to transform the DataFrame returned by CovidCountyDataset into what is
+    # consumed by DataSource.make_dataset. Set in subclasses.
     TRANSFORM_METHOD = None
 
     @staticmethod
@@ -79,13 +84,7 @@ class CanScraperBase(DataSource):
         return ccd_helpers.CovidCountyDataset.load(fetch=False)
 
     @classmethod
-    @lru_cache(None)
-    def make_dataset(cls) -> timeseries.MultiRegionDataset:
+    def _get_data(cls) -> pd.DataFrame:
         assert cls.TRANSFORM_METHOD
-
         ccd_dataset = CanScraperBase._get_covid_county_dataset()
-        data = cls.TRANSFORM_METHOD(ccd_dataset)
-
-        return timeseries.MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(
-            cls.SOURCE_NAME
-        )
+        return cls.TRANSFORM_METHOD(ccd_dataset)
