@@ -1,6 +1,7 @@
 import datetime
 import io
 import pathlib
+import dataclasses
 
 import pytest
 import pandas as pd
@@ -1010,7 +1011,7 @@ def test_add_provenance_all_with_tags():
 
     dataset_out = dataset_in.add_provenance_all("prov_prov")
 
-    timeseries.provenance = "prov_prov"
+    timeseries = dataclasses.replace(timeseries, provenance=["prov_prov"])
     dataset_expected = test_helpers.build_dataset({region: {CommonFields.CASES: timeseries}})
 
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
