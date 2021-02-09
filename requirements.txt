@@ -53,6 +53,8 @@ numexpr==2.7.1
 
 backports.cached-property==1.0.0.post2
 
+python-snappy==0.6.0
+
 
 # Mostly for dash_app.py
 Brotli==1.0.7
