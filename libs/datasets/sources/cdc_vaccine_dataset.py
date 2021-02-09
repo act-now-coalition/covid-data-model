@@ -1,11 +1,15 @@
 from covidactnow.datapublic.common_fields import CommonFields
+
+# TODO(tom): Remove this really ugly import from the covid-data-public repo.
+from scripts import update_cdc_vaccine_data
+
 from libs.datasets import data_source
 
 
-class CDCVaccinesDataset(data_source.DataSource):
+class CDCVaccinesDataset(data_source.CanScraperBase):
     SOURCE_NAME = "CDCVaccine"
 
-    COMMON_DF_CSV_PATH = "data/vaccines-cdc/timeseries-common.csv"
+    TRANSFORM_METHOD = update_cdc_vaccine_data.transform
 
     EXPECTED_FIELDS = [
         CommonFields.VACCINES_ALLOCATED,
