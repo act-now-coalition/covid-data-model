@@ -11,7 +11,7 @@ from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
-from libs.datasets.sources.usa_facts import UsaFactsDataSource
+from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
@@ -206,7 +206,7 @@ def test_combined_datasets_uses_only_expected_fields():
 
 
 def test_dataclass_include_exclude():
-    orig_data_source_cls = UsaFactsDataSource
+    orig_data_source_cls = CANScraperUSAFactsProvider
     orig_ds = orig_data_source_cls.make_dataset()
     assert "iso1:us#iso2:us-tx" in orig_ds.static.index
     assert "iso1:us#iso2:us-ny" in orig_ds.static.index
