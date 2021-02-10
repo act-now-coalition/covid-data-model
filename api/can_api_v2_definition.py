@@ -3,6 +3,7 @@ import enum
 
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import base_model
+from libs.datasets import timeseries
 import pydantic
 import datetime
 from covidactnow.datapublic.common_fields import GetByValueMixin
@@ -182,6 +183,7 @@ class ActualsTimeseriesRow(Actuals):
 
 class AnomalyAnnotation(base_model.APIBaseModel):
     date: datetime.date = pydantic.Field(..., description="Date of anomaly")
+    type: timeseries.TagType = pydantic.Field(..., description="Type of annotation")
     original_observation: float = pydantic.Field(
         ..., description="Original value on this date detected as anomalous."
     )
