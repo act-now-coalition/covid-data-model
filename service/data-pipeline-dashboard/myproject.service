@@ -1,0 +1,14 @@
+[Unit]
+Description=uWSGI instance to serve myproject
+After=network.target
+
+[Service]
+User=tom
+Group=www-data
+WorkingDirectory=/home/tom/covid-data-model
+Environment="PATH=/home/tom/.pyenv/versions/covid-data-model/bin/:/usr/bin"
+ExecStart=/home/tom/.pyenv/versions/covid-data-model/bin/uwsgi --ini myproject.ini
+
+
+[Install]
+WantedBy=multi-user.target

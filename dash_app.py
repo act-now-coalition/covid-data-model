@@ -102,6 +102,8 @@ def init_dashboard():
     return app
 
 
+app = init_dashboard()
+server = app.server
+
 if __name__ == "__main__":
-    app = init_dashboard()
     app.run_server(debug=True)
