@@ -1,7 +1,6 @@
 from covidactnow.datapublic.common_fields import CommonFields
 
 # TODO(tom): Remove this really ugly import from the covid-data-public repo.
-from scripts import update_can_scraper_state_providers
 from scripts import ccd_helpers
 
 from libs.datasets import data_source
