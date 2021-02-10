@@ -29,7 +29,7 @@ def transform_cases_and_deaths(dataset: ccd_helpers.CovidCountyDataset):
 
 
 class CANScraperUSAFactsProvider(data_source.CanScraperBase):
-    SOURCE_NAME = "CANScrapersUSAFacts"
+    SOURCE_NAME = "USAFacts"
 
     TRANSFORM_METHOD = transform_cases_and_deaths
 
