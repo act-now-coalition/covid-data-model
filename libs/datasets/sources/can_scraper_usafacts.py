@@ -1,12 +1,11 @@
 from covidactnow.datapublic.common_fields import CommonFields
 
-# TODO(tom): Remove this really ugly import from the covid-data-public repo.
-from scripts import ccd_helpers
+from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 from libs.datasets import data_source
 
 
-def transform_cases_and_deaths(dataset: ccd_helpers.CovidCountyDataset):
+def transform_cases_and_deaths(dataset: ccd_helpers.CanScraperLoader):
     variables = [
         ccd_helpers.ScraperVariable(
             variable_name="cases",

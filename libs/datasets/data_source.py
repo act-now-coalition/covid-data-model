@@ -7,7 +7,7 @@ from typing import Union
 import structlog
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
-from scripts import ccd_helpers
+from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 from libs.datasets import dataset_utils
 from libs.datasets import timeseries
@@ -71,19 +71,17 @@ class DataSource(object):
         return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)
 
 
-# TODO(tom): Move all the ccd_helpers code to this repo
 # TODO(tom): Clean up the mess that is subclasses of DataSource and
 #  instances of DataSourceAndRegionMasks
 class CanScraperBase(DataSource):
-    # The method called to transform the DataFrame returned by CovidCountyDataset into what is
+    # The method called to transform the DataFrame returned by CanScraperLoader into what is
     # consumed by DataSource.make_dataset. Must be set in subclasses.
     TRANSFORM_METHOD: Callable[[pd.DataFrame], pd.DataFrame]
 
     @staticmethod
     @lru_cache(None)
-    def _get_covid_county_dataset() -> ccd_helpers.CovidCountyDataset:
-        # TODO(tom): Rename CovidCountyDataset to CanScraperLoader or the something like that.
-        return ccd_helpers.CovidCountyDataset.load(fetch=False)
+    def _get_covid_county_dataset() -> ccd_helpers.CanScraperLoader:
+        return ccd_helpers.CanScraperLoader.load()
 
     @classmethod
     def _load_data(cls) -> pd.DataFrame:
