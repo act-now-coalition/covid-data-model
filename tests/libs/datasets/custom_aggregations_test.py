@@ -1,3 +1,5 @@
+import dataclasses
+
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
@@ -14,11 +16,13 @@ def test_replace_dc_county(nyc_region):
     )
     # TODO(tom): Find some way to have this test read data that hasn't already gone
     # through replace_dc_county_with_state_data and remove this hack.
+    timeseries_modified = dataset.timeseries.copy()
     dc_state_rows = (
-        dataset.timeseries.index.get_level_values("location_id") == dc_state_region.location_id
+        timeseries_modified.index.get_level_values("location_id") == dc_state_region.location_id
     )
     # Modify DC state cases so that they're not equal to county values.
-    dataset.timeseries.loc[dc_state_rows, CommonFields.CASES] = 10
+    timeseries_modified.loc[dc_state_rows, CommonFields.CASES] = 10
+    dataset = dataclasses.replace(dataset, timeseries=timeseries_modified)
 
     # Verify that county and state DC numbers are different to better
     # assert after that the replace worked.

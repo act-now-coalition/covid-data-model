@@ -1,11 +1,15 @@
 from covidactnow.datapublic.common_fields import CommonFields
+
+# TODO(tom): Remove this really ugly import from the covid-data-public repo.
+from scripts import update_can_scraper_state_providers
+
 from libs.datasets import data_source
 
 
-class CANScraperStateProviders(data_source.DataSource):
+class CANScraperStateProviders(data_source.CanScraperBase):
     SOURCE_NAME = "CANScrapersStateProviders"
 
-    COMMON_DF_CSV_PATH = "data/can-scrapers-state-providers/timeseries-common.csv"
+    TRANSFORM_METHOD = update_can_scraper_state_providers.transform
 
     EXPECTED_FIELDS = [
         CommonFields.STAFFED_BEDS,
@@ -21,4 +25,6 @@ class CANScraperStateProviders(data_source.DataSource):
         CommonFields.CURRENT_HOSPITALIZED,
         CommonFields.POSITIVE_TESTS_VIRAL,
         CommonFields.CURRENT_ICU,
+        CommonFields.VACCINATIONS_INITIATED_PCT,
+        CommonFields.VACCINATIONS_COMPLETED_PCT,
     ]

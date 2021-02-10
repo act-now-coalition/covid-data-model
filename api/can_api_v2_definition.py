@@ -32,6 +32,8 @@ class FieldSource(GetByValueMixin, enum.Enum):
     VALORUM = "Valorum"
     COVID_TRACKING = "covid_tracking"
     USA_FACTS = "USAFacts"
+    TestAndTrace = "TestAndTrace"
+    CANScrapersStateProviders = "CANScrapersStateProviders"
     OTHER = "other"
 
 

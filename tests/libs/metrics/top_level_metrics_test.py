@@ -150,8 +150,8 @@ def test_top_level_metrics_basic():
         CommonFields.CURRENT_ICU: [10, 10, 10, 10],
         CommonFields.CURRENT_ICU_TOTAL: [20, 20, 20, 20],
         CommonFields.ICU_BEDS: [None, None, None, None],
-        CommonFields.VACCINATIONS_INITIATED: [1000, 2000, None, 3000],
-        CommonFields.VACCINATIONS_COMPLETED: [100, 200, None, 300],
+        CommonFields.VACCINATIONS_INITIATED_PCT: [1, 2, None, 3],
+        CommonFields.VACCINATIONS_COMPLETED_PCT: [0.1, 0.2, None, 0.3],
     }
     latest = {
         CommonFields.POPULATION: 100_000,

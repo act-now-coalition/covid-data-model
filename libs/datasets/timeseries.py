@@ -1,31 +1,23 @@
-import collections
 import dataclasses
-import json
-from abc import ABC, abstractmethod
 import datetime
-import enum
 import pathlib
 import re
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import chain
 from typing import Any
-from typing import ClassVar
 from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import List, Optional, Union, TextIO
 from typing import Mapping
-from typing import MutableMapping
 from typing import Set
 from typing import Sequence
 from typing import Tuple
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import PdFields
-from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
 
@@ -41,26 +33,16 @@ from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import NON_NUMERIC_COLUMNS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
+from libs.datasets import taglib
+from libs.datasets.taglib import TagField
+from libs.datasets.taglib import TagType
+from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
 
+
 _log = structlog.get_logger()
-
-
-# TODO(tom): Move all this tag stuff to a separate file, maybe called taglib so that code can
-#  import it and still use `tag` as a local name.
-@enum.unique
-class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
-    """The attributes of a tag, columns in a table with one row per tag."""
-
-    LOCATION_ID = CommonFields.LOCATION_ID
-    # VARIABLE values should be a metric name, typically one in CommonFields.
-    VARIABLE = PdFields.VARIABLE
-    # TYPE values must be a string from TagType
-    TYPE = "tag_type"
-    # CONTENT values vary depending on TYPE, either a JSON string or bare string.
-    CONTENT = "content"
 
 
 # Fields used as panda MultiIndex levels when tags are represented in a pd.Series
@@ -70,151 +52,11 @@ TAG_INDEX_FIELDS = [
     TagField.TYPE,
 ]
 
-
-@enum.unique
-class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
-    """Values that may appear in TagField.TYPE.
-
-    Currently 'annotation' refers to tag types that must have a specific real value for DATE. Other
-    tags (currently only PROVENANCE, but may be expanded for things such as storing a processing
-    step name) do not have a date field. Putting the type of all tags in a single enum
-    makes it easy to represent all tags in the same structure but makes the concept of an
-    'annotation type' less explicit in our code.
-    """
-
-    CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
-    CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
-    ZSCORE_OUTLIER = "zscore_outlier"
-
-    PROVENANCE = PdFields.PROVENANCE
-
-
 ANNOTATION_TAG_TYPES = [
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
     TagType.CUMULATIVE_TAIL_TRUNCATED,
     TagType.ZSCORE_OUTLIER,
 ]
-
-
-@dataclass(frozen=True)
-class TagInTimeseries(ABC):
-    """Represents a tag in the context of a particular timeseries"""
-
-    # TAG_TYPE must be set by subclasses.
-    TAG_TYPE: ClassVar[TagType]
-
-    @property
-    def type(self) -> TagType:
-        return self.TAG_TYPE
-
-    @property
-    @abstractmethod
-    def content(self) -> str:
-        pass
-
-    @staticmethod
-    def make(tag_type: TagType, *, content: str) -> "TagInTimeseries":
-        """Given a `tag_type` and content, returns an instance of the appropriate class."""
-        return TAG_TYPE_TO_CLASS[tag_type].make_instance(content=content)
-
-    @classmethod
-    @abstractmethod
-    def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        """Deserializes the content and returns an instance of the TagInTimeseries subclass."""
-        pass
-
-    def as_record(self, location_id: str, variable: CommonFields) -> Mapping[str, Any]:
-        """Returns this tag in a record with the content serialized."""
-        return {
-            TagField.LOCATION_ID: location_id,
-            TagField.VARIABLE: variable,
-            TagField.TYPE: self.type,
-            TagField.CONTENT: self.content,
-        }
-
-
-@dataclass(frozen=True)
-class ProvenanceTag(TagInTimeseries):
-    source: str
-
-    TAG_TYPE = TagType.PROVENANCE
-
-    @classmethod
-    def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        return ProvenanceTag(source=content)
-
-    @property
-    def content(self) -> str:
-        return self.source
-
-
-@dataclass(frozen=True)
-class AnnotationWithDate(TagInTimeseries, ABC):
-    """Represents an annotation, a tag added when modifying or removing one or more observations"""
-
-    original_observation: float
-    date: pd.Timestamp
-
-    @classmethod
-    def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        content_parsed = json.loads(content)
-        date = pd.to_datetime(content_parsed.pop("date"))
-        return cls(date=date, **content_parsed)
-
-    @property
-    def content(self) -> str:
-        return json.dumps(
-            {
-                "date": self.date.date().isoformat(),
-                "original_observation": self.original_observation,
-            }
-        )
-
-
-@dataclass(frozen=True)
-class CumulativeTailTruncated(AnnotationWithDate):
-    TAG_TYPE = TagType.CUMULATIVE_TAIL_TRUNCATED
-
-
-@dataclass(frozen=True)
-class CumulativeLongTailTruncated(AnnotationWithDate):
-    TAG_TYPE = TagType.CUMULATIVE_LONG_TAIL_TRUNCATED
-
-
-@dataclass(frozen=True)
-class ZScoreOutlier(AnnotationWithDate):
-    TAG_TYPE = TagType.ZSCORE_OUTLIER
-
-
-TAG_TYPE_TO_CLASS = {
-    TagType.CUMULATIVE_TAIL_TRUNCATED: CumulativeTailTruncated,
-    TagType.CUMULATIVE_LONG_TAIL_TRUNCATED: CumulativeLongTailTruncated,
-    TagType.ZSCORE_OUTLIER: ZScoreOutlier,
-    TagType.PROVENANCE: ProvenanceTag,
-}
-
-
-@dataclass(frozen=True)
-class TagCollection:
-    """A collection of TagInTimeseries, organized by location and field name. The collection
-    object itself is frozen but the dict within it may be modified."""
-
-    _location_var_map: MutableMapping[Tuple, List[TagInTimeseries]] = dataclasses.field(
-        default_factory=lambda: collections.defaultdict(list)
-    )
-
-    def add(self, tag: TagInTimeseries, *, location_id: str, variable: CommonFields) -> None:
-        """Adds a tag to this collection."""
-        self._location_var_map[(location_id, variable)].append(tag)
-
-    def _as_records(self) -> Iterable[Mapping]:
-        for (location_id, variable), tags in self._location_var_map.items():
-            for tag in tags:
-                yield tag.as_record(location_id, variable)
-
-    def as_dataframe(self) -> pd.DataFrame:
-        """Returns all tags in this collection in a DataFrame."""
-        return pd.DataFrame.from_records(self._as_records())
 
 
 class DuplicateDataException(Exception):
@@ -260,10 +102,16 @@ class OneRegionTimeseriesDataset:
         # https://stackoverflow.com/a/56065318
         return provenance_series.groupby(level=0).agg(list).to_dict()
 
-    def annotations(self, metric: FieldName) -> List[AnnotationWithDate]:
+    @property
+    def source_url(self) -> Mapping[CommonFields, List[UrlStr]]:
+        source_url_series = self.tag.loc[:, [TagType.SOURCE_URL]].droplevel([TagField.TYPE])
+        # https://stackoverflow.com/a/56065318
+        return source_url_series.groupby(level=0).agg(list).to_dict()
+
+    def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
         return_value = []
         for _, row in self.tag.loc[[metric], ANNOTATION_TAG_TYPES].reset_index().iterrows():
-            return_value.append(AnnotationWithDate.make(row.tag_type, content=row.content))
+            return_value.append(taglib.AnnotationWithDate.make(row.tag_type, content=row.content))
         return return_value
 
     def __post_init__(self):
@@ -659,23 +507,24 @@ class MultiRegionDataset:
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
         wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
 
-        # Extract provenance columns from wide date DataFrame so all columns are dates. This
-        # parses the column names created in `timeseries_rows`.
-        provenance_column_mask = wide_dates_df.columns.str.match(
-            r"\A" + TagType.PROVENANCE + r"(-\d+)?\Z"
-        )
+        # Iterate through all known tag types. The following are populated while iterating.
+        tag_columns_mask = pd.Series(False, index=wide_dates_df.columns)
         tag_df_to_concat = []
-        if provenance_column_mask.any():
-            provenance_columns = wide_dates_df.loc[:, provenance_column_mask]
-            provenance_series = (
-                provenance_columns.stack().reset_index(-1, drop=True).rename(TagField.CONTENT)
-            )
-            if not provenance_series.empty:
-                provenance_df = provenance_series.reset_index()
-                provenance_df[TagField.TYPE] = TagType.PROVENANCE
-                tag_df_to_concat.append(provenance_df)
+        for tag_type in TagType:
+            # Extract tag_type columns from the wide date DataFrame. This parses the column names
+            # created in `timeseries_rows`.
+            tag_column_mask = wide_dates_df.columns.str.match(r"\A" + tag_type + r"(-\d+)?\Z")
+            if tag_column_mask.any():
+                tag_columns = wide_dates_df.loc[:, tag_column_mask]
+                tag_series = tag_columns.stack().reset_index(-1, drop=True).rename(TagField.CONTENT)
+                tag_columns_mask = tag_columns_mask | tag_column_mask
+                if not tag_series.empty:
+                    tag_df = tag_series.reset_index()
+                    tag_df[TagField.TYPE] = tag_type
+                    tag_df_to_concat.append(tag_df)
 
-        wide_dates_df = wide_dates_df.loc[:, ~provenance_column_mask]
+        # Assume all columns that didn't match a tag_type are dates.
+        wide_dates_df = wide_dates_df.loc[:, ~tag_columns_mask]
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
         wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
 
@@ -683,14 +532,18 @@ class MultiRegionDataset:
             pointer.path_static(), dtype={CommonFields.FIPS: str}, low_memory=False
         )
 
-        annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
-        tag_df_to_concat.append(annotations)
+        # TODO(tom): Delete this once annotation file is retired
+        if pointer.path_annotation().is_file():
+            annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
+            tag_df_to_concat.append(annotations)
 
-        return (
-            MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df)
-            .add_static_values(static_df)
-            .append_tag_df(pd.concat(tag_df_to_concat))
+        dataset = MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df).add_static_values(
+            static_df
         )
+        if tag_df_to_concat:
+            dataset = dataset.append_tag_df(pd.concat(tag_df_to_concat))
+
+        return dataset
 
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -884,22 +737,24 @@ class MultiRegionDataset:
         wide_dates = wide_dates.loc[:, wide_dates.columns[-1::-1]]
         wide_dates = wide_dates.rename_axis(None, axis="columns")
 
-        if not self.provenance.empty:
-            # Add one or more columns with the provenance tag(s) for each timeseries
-            # (identified by a <location_id, variable> pair).
-            # From https://stackoverflow.com/a/38369722
-            provenance_columns = (
-                self.provenance.groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE])
-                .apply(lambda df: df.reset_index(drop=True))
-                .unstack()
-                # The first provenance column has the same name as when there was only support
-                # for a single column. Extra columns are named "provenance-1", "provenance-2", ...
-                # These column names are parsed in `read_from_pointer`.
-                .rename(columns=lambda i: TagType.PROVENANCE + ("" if i == 0 else f"-{i}"))
-            )
-            return pd.concat([provenance_columns, wide_dates], axis=1)
-        else:
-            return wide_dates
+        # Each element of output_series will be a column in the returned DataFrame. There is at
+        # least one column for each tag type in self.tag. If a timeseries has multiple tags with
+        # the same type additional columns are added.
+        output_series = []
+        for tag_type, tag_series in self.tag.groupby(TagField.TYPE, sort=False):
+            tag_series = tag_series.droplevel(TagField.TYPE)
+            duplicates = tag_series.index.duplicated()
+            output_series.append(tag_series.loc[~duplicates].rename(tag_type))
+            i = 1
+            while duplicates.any():
+                tag_series = tag_series.loc[duplicates]
+                duplicates = tag_series.index.duplicated()
+                output_series.append(tag_series.loc[~duplicates].rename(f"{str(tag_type)}-{i}"))
+                i += 1
+
+        output_series.append(wide_dates)
+
+        return pd.concat(output_series, axis=1)
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
@@ -957,18 +812,25 @@ class MultiRegionDataset:
         csv_buf = re.sub(r",+\n", r"\n", csv_buf)
         pointer.path_wide_dates().write_text(csv_buf)
 
-        self.annotations_as_dataframe().to_csv(pointer.path_annotation(), index=False)
+        # TODO(tom) Remove once annotations file is retired.
+        if pointer.path_annotation().exists():
+            # annotations are not written to this file any longer so remove it to avoid duplication.
+            pointer.path_annotation().unlink()
 
         static_sorted = common_df.index_and_sort(
             self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
         )
         static_sorted.to_csv(pointer.path_static())
 
-    def drop_column_if_present(self, column: str) -> "MultiRegionDataset":
+    def drop_column_if_present(self, column: CommonFields) -> "MultiRegionDataset":
         """Drops the specified column from the timeseries if it exists"""
-        timeseries_df = self.timeseries.drop(column, axis="columns", errors="ignore")
-        static_df = self.static.drop(column, axis="columns", errors="ignore")
-        tag = self.tag[self.tag.index.get_level_values(PdFields.VARIABLE) != column]
+        return self.drop_columns_if_present([column])
+
+    def drop_columns_if_present(self, columns: List[CommonFields]) -> "MultiRegionDataset":
+        """Drops the specified columns from the timeseries if they exist"""
+        timeseries_df = self.timeseries.drop(columns, axis="columns", errors="ignore")
+        static_df = self.static.drop(columns, axis="columns", errors="ignore")
+        tag = self.tag[~self.tag.index.get_level_values(PdFields.VARIABLE).isin(columns)]
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
@@ -1005,15 +867,6 @@ class MultiRegionDataset:
 
     def get_county_name(self, *, region: pipeline.Region) -> str:
         return self.static.at[region.location_id, CommonFields.COUNTY]
-
-    def annotations_as_dataframe(self) -> pd.DataFrame:
-        """Returns tags with a real DATE value in a DataFrame.
-
-        TODO(tom): Currently the only callers of this function are writing annotations to disk.
-         Change MultiRegionDataset.timeseries_rows (and methods like it) to include annotations
-         so the code calling this method can be removed. Then delete this method.
-        """
-        return self.tag.loc[:, :, ANNOTATION_TAG_TYPES].reset_index()
 
     def provenance_map(self) -> Mapping[CommonFields, Set[str]]:
         """Returns a mapping from field name to set of provenances."""
@@ -1122,13 +975,13 @@ def drop_new_case_outliers(
     zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
     to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
 
-    new_tags = TagCollection()
+    new_tags = taglib.TagCollection()
     # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
     # rows where to_exclude is True.
     assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     for idx, _ in to_exclude[to_exclude].iteritems():
         new_tags.add(
-            ZScoreOutlier(
+            taglib.ZScoreOutlier(
                 date=idx[1], original_observation=df_copy.at[idx, CommonFields.NEW_CASES],
             ),
             location_id=idx[0],
@@ -1241,6 +1094,12 @@ WEIGHTED_AGGREGATIONS = (
     StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY, CommonFields.POPULATION),
     StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_7D, CommonFields.POPULATION),
     StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_14D, CommonFields.POPULATION),
+    StaticWeightedAverageAggregation(
+        CommonFields.VACCINATIONS_INITIATED_PCT, CommonFields.POPULATION
+    ),
+    StaticWeightedAverageAggregation(
+        CommonFields.VACCINATIONS_COMPLETED_PCT, CommonFields.POPULATION
+    ),
     StaticWeightedAverageAggregation(
         CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE, CommonFields.MAX_BED_COUNT
     ),
@@ -1665,3 +1524,40 @@ def aggregate_puerto_rico_from_counties(dataset: MultiRegionDataset) -> MultiReg
             patched_static.at[pr_location_id, field] = aggregated_value
 
     return dataclasses.replace(dataset, static=patched_static)
+
+
+def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+    """Returns a new dataset containing everything all the input and vaccination percentage
+    metrics derived from the corresponding non-percentage field where not already set."""
+    field_map = {
+        CommonFields.VACCINATIONS_INITIATED: CommonFields.VACCINATIONS_INITIATED_PCT,
+        CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_COMPLETED_PCT,
+    }
+    ds_in_wide_dates = ds_in.timeseries_wide_dates()
+    ds_in_wide_dates = ds_in_wide_dates.loc[
+        ds_in_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(field_map.keys())
+    ]
+    # TODO(tom): Preserve provenance and other tags from the original vaccination fields.
+    # ds_in_wide_dates / dataset.static.loc[:, CommonFields.POPULATION] doesn't seem to align the
+    # location_id correctly so be more explicit with `div`:
+    derived_pct_df = (
+        ds_in_wide_dates.div(
+            ds_in.static.loc[:, CommonFields.POPULATION],
+            level=CommonFields.LOCATION_ID,
+            axis="index",
+        )
+        * 100.0
+    )
+    derived_pct_df = derived_pct_df.rename(index=field_map, level=PdFields.VARIABLE)
+    # Make a dataset containing only the derived percentage metrics.
+    ds_derived_pct = MultiRegionDataset.from_timeseries_wide_dates_df(derived_pct_df)
+
+    # Combine the derived percentage with any percentages in ds_in to make a dataset containing
+    # only the percentage metrics.
+    # Possible optimization: Replace the combine+drop+join with a single function that copies from
+    # ds_derived_pct only where a timeseries is all NaN in the original dataset.
+    ds_list = [ds_in, ds_derived_pct]
+    ds_all_pct = combined_datasets({field_pct: ds_list for field_pct in field_map.values()}, {})
+
+    dataset_without_pct = ds_in.drop_columns_if_present(list(field_map.values()))
+    return dataset_without_pct.join_columns(ds_all_pct)

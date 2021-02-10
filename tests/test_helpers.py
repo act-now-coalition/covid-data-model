@@ -6,6 +6,7 @@ from typing import Any
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import TypeVar
 from typing import Union
 
 import more_itertools
@@ -15,9 +16,11 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import taglib
 from libs.datasets import timeseries
-from libs.datasets.timeseries import TagField
-from libs.datasets.timeseries import TagType
+from libs.datasets.taglib import TagField
+from libs.datasets.taglib import TagType
+from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 
 
@@ -27,23 +30,76 @@ DEFAULT_FIPS = "97222"
 DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
 
 
-class TimeseriesLiteral(UserList):
-    """Represents a timeseries literal, a sequence of floats and provenance string."""
+T = TypeVar("T")
 
+
+def _to_list(list_or_scalar: Union[None, T, List[T]]) -> List[T]:
+    """Returns a list which may be empty, contain the single non-list parameter or the parameter."""
+    if isinstance(list_or_scalar, List):
+        return list_or_scalar
+    elif list_or_scalar:
+        return [list_or_scalar]
+    else:
+        return []
+
+
+# TODO(tom): Remove dataclass_with_default_init once we are using Python 3.9. See
+#  https://stackoverflow.com/a/58336722
+def dataclass_with_default_init(_cls=None, *args, **kwargs):
+    def wrap(cls):
+        # Save the current __init__ and remove it so dataclass will
+        # create the default __init__.
+        user_init = getattr(cls, "__init__")
+        delattr(cls, "__init__")
+
+        # let dataclass process our class.
+        result = dataclasses.dataclass(cls, *args, **kwargs)
+
+        # Restore the user's __init__ save the default init to __default_init__.
+        setattr(result, "__default_init__", result.__init__)
+        setattr(result, "__init__", user_init)
+
+        # Just in case that dataclass will return a new instance,
+        # (currently, does not happen), restore cls's __init__.
+        if result is not cls:
+            setattr(cls, "__init__", user_init)
+
+        return result
+
+    # Support both dataclass_with_default_init() and dataclass_with_default_init
+    if _cls is None:
+        return wrap
+    else:
+        return wrap(_cls)
+
+
+@dataclass_with_default_init(frozen=True)
+class TimeseriesLiteral(UserList):
+    """Represents a timeseries literal: a sequence of floats and some related attributes."""
+
+    data: Sequence[float]
+    provenance: Sequence[str]
+    source_url: Sequence[UrlStr]
+    annotation: Sequence[taglib.TagInTimeseries] = ()
+
+    # noinspection PyMissingConstructor
     def __init__(
         self,
-        ts_list,
-        *,
-        provenance: Union[str, List[str]] = "",
-        annotation: Sequence[timeseries.TagInTimeseries] = (),
+        *args,
+        provenance: Union[None, str, List[str]] = None,
+        source_url: Union[None, UrlStr, List[UrlStr]] = None,
+        **kwargs,
     ):
-        super().__init__(ts_list)
-        self.provenance = provenance
-        self.annotation = annotation
+        """Initialize `self`, doing some type conversion."""
+        # UserList.__init__ attempts to set self.data, which fails on this frozen class. Instead
+        # let the dataclasses code initialize `data`.
+        self.__default_init__(  # pylint: disable=E1101
+            *args, provenance=_to_list(provenance), source_url=_to_list(source_url), **kwargs
+        )
 
 
 def make_tag_df(
-    region: Region, metric: CommonFields, records: List[timeseries.TagInTimeseries]
+    region: Region, metric: CommonFields, records: List[taglib.TagInTimeseries]
 ) -> pd.DataFrame:
     df = pd.DataFrame(
         {TagField.TYPE: [r.type for r in records], TagField.CONTENT: [r.content for r in records],}
@@ -55,13 +111,13 @@ def make_tag_df(
 
 def make_tag(
     type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
-) -> timeseries.TagInTimeseries:
+) -> taglib.TagInTimeseries:
     if type in timeseries.ANNOTATION_TAG_TYPES:
         # Force to the expected types and add defaults if not in kwargs
         kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
 
-    return timeseries.TAG_TYPE_TO_CLASS[type](**kwargs)
+    return taglib.TAG_TYPE_TO_CLASS[type](**kwargs)
 
 
 def build_dataset(
@@ -113,16 +169,10 @@ def build_dataset(
             continue
 
         records = list(ts_literal.annotation)
-        if not ts_literal.provenance:
-            provenance_list = []
-        elif isinstance(ts_literal.provenance, str):
-            provenance_list = [ts_literal.provenance]
-        else:
-            provenance_list = ts_literal.provenance
         records.extend(
-            make_tag(timeseries.TagType.PROVENANCE, source=provenance)
-            for provenance in provenance_list
+            make_tag(TagType.PROVENANCE, source=provenance) for provenance in ts_literal.provenance
         )
+        records.extend(make_tag(TagType.SOURCE_URL, source=url) for url in ts_literal.source_url)
         tags_to_concat.append(make_tag_df(region, var, records))
 
     if tags_to_concat:

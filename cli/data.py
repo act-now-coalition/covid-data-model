@@ -26,6 +26,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.sources import forecast_hub
 from libs.datasets import tail_filter
+from libs.datasets.sources import zeros_filter
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 from pyseir import DATA_DIR
 import pyseir.icu.utils
@@ -96,6 +97,15 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     )
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
     _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
+    multiregion_dataset = zeros_filter.drop_all_zero_timeseries(
+        multiregion_dataset,
+        [
+            CommonFields.VACCINES_DISTRIBUTED,
+            CommonFields.VACCINES_ADMINISTERED,
+            CommonFields.VACCINATIONS_COMPLETED,
+            CommonFields.VACCINATIONS_INITIATED,
+        ],
+    )
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
     multiregion_dataset = timeseries.backfill_vaccination_initiated(multiregion_dataset)
@@ -180,9 +190,6 @@ def run_bad_tails_filter(output_path: pathlib.Path):
     _, dataset_out = TailFilter.run(us_dataset, CUMULATIVE_FIELDS_TO_FILTER)
     log.info("Writing output")
     dataset_out.timeseries_rows().to_csv(output_path, index=True, float_format="%.05g")
-    dataset_out.annotations_as_dataframe().to_csv(
-        str(output_path).replace(".csv", "-annotations.csv"), index=False
-    )
 
 
 @main.command()

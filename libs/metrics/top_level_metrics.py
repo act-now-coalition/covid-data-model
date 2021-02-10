@@ -15,7 +15,6 @@ from libs import series_utils
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.metrics import icu_headroom
 from libs.metrics import icu_capacity
-from libs.metrics import ratio_vaccinated
 
 Metrics = can_api_v2_definition.Metrics
 ICUHeadroomMetricDetails = can_api_v2_definition.ICUHeadroomMetricDetails
@@ -98,8 +97,18 @@ def calculate_metrics_for_timeseries(
 
     icu_capacity_ratio = icu_capacity.calculate_icu_capacity(data)
 
-    vaccines_initiated_ratio = ratio_vaccinated.calculate_ratio_initiated(timeseries)
-    vaccines_completed_ratio = ratio_vaccinated.calculate_ratio_completed(timeseries)
+    vaccines_initiated_ratio = (
+        common_df.get_timeseries(
+            timeseries.date_indexed, CommonFields.VACCINATIONS_INITIATED_PCT, EMPTY_TS
+        )
+        / 100.0
+    )
+    vaccines_completed_ratio = (
+        common_df.get_timeseries(
+            timeseries.date_indexed, CommonFields.VACCINATIONS_COMPLETED_PCT, EMPTY_TS
+        )
+        / 100.0
+    )
 
     top_level_metrics_data = {
         CommonFields.FIPS: fips,

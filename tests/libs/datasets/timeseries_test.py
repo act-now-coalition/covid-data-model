@@ -1,6 +1,7 @@
 import datetime
 import io
 import pathlib
+import dataclasses
 
 import pytest
 import pandas as pd
@@ -18,7 +19,8 @@ from libs.datasets import combined_datasets
 from libs.datasets import dataset_pointer
 
 from libs.datasets import timeseries
-from libs.datasets.timeseries import TagType
+from libs.datasets.taglib import TagType
+from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 from tests import test_helpers
 from tests.dataset_utils_test import read_csv_and_index_fips
@@ -1009,7 +1011,7 @@ def test_add_provenance_all_with_tags():
 
     dataset_out = dataset_in.add_provenance_all("prov_prov")
 
-    timeseries.provenance = "prov_prov"
+    timeseries = dataclasses.replace(timeseries, provenance=["prov_prov"])
     dataset_expected = test_helpers.build_dataset({region: {CommonFields.CASES: timeseries}})
 
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
@@ -1534,3 +1536,79 @@ def test_backfill_vaccine_initiated(initiated_values, initiated_expected):
     expected_dataset = test_helpers.build_dataset(expected_metrics)
 
     test_helpers.assert_dataset_like(result, expected_dataset)
+
+
+def test_derive_vaccine_pct():
+    region_tx = Region.from_state("TX")
+    region_sf = Region.from_fips("06075")
+    # TX has metrics that will be transformed to a percent of the population. Include some other
+    # data to make sure it is not dropped.
+    tx_timeseries_in = {
+        CommonFields.VACCINATIONS_INITIATED: TimeseriesLiteral(
+            [1_000, 2_000],
+            annotation=[test_helpers.make_tag(date="2020-04-01")],
+            provenance=["prov1"],
+        ),
+        CommonFields.VACCINATIONS_COMPLETED: [None, 1_000],
+        CommonFields.CASES: TimeseriesLiteral([1, 2], provenance=["caseprov"]),
+    }
+    # SF does not have any vaccination metrics that can be transformed to a percentage so for it
+    # the input and output are the same.
+    sf_timeseries = {
+        CommonFields.VACCINATIONS_COMPLETED_PCT: [0.1, 1],
+    }
+    static_data_map = {
+        region_tx: {CommonFields.POPULATION: 100_000},
+        region_sf: {CommonFields.POPULATION: 10_000},
+    }
+
+    ds_in = test_helpers.build_dataset(
+        {region_tx: tx_timeseries_in, region_sf: sf_timeseries},
+        static_by_region_then_field_name=static_data_map,
+    )
+
+    ds_out = timeseries.derive_vaccine_pct(ds_in)
+
+    ds_expected = test_helpers.build_dataset(
+        {
+            region_tx: {
+                **tx_timeseries_in,
+                CommonFields.VACCINATIONS_INITIATED_PCT: [1, 2],
+                CommonFields.VACCINATIONS_COMPLETED_PCT: [None, 1],
+            },
+            region_sf: sf_timeseries,
+        },
+        static_by_region_then_field_name=static_data_map,
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_write_read_dataset_pointer_with_source_url(tmpdir):
+    pointer = _make_dataset_pointer(tmpdir)
+    url_str1 = UrlStr("http://foo.com/1")
+    url_str2 = UrlStr("http://foo.com/2")
+    url_str3 = UrlStr("http://foo.com/3")
+
+    ts1a = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01"),
+            test_helpers.make_tag(date="2020-04-02"),
+        ],
+        source_url=url_str1,
+    )
+    ts1b = TimeseriesLiteral([100, 200, 300], source_url=[url_str2, url_str3])
+    dataset_in = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts1a, CommonFields.CASES: ts1b}
+    )
+
+    dataset_in.write_to_dataset_pointer(pointer)
+
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+
+    test_helpers.assert_dataset_like(dataset_read, dataset_in)
+    source_url_read = dataset_read.get_one_region(test_helpers.DEFAULT_REGION).source_url
+    assert source_url_read[CommonFields.ICU_BEDS] == [url_str1]
+    # Copy to a set because the order of the URLs in the source_url may change.
+    assert set(source_url_read[CommonFields.CASES]) == {url_str2, url_str3}

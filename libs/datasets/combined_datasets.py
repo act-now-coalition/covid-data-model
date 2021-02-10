@@ -23,12 +23,12 @@ from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalDataset
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
-from libs.datasets.sources.usa_facts import UsaFactsDataSource
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.cms_testing_dataset import CMSTestingDataset
 from libs.datasets.sources.can_scraper_state_providers import CANScraperStateProviders
+from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 from libs.datasets.sources.cdc_testing_dataset import CDCTestingDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
@@ -148,7 +148,11 @@ NYTimesDatasetWithoutNYC = datasource_regions(NYTimesDataset, exclude=ALL_NYC_RE
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDatasetWithoutNYC],
+    CommonFields.CASES: [
+        CANScraperStateProviders,
+        CANScraperUSAFactsProvider,
+        NYTimesDatasetWithoutNYC,
+    ],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
     CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
@@ -166,7 +170,11 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalDataset],
     CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
-    CommonFields.DEATHS: [CANScraperStateProviders, UsaFactsDataSource, NYTimesDatasetWithoutNYC],
+    CommonFields.DEATHS: [
+        CANScraperStateProviders,
+        CANScraperUSAFactsProvider,
+        NYTimesDatasetWithoutNYC,
+    ],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalDataset],
     CommonFields.ICU_BEDS: [CANScraperStateProviders, HHSHospitalDataset],
     CommonFields.NEGATIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
@@ -185,6 +193,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.VACCINES_ADMINISTERED: [CANScraperStateProviders],
     CommonFields.VACCINATIONS_INITIATED: [CANScraperStateProviders, CDCVaccinesDataset],
     CommonFields.VACCINATIONS_COMPLETED: [CANScraperStateProviders, CDCVaccinesDataset],
+    CommonFields.VACCINATIONS_INITIATED_PCT: [CANScraperStateProviders],
+    CommonFields.VACCINATIONS_COMPLETED_PCT: [CANScraperStateProviders],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
