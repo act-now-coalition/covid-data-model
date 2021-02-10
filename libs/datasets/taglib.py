@@ -36,14 +36,16 @@ class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
 
 @enum.unique
 class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
-    """Values that may appear in TagField.TYPE.
+    """The type of the annotation.
 
-    Currently 'annotation' refers to tag types that must have a specific real value for DATE. Other
-    tags (currently only PROVENANCE, but may be expanded for things such as storing a processing
-    step name) do not have a date field. Putting the type of all tags in a single enum
-    makes it easy to represent all tags in the same structure but makes the concept of an
-    'annotation type' less explicit in our code.
+    Each enumeration refers to the method used to generate the annotation.
     """
+
+    # Currently 'annotation' refers to tag types that must have a specific real value for DATE.
+    # Other tags (currently only PROVENANCE, but may be expanded for things such as storing
+    # a processing step name) do not have a date field. Putting the type of all
+    # tags in a single enum makes it easy to represent all tags in the same structure but
+    # makes the concept of an 'annotation type' less explicit in our code.
 
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"

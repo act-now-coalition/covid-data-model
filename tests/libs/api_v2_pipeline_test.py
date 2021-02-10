@@ -165,7 +165,7 @@ def test_annotation(rt_dataset, icu_dataset):
 
     assert timeseries_for_region.annotations.deaths.sources == []
     assert timeseries_for_region.annotations.deaths.anomalies == [
-        AnomalyAnnotation(date="2020-04-01", original_observation=10.0, tag_type=tag.TAG_TYPE)
+        AnomalyAnnotation(date="2020-04-01", original_observation=10.0, type=tag.type)
     ]
 
     assert timeseries_for_region.annotations.contactTracers is None
