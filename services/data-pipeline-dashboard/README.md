@@ -46,3 +46,11 @@ Check that http://34.105.87.107/ connects to nginx.
 Configure and start uWSGI
 
 Configure nginx
+
+Something is broken with git-lfs. When using `git remote set-url origin https://github.com/covid-projections/covid-data-model` LFS can fetch files but to push back to the repo I used `git remote set-url origin git@github.com:covid-projections/covid-data-model` after doing something similar to https://github.com/covid-projections/can-scrapers/blob/main/services/prefect/README.md#setting-up-gcp-instance
+
+Trying to run webhook
+
+* `sudo apt-get install webhook`
+* started with covid-projections/can-scrapers/main/services/webhook/webhook.service and covid-projections/can-scrapers/main/services/webhook/hooks.json
+* editted in this directory and copied 
