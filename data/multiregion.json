@@ -4,12 +4,12 @@
   "data_git_info": {
     "sha": "e77a812683be47850b272fd1b4d644b853bafc84",
     "branch": "main",
-    "is_dirty": true
+    "is_dirty": false
   },
   "model_git_info": {
-    "sha": "cf83fd41c231c7388984f90584935071167adb15",
-    "branch": "tgb-849-move-parquet-transform",
-    "is_dirty": true
+    "sha": "52ce73efcbc6a0725e7e4b73f3cc25668b2b967b",
+    "branch": "main",
+    "is_dirty": false
   },
-  "updated_at": "2021-02-10T20:19:26.132506"
+  "updated_at": "2021-02-10T16:24:58.907864"
 }
