@@ -675,17 +675,20 @@
         "Valorum",
         "covid_tracking",
         "USAFacts",
+        "TestAndTrace",
+        "CANScrapersStateProviders",
         "other"
       ]
     },
     "TagType": {
       "title": "TagType",
-      "description": "Values that may appear in TagField.TYPE.\n\nCurrently 'annotation' refers to tag types that must have a specific real value for DATE. Other\ntags (currently only PROVENANCE, but may be expanded for things such as storing a processing\nstep name) do not have a date field. Putting the type of all tags in a single enum\nmakes it easy to represent all tags in the same structure but makes the concept of an\n'annotation type' less explicit in our code.",
+      "description": "The type of the annotation.\n\nEach enumeration refers to the method used to generate the annotation.",
       "enum": [
         "cumulative_tail_truncated",
         "cumulative_long_tail_truncated",
         "zscore_outlier",
-        "provenance"
+        "provenance",
+        "source_url"
       ],
       "type": "string"
     },
@@ -700,8 +703,8 @@
           "type": "string",
           "format": "date"
         },
-        "tag_type": {
-          "description": "Anomaly type",
+        "type": {
+          "description": "Type of annotation",
           "allOf": [
             {
               "$ref": "#/definitions/TagType"
@@ -716,7 +719,7 @@
       },
       "required": [
         "date",
-        "tag_type",
+        "type",
         "original_observation"
       ]
     },
