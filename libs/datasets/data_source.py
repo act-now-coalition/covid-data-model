@@ -7,7 +7,7 @@ from typing import Union
 import structlog
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
-from scripts import ccd_helpers
+from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 from libs.datasets import dataset_utils
 from libs.datasets import timeseries
@@ -83,7 +83,7 @@ class CanScraperBase(DataSource):
     @lru_cache(None)
     def _get_covid_county_dataset() -> ccd_helpers.CovidCountyDataset:
         # TODO(tom): Rename CovidCountyDataset to CanScraperLoader or the something like that.
-        return ccd_helpers.CovidCountyDataset.load(fetch=False)
+        return ccd_helpers.CovidCountyDataset.load()
 
     @classmethod
     def _load_data(cls) -> pd.DataFrame:

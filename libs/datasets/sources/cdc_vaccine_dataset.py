@@ -1,15 +1,49 @@
-from covidactnow.datapublic.common_fields import CommonFields
-
-# TODO(tom): Remove this really ugly import from the covid-data-public repo.
-from scripts import update_cdc_vaccine_data
-
 from libs.datasets import data_source
+from covidactnow.datapublic.common_fields import CommonFields
+from libs.datasets.sources import can_scraper_helpers as ccd_helpers
+
+
+def transform(dataset: ccd_helpers.CovidCountyDataset):
+
+    variables = [
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_allocated",
+            measurement="cumulative",
+            unit="doses",
+            provider="cdc",
+            common_field=CommonFields.VACCINES_ALLOCATED,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_distributed",
+            measurement="cumulative",
+            unit="doses",
+            provider="cdc",
+            common_field=CommonFields.VACCINES_DISTRIBUTED,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_initiated",
+            measurement="cumulative",
+            unit="people",
+            provider="cdc",
+            common_field=CommonFields.VACCINATIONS_INITIATED,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_completed",
+            measurement="cumulative",
+            unit="people",
+            provider="cdc",
+            common_field=CommonFields.VACCINATIONS_COMPLETED,
+        ),
+    ]
+
+    results = dataset.query_multiple_variables(variables)
+    return results
 
 
 class CDCVaccinesDataset(data_source.CanScraperBase):
     SOURCE_NAME = "CDCVaccine"
 
-    TRANSFORM_METHOD = update_cdc_vaccine_data.transform
+    TRANSFORM_METHOD = transform
 
     EXPECTED_FIELDS = [
         CommonFields.VACCINES_ALLOCATED,
