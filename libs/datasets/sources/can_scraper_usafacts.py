@@ -5,7 +5,7 @@ from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets import data_source
 
 
-def transform_cases_and_deaths(dataset: ccd_helpers.CovidCountyDataset):
+def transform_cases_and_deaths(dataset: ccd_helpers.CanScraperLoader):
     variables = [
         ccd_helpers.ScraperVariable(
             variable_name="cases",

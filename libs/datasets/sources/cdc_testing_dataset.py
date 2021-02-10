@@ -25,6 +25,8 @@ def _remove_trailing_zeros(series: pd.Series) -> pd.Series:
 
 
 def remove_trailing_zeros(data: pd.DataFrame) -> pd.DataFrame:
+    # TODO(tom): See if TailFilter+zeros_filter produce the same data and if so, remove this
+    #  function.
     data = data.sort_values([CommonFields.FIPS, CommonFields.DATE]).set_index(CommonFields.DATE)
     test_pos = data.groupby(CommonFields.FIPS)[CommonFields.TEST_POSITIVITY_7D].apply(
         _remove_trailing_zeros
@@ -33,7 +35,7 @@ def remove_trailing_zeros(data: pd.DataFrame) -> pd.DataFrame:
     return data.reset_index()
 
 
-def transform(dataset: ccd_helpers.CovidCountyDataset):
+def transform(dataset: ccd_helpers.CanScraperLoader):
 
     variables = [
         ccd_helpers.ScraperVariable(

@@ -3,7 +3,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
-def transform(dataset: ccd_helpers.CovidCountyDataset):
+def transform(dataset: ccd_helpers.CanScraperLoader):
 
     variables = [
         ccd_helpers.ScraperVariable(

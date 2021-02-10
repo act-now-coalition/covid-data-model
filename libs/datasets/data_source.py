@@ -75,15 +75,15 @@ class DataSource(object):
 # TODO(tom): Clean up the mess that is subclasses of DataSource and
 #  instances of DataSourceAndRegionMasks
 class CanScraperBase(DataSource):
-    # The method called to transform the DataFrame returned by CovidCountyDataset into what is
+    # The method called to transform the DataFrame returned by CanScraperLoader into what is
     # consumed by DataSource.make_dataset. Must be set in subclasses.
     TRANSFORM_METHOD: Callable[[pd.DataFrame], pd.DataFrame]
 
     @staticmethod
     @lru_cache(None)
-    def _get_covid_county_dataset() -> ccd_helpers.CovidCountyDataset:
-        # TODO(tom): Rename CovidCountyDataset to CanScraperLoader or the something like that.
-        return ccd_helpers.CovidCountyDataset.load()
+    def _get_covid_county_dataset() -> ccd_helpers.CanScraperLoader:
+        # TODO(tom): Rename CanScraperLoader to CanScraperLoader or the something like that.
+        return ccd_helpers.CanScraperLoader.load()
 
     @classmethod
     def _load_data(cls) -> pd.DataFrame:
