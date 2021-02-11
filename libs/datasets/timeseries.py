@@ -929,7 +929,9 @@ def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     return dataset_out
 
 
-def _calculate_modified_zscore(series: pd.Series, window: int = 10, min_periods=3) -> pd.Series:
+def _calculate_modified_zscore(
+    series: pd.Series, window: int = 10, min_periods=3, ignore_zeros=True
+) -> pd.Series:
     """Calculates zscore for each point in series comparing current point to past `window` days.
 
     Each datapoint is compared to the distribution of the past `window` days as long as there are
@@ -943,11 +945,14 @@ def _calculate_modified_zscore(series: pd.Series, window: int = 10, min_periods=
         series: Series to compute statistics for.
         window: Size of window to calculate mean and std.
         min_periods: Number of periods necessary to compute a score - will return nan otherwise.
+        ignore_zeros: If true, zeros are not included in zscore calculation.
 
     Returns: Array of scores for each datapoint in series.
     """
     series = series.copy()
-    series[series == 0] = None
+    if ignore_zeros:
+        series[series == 0] = None
+
     rolling_series = series.rolling(window=window, min_periods=min_periods)
     # Shifting one to exclude current datapoint
     mean = rolling_series.mean().shift(1)
@@ -988,6 +993,58 @@ def drop_new_case_outliers(
             variable=CommonFields.NEW_CASES,
         )
     df_copy.loc[to_exclude, CommonFields.NEW_CASES] = np.nan
+
+    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy).append_tag_df(
+        new_tags.as_dataframe()
+    )
+
+    return new_timeseries
+
+
+def drop_tail_positivity_outliers(
+    timeseries: MultiRegionDataset, zscore_threshold: float = 8.0
+) -> MultiRegionDataset:
+    """Identifies and drops outliers from the new case series.
+
+    Args:
+        timeseries: Timeseries.
+        zscore_threshold: Z-score threshold.  All new cases with a zscore greater than the
+            threshold will be removed.
+
+    Returns: timeseries with outliers removed from test_positivity_7d
+    """
+    df_copy = timeseries.timeseries.copy()
+    grouped_df = timeseries.groupby_region()
+
+    def reduce_(series):
+        if series.isna().all():
+            return None
+
+        series = _calculate_modified_zscore(series.diff(), window=5, ignore_zeros=False)
+        last_valid_index = series.last_valid_index()
+
+        valid = series[last_valid_index]
+        subset = pd.Series([valid], index=[last_valid_index[1]])
+        subset.index.name = CommonFields.DATE
+        return subset
+
+    zscores = grouped_df[CommonFields.TEST_POSITIVITY_7D].apply(reduce_)
+    to_exclude = zscores > zscore_threshold
+
+    new_tags = taglib.TagCollection()
+    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
+    # rows where to_exclude is True.
+    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    for idx, _ in to_exclude[to_exclude].iteritems():
+        new_tags.add(
+            taglib.ZScoreOutlier(
+                date=idx[1], original_observation=df_copy.at[idx, CommonFields.TEST_POSITIVITY_7D],
+            ),
+            location_id=idx[0],
+            variable=CommonFields.TEST_POSITIVITY_7D,
+        )
+
+    df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
 
     new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy).append_tag_df(
         new_tags.as_dataframe()
