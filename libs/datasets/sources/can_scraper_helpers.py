@@ -114,7 +114,7 @@ class CanScraperLoader:
               `variables` and hints when a variable has no data.
 
         Returns:
-            Tuple of the data with variable columns and a tags in a DataFrame
+            The observations in a DataFrame with variable columns and the source_urls
         """
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
@@ -162,6 +162,7 @@ class CanScraperLoader:
                     Fields.LOCATION.value: CommonFields.FIPS,
                     Fields.DATE.value: CommonFields.DATE,
                     Fields.VARIABLE_NAME.value: PdFields.VARIABLE,
+                    Fields.SOURCE_URL.value: taglib.TagField.CONTENT,
                 }
             )
         else:

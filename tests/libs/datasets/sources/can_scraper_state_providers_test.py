@@ -1,3 +1,4 @@
+import more_itertools
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
@@ -22,7 +23,7 @@ def test_state_providers():
         provider="usafacts",
         common_field=CommonFields.CASES,
     )
-    test_url = "http://foo.com"
+    test_url = [f"http://foo.com/{i}" for i in range(3)]
 
     input_data = _build_can_scraper_dataframe({variable: [10, 20, 30]}, source_url=test_url,)
     data = ccd_helpers.CanScraperLoader(input_data)
@@ -33,4 +34,4 @@ def test_state_providers():
     one_region = ds.get_one_region(
         pipeline.Region.from_fips(can_scraper_helpers_test.DEFAULT_LOCATION)
     )
-    assert one_region.source_url == {CommonFields.CASES: [test_url]}
+    assert one_region.source_url == {CommonFields.CASES: [more_itertools.last(test_url)]}

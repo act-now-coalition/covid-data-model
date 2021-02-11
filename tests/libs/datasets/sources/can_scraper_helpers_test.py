@@ -1,6 +1,10 @@
+import itertools
 from typing import Dict, List
 import io
 import datetime
+from typing import Iterable
+from typing import Union
+
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 import pandas as pd
@@ -18,8 +22,14 @@ def _build_can_scraper_dataframe(
     location=DEFAULT_LOCATION,
     location_type=DEFAULT_LOCATION_TYPE,
     start_date="2021-01-01",
-    source_url: str = None,
+    source_url: Union[None, str, Iterable[str]] = None,
 ) -> pd.DataFrame:
+    if source_url is None:
+        source_url_iter = None
+    elif isinstance(source_url, str):
+        source_url_iter = itertools.repeat(source_url)
+    else:
+        source_url_iter = iter(source_url)
     start_date = datetime.datetime.fromisoformat(start_date)
     rows = []
     for variable, data in data_by_variable.items():
@@ -40,7 +50,7 @@ def _build_can_scraper_dataframe(
                 "value": value,
             }
             if source_url:
-                row["source_url"] = source_url
+                row["source_url"] = next(source_url_iter)
             rows.append(row)
 
     return pd.DataFrame(rows)
