@@ -1,5 +1,4 @@
 import pathlib
-from typing import Callable
 from typing import List
 from typing import Optional
 from typing import Union
