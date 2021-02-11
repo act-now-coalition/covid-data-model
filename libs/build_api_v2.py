@@ -130,14 +130,16 @@ def _build_metric_annotations(
 
     anomalies = tag_series.annotations(field_name)
     anomalies = [
-        AnomalyAnnotation(date=t.date, original_observation=t.original_observation)
-        for t in anomalies
+        AnomalyAnnotation(
+            date=tag.date, original_observation=tag.original_observation, type=tag.type
+        )
+        for tag in anomalies
     ]
 
     if not sources_enum and not anomalies:
         return None
 
-    return FieldAnnotations(sources=sources_enum, anomalies=anomalies,)
+    return FieldAnnotations(sources=sources_enum, anomalies=anomalies)
 
 
 def build_region_timeseries(

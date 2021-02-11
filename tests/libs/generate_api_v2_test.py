@@ -86,8 +86,16 @@ def test_build_summary_for_fips(
             newCases=FieldAnnotations(
                 sources=[],
                 anomalies=[
-                    {"date": datetime.date(2020, 3, 17), "original_observation": 166.0},
-                    {"date": datetime.date(2020, 4, 15), "original_observation": 1737.0},
+                    {
+                        "date": datetime.date(2020, 3, 17),
+                        "original_observation": 166.0,
+                        "type": "zscore_outlier",
+                    },
+                    {
+                        "date": datetime.date(2020, 4, 15),
+                        "original_observation": 1737.0,
+                        "type": "zscore_outlier",
+                    },
                 ],
             ),
         ),

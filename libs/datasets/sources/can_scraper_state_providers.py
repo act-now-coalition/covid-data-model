@@ -1,15 +1,10 @@
-from covidactnow.datapublic.common_fields import CommonFields
-
-# TODO(tom): Remove this really ugly import from the covid-data-public repo.
-from scripts import update_can_scraper_state_providers
-
 from libs.datasets import data_source
+from covidactnow.datapublic.common_fields import CommonFields
+from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
 class CANScraperStateProviders(data_source.CanScraperBase):
     SOURCE_NAME = "CANScrapersStateProviders"
-
-    TRANSFORM_METHOD = update_can_scraper_state_providers.transform
 
     EXPECTED_FIELDS = [
         CommonFields.STAFFED_BEDS,
@@ -27,4 +22,136 @@ class CANScraperStateProviders(data_source.CanScraperBase):
         CommonFields.CURRENT_ICU,
         CommonFields.VACCINATIONS_INITIATED_PCT,
         CommonFields.VACCINATIONS_COMPLETED_PCT,
+    ]
+
+    VARIABLES = [
+        ccd_helpers.ScraperVariable(variable_name="pcr_tests_negative", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="unspecified_tests_total", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="unspecified_tests_positive", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="icu_beds_available", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="antibody_tests_total", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="antigen_tests_positive", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="antigen_tests_negative", provider="state"),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_doses_administered", provider="state"
+        ),
+        ccd_helpers.ScraperVariable(variable_name="hospital_beds_in_use", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="ventilators_in_use", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="ventilators_available", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="ventilators_capacity", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="pediatric_icu_beds_in_use", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="adult_icu_beds_available", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="pediatric_icu_beds_capacity", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="unspecified_tests_negative", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="antigen_tests_total", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="adult_icu_beds_in_use", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="hospital_beds_available", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="pediatric_icu_beds_available", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="adult_icu_beds_capacity", provider="state"),
+        ccd_helpers.ScraperVariable(variable_name="icu_beds_in_use", provider="state"),
+        ccd_helpers.ScraperVariable(
+            variable_name="cases",
+            measurement="cumulative",
+            unit="people",
+            provider="state",
+            common_field=CommonFields.CASES,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="deaths",
+            measurement="cumulative",
+            unit="people",
+            provider="state",
+            common_field=CommonFields.DEATHS,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="hospital_beds_in_use_covid",
+            measurement="current",
+            unit="beds",
+            provider="state",
+            common_field=CommonFields.CURRENT_HOSPITALIZED,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="hospital_beds_capacity",
+            measurement="current",
+            unit="beds",
+            provider="state",
+            common_field=CommonFields.STAFFED_BEDS,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="icu_beds_capacity",
+            measurement="current",
+            unit="beds",
+            provider="state",
+            common_field=CommonFields.ICU_BEDS,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="icu_beds_in_use_covid",
+            measurement="current",
+            unit="beds",
+            provider="state",
+            common_field=CommonFields.CURRENT_ICU,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="pcr_tests_total",
+            measurement="cumulative",
+            unit="specimens",  # Ignores less common unit=test_encounters and unit=unique_people
+            provider="state",
+            common_field=CommonFields.TOTAL_TESTS_VIRAL,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="pcr_tests_positive",
+            measurement="cumulative",
+            unit="specimens",  # Ignores test_encounters and unique_people
+            provider="state",
+            common_field=CommonFields.POSITIVE_TESTS_VIRAL,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_allocated",
+            measurement="cumulative",
+            unit="doses",
+            provider="state",
+            common_field=CommonFields.VACCINES_ALLOCATED,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_distributed",
+            measurement="cumulative",
+            unit="doses",
+            provider="state",
+            common_field=CommonFields.VACCINES_DISTRIBUTED,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_initiated",
+            measurement="cumulative",
+            unit="people",
+            provider="state",
+            common_field=CommonFields.VACCINATIONS_INITIATED,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_initiated",
+            measurement="current",
+            unit="percentage",
+            provider="state",
+            common_field=CommonFields.VACCINATIONS_INITIATED_PCT,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_completed",
+            measurement="cumulative",
+            unit="people",
+            provider="state",
+            common_field=CommonFields.VACCINATIONS_COMPLETED,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_completed",
+            measurement="current",
+            unit="percentage",
+            provider="state",
+            common_field=CommonFields.VACCINATIONS_COMPLETED_PCT,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_doses_administered",
+            measurement="cumulative",
+            unit="doses",
+            provider="state",
+            common_field=CommonFields.VACCINES_ADMINISTERED,
+        ),
     ]
