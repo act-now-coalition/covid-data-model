@@ -35,9 +35,14 @@ def remove_trailing_zeros(data: pd.DataFrame) -> pd.DataFrame:
     return data.reset_index()
 
 
-def transform(dataset: ccd_helpers.CanScraperLoader):
+class CDCTestingDataset(data_source.CanScraperBase):
+    SOURCE_NAME = "CDCTesting"
 
-    variables = [
+    EXPECTED_FIELDS = [
+        CommonFields.TEST_POSITIVITY_7D,
+    ]
+
+    VARIABLES = [
         ccd_helpers.ScraperVariable(
             variable_name="pcr_tests_positive",
             measurement="rolling_average_7_day",
@@ -46,31 +51,23 @@ def transform(dataset: ccd_helpers.CanScraperLoader):
             common_field=CommonFields.TEST_POSITIVITY_7D,
         ),
     ]
-    results = dataset.query_multiple_variables(variables)
-    # Test positivity should be a ratio
-    results.loc[:, CommonFields.TEST_POSITIVITY_7D] = (
-        results.loc[:, CommonFields.TEST_POSITIVITY_7D] / 100.0
-    )
-    # Should only be picking up county all_df for now.  May need additional logic if states
-    # are included as well
-    assert (results[CommonFields.FIPS].str.len() == 5).all()
 
-    # Duplicating DC County results as state results because of a downstream
-    # use of how dc state data is used to override DC county data.
-    dc_results = results.loc[results[CommonFields.FIPS] == DC_COUNTY_FIPS, :].copy()
-    dc_results.loc[:, CommonFields.FIPS] = DC_STATE_FIPS
-    dc_results.loc[:, CommonFields.AGGREGATE_LEVEL] = "state"
+    @classmethod
+    def transform_data(cls, results: pd.DataFrame) -> pd.DataFrame:
+        # Test positivity should be a ratio
+        results.loc[:, CommonFields.TEST_POSITIVITY_7D] = (
+            results.loc[:, CommonFields.TEST_POSITIVITY_7D] / 100.0
+        )
+        # Should only be picking up county all_df for now.  May need additional logic if states
+        # are included as well
+        assert (results[CommonFields.FIPS].str.len() == 5).all()
 
-    results = pd.concat([results, dc_results])
+        # Duplicating DC County results as state results because of a downstream
+        # use of how dc state data is used to override DC county data.
+        dc_results = results.loc[results[CommonFields.FIPS] == DC_COUNTY_FIPS, :].copy()
+        dc_results.loc[:, CommonFields.FIPS] = DC_STATE_FIPS
+        dc_results.loc[:, CommonFields.AGGREGATE_LEVEL] = "state"
 
-    return remove_trailing_zeros(results)
+        results = pd.concat([results, dc_results])
 
-
-class CDCTestingDataset(data_source.CanScraperBase):
-    SOURCE_NAME = "CDCTesting"
-
-    TRANSFORM_METHOD = transform
-
-    EXPECTED_FIELDS = [
-        CommonFields.TEST_POSITIVITY_7D,
-    ]
+        return remove_trailing_zeros(results)
