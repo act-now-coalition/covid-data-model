@@ -614,6 +614,7 @@ class MultiRegionDataset:
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def append_fips_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new dataset with additional_tag_df, containing a fips column, appended."""
         additional_tag_df = _add_location_id(additional_tag_df)
         return self.append_tag_df(additional_tag_df)
 

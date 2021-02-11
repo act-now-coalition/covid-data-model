@@ -102,6 +102,7 @@ class CanScraperBase(DataSource):
         data = cls._check_data(data)
         ds = MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)
         if not source_urls_df.empty:
+            # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.
             source_urls_df = (
                 source_urls_df.sort_values(CommonFields.DATE)
                 .groupby([CommonFields.FIPS, PdFields.VARIABLE], sort=False)
@@ -109,8 +110,6 @@ class CanScraperBase(DataSource):
                 .reset_index()
                 .drop(columns=[CommonFields.DATE])
             )
-
-            # source_urls_df = source_urls_df.drop(columns=[CommonFields.DATE]).drop_duplicates()
             source_urls_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE_URL
             ds = ds.append_fips_tag_df(source_urls_df)
         return ds
