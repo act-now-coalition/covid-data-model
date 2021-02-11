@@ -38,17 +38,7 @@ class DataSource(object):
     IGNORED_FIELDS = (CommonFields.COUNTY, CommonFields.COUNTRY, CommonFields.STATE)
 
     @classmethod
-    def _load_data(cls) -> pd.DataFrame:
-        assert cls.COMMON_DF_CSV_PATH, f"No path in {cls}"
-        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        input_path = data_root / cls.COMMON_DF_CSV_PATH
-        return common_df.read_csv(input_path, set_index=False)
-
-    @classmethod
-    @lru_cache(None)
-    def make_dataset(cls) -> timeseries.MultiRegionDataset:
-        """Default implementation of make_dataset that loads timeseries data from a CSV."""
-        data = cls._load_data()
+    def _check_data(cls, data: pd.DataFrame):
         expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
         # Keep only the expected fields.
         found_expected_fields = data.columns.intersection(expected_fields)
@@ -67,16 +57,30 @@ class DataSource(object):
                 cls=cls.SOURCE_NAME,
                 missing_fields=missing_fields,
             )
+        return data
 
+    @classmethod
+    @lru_cache(None)
+    def make_dataset(cls) -> timeseries.MultiRegionDataset:
+        """Default implementation of make_dataset that loads timeseries data from a CSV."""
+        assert cls.COMMON_DF_CSV_PATH, f"No path in {cls}"
+        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        input_path = data_root / cls.COMMON_DF_CSV_PATH
+        data = common_df.read_csv(input_path, set_index=False)
+        data = cls._check_data(data)
         return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)
 
 
 # TODO(tom): Clean up the mess that is subclasses of DataSource and
 #  instances of DataSourceAndRegionMasks
 class CanScraperBase(DataSource):
-    # The method called to transform the DataFrame returned by CanScraperLoader into what is
-    # consumed by DataSource.make_dataset. Must be set in subclasses.
-    TRANSFORM_METHOD: Callable[[pd.DataFrame], pd.DataFrame]
+    # Must be set in subclasses.
+    VARIABLES: List[ccd_helpers.ScraperVariable]
+
+    @classmethod
+    def transform_data(cls, data: pd.DataFrame) -> pd.DataFrame:
+        """Subclasses may override this to transform the data DataFrame."""
+        return data
 
     @staticmethod
     @lru_cache(None)
@@ -84,7 +88,14 @@ class CanScraperBase(DataSource):
         return ccd_helpers.CanScraperLoader.load()
 
     @classmethod
-    def _load_data(cls) -> pd.DataFrame:
-        assert cls.TRANSFORM_METHOD
+    @lru_cache(None)
+    def make_dataset(cls) -> timeseries.MultiRegionDataset:
+        """Default implementation of make_dataset that loads data from the parquet file."""
+        assert cls.VARIABLES
         ccd_dataset = CanScraperBase._get_covid_county_dataset()
-        return cls.TRANSFORM_METHOD(ccd_dataset)
+        data = ccd_dataset.query_multiple_variables(
+            cls.VARIABLES, log_provider_coverage_warnings=True
+        )
+        data = cls.transform_data(data)
+        data = cls._check_data(data)
+        return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)

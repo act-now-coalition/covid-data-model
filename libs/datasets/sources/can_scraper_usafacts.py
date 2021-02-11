@@ -5,8 +5,15 @@ from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets import data_source
 
 
-def transform_cases_and_deaths(dataset: ccd_helpers.CanScraperLoader):
-    variables = [
+class CANScraperUSAFactsProvider(data_source.CanScraperBase):
+    SOURCE_NAME = "USAFacts"
+
+    EXPECTED_FIELDS = [
+        CommonFields.CASES,
+        CommonFields.DEATHS,
+    ]
+
+    VARIABLES = [
         ccd_helpers.ScraperVariable(
             variable_name="cases",
             measurement="cumulative",
@@ -21,17 +28,4 @@ def transform_cases_and_deaths(dataset: ccd_helpers.CanScraperLoader):
             provider="usafacts",
             common_field=CommonFields.DEATHS,
         ),
-    ]
-    results = dataset.query_multiple_variables(variables, log_provider_coverage_warnings=True)
-    return results
-
-
-class CANScraperUSAFactsProvider(data_source.CanScraperBase):
-    SOURCE_NAME = "USAFacts"
-
-    TRANSFORM_METHOD = transform_cases_and_deaths
-
-    EXPECTED_FIELDS = [
-        CommonFields.CASES,
-        CommonFields.DEATHS,
     ]
