@@ -6,6 +6,9 @@ from typing import Union
 import structlog
 from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import PdFields
+
+from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 from libs.datasets import dataset_utils
@@ -92,9 +95,14 @@ class CanScraperBase(DataSource):
         """Default implementation of make_dataset that loads data from the parquet file."""
         assert cls.VARIABLES
         ccd_dataset = CanScraperBase._get_covid_county_dataset()
-        data = ccd_dataset.query_multiple_variables(
+        data, source_urls_df = ccd_dataset.query_multiple_variables(
             cls.VARIABLES, log_provider_coverage_warnings=True
         )
         data = cls.transform_data(data)
         data = cls._check_data(data)
-        return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)
+        ds = MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)
+        if not source_urls_df.empty:
+            source_urls_df = source_urls_df.drop(columns=[CommonFields.DATE]).drop_duplicates()
+            source_urls_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE_URL
+            ds.append_fips_tag_df(source_urls_df)
+        return ds
