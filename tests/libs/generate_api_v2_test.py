@@ -96,11 +96,6 @@ def test_build_summary_for_fips(
                         "original_observation": 1737.0,
                         "type": "zscore_outlier",
                     },
-                    {
-                        "date": datetime.date(2021, 1, 7),
-                        "original_observation": 1732.0,
-                        "type": "zscore_outlier",
-                    },
                 ],
             ),
         ),
