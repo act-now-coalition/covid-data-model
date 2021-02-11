@@ -118,7 +118,7 @@ def test_query_source_url():
     pd.testing.assert_frame_equal(expected, results)
 
     expected_tag_buf = io.StringIO(
-        "fips,      date,              variable,    source_url\n"
+        "fips,      date,              variable,       content\n"
         "  36,2021-01-01,vaccinations_completed,http://foo.com\n"
         "  36,2021-01-02,vaccinations_completed,http://foo.com\n"
         "  36,2021-01-03,vaccinations_completed,http://foo.com\n".replace(" ", "")
