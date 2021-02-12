@@ -194,6 +194,7 @@ class FieldAnnotations(base_model.APIBaseModel):
 
     sources: List[FieldSource]
     anomalies: List[AnomalyAnnotation]
+    source_url: str = pydantic.Field(None)
 
 
 class Annotations(base_model.APIBaseModel):
