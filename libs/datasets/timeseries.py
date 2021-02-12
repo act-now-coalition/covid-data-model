@@ -1002,7 +1002,7 @@ def drop_new_case_outliers(
 
 
 def drop_tail_positivity_outliers(
-    timeseries: MultiRegionDataset, zscore_threshold: float = 8.0
+    timeseries: MultiRegionDataset, zscore_threshold: float = 9.0
 ) -> MultiRegionDataset:
     """Identifies and drops outliers from the new case series.
 
@@ -1017,16 +1017,13 @@ def drop_tail_positivity_outliers(
     grouped_df = timeseries.groupby_region()
 
     def reduce_(series):
-        if series.isna().all():
-            return None
-
-        series = _calculate_modified_zscore(series.diff(), window=5, ignore_zeros=False)
-        last_valid_index = series.last_valid_index()
-
-        valid = series[last_valid_index]
-        subset = pd.Series([valid], index=[last_valid_index[1]])
-        subset.index.name = CommonFields.DATE
-        return subset
+        recent_series_diff_magnitudes = series.diff().abs().tail(10)
+        series = _calculate_modified_zscore(
+            recent_series_diff_magnitudes, window=5, ignore_zeros=False
+        )
+        series.index = series.index.get_level_values(CommonFields.DATE)
+        series = series.dropna().last("1D")
+        return series
 
     zscores = grouped_df[CommonFields.TEST_POSITIVITY_7D].apply(reduce_)
     to_exclude = zscores > zscore_threshold
