@@ -4,6 +4,7 @@ from typing import List
 import enum
 import dataclasses
 from typing import Optional
+from typing import Tuple
 
 import more_itertools
 import structlog
@@ -15,7 +16,10 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 # Airflow jobs output a single parquet file with all of the data - this is where
 # it is currently stored.
+from covidactnow.datapublic.common_fields import PdFields
+
 from libs.datasets import dataset_utils
+from libs.datasets import taglib
 
 PARQUET_PATH = "data/can-scrape/can_scrape_api_covid_us.parquet"
 
@@ -39,6 +43,7 @@ class Fields(GetByValueMixin, FieldNameAndCommonField, enum.Enum):
     RACE = "race", None
     SEX = "sex", None
     VALUE = "value", None
+    SOURCE_URL = "source_url", None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -100,17 +105,21 @@ class CanScraperLoader:
 
     def query_multiple_variables(
         self, variables: List[ScraperVariable], *, log_provider_coverage_warnings: bool = False
-    ) -> pd.DataFrame:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Queries multiple variables returning wide df with variable names as columns.
 
         Args:
             variables: Variables to query
             log_provider_coverage_warnings: Log warnings when upstream data has variables not in
               `variables` and hints when a variable has no data.
+
+        Returns:
+            The observations in a DataFrame with variable columns and the source_urls
         """
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
         selected_data = []
+        source_urls = []
 
         for variable in variables:
             # Check that `variable` agrees with stuff in the ScraperVariable docstring.
@@ -139,8 +148,26 @@ class CanScraperLoader:
                 data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
 
             selected_data.append(data)
+            if Fields.SOURCE_URL in data.columns:
+                source_urls.append(
+                    data.loc[
+                        :, [Fields.VARIABLE_NAME, Fields.SOURCE_URL, Fields.LOCATION, Fields.DATE]
+                    ]
+                )
 
         combined_df = pd.concat(selected_data)
+        if source_urls:
+            combined_source_urls = pd.concat(source_urls).rename(
+                columns={
+                    Fields.LOCATION.value: CommonFields.FIPS,
+                    Fields.DATE.value: CommonFields.DATE,
+                    Fields.VARIABLE_NAME.value: PdFields.VARIABLE,
+                    Fields.SOURCE_URL.value: taglib.TagField.CONTENT,
+                }
+            )
+        else:
+            # TODO(tom): Make a better empty tag DataFr
+            combined_source_urls = pd.DataFrame([])
 
         wide_df = combined_df.pivot_table(
             index=[Fields.LOCATION.value, Fields.DATE.value, Fields.LOCATION_TYPE.value],
@@ -156,7 +183,7 @@ class CanScraperLoader:
             }
         )
         data.columns.name = None
-        return data
+        return data, combined_source_urls
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))

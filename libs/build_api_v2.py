@@ -27,7 +27,7 @@ from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 
 METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in FieldSource enum"
-
+METRIC_MULTIPLE_SOURCE_URLS_MESSAGE = "More than one source_url for a field"
 
 USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 
@@ -111,6 +111,15 @@ def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotation
         ),
         icuBeds=_build_metric_annotations(one_region, CommonFields.ICU_BEDS, log),
         newCases=_build_metric_annotations(one_region, CommonFields.NEW_CASES, log),
+        vaccinesDistributed=_build_metric_annotations(
+            one_region, CommonFields.VACCINES_DISTRIBUTED, log
+        ),
+        vaccinationsInitiated=_build_metric_annotations(
+            one_region, CommonFields.VACCINATIONS_INITIATED, log
+        ),
+        vaccinationsCompleted=_build_metric_annotations(
+            one_region, CommonFields.VACCINATIONS_COMPLETED, log
+        ),
     )
 
 
@@ -136,10 +145,24 @@ def _build_metric_annotations(
         for tag in anomalies
     ]
 
-    if not sources_enum and not anomalies:
+    source_urls = set(tag_series.source_url.get(field_name, []))
+    if not source_urls:
+        source_url = None
+    else:
+        if len(source_urls) > 1:
+            log.warning(
+                METRIC_MULTIPLE_SOURCE_URLS_MESSAGE,
+                field_name=field_name,
+                urls=list(sorted(source_urls)),
+            )
+        # If multiple URLs actually happens in a meaningful way consider doing something better than
+        # returning one at random.
+        source_url = source_urls.pop()
+
+    if not sources_enum and not anomalies and not source_url:
         return None
 
-    return FieldAnnotations(sources=sources_enum, anomalies=anomalies)
+    return FieldAnnotations(sources=sources_enum, anomalies=anomalies, source_url=source_url)
 
 
 def build_region_timeseries(
