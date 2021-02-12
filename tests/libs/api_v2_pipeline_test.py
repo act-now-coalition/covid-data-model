@@ -135,6 +135,7 @@ def test_annotation(rt_dataset, icu_dataset):
             CommonFields.CASES: TimeseriesLiteral(
                 [100, 200, 300], provenance="NYTimes", source_url=cases_urls
             ),
+            # NEW_CASES has only source_url set, to make sure that an annotation is still output.
             CommonFields.NEW_CASES: TimeseriesLiteral([100, 100, 100], source_url=new_cases_url),
             CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
             CommonFields.ICU_BEDS: TimeseriesLiteral([20, 20, 20], provenance="NotFound"),
@@ -193,35 +194,6 @@ def test_annotation(rt_dataset, icu_dataset):
 
 
 def test_annotation_all_fields_copied(rt_dataset, icu_dataset):
-    region = Region.from_state("IL")
-    # Create a dataset with bogus data for every CommonFields, excluding a few that are not
-    # expected to have timeseries values.
-    fields_excluded = {*TIMESERIES_INDEX_FIELDS, *GEO_DATA_COLUMNS, CommonFields.LOCATION_ID}
-    ds = test_helpers.build_default_region_dataset(
-        {
-            field: TimeseriesLiteral([100, 200, 300], provenance="NYTimes")
-            for field in CommonFields
-            if field not in fields_excluded
-        },
-        region=region,
-        static={
-            CommonFields.POPULATION: 100_000,
-            CommonFields.STATE: "IL",
-            CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
-        },
-    )
-    regional_input = api_v2_pipeline.RegionalInput.from_region_and_model_output(
-        region, ds, rt_dataset, icu_dataset
-    )
-
-    timeseries_for_region = api_v2_pipeline.build_timeseries_for_region(regional_input)
-
-    # Check that build_annotations set every field in Annotations.
-    for field_name in can_api_v2_definition.Annotations.__fields__.keys():
-        assert getattr(timeseries_for_region.annotations, field_name), f"{field_name} not set"
-
-
-def test_annotation_one_source(rt_dataset, icu_dataset):
     region = Region.from_state("IL")
     # Create a dataset with bogus data for every CommonFields, excluding a few that are not
     # expected to have timeseries values.
