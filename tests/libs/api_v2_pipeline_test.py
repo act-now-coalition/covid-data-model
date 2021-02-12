@@ -7,6 +7,7 @@ from api.can_api_v2_definition import FieldSource
 from libs import build_api_v2
 from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
+from libs.datasets.taglib import UrlStr
 from libs.metrics import test_positivity
 from libs.datasets import timeseries
 from libs.pipeline import Region
@@ -125,15 +126,16 @@ def test_output_no_timeseries_rows(nyc_regional_input, tmp_path):
 def test_annotation(rt_dataset, icu_dataset):
     region = Region.from_state("IL")
     tag = test_helpers.make_tag(date="2020-04-01", original_observation=10.0)
-    death_url = "http://can.com/death_source"
-    cases_urls = ["http://can.com/one", "http://can.com/two"]
+    death_url = UrlStr("http://can.com/death_source")
+    cases_urls = [UrlStr("http://can.com/one"), UrlStr("http://can.com/two")]
+    new_cases_url = UrlStr("http://can.com/new_cases")
 
     ds = test_helpers.build_default_region_dataset(
         {
             CommonFields.CASES: TimeseriesLiteral(
                 [100, 200, 300], provenance="NYTimes", source_url=cases_urls
             ),
-            CommonFields.NEW_CASES: [100, 100, 100],
+            CommonFields.NEW_CASES: TimeseriesLiteral([100, 100, 100], source_url=new_cases_url),
             CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
             CommonFields.ICU_BEDS: TimeseriesLiteral([20, 20, 20], provenance="NotFound"),
             CommonFields.CURRENT_ICU: [5, 5, 5],
@@ -184,6 +186,8 @@ def test_annotation(rt_dataset, icu_dataset):
     assert timeseries_for_region.annotations.deaths.anomalies == [
         AnomalyAnnotation(date="2020-04-01", original_observation=10.0, type=tag.type)
     ]
+
+    assert timeseries_for_region.annotations.newCases.source_url == new_cases_url
 
     assert timeseries_for_region.annotations.contactTracers is None
 

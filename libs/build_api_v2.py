@@ -159,7 +159,7 @@ def _build_metric_annotations(
         # returning one at random.
         source_url = source_urls.pop()
 
-    if not sources_enum and not anomalies:
+    if not sources_enum and not anomalies and not source_url:
         return None
 
     return FieldAnnotations(sources=sources_enum, anomalies=anomalies, source_url=source_url)
