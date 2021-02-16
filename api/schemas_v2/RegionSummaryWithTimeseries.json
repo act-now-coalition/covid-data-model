@@ -699,8 +699,22 @@
         "Valorum",
         "covid_tracking",
         "USAFacts",
+        "TestAndTrace",
+        "CANScrapersStateProviders",
         "other"
       ]
+    },
+    "TagType": {
+      "title": "TagType",
+      "description": "The type of the annotation.\n\nEach enumeration refers to the method used to generate the annotation.",
+      "enum": [
+        "cumulative_tail_truncated",
+        "cumulative_long_tail_truncated",
+        "zscore_outlier",
+        "provenance",
+        "source_url"
+      ],
+      "type": "string"
     },
     "AnomalyAnnotation": {
       "title": "AnomalyAnnotation",
@@ -713,6 +727,14 @@
           "type": "string",
           "format": "date"
         },
+        "type": {
+          "description": "Type of annotation",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TagType"
+            }
+          ]
+        },
         "original_observation": {
           "title": "Original Observation",
           "description": "Original value on this date detected as anomalous.",
@@ -721,6 +743,7 @@
       },
       "required": [
         "date",
+        "type",
         "original_observation"
       ]
     },
