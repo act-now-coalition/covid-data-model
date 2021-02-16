@@ -1,5 +1,5 @@
 [Unit]
-Description=uWSGI instance to serve myproject
+Description=uWSGI instance to serve data-pipeline-dashboard
 After=network.target
 
 [Service]
@@ -7,7 +7,7 @@ User=tom
 Group=www-data
 WorkingDirectory=/home/tom/covid-data-model
 Environment="PATH=/home/tom/.pyenv/versions/covid-data-model/bin/:/usr/bin"
-ExecStart=/home/tom/.pyenv/versions/covid-data-model/bin/uwsgi --ini services/data-pipeline-dashboard/myproject.ini
+ExecStart=/home/tom/.pyenv/versions/covid-data-model/bin/uwsgi --ini services/data-pipeline-dashboard/uwsgi.ini
 
 
 [Install]
