@@ -17,13 +17,19 @@ DEFAULT_LOCATION = "36"
 DEFAULT_LOCATION_TYPE = "state"
 
 
-def _build_can_scraper_dataframe(
+def build_can_scraper_dataframe(
     data_by_variable: Dict[ccd_helpers.ScraperVariable, List[float]],
     location=DEFAULT_LOCATION,
     location_type=DEFAULT_LOCATION_TYPE,
     start_date="2021-01-01",
     source_url: Union[None, str, Iterable[str]] = None,
 ) -> pd.DataFrame:
+    """Creates a DataFrame with the same structure as the CAN Scraper parquet file.
+
+    Args:
+        source_url: None to not include the column or a string for every observation or
+        an iterable of strings to add to each observation in the order created.
+    """
     if source_url is None:
         source_url_iter = None
     elif isinstance(source_url, str):
@@ -73,7 +79,7 @@ def test_query_multiple_variables():
         common_field=CommonFields.VACCINATIONS_COMPLETED,
     )
 
-    input_data = _build_can_scraper_dataframe(
+    input_data = build_can_scraper_dataframe(
         {variable: [10, 20, 30], not_included_variable: [10, 20, 40]}
     )
     data = ccd_helpers.CanScraperLoader(input_data)
@@ -98,9 +104,7 @@ def test_query_source_url():
         common_field=CommonFields.VACCINATIONS_COMPLETED,
     )
 
-    input_data = _build_can_scraper_dataframe(
-        {variable: [10, 20, 30]}, source_url="http://foo.com",
-    )
+    input_data = build_can_scraper_dataframe({variable: [10, 20, 30]}, source_url="http://foo.com")
     data = ccd_helpers.CanScraperLoader(input_data)
     results, tags = data.query_multiple_variables([variable])
 
@@ -114,7 +118,7 @@ def test_query_source_url():
     pd.testing.assert_frame_equal(expected, results)
 
     expected_tag_buf = io.StringIO(
-        "fips,      date,              variable,    source_url\n"
+        "fips,      date,              variable,       content\n"
         "  36,2021-01-01,vaccinations_completed,http://foo.com\n"
         "  36,2021-01-02,vaccinations_completed,http://foo.com\n"
         "  36,2021-01-03,vaccinations_completed,http://foo.com\n".replace(" ", "")
