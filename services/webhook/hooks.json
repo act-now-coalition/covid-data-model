@@ -1,0 +1,21 @@
+[
+    {
+      "id": "pull-can-scrapers",
+      "execute-command": "./services/webhook/update_repos.sh",
+      "command-working-directory": "/home/tom/covid-data-model",
+      "trigger-rule": {
+        "and": [
+          {
+            "match": {
+              "type": "payload-hash-sha1",
+              "secret": "PASSWORD",
+              "parameter": {
+                "source": "header",
+                "name": "X-Hub-Signature"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
