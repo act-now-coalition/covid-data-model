@@ -32,24 +32,27 @@ Finally, setup the virtual env
 
 Something is broken with git-lfs. When using `git remote set-url origin https://github.com/covid-projections/covid-data-model` LFS can fetch files but to push back to the repo I used `git remote set-url origin git@github.com:covid-projections/covid-data-model` after doing something similar to https://github.com/covid-projections/can-scrapers/blob/main/services/prefect/README.md
 
-Certbot setup, following https://certbot.eff.org/lets-encrypt/debianbuster-nginx
-- `sudo apt install snapd`
-- `sudo snap install hello-world`
-- `sudo snap install --classic certbot`
-- `sudo certbot --nginx`
-... asks "Please enter in your domain name(s)" but I don't know.
 
-
-At https://console.cloud.google.com/compute/instancesDetail/zones/us-west1-b/instances/data-pipeline-dashboard-1?project=covidactnow-dev&supportedpurview=project click Edit and enable HTTP and HTTPS.
-Check that http://34.105.87.107/ connects to nginx.
 
 
 ### Configure and start uWSGI and nginx
 - `pip install uwsgi`, don't `apt-get` because it gets a much older version.
 - `make -C services/data-pipeline-dashboard setup
 
-### Setup webhook
+At https://console.cloud.google.com/compute/instancesDetail/zones/us-west1-b/instances/data-pipeline-dashboard-1?project=covidactnow-dev&supportedpurview=project click Edit and enable HTTP and HTTPS.
+Check that http://34.105.87.107/ connects to nginx.
 
+### Setup certbot for https
+
+Following https://certbot.eff.org/lets-encrypt/debianbuster-nginx
+- `sudo apt install snapd`
+- `sudo snap install hello-world`
+- `sudo snap install --classic certbot`
+- `sudo certbot --nginx` which created a cert expiring May 2021. See /var/log/letsencrypt/letsencrypt.log
+- Copy `/etc/nginx/sites-enabled/data-pipeline-dashboard` as modified by certbot back to `services/data-pipeline-dashboard/nginx.conf`
+
+
+### Setup webhook
 
 - `sudo apt-get install webhook`
 - Edit services/webhook/secret.conf to add a secret
