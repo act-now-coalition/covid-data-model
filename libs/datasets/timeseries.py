@@ -1002,7 +1002,9 @@ def drop_new_case_outliers(
 
 
 def drop_tail_positivity_outliers(
-    timeseries: MultiRegionDataset, zscore_threshold: float = 9.0
+    timeseries: MultiRegionDataset,
+    zscore_threshold: float = 10.0,
+    diff_threshold_ratio: float = 0.01,
 ) -> MultiRegionDataset:
     """Identifies and drops outliers from the new case series.
 
@@ -1016,17 +1018,20 @@ def drop_tail_positivity_outliers(
     df_copy = timeseries.timeseries.copy()
     grouped_df = timeseries.groupby_region()
 
-    def reduce_(series):
-        recent_series_diff_magnitudes = series.diff().abs().tail(10)
-        series = _calculate_modified_zscore(
-            recent_series_diff_magnitudes, window=5, ignore_zeros=False
-        )
+    def process_series(series):
+        recent_series = series.tail(10)
+        # window of 5 days seems to capture about the right amount of variance.
+        # If window is too large, there may have been a large enough natural shift
+        # in test positivity that recent extreme value looks more noraml.
+        series = _calculate_modified_zscore(recent_series, window=5, ignore_zeros=False)
         series.index = series.index.get_level_values(CommonFields.DATE)
         series = series.dropna().last("1D")
         return series
 
-    zscores = grouped_df[CommonFields.TEST_POSITIVITY_7D].apply(reduce_)
-    to_exclude = zscores > zscore_threshold
+    zscores = grouped_df[CommonFields.TEST_POSITIVITY_7D].apply(process_series)
+    test_positivity_diffs = df_copy[CommonFields.TEST_POSITIVITY_7D].diff().abs()
+
+    to_exclude = (zscores > zscore_threshold) & (test_positivity_diffs > diff_threshold_ratio)
 
     new_tags = taglib.TagCollection()
     # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
