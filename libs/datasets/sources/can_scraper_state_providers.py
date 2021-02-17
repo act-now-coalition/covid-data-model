@@ -3,8 +3,28 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
-def transform(dataset: ccd_helpers.CanScraperLoader):
-    variables = [
+class CANScraperStateProviders(data_source.CanScraperBase):
+    SOURCE_NAME = "CANScrapersStateProviders"
+
+    EXPECTED_FIELDS = [
+        CommonFields.STAFFED_BEDS,
+        CommonFields.CASES,
+        CommonFields.DEATHS,
+        CommonFields.VACCINES_ALLOCATED,
+        CommonFields.VACCINES_ADMINISTERED,
+        CommonFields.VACCINES_DISTRIBUTED,
+        CommonFields.VACCINATIONS_INITIATED,
+        CommonFields.VACCINATIONS_COMPLETED,
+        CommonFields.TOTAL_TESTS_VIRAL,
+        CommonFields.ICU_BEDS,
+        CommonFields.CURRENT_HOSPITALIZED,
+        CommonFields.POSITIVE_TESTS_VIRAL,
+        CommonFields.CURRENT_ICU,
+        CommonFields.VACCINATIONS_INITIATED_PCT,
+        CommonFields.VACCINATIONS_COMPLETED_PCT,
+    ]
+
+    VARIABLES = [
         ccd_helpers.ScraperVariable(variable_name="pcr_tests_negative", provider="state"),
         ccd_helpers.ScraperVariable(variable_name="unspecified_tests_total", provider="state"),
         ccd_helpers.ScraperVariable(variable_name="unspecified_tests_positive", provider="state"),
@@ -134,31 +154,4 @@ def transform(dataset: ccd_helpers.CanScraperLoader):
             provider="state",
             common_field=CommonFields.VACCINES_ADMINISTERED,
         ),
-    ]
-
-    results = dataset.query_multiple_variables(variables, log_provider_coverage_warnings=True)
-    return results
-
-
-class CANScraperStateProviders(data_source.CanScraperBase):
-    SOURCE_NAME = "CANScrapersStateProviders"
-
-    TRANSFORM_METHOD = transform
-
-    EXPECTED_FIELDS = [
-        CommonFields.STAFFED_BEDS,
-        CommonFields.CASES,
-        CommonFields.DEATHS,
-        CommonFields.VACCINES_ALLOCATED,
-        CommonFields.VACCINES_ADMINISTERED,
-        CommonFields.VACCINES_DISTRIBUTED,
-        CommonFields.VACCINATIONS_INITIATED,
-        CommonFields.VACCINATIONS_COMPLETED,
-        CommonFields.TOTAL_TESTS_VIRAL,
-        CommonFields.ICU_BEDS,
-        CommonFields.CURRENT_HOSPITALIZED,
-        CommonFields.POSITIVE_TESTS_VIRAL,
-        CommonFields.CURRENT_ICU,
-        CommonFields.VACCINATIONS_INITIATED_PCT,
-        CommonFields.VACCINATIONS_COMPLETED_PCT,
     ]

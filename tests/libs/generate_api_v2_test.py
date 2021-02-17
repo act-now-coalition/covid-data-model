@@ -7,6 +7,7 @@ from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import Annotations
 from api.can_api_v2_definition import FieldAnnotations
 from api.can_api_v2_definition import FieldSource
+from api.can_api_v2_definition import FieldSourceType
 from api.can_api_v2_definition import RegionSummary
 from libs.metrics import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
@@ -32,6 +33,7 @@ def test_build_summary_for_fips(
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
     nyc_latest = fips_timeseries.latest
     log = structlog.get_logger()
+    usafacts_url = "https://usafacts.org/issues/coronavirus/"
 
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
         fips_timeseries, nyc_rt_dataset, nyc_icu_dataset, log,
@@ -76,12 +78,22 @@ def test_build_summary_for_fips(
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
         ),
         annotations=Annotations(
-            cases=FieldAnnotations(sources=[FieldSource.USA_FACTS], anomalies=[]),
-            deaths=FieldAnnotations(sources=[FieldSource.USA_FACTS], anomalies=[]),
+            cases=FieldAnnotations(
+                sources=[FieldSource(type=FieldSourceType.USA_FACTS, url=usafacts_url)],
+                anomalies=[],
+            ),
+            deaths=FieldAnnotations(
+                sources=[FieldSource(type=FieldSourceType.USA_FACTS, url=usafacts_url)],
+                anomalies=[],
+            ),
             positiveTests=None,
             negativeTests=None,
-            hospitalBeds=FieldAnnotations(sources=[FieldSource.HHSHospital], anomalies=[]),
-            icuBeds=FieldAnnotations(sources=[FieldSource.HHSHospital], anomalies=[]),
+            hospitalBeds=FieldAnnotations(
+                sources=[FieldSource(type=FieldSourceType.HHSHospital)], anomalies=[]
+            ),
+            icuBeds=FieldAnnotations(
+                sources=[FieldSource(type=FieldSourceType.HHSHospital)], anomalies=[]
+            ),
             contactTracers=None,
             newCases=FieldAnnotations(
                 sources=[],
@@ -94,11 +106,6 @@ def test_build_summary_for_fips(
                     {
                         "date": datetime.date(2020, 4, 15),
                         "original_observation": 1737.0,
-                        "type": "zscore_outlier",
-                    },
-                    {
-                        "date": datetime.date(2021, 1, 7),
-                        "original_observation": 1732.0,
                         "type": "zscore_outlier",
                     },
                 ],

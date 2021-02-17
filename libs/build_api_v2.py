@@ -21,13 +21,15 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
+from api.can_api_v2_definition import FieldSourceType
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
 
-METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in FieldSource enum"
-
+METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in FieldSourceType enum"
+METRIC_MULTIPLE_SOURCE_URLS_MESSAGE = "More than one source_url for a field"
+METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE = "More than one provenance for a field"
 
 USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 
@@ -111,6 +113,15 @@ def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotation
         ),
         icuBeds=_build_metric_annotations(one_region, CommonFields.ICU_BEDS, log),
         newCases=_build_metric_annotations(one_region, CommonFields.NEW_CASES, log),
+        vaccinesDistributed=_build_metric_annotations(
+            one_region, CommonFields.VACCINES_DISTRIBUTED, log
+        ),
+        vaccinationsInitiated=_build_metric_annotations(
+            one_region, CommonFields.VACCINATIONS_INITIATED, log
+        ),
+        vaccinationsCompleted=_build_metric_annotations(
+            one_region, CommonFields.VACCINATIONS_COMPLETED, log
+        ),
     )
 
 
@@ -118,15 +129,21 @@ def _build_metric_annotations(
     tag_series: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log
 ) -> Optional[FieldAnnotations]:
 
-    sources_enum = []
+    sources_enum = set()
     for source_str in tag_series.provenance.get(field_name, []):
-        source_enum = FieldSource.get(source_str)
+        source_enum = FieldSourceType.get(source_str)
         if source_enum is None:
-            source_enum = FieldSource.OTHER
+            source_enum = FieldSourceType.OTHER
             log.info(
                 METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
             )
-        sources_enum.append(source_enum)
+        sources_enum.add(source_enum)
+    if not sources_enum:
+        source_enum = None
+    else:
+        if len(sources_enum) > 1:
+            log.warning(METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE, field_name=field_name)
+        source_enum = sources_enum.pop()
 
     anomalies = tag_series.annotations(field_name)
     anomalies = [
@@ -136,10 +153,29 @@ def _build_metric_annotations(
         for tag in anomalies
     ]
 
-    if not sources_enum and not anomalies:
+    source_urls = set(tag_series.source_url.get(field_name, []))
+    if not source_urls:
+        source_url = None
+    else:
+        if len(source_urls) > 1:
+            log.warning(
+                METRIC_MULTIPLE_SOURCE_URLS_MESSAGE,
+                field_name=field_name,
+                urls=list(sorted(source_urls)),
+            )
+        # If multiple URLs actually happens in a meaningful way consider doing something better than
+        # returning one at random.
+        source_url = source_urls.pop()
+
+    if source_url or source_enum:
+        sources = [FieldSource(type=source_enum, url=source_url)]
+    else:
+        sources = []
+
+    if not sources and not anomalies:
         return None
 
-    return FieldAnnotations(sources=sources_enum, anomalies=anomalies)
+    return FieldAnnotations(sources=sources, anomalies=anomalies)
 
 
 def build_region_timeseries(
