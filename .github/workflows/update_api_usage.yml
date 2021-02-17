@@ -85,6 +85,6 @@ jobs:
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
         STATUS: ${{job.status}}
-      uses: Ilshidur/action-slack@fb92a78
+      uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
       with:
         args: 'Update API usage failed'
