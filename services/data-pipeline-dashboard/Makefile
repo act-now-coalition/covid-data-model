@@ -2,8 +2,8 @@
 
 
 sync:
-	sudo cp services/data-pipeline-dashboard/uwsgi.service /etc/systemd/system/data-pipeline-dashboard
-	sudo cp services/data-pipeline-dashboard/nginx.conf /etc/nginx/sites-available/data-pipeline-dashboard
+	sudo cp ./uwsgi.service /etc/systemd/system/data-pipeline-dashboard.service
+	sudo cp ./nginx.conf /etc/nginx/sites-available/data-pipeline-dashboard
 
 restart:
 	sudo systemctl daemon-reload
