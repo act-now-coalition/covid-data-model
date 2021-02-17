@@ -1,6 +1,6 @@
 [
     {
-      "id": "pull-can-scrapers",
+      "id": "pull-covid-data-model",
       "execute-command": "./services/webhook/update_repos.sh",
       "command-working-directory": "/home/tom/covid-data-model",
       "trigger-rule": {
