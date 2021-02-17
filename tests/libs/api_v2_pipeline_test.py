@@ -1,9 +1,11 @@
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
+from more_itertools import one
 
 from api import can_api_v2_definition
 from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
+from api.can_api_v2_definition import FieldSourceType
 from libs import build_api_v2
 from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
@@ -174,21 +176,20 @@ def test_annotation(rt_dataset, icu_dataset):
             "log_level": "info",
         },
     ]
-    assert timeseries_for_region.annotations.icuBeds.sources == [FieldSource.OTHER]
+    assert one(timeseries_for_region.annotations.icuBeds.sources).type == FieldSourceType.OTHER
     assert timeseries_for_region.annotations.icuBeds.anomalies == []
 
-    assert timeseries_for_region.annotations.cases.sources == [FieldSource.NYTimes]
+    assert one(timeseries_for_region.annotations.cases.sources).type == FieldSourceType.NYTimes
     assert timeseries_for_region.annotations.cases.anomalies == []
     # _build_metric_annotations picks one source_url at random.
-    assert timeseries_for_region.annotations.cases.source_url in cases_urls
+    assert one(timeseries_for_region.annotations.cases.sources).url in cases_urls
 
-    assert timeseries_for_region.annotations.deaths.sources == []
-    assert timeseries_for_region.annotations.deaths.source_url == death_url
+    assert one(timeseries_for_region.annotations.deaths.sources) == FieldSource(url=death_url)
     assert timeseries_for_region.annotations.deaths.anomalies == [
         AnomalyAnnotation(date="2020-04-01", original_observation=10.0, type=tag.type)
     ]
 
-    assert timeseries_for_region.annotations.newCases.source_url == new_cases_url
+    assert one(timeseries_for_region.annotations.newCases.sources) == FieldSource(url=new_cases_url)
 
     assert timeseries_for_region.annotations.contactTracers is None
 
