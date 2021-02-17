@@ -10,5 +10,6 @@ restart:
 	sudo systemctl restart data-pipeline-dashboard
 
 setup_nginx:
-	sudo rm /etc/nginx/sites-enabled/default
+	sudo rm -f /etc/nginx/sites-enabled/default
 	sudo ln -s /etc/nginx/sites-available/data-pipeline-dashboard /etc/nginx/sites-enabled
+	sudo systemctl restart nginx
