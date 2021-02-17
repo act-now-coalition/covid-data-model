@@ -7,6 +7,7 @@ from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import Annotations
 from api.can_api_v2_definition import FieldAnnotations
 from api.can_api_v2_definition import FieldSource
+from api.can_api_v2_definition import FieldSourceType
 from api.can_api_v2_definition import RegionSummary
 from libs.metrics import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
@@ -76,12 +77,20 @@ def test_build_summary_for_fips(
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
         ),
         annotations=Annotations(
-            cases=FieldAnnotations(sources=[FieldSource.USA_FACTS], anomalies=[]),
-            deaths=FieldAnnotations(sources=[FieldSource.USA_FACTS], anomalies=[]),
+            cases=FieldAnnotations(
+                sources=[FieldSource(type=FieldSourceType.USA_FACTS)], anomalies=[]
+            ),
+            deaths=FieldAnnotations(
+                sources=[FieldSource(type=FieldSourceType.USA_FACTS)], anomalies=[]
+            ),
             positiveTests=None,
             negativeTests=None,
-            hospitalBeds=FieldAnnotations(sources=[FieldSource.HHSHospital], anomalies=[]),
-            icuBeds=FieldAnnotations(sources=[FieldSource.HHSHospital], anomalies=[]),
+            hospitalBeds=FieldAnnotations(
+                sources=[FieldSource(type=FieldSourceType.HHSHospital)], anomalies=[]
+            ),
+            icuBeds=FieldAnnotations(
+                sources=[FieldSource(type=FieldSourceType.HHSHospital)], anomalies=[]
+            ),
             contactTracers=None,
             newCases=FieldAnnotations(
                 sources=[],

@@ -20,7 +20,7 @@ class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
     OTHER = "other"
 
 
-class FieldSource(GetByValueMixin, enum.Enum):
+class FieldSourceType(GetByValueMixin, enum.Enum):
     """The data source of a field (metric or actual). This enumeration lists the places from which
     CAN fetches data. The source is tracked on a per field and region timeseries basis."""
 
@@ -189,12 +189,21 @@ class AnomalyAnnotation(base_model.APIBaseModel):
     )
 
 
+class FieldSource(base_model.APIBaseModel):
+    type: Optional[FieldSourceType] = pydantic.Field(
+        None, description="The type of data source from a " "CAN list of data source types."
+    )
+    url: Optional[str] = pydantic.Field(
+        None, description="URL of the webpage containing the data " "at the source"
+    )
+    name: Optional[str] = pydantic.Field(None, description="A human readable name of the source")
+
+
 class FieldAnnotations(base_model.APIBaseModel):
     """Annotations associated with one field."""
 
     sources: List[FieldSource]
     anomalies: List[AnomalyAnnotation]
-    source_url: str = pydantic.Field(None)
 
 
 class Annotations(base_model.APIBaseModel):
