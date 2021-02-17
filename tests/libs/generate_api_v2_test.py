@@ -78,10 +78,22 @@ def test_build_summary_for_fips(
         ),
         annotations=Annotations(
             cases=FieldAnnotations(
-                sources=[FieldSource(type=FieldSourceType.USA_FACTS)], anomalies=[]
+                sources=[
+                    FieldSource(
+                        type=FieldSourceType.USA_FACTS,
+                        url="https://usafacts.org/issues/coronavirus/",
+                    )
+                ],
+                anomalies=[],
             ),
             deaths=FieldAnnotations(
-                sources=[FieldSource(type=FieldSourceType.USA_FACTS)], anomalies=[]
+                sources=[
+                    FieldSource(
+                        type=FieldSourceType.USA_FACTS,
+                        url="https://usafacts.org/issues/coronavirus/",
+                    )
+                ],
+                anomalies=[],
             ),
             positiveTests=None,
             negativeTests=None,
