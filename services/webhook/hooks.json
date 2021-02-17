@@ -8,7 +8,7 @@
           {
             "match": {
               "type": "payload-hash-sha1",
-              "secret": "PASSWORD",
+              "secret": "{{ getenv "PULL_COVID_DATA_MODEL_SECRET" | js }}",
               "parameter": {
                 "source": "header",
                 "name": "X-Hub-Signature"

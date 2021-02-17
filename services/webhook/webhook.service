@@ -20,10 +20,10 @@
 Description=Webhook daemon
 
 [Service]
-User=sglyon
-Group=sglyon
+User=tom
+Group=tom
 Type=simple
-ExecStart=/usr/bin/webhook -hooks /home/tom/covid-data-model/services/webhook/hooks.json  -verbose -ip "127.0.0.1" -urlprefix "" -hotreload
+ExecStart=/usr/bin/webhook -template -hooks /home/tom/covid-data-model/services/webhook/hooks.json  -verbose -ip "127.0.0.1" -urlprefix "" -hotreload
 Restart=always
 RestartSec=5s
 
