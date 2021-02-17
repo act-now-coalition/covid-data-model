@@ -191,10 +191,10 @@ class AnomalyAnnotation(base_model.APIBaseModel):
 
 class FieldSource(base_model.APIBaseModel):
     type: Optional[FieldSourceType] = pydantic.Field(
-        None, description="The type of data source from a " "CAN list of data source types."
+        None, description="The type of data source from a CAN list of data source types"
     )
     url: Optional[str] = pydantic.Field(
-        None, description="URL of the webpage containing the data " "at the source"
+        None, description="URL of a webpage containing the data at the source"
     )
     name: Optional[str] = pydantic.Field(None, description="A human readable name of the source")
 
