@@ -33,6 +33,7 @@ def test_build_summary_for_fips(
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
     nyc_latest = fips_timeseries.latest
     log = structlog.get_logger()
+    usafacts_url = "https://usafacts.org/issues/coronavirus/"
 
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
         fips_timeseries, nyc_rt_dataset, nyc_icu_dataset, log,
@@ -78,21 +79,11 @@ def test_build_summary_for_fips(
         ),
         annotations=Annotations(
             cases=FieldAnnotations(
-                sources=[
-                    FieldSource(
-                        type=FieldSourceType.USA_FACTS,
-                        url="https://usafacts.org/issues/coronavirus/",
-                    )
-                ],
+                sources=[FieldSource(type=FieldSourceType.USA_FACTS, url=usafacts_url)],
                 anomalies=[],
             ),
             deaths=FieldAnnotations(
-                sources=[
-                    FieldSource(
-                        type=FieldSourceType.USA_FACTS,
-                        url="https://usafacts.org/issues/coronavirus/",
-                    )
-                ],
+                sources=[FieldSource(type=FieldSourceType.USA_FACTS, url=usafacts_url)],
                 anomalies=[],
             ),
             positiveTests=None,
