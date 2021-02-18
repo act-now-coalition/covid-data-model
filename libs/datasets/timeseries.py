@@ -1007,20 +1007,20 @@ def drop_new_case_outliers(
 
 
 def drop_tail_positivity_outliers(
-    timeseries: MultiRegionDataset, zscore_threshold: float = 10.0, diff_threshold_pct: float = 1.5,
+    dataset: MultiRegionDataset, zscore_threshold: float = 10.0, diff_threshold_pct: float = 1.5,
 ) -> MultiRegionDataset:
     """Identifies and drops outliers from the new case series.
 
     Args:
-        timeseries: Timeseries.
+        dataset: Timeseries.
         zscore_threshold: Z-score threshold.  All new cases with a zscore greater than the
             threshold will be removed.
         diff_threshold_pct: Minimum percent difference required for value to be outlier.
 
     Returns: timeseries with outliers removed from test_positivity_7d
     """
-    df_copy = timeseries.timeseries.copy()
-    grouped_df = timeseries.groupby_region()
+    df_copy = dataset.timeseries.copy()
+    grouped_df = dataset.groupby_region()
 
     def process_series(series):
         recent_series = series.tail(10)
@@ -1052,11 +1052,7 @@ def drop_tail_positivity_outliers(
 
     df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
 
-    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy).append_tag_df(
-        new_tags.as_dataframe()
-    )
-
-    return new_timeseries
+    return dataclasses.replace(dataset, timeseries=df_copy).append_tag_df(new_tags.as_dataframe())
 
 
 def drop_regions_without_population(
