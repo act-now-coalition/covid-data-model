@@ -190,7 +190,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.TEST_POSITIVITY_14D: [CMSTestingDataset],
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
     CommonFields.VACCINES_DISTRIBUTED: [CANScraperStateProviders, CDCVaccinesDataset],
-    CommonFields.VACCINES_ADMINISTERED: [CANScraperStateProviders],
+    CommonFields.VACCINES_ADMINISTERED: [CANScraperStateProviders, CDCVaccinesDataset],
     CommonFields.VACCINATIONS_INITIATED: [CANScraperStateProviders, CDCVaccinesDataset],
     CommonFields.VACCINATIONS_COMPLETED: [CANScraperStateProviders, CDCVaccinesDataset],
     CommonFields.VACCINATIONS_INITIATED_PCT: [CANScraperStateProviders],
