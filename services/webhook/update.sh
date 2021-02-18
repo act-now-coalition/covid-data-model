@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 git pull origin main
 make -C services/data-pipeline-dashboard restart

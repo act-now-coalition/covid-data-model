@@ -1,7 +1,7 @@
 [
     {
       "id": "pull-covid-data-model",
-      "execute-command": "./services/webhook/update_repos.sh",
+      "execute-command": "/home/tom/covid-data-model/services/webhook/update.sh",
       "command-working-directory": "/home/tom/covid-data-model",
       "trigger-rule": {
         "and": [
