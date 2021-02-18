@@ -3,15 +3,17 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
 import more_itertools
-
-import plotly.express as px
 from covidactnow.datapublic.common_fields import CommonFields
-from dash.dependencies import Input, Output
+from dash.dependencies import Input
+from dash.dependencies import Output
+from plotly import express as px
 
 from libs import pipeline
 from libs.datasets import combined_datasets
-from libs.datasets.tail_filter import TagType
+from libs.datasets import timeseries
 from libs.datasets.taglib import TagField
+from libs.datasets.tail_filter import TagType
+
 
 EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
@@ -20,14 +22,12 @@ EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 TAG_TABLE_COLUMNS = [TagField.VARIABLE, TagField.TYPE, TagField.CONTENT]
 
 
-def init_dashboard():
-    # Consider something like https://hackersandslackers.com/plotly-dash-with-flask/ if we want
-    # to incorporate this into a bigger Flask app.
-    app = dash.Dash(__name__, external_stylesheets=EXTERNAL_STYLESHEETS)
+def init(server):
+    dash_app = dash.Dash(__name__, server=server, external_stylesheets=EXTERNAL_STYLESHEETS)
 
     # Enable offline use.
-    app.css.config.serve_locally = True
-    app.scripts.config.serve_locally = True
+    dash_app.css.config.serve_locally = True
+    dash_app.scripts.config.serve_locally = True
 
     ds = combined_datasets.load_us_timeseries_dataset().get_subset(exclude_county_999=True)
 
@@ -43,7 +43,7 @@ def init_dashboard():
     df_regions = df_regions.reset_index()  # Move location_id from the index to a regular column
     df_regions["id"] = df_regions[CommonFields.LOCATION_ID]
 
-    app.layout = html.Div(
+    dash_app.layout = html.Div(
         children=[
             html.H1(children="CAN Data Pipeline Dashboard"),
             dash_table.DataTable(
@@ -79,10 +79,16 @@ def init_dashboard():
         ]
     )
 
+    _init_callbacks(dash_app, ds)
+
+    return dash_app.server
+
+
+def _init_callbacks(dash_app, ds: timeseries.MultiRegionDataset):
     # Input not in a list raises dash.exceptions.IncorrectTypeException: The input argument
     # `location-dropdown.value` must be a list or tuple of `dash.dependencies.Input`s.
     # but doesn't in the docs at https://dash.plotly.com/basic-callbacks. Odd.
-    @app.callback(
+    @dash_app.callback(
         [Output("region-graph", "figure"), Output("region-tag-table", "data")],
         [Input("datatable-regions", "selected_row_ids")],
         prevent_initial_call=True,
@@ -102,8 +108,6 @@ def init_dashboard():
     return app
 
 
-app = init_dashboard()
-server = app.server
-
 if __name__ == "__main__":
+    app = init_dashboard()
     app.run_server(debug=True)
