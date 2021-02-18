@@ -1614,6 +1614,7 @@ def test_write_read_dataset_pointer_with_source_url(tmpdir):
     assert set(source_url_read[CommonFields.CASES]) == {url_str2, url_str3}
 
 
+# TODO(chris): Make test stronger, doesn't cover all edge cases
 @pytest.mark.parametrize("last_value,is_outlier", [(0.02, False), (0.045, True)])
 def test_remove_test_positivity_outliers(last_value, is_outlier):
     values = [0.015] * 7 + [last_value]
