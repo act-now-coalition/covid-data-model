@@ -7,6 +7,7 @@ class CDCVaccinesDataset(data_source.CanScraperBase):
     SOURCE_NAME = "CDCVaccine"
 
     EXPECTED_FIELDS = [
+        CommonFields.VACCINES_ADMINISTERED,
         CommonFields.VACCINES_ALLOCATED,
         CommonFields.VACCINES_DISTRIBUTED,
         CommonFields.VACCINATIONS_INITIATED,
@@ -27,6 +28,13 @@ class CDCVaccinesDataset(data_source.CanScraperBase):
             unit="doses",
             provider="cdc",
             common_field=CommonFields.VACCINES_DISTRIBUTED,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_doses_administered",
+            measurement="cumulative",
+            unit="doses",
+            provider="cdc",
+            common_field=CommonFields.VACCINES_ADMINISTERED,
         ),
         ccd_helpers.ScraperVariable(
             variable_name="total_vaccine_initiated",
