@@ -1617,8 +1617,10 @@ def test_write_read_dataset_pointer_with_source_url(tmpdir):
 @pytest.mark.parametrize("last_value,is_outlier", [(0.02, False), (0.045, True)])
 def test_remove_test_positivity_outliers(last_value, is_outlier):
     values = [0.015] * 7 + [last_value]
-    dataset = test_helpers.build_default_region_dataset({CommonFields.TEST_POSITIVITY_7D: values})
-    dataset = timeseries.drop_tail_positivity_outliers(dataset)
+    dataset_in = test_helpers.build_default_region_dataset(
+        {CommonFields.TEST_POSITIVITY_7D: values}
+    )
+    dataset_out = timeseries.drop_tail_positivity_outliers(dataset_in)
 
     # Expected result is the same series with the last value removed
     if is_outlier:
@@ -1629,11 +1631,7 @@ def test_remove_test_positivity_outliers(last_value, is_outlier):
         expected = test_helpers.build_default_region_dataset(
             {CommonFields.TEST_POSITIVITY_7D: expected_ts}
         )
-        test_helpers.assert_dataset_like(dataset, expected, drop_na_dates=True)
+        test_helpers.assert_dataset_like(dataset_out, expected, drop_na_dates=True)
 
     else:
-        expected_ts = TimeseriesLiteral(values)
-        expected = test_helpers.build_default_region_dataset(
-            {CommonFields.TEST_POSITIVITY_7D: expected_ts}
-        )
-        test_helpers.assert_dataset_like(dataset, expected, drop_na_dates=True)
+        test_helpers.assert_dataset_like(dataset_in, dataset_out, drop_na_dates=True)
