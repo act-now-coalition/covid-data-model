@@ -104,10 +104,3 @@ def _init_callbacks(dash_app, ds: timeseries.MultiRegionDataset):
         tag_df = one_region.tag.reset_index()
         assert list(tag_df.columns) == TAG_TABLE_COLUMNS
         return fig, tag_df.to_dict("records")
-
-    return app
-
-
-if __name__ == "__main__":
-    app = init_dashboard()
-    app.run_server(debug=True)
