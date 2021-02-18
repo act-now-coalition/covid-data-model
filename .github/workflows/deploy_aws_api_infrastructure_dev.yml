@@ -1,0 +1,15 @@
+name: Deploy AWS API Infrastructure - Dev
+
+on:
+  push:
+
+
+defaults:
+  run:
+    working-directory: api/awsauth/
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
