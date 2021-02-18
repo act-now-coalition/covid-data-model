@@ -30,6 +30,9 @@ Finally, setup the virtual env
 - `cd covid-data-model`
 - `make setup-dev`
 
+Install the Cloud Monitoring agent so memory usage appears at [console.cloud.google.com](https://console.cloud.google.com/compute/instancesMonitoringDetail/zones/us-west1-b/instances/data-pipeline-dashboard-1?project=covidactnow-dev&supportedpurview=project&tab=monitoring) by following https://cloud.google.com/monitoring/agent/installation#agent-install-debian-ubuntu.
+
+
 Something is broken with git-lfs. When using `git remote set-url origin https://github.com/covid-projections/covid-data-model` LFS can fetch files but to push back to the repo I used `git remote set-url origin git@github.com:covid-projections/covid-data-model` after doing something similar to https://github.com/covid-projections/can-scrapers/blob/main/services/prefect/README.md
 
 
