@@ -934,7 +934,9 @@ def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     return dataset_out
 
 
-def _calculate_modified_zscore(series: pd.Series, window: int = 10, min_periods=3) -> pd.Series:
+def _calculate_modified_zscore(
+    series: pd.Series, window: int = 10, min_periods=3, ignore_zeros=True
+) -> pd.Series:
     """Calculates zscore for each point in series comparing current point to past `window` days.
 
     Each datapoint is compared to the distribution of the past `window` days as long as there are
@@ -948,11 +950,14 @@ def _calculate_modified_zscore(series: pd.Series, window: int = 10, min_periods=
         series: Series to compute statistics for.
         window: Size of window to calculate mean and std.
         min_periods: Number of periods necessary to compute a score - will return nan otherwise.
+        ignore_zeros: If true, zeros are not included in zscore calculation.
 
     Returns: Array of scores for each datapoint in series.
     """
     series = series.copy()
-    series[series == 0] = None
+    if ignore_zeros:
+        series[series == 0] = None
+
     rolling_series = series.rolling(window=window, min_periods=min_periods)
     # Shifting one to exclude current datapoint
     mean = rolling_series.mean().shift(1)
@@ -999,6 +1004,59 @@ def drop_new_case_outliers(
     )
 
     return new_timeseries
+
+
+def drop_tail_positivity_outliers(
+    dataset: MultiRegionDataset,
+    zscore_threshold: float = 10.0,
+    diff_threshold_ratio: float = 0.015,
+) -> MultiRegionDataset:
+    """Drops outliers from the test_positivity_7d series, adding tags for removed values.
+
+    Args:
+        dataset:
+        zscore_threshold: Z-score threshold.  All test_positivity_7d values with a zscore greater
+            than the threshold will be removed.
+        diff_threshold_ratio: Minimum difference required for value to be outlier.
+
+    Returns: Dataset with outliers removed from test_positivity_7d.
+    """
+    # TODO(https://trello.com/c/7J2SmDnr): Be more consistent about accessing this data
+    # through wide dates rather than duplicating timeseries.
+    df_copy = dataset.timeseries.copy()
+    grouped_df = dataset.groupby_region()
+
+    def process_series(series):
+        recent_series = series.tail(10)
+        # window of 5 days seems to capture about the right amount of variance.
+        # If window is too large, there may have been a large enough natural shift
+        # in test positivity that recent extreme value looks more noraml.
+        series = _calculate_modified_zscore(recent_series, window=5, ignore_zeros=False)
+        series.index = series.index.get_level_values(CommonFields.DATE)
+        series = series.dropna().last("1D")
+        return series
+
+    zscores = grouped_df[CommonFields.TEST_POSITIVITY_7D].apply(process_series)
+    test_positivity_diffs = df_copy[CommonFields.TEST_POSITIVITY_7D].diff().abs()
+
+    to_exclude = (zscores > zscore_threshold) & (test_positivity_diffs > diff_threshold_ratio)
+
+    new_tags = taglib.TagCollection()
+    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
+    # rows where to_exclude is True.
+    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    for idx, _ in to_exclude[to_exclude].iteritems():
+        new_tags.add(
+            taglib.ZScoreOutlier(
+                date=idx[1], original_observation=df_copy.at[idx, CommonFields.TEST_POSITIVITY_7D],
+            ),
+            location_id=idx[0],
+            variable=CommonFields.TEST_POSITIVITY_7D,
+        )
+
+    df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
+
+    return dataclasses.replace(dataset, timeseries=df_copy).append_tag_df(new_tags.as_dataframe())
 
 
 def drop_regions_without_population(

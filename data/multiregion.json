@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "2165fd0d2b3a7db70dae3115309643bb8a098361",
-    "branch": "main",
+    "sha": "472dc02813acd4d4f15372865777abe45028b5ae",
+    "branch": "add-tail-testing-truncation",
     "is_dirty": false
   },
-  "updated_at": "2021-02-18T11:58:52.939376"
+  "updated_at": "2021-02-18T17:03:06.742213"
 }
