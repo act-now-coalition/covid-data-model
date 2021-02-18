@@ -1011,15 +1011,15 @@ def drop_tail_positivity_outliers(
     zscore_threshold: float = 10.0,
     diff_threshold_ratio: float = 0.015,
 ) -> MultiRegionDataset:
-    """Identifies and drops outliers from the new case series.
+    """Drops outliers from the test_positivity_7d series, adding tags for removed values.
 
     Args:
-        dataset: Timeseries.
-        zscore_threshold: Z-score threshold.  All new cases with a zscore greater than the
-            threshold will be removed.
+        dataset:
+        zscore_threshold: Z-score threshold.  All test_positivity_7d values with a zscore greater
+            than the threshold will be removed.
         diff_threshold_ratio: Minimum difference required for value to be outlier.
 
-    Returns: timeseries with outliers removed from test_positivity_7d
+    Returns: Dataset with outliers removed from test_positivity_7d.
     """
     df_copy = dataset.timeseries.copy()
     grouped_df = dataset.groupby_region()
