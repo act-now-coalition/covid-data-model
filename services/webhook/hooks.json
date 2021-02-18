@@ -1,0 +1,21 @@
+[
+    {
+      "id": "pull-covid-data-model",
+      "execute-command": "./services/webhook/update_repos.sh",
+      "command-working-directory": "/home/tom/covid-data-model",
+      "trigger-rule": {
+        "and": [
+          {
+            "match": {
+              "type": "payload-hash-sha1",
+              "secret": "{{ getenv "PULL_COVID_DATA_MODEL_SECRET" | js }}",
+              "parameter": {
+                "source": "header",
+                "name": "X-Hub-Signature"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
