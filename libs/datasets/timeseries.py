@@ -1007,7 +1007,9 @@ def drop_new_case_outliers(
 
 
 def drop_tail_positivity_outliers(
-    dataset: MultiRegionDataset, zscore_threshold: float = 10.0, diff_threshold_pct: float = 1.5,
+    dataset: MultiRegionDataset,
+    zscore_threshold: float = 10.0,
+    diff_threshold_ratio: float = 0.015,
 ) -> MultiRegionDataset:
     """Identifies and drops outliers from the new case series.
 
@@ -1015,7 +1017,7 @@ def drop_tail_positivity_outliers(
         dataset: Timeseries.
         zscore_threshold: Z-score threshold.  All new cases with a zscore greater than the
             threshold will be removed.
-        diff_threshold_pct: Minimum percent difference required for value to be outlier.
+        diff_threshold_ratio: Minimum difference required for value to be outlier.
 
     Returns: timeseries with outliers removed from test_positivity_7d
     """
@@ -1035,7 +1037,7 @@ def drop_tail_positivity_outliers(
     zscores = grouped_df[CommonFields.TEST_POSITIVITY_7D].apply(process_series)
     test_positivity_diffs = df_copy[CommonFields.TEST_POSITIVITY_7D].diff().abs()
 
-    to_exclude = (zscores > zscore_threshold) & (test_positivity_diffs > diff_threshold_pct)
+    to_exclude = (zscores > zscore_threshold) & (test_positivity_diffs > diff_threshold_ratio)
 
     new_tags = taglib.TagCollection()
     # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
