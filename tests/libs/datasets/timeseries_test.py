@@ -1612,3 +1612,28 @@ def test_write_read_dataset_pointer_with_source_url(tmpdir):
     assert source_url_read[CommonFields.ICU_BEDS] == [url_str1]
     # Copy to a set because the order of the URLs in the source_url may change.
     assert set(source_url_read[CommonFields.CASES]) == {url_str2, url_str3}
+
+
+@pytest.mark.parametrize("last_value,is_outlier", [(2.0, False), (4.5, True)])
+def test_remove_test_positivity_outliers(last_value, is_outlier):
+    values = [1.5] * 7 + [last_value]
+    dataset = test_helpers.build_default_region_dataset({CommonFields.TEST_POSITIVITY_7D: values})
+    dataset = timeseries.drop_tail_positivity_outliers(dataset)
+
+    # Expected result is the same series with the last value removed
+    if is_outlier:
+        expected_tag = test_helpers.make_tag(
+            TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=last_value,
+        )
+        expected_ts = TimeseriesLiteral([1.5] * 7, annotation=[expected_tag])
+        expected = test_helpers.build_default_region_dataset(
+            {CommonFields.TEST_POSITIVITY_7D: expected_ts}
+        )
+        test_helpers.assert_dataset_like(dataset, expected, drop_na_dates=True)
+
+    else:
+        expected_ts = TimeseriesLiteral(values)
+        expected = test_helpers.build_default_region_dataset(
+            {CommonFields.TEST_POSITIVITY_7D: expected_ts}
+        )
+        test_helpers.assert_dataset_like(dataset, expected, drop_na_dates=True)
