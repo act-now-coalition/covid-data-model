@@ -1021,6 +1021,8 @@ def drop_tail_positivity_outliers(
 
     Returns: Dataset with outliers removed from test_positivity_7d.
     """
+    # TODO(https://trello.com/c/7J2SmDnr): Be more consistent about accessing this data
+    # through wide dates rather than duplicating timeseries.
     df_copy = dataset.timeseries.copy()
     grouped_df = dataset.groupby_region()
 
