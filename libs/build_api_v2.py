@@ -148,7 +148,7 @@ def _build_metric_annotations(
     anomalies = tag_series.annotations(field_name)
     anomalies = [
         AnomalyAnnotation(
-            date=tag.date, original_observation=tag.original_observation, type=tag.type
+            date=tag.date, original_observation=tag.original_observation, type=tag.tag_type
         )
         for tag in anomalies
     ]

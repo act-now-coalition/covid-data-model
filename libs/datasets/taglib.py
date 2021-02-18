@@ -63,7 +63,7 @@ class TagInTimeseries(ABC):
     TAG_TYPE: ClassVar[TagType]
 
     @property
-    def type(self) -> TagType:
+    def tag_type(self) -> TagType:
         return self.TAG_TYPE
 
     @property
@@ -87,7 +87,7 @@ class TagInTimeseries(ABC):
         return {
             TagField.LOCATION_ID: location_id,
             TagField.VARIABLE: variable,
-            TagField.TYPE: self.type,
+            TagField.TYPE: self.tag_type,
             TagField.CONTENT: self.content,
         }
 
