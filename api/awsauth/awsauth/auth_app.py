@@ -110,7 +110,9 @@ def _get_or_create_api_key(email: str, is_crs_user: bool):
     print("ayyy")
     welcome_email = _build_welcome_email(email, api_key)
     if EmailRepo.send_email(welcome_email):
+        print("eeeek")
         APIKeyRepo.record_email_sent(email)
+        print("aayyyk")
     else:
         _logger.error(f"Failed to send email to {email}")
 
