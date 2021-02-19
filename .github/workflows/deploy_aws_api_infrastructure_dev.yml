@@ -54,6 +54,7 @@ jobs:
 
     environment:
       name: dev
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@master
