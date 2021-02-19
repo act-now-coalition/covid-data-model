@@ -22,7 +22,7 @@ jobs:
       run: npm install -g serverless
     - name: Install NPM dependencies
       run: |
-        ls
+        cat end_to_end_test.py
         npm install
     - name: Serverless AWS authentication
       run: sls config credentials --provider aws --key ${{ secrets.AWS_KEY }} --secret ${{ secrets.AWS_SECRET }}
