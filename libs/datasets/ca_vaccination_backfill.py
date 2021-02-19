@@ -28,13 +28,6 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
     # Drop location index because not used to apply to county level data
     ca_state_wide = ca_state_wide.reset_index(CommonFields.LOCATION_ID, drop=True)
 
-    fields = [
-        CommonFields.VACCINATIONS_INITIATED,
-        CommonFields.VACCINATIONS_COMPLETED,
-        CommonFields.VACCINES_ADMINISTERED,
-    ]
-    ca_state_wide = ca_state_wide.loc[fields, :]
-
     ca_administered = ca_state_wide.loc[CommonFields.VACCINES_ADMINISTERED, :]
 
     initiated_ratio_of_administered = (
