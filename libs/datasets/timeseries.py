@@ -109,10 +109,17 @@ class OneRegionTimeseriesDataset:
         return source_url_series.groupby(level=0).agg(list).to_dict()
 
     def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
-        return_value = []
-        for _, row in self.tag.loc[[metric], ANNOTATION_TAG_TYPES].reset_index().iterrows():
-            return_value.append(taglib.AnnotationWithDate.make(row.tag_type, content=row.content))
-        return return_value
+        return self.tag_objects_df.loc[[metric], ANNOTATION_TAG_TYPES].to_list()
+
+    @cached_property
+    def tag_objects_df(self) -> pd.Series:
+        """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
+        assert self.tag.index.names[1] == TagField.TYPE
+        # Apply a function to each element in the Series self.tag with the function having access to
+        # the index of each element. From https://stackoverflow.com/a/47645833/341400.
+        return self.tag.to_frame().apply(
+            lambda row: taglib.TagInTimeseries.make(row.name[1], content=row.content), axis=1
+        )
 
     def __post_init__(self):
         assert CommonFields.LOCATION_ID in self.data.columns
@@ -1632,9 +1639,7 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 
 def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     """Convert provenance and source_url tags into source tags."""
-    if TagType.SOURCE in ds_in.tag.index.get_level_values(TagField.TYPE):
-        raise ValueError("source already in dataset")
-    # Find rows of ds_in.tag used to build `source` tags and rows to copy unmodified.
+    # Separate ds_in.tag into tags to transform into `source` tags and tags to copy unmodified.
     ds_in_tag_extract_mask = ds_in.tag.index.get_level_values(TagField.TYPE).isin(
         [TagType.PROVENANCE, TagType.SOURCE_URL]
     )
@@ -1644,7 +1649,9 @@ def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     extracted_tags_df = (
         ds_in.tag.loc[ds_in_tag_extract_mask]
         .unstack(TagField.TYPE, fill_value=pd.NA)
-        .replace({pd.NA: None})
+        .replace(
+            {pd.NA: None}
+        )  # From https://github.com/pandas-dev/pandas/issues/17494#issuecomment-328966324
     )
     # Make a DataFrame with columns for each element in the JSON object.
     type_url_df = pd.DataFrame(
