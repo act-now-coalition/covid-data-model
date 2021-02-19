@@ -47,6 +47,12 @@ jobs:
         find .requirements | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
         rm .requirements/**/*.so
         sls deploy -s dev
+    - name: Wait for deploy to finish
+      run: aws cloudfront wait distribution-deployed --id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
 
   test-dev-deploy:
     needs: [deploy-dev]
@@ -64,12 +70,6 @@ jobs:
 
     - name: Install test requirements
       run: pip install -r requirements_test.txt
-    - name: Wait for deploy to finish
-      run: aws cloudfront wait distribution-deployed --id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: us-east-1
     - name: Run tests
       run: pytest end_to_end_test.py
 
@@ -111,3 +111,9 @@ jobs:
         find .requirements | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
         rm .requirements/**/*.so
         sls deploy -s prod
+    - name: Wait for deploy to finish
+      run: aws cloudfront wait distribution-deployed --id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: us-east-1
