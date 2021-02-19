@@ -5,7 +5,6 @@ from libs.datasets import AggregationLevel
 from libs.pipeline import Region
 
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
 
