@@ -3,8 +3,7 @@ name: Deploy AWS API Infrastructure - Dev
 # NOTE: Not yet functional - hopefully will be shortly :)
 
 on:
-  push:
-
+  workflow_dispatch:
 
 defaults:
   run:
