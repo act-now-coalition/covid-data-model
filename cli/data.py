@@ -95,6 +95,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = timeseries.combined_datasets(
         timeseries_field_datasets, static_field_datasets
     )
+    multiregion_dataset = timeseries.make_source_tags(multiregion_dataset)
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
     _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
     multiregion_dataset = zeros_filter.drop_all_zero_timeseries(

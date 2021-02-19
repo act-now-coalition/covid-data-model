@@ -115,7 +115,7 @@ class UrlStr(str):
     # If we need to do more with URLs consider replacing UrlStr with https://pypi.org/project/yarl/
     @staticmethod
     def make_optional(str_in: Optional[str]) -> Optional["UrlStr"]:
-        return None if str_in is None else UrlStr(str_in)
+        return UrlStr(str_in) if str_in else None
 
 
 @dataclass(frozen=True)
@@ -152,7 +152,12 @@ class Source(TagInTimeseries):
 
     @property
     def content(self) -> str:
-        return json.dumps(dataclasses.asdict(self))
+        d = {"type": self.type}
+        if self.url:
+            d["url"] = self.url
+        if self.name:
+            d["name"] = self.name
+        return json.dumps(d, separators=(",", ":"))
 
 
 @dataclass(frozen=True)
