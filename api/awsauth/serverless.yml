@@ -29,6 +29,8 @@ custom:
     # which should be none of them.
     include:
       - ''
+  pythonRequirements:
+    slim: true
 
 plugins:
   - serverless-python-requirements
