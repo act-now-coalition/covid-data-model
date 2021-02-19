@@ -102,22 +102,16 @@ def _get_or_create_api_key(email: str, is_crs_user: bool):
         return api_key
 
     _logger.info(f"No API Key found for email {email}, creating new key")
-    print("whattt")
     api_key = _create_api_key(email)
-    print("YO")
     APIKeyRepo.add_api_key(email, api_key, is_crs_user)
 
-    print("ayyy")
     welcome_email = _build_welcome_email(email, api_key)
     if EmailRepo.send_email(welcome_email):
-        print("eeeek")
         APIKeyRepo.record_email_sent(email)
-        print("aayyyk")
     else:
         _logger.error(f"Failed to send email to {email}")
 
     # attempt to add hubspot contact, but don't block reg on failure.
-    print("what what")
     try:
         registry.hubspot_client.create_contact(email)
     except hubspot_client.HubSpotAPICallFailed:
