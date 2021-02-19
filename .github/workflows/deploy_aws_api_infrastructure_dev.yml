@@ -8,7 +8,6 @@ on:
 
 defaults:
   run:
-    working-directory: api/awsauth/
 
 jobs:
   deploy-dev:
@@ -17,20 +16,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
+    - name: Checkout covid-data-public
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-public
+        path: ../covid-data-public
+
     - uses: actions/setup-node@v1
       with:
         node-version: '12.x'
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Cache Pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
     - name: Install Serverless Framework
       run: npm install -g serverless
+      working-directory: api/awsauth/
     - name: Install NPM dependencies
+      working-directory: api/awsauth/
       run: |
         npm install
     - name: Create env file
+      working-directory: api/awsauth/
       run: | # cp sample.env.yml env.yml
         cat > .env << EOF
         ${{ secrets.DOTENV }}
         EOF
     - name: Serverless AWS authentication
+      working-directory: api/awsauth/
       run: sls config credentials --provider aws --key ${{ secrets.AWS_ACCESS_KEY_ID }} --secret ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     - name: Deploy Lambda functions
+      working-directory: api/awsauth/
       run: sls deploy -s dev
