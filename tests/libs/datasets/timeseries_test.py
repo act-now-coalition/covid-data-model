@@ -1655,10 +1655,10 @@ def test_make_source_tags():
     ts_prov_only_expected = TimeseriesLiteral(
         [0, 2, 4],
         annotation=[test_helpers.make_tag(date="2020-04-01"),],
-        source=[taglib.Source("prov_only")],
+        source=taglib.Source("prov_only"),
     )
     ts_with_url_expected = TimeseriesLiteral(
-        [3, 5, 7], source=[taglib.Source("prov_with_url", url=url_str)]
+        [3, 5, 7], source=taglib.Source("prov_with_url", url=url_str)
     )
     dataset_expected = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts_prov_only_expected, CommonFields.CASES: ts_with_url_expected}

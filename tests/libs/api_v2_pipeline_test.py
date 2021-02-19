@@ -213,16 +213,16 @@ def test_source(rt_dataset, icu_dataset):
                 ],
             ),
             # NEW_CASES has only source_url set, to make sure that an annotation is still output.
-            CommonFields.NEW_CASES: TimeseriesLiteral(
-                [100, 100, 100], source=[taglib.Source("NYTimes", new_cases_url)]
+            CommonFields.NEW_CASES: TimesTimeseriesLiteraleriesLiteral(
+                [100, 100, 100], source=taglib.Source("NYTimes", new_cases_url)
             ),
             CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
             CommonFields.ICU_BEDS: TimeseriesLiteral(
-                [20, 20, 20], source=[taglib.Source("NotFound")]
+                [20, 20, 20], source=taglib.Source("NotFound")
             ),
             CommonFields.CURRENT_ICU: [5, 5, 5],
             CommonFields.DEATHS: TimeseriesLiteral(
-                [2, 3, 2], annotation=[tag], source=[taglib.Source("NYTimes", death_url)]
+                [2, 3, 2], annotation=[tag], source=taglib.Source("NYTimes", death_url)
             ),
         },
         region=region,
