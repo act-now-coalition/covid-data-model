@@ -102,6 +102,7 @@ def _get_or_create_api_key(email: str, is_crs_user: bool):
         return api_key
 
     _logger.info(f"No API Key found for email {email}, creating new key")
+
     api_key = _create_api_key(email)
     APIKeyRepo.add_api_key(email, api_key, is_crs_user)
 
