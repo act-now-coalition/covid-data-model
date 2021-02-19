@@ -12,6 +12,8 @@ defaults:
 
 jobs:
   deploy-dev:
+    environment:
+      name: dev
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
@@ -22,12 +24,11 @@ jobs:
       run: npm install -g serverless
     - name: Install NPM dependencies
       run: |
-        cat end_to_end_test.py
         npm install
     - name: Serverless AWS authentication
       run: sls config credentials --provider aws --key ${{ secrets.AWS_KEY }} --secret ${{ secrets.AWS_SECRET }}
     - name: Create env file
       run: | # cp sample.env.yml env.yml
         cat > env.yml << EOF
-        ${{ secrets.ENV }}
+        ${{ secrets.DOTENV }}
         EOF
