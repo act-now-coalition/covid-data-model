@@ -43,7 +43,10 @@ jobs:
       run: sls config credentials --provider aws --key ${{ secrets.AWS_ACCESS_KEY_ID }} --secret ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     - name: Deploy Lambda functions
       working-directory: api/awsauth/
-      run: SLS_DEBUG=1 sls deploy -s dev
+      run: |
+        sls requirements install
+        rm .requirements/**/*.so
+        SLS_DEBUG=1 sls deploy -s dev
     - name: Check file size
       if: always()
       run: du -h -d2 .requirements/

@@ -33,7 +33,6 @@ custom:
   # try to fit in under that limit
   pythonRequirements:
     slim: true
-    useDownloadCache: false
 
 plugins:
   - serverless-python-requirements
