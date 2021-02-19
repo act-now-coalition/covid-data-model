@@ -113,7 +113,9 @@ class UrlStr(str):
     """Wraps str to provide some type safety."""
 
     # If we need to do more with URLs consider replacing UrlStr with https://pypi.org/project/yarl/
-    pass
+    @staticmethod
+    def make_optional(str_in: Optional[str]) -> Optional["UrlStr"]:
+        return None if str_in is None else UrlStr(str_in)
 
 
 @dataclass(frozen=True)
@@ -134,7 +136,7 @@ class SourceUrl(TagInTimeseries):
 @dataclass(frozen=True)
 class Source(TagInTimeseries):
     type: str
-    url: Optional[str] = None
+    url: Optional[UrlStr] = None
     name: Optional[str] = None
 
     TAG_TYPE = TagType.SOURCE
@@ -144,18 +146,13 @@ class Source(TagInTimeseries):
         content_parsed = json.loads(content)
         return cls(
             type=content_parsed["type"],
-            url=content_parsed.get("url", None),
+            url=UrlStr.make_optional(content_parsed.get("url", None)),
             name=content_parsed.get("name", None),
         )
 
     @property
     def content(self) -> str:
-        d = {"type": self.type}
-        if self.url:
-            d["url"] = self.url
-        if self.name:
-            d["name"] = self.name
-        return json.dumps(d)
+        return json.dumps(dataclasses.asdict(self))
 
 
 @dataclass(frozen=True)

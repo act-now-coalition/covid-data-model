@@ -1566,3 +1566,31 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 
     dataset_without_pct = ds_in.drop_columns_if_present(list(field_map.values()))
     return dataset_without_pct.join_columns(ds_all_pct)
+
+
+def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+    """Convert provenance and source_url tags into source tags."""
+    if TagType.SOURCE in ds_in.tag.index.get_level_values(TagField.TYPE):
+        raise ValueError("source already in dataset")
+    ds_in_tag_extract_rows = ds_in.tag.index.get_level_values(TagField.TYPE).isin(
+        [TagType.PROVENANCE, TagType.SOURCE_URL]
+    )
+    other_tags_df = ds_in.tag.loc[~ds_in_tag_extract_rows].reset_index()
+    prov_source_df = ds_in.tag.loc[ds_in_tag_extract_rows].unstack(TagField.TYPE)
+    # Make a DataFrame with columns for each element in the JSON object.
+    type_url_df = pd.DataFrame(
+        {
+            "type": prov_source_df.loc[:, TagType.PROVENANCE],
+            "url": prov_source_df.loc[:, TagType.SOURCE_URL],
+        }
+    ).fillna(None)
+    json_list = type_url_df.to_json(orient="records", lines=True).splitlines()
+    source_df = pd.Series(
+        json_list, index=prov_source_df.index, name=TagField.CONTENT
+    ).reset_index()
+    source_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE
+    return (
+        dataclasses.replace(ds_in, tag=_EMPTY_TAG_SERIES)
+        .append_tag_df(source_df)
+        .append_tag_df(other_tags_df)
+    )

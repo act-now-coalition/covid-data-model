@@ -17,6 +17,7 @@ from libs import github_utils
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 from libs.datasets import dataset_pointer
+from libs.datasets import taglib
 
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagType
@@ -1612,3 +1613,30 @@ def test_write_read_dataset_pointer_with_source_url(tmpdir):
     assert source_url_read[CommonFields.ICU_BEDS] == [url_str1]
     # Copy to a set because the order of the URLs in the source_url may change.
     assert set(source_url_read[CommonFields.CASES]) == {url_str2, url_str3}
+
+
+def test_make_source_tags():
+    url_str = UrlStr("http://foo.com/1")
+
+    ts_prov_only = TimeseriesLiteral(
+        [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),], provenance="prov_only",
+    )
+    ts_with_url = TimeseriesLiteral([3, 5, 7], provenance="prov_with_url", source_url=url_str)
+    dataset_in = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts_prov_only, CommonFields.CASES: ts_with_url}
+    )
+
+    dataset_out = timeseries.make_source_tags(dataset_in)
+
+    ts_prov_only_expected = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[test_helpers.make_tag(date="2020-04-01"),],
+        source=[taglib.Source("prov_only")],
+    )
+    ts_with_url_expected = TimeseriesLiteral(
+        [3, 5, 7], source=[taglib.Source("prov_with_url", url=url_str)]
+    )
+    dataset_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts_prov_only_expected, CommonFields.CASES: ts_with_url_expected}
+    )
+    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
