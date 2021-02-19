@@ -68,4 +68,4 @@ jobs:
       run: aws cloudfront wait distribution-deployed --id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
 
     - name: Run tests
-      run: pytest tests/
+      run: pytest end_to_end_test.py
