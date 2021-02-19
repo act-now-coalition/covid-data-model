@@ -213,7 +213,7 @@ def test_source(rt_dataset, icu_dataset):
                 ],
             ),
             # NEW_CASES has only source_url set, to make sure that an annotation is still output.
-            CommonFields.NEW_CASES: TimesTimeseriesLiteraleriesLiteral(
+            CommonFields.NEW_CASES: TimeseriesLiteral(
                 [100, 100, 100], source=taglib.Source("NYTimes", new_cases_url)
             ),
             CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
