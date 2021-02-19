@@ -45,6 +45,7 @@ jobs:
       working-directory: api/awsauth/
       run: |
         sls requirements install
+        find .requirements | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
         rm .requirements/**/*.so
         SLS_DEBUG=1 sls deploy -s dev
     - name: Check file size
