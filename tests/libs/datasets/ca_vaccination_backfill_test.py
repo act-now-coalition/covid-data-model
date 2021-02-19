@@ -1,6 +1,7 @@
 from tests import test_helpers
 import pytest
 from libs.pipeline import Region
+from libs.datasets import AggregationLevel
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs.datasets import ca_vaccination_backfill
@@ -8,23 +9,21 @@ from libs.datasets import ca_vaccination_backfill
 
 def test_ca_county_vaccination_assertion():
 
-    region_ca = Region.from_state("CA")
     region_la = Region.from_fips("06037")
-    region_mo = Region.from_state("MO")
 
     input_data = {
-        region_ca: {
-            CommonFields.VACCINES_ADMINISTERED: [100, 200],
-            CommonFields.VACCINATIONS_INITIATED: [50, 150],
-            CommonFields.VACCINATIONS_COMPLETED: [50, 50],
-        },
         region_la: {
             CommonFields.VACCINES_ADMINISTERED: [100, 200],
             CommonFields.VACCINATIONS_INITIATED: [50, 150],
         },
-        region_mo: {CommonFields.VACCINATIONS_COMPLETED_PCT: [25.0, 28.0]},
     }
-    static_by_region_then_field_name = {region_la: {CommonFields.POPULATION: 1000}}
+
+    static_by_region_then_field_name = {
+        region_la: {
+            CommonFields.STATE: "CA",
+            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
+        }
+    }
     dataset = test_helpers.build_dataset(
         input_data, static_by_region_then_field_name=static_by_region_then_field_name
     )
@@ -48,7 +47,18 @@ def test_ca_county_vaccination_calculation():
         region_la: {CommonFields.VACCINES_ADMINISTERED: [100, 200]},
         region_mo: {CommonFields.VACCINATIONS_COMPLETED_PCT: [25.0, 28.0]},
     }
-    static_by_region_then_field_name = {region_la: {CommonFields.POPULATION: 1000}}
+    # TODO: pull out this logic into a helper function so that it can be more easily reused.
+    static_by_region_then_field_name = {
+        region_ca: {
+            CommonFields.STATE: "CA",
+            CommonFields.AGGREGATE_LEVEL: AggregationLevel.STATE.value,
+        },
+        region_la: {
+            CommonFields.POPULATION: 1000,
+            CommonFields.STATE: "CA",
+            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
+        },
+    }
     dataset = test_helpers.build_dataset(
         input_data, static_by_region_then_field_name=static_by_region_then_field_name
     )

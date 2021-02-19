@@ -178,21 +178,14 @@ def build_dataset(
     if tags_to_concat:
         dataset = dataset.append_tag_df(pd.concat(tags_to_concat))
 
-    # Adds some defaults so that subsetting functions work
-    static_by_region_then_field_name = {
-        region: {
-            CommonFields.LOCATION_ID: region.location_id,
-            CommonFields.AGGREGATE_LEVEL: region.level.value,
-            CommonFields.STATE: region.state,
-            **(static_by_region_then_field_name or {}).get(region, {}),
-        }
-        for region in metrics_by_region_then_field_name.keys()
-    }
-
     if static_by_region_then_field_name:
         static_df_rows = []
         for region, data in static_by_region_then_field_name.items():
-            static_df_rows.append(data)
+            row = {
+                CommonFields.LOCATION_ID: region.location_id,
+                **data,
+            }
+            static_df_rows.append(row)
 
         attributes_df = pd.DataFrame(static_df_rows)
         dataset = dataset.add_static_values(attributes_df)

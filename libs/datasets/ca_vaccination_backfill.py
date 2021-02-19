@@ -25,23 +25,24 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
     assert ca_county_wide.loc[(slice(None), fields_to_check), :].isna().all().all()
 
     ca_state_wide = ds_in.get_regions_subset([Region.from_state("CA")]).timeseries_wide_dates()
+
+    # Drop location index because not used to apply to county level data
+    ca_state_wide = ca_state_wide.reset_index(CommonFields.LOCATION_ID, drop=True)
+
     fields = [
         CommonFields.VACCINATIONS_INITIATED,
         CommonFields.VACCINATIONS_COMPLETED,
         CommonFields.VACCINES_ADMINISTERED,
     ]
-    ca_data = ca_state_wide.loc[(slice(None), fields), :]
+    ca_state_wide = ca_state_wide.loc[fields, :]
 
-    # Drop location index because not used to apply to county level data
-    ca_data.index = ca_data.index.droplevel()
-
-    ca_administered = ca_data.loc[CommonFields.VACCINES_ADMINISTERED, :]
+    ca_administered = ca_state_wide.loc[CommonFields.VACCINES_ADMINISTERED, :]
 
     initiated_ratio_of_administered = (
-        ca_data.loc[CommonFields.VACCINATIONS_INITIATED, :] / ca_administered
+        ca_state_wide.loc[CommonFields.VACCINATIONS_INITIATED, :] / ca_administered
     )
     completed_ratio_of_administered = (
-        ca_data.loc[CommonFields.VACCINATIONS_COMPLETED, :] / ca_administered
+        ca_state_wide.loc[CommonFields.VACCINATIONS_COMPLETED, :] / ca_administered
     )
 
     county_administered = ca_county_wide.loc[(slice(None), [CommonFields.VACCINES_ADMINISTERED]), :]
