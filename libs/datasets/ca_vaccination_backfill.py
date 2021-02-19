@@ -1,3 +1,4 @@
+import dataclasses
 import pandas as pd
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets import AggregationLevel
@@ -74,9 +75,11 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
         level=PdFields.VARIABLE,
     )
 
-    combined = pd.concat([vaccines_completed_pct, vaccines_initiated_pct])
-    all_wide = dataset.timeseries_wide_dates()
+    all_wide = ds_in.timeseries_wide_dates()
+    # Because we assert that existing dataset does not have CA county VACCINATIONS_COMPLETED_PCT
+    # or VACCINATIONS_INITIATED_PCT we can safely combine the existing rows with new derived rows
+    combined = pd.concat([vaccines_completed_pct, vaccines_initiated_pct, all_wide])
 
-    ca_county_to_add = MultiRegionDataset.from_timeseries_wide_dates_df(combined)
-
-    return ds_in.join_columns(ca_county_to_add)
+    return dataclasses.replace(
+        ds_in, timeseries=MultiRegionDataset.from_timeseries_wide_dates_df(combined).timeseries
+    )

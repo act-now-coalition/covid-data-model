@@ -4,12 +4,12 @@
   "data_git_info": {
     "sha": "f5417f2c06e571e00551bf1fc1a7ecab1f01c17a",
     "branch": "main",
-    "is_dirty": false
+    "is_dirty": true
   },
   "model_git_info": {
-    "sha": "4b0a403c473e9382d421910193f1a8e6197fb6eb",
-    "branch": "main",
-    "is_dirty": false
+    "sha": "b634f9c09a4d1837f2f56f5f2524d380f567c89d",
+    "branch": "add-ca-vaccination-backfill",
+    "is_dirty": true
   },
-  "updated_at": "2021-02-18T21:19:14.314323"
+  "updated_at": "2021-02-19T01:02:31.376132"
 }
