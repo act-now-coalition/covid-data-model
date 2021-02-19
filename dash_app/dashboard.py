@@ -2,6 +2,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
+import git
 import more_itertools
 from covidactnow.datapublic.common_fields import CommonFields
 from dash.dependencies import Input
@@ -10,6 +11,7 @@ from plotly import express as px
 
 from libs import pipeline
 from libs.datasets import combined_datasets
+from libs.datasets import dataset_utils
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagField
 from libs.datasets.tail_filter import TagType
@@ -31,6 +33,11 @@ def init(server):
 
     ds = combined_datasets.load_us_timeseries_dataset().get_subset(exclude_county_999=True)
 
+    commit = git.Repo(dataset_utils.REPO_ROOT).head.commit
+    commit_str = (
+        f"commit {commit.hexsha} at {commit.committed_datetime.isoformat()}: {commit.summary}"
+    )
+
     # A table of regions in a DataFrame.
     df_regions = ds.static
     df_regions["annotation_count"] = (
@@ -46,6 +53,7 @@ def init(server):
     dash_app.layout = html.Div(
         children=[
             html.H1(children="CAN Data Pipeline Dashboard"),
+            html.P(commit_str),
             dash_table.DataTable(
                 id="datatable-regions",
                 columns=[

@@ -1615,6 +1615,30 @@ def test_write_read_dataset_pointer_with_source_url(tmpdir):
     assert set(source_url_read[CommonFields.CASES]) == {url_str2, url_str3}
 
 
+# TODO(chris): Make test stronger, doesn't cover all edge cases
+@pytest.mark.parametrize("last_value,is_outlier", [(0.02, False), (0.045, True)])
+def test_remove_test_positivity_outliers(last_value, is_outlier):
+    values = [0.015] * 7 + [last_value]
+    dataset_in = test_helpers.build_default_region_dataset(
+        {CommonFields.TEST_POSITIVITY_7D: values}
+    )
+    dataset_out = timeseries.drop_tail_positivity_outliers(dataset_in)
+
+    # Expected result is the same series with the last value removed
+    if is_outlier:
+        expected_tag = test_helpers.make_tag(
+            TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=last_value,
+        )
+        expected_ts = TimeseriesLiteral([0.015] * 7, annotation=[expected_tag])
+        expected = test_helpers.build_default_region_dataset(
+            {CommonFields.TEST_POSITIVITY_7D: expected_ts}
+        )
+        test_helpers.assert_dataset_like(dataset_out, expected, drop_na_dates=True)
+
+    else:
+        test_helpers.assert_dataset_like(dataset_in, dataset_out, drop_na_dates=True)
+
+
 def test_make_source_tags():
     url_str = UrlStr("http://foo.com/1")
 
