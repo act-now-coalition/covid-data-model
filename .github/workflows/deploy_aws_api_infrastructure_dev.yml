@@ -8,6 +8,7 @@ on:
 
 defaults:
   run:
+    working-directory: api/awsauth/
 
 jobs:
   deploy-dev:
@@ -16,12 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - name: Checkout covid-data-public
-      uses: actions/checkout@v2
-      with:
-        repository: covid-projections/covid-data-public
-        path: ../covid-data-public
-
     - uses: actions/setup-node@v1
       with:
         node-version: '12.x'
@@ -29,18 +24,6 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
-    - name: Cache Pip
-      uses: actions/cache@v1
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          ${{ runner.os }}-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
 
     - name: Install Serverless Framework
       run: npm install -g serverless
