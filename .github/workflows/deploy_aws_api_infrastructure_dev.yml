@@ -26,22 +26,17 @@ jobs:
 
     - name: Install Serverless Framework
       run: npm install -g serverless
-      working-directory: api/awsauth/
     - name: Install NPM dependencies
-      working-directory: api/awsauth/
       run: |
         npm install
     - name: Create env file
-      working-directory: api/awsauth/
       run: |
         cat > .env << EOF
         ${{ secrets.DOTENV }}
         EOF
     - name: Serverless AWS authentication
-      working-directory: api/awsauth/
       run: sls config credentials --provider aws --key ${{ secrets.AWS_ACCESS_KEY_ID }} --secret ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     - name: Deploy Lambda functions
-      working-directory: api/awsauth/
       run: |
         sls requirements install
         find .requirements | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
@@ -90,22 +85,17 @@ jobs:
 
     - name: Install Serverless Framework
       run: npm install -g serverless
-      working-directory: api/awsauth/
     - name: Install NPM dependencies
-      working-directory: api/awsauth/
       run: |
         npm install
     - name: Create env file
-      working-directory: api/awsauth/
       run: |
         cat > .env << EOF
         ${{ secrets.DOTENV }}
         EOF
     - name: Serverless AWS authentication
-      working-directory: api/awsauth/
       run: sls config credentials --provider aws --key ${{ secrets.AWS_ACCESS_KEY_ID }} --secret ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     - name: Deploy Lambda functions
-      working-directory: api/awsauth/
       run: |
         sls requirements install
         find .requirements | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
