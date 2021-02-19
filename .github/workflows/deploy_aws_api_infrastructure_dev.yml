@@ -34,7 +34,7 @@ jobs:
         npm install
     - name: Create env file
       working-directory: api/awsauth/
-      run: | # cp sample.env.yml env.yml
+      run: |
         cat > .env << EOF
         ${{ secrets.DOTENV }}
         EOF
@@ -43,4 +43,4 @@ jobs:
       run: sls config credentials --provider aws --key ${{ secrets.AWS_ACCESS_KEY_ID }} --secret ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     - name: Deploy Lambda functions
       working-directory: api/awsauth/
-      run: sls deploy -s dev
+      run: SLS_DEBUG=1 sls deploy -s dev
