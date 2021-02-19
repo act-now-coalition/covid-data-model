@@ -27,7 +27,7 @@ jobs:
         npm install
     - name: Create env file
       run: | # cp sample.env.yml env.yml
-        cat > env.yml << EOF
+        cat > .env << EOF
         ${{ secrets.DOTENV }}
         EOF
     - name: Serverless AWS authentication
