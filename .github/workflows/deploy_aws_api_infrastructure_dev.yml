@@ -46,4 +46,4 @@ jobs:
       run: SLS_DEBUG=1 sls deploy -s dev
     - name: Check file size
       if: always()
-      run: du -h -d1 .requirements
+      run: du -h -d2 .requirements/
