@@ -633,6 +633,10 @@ class MultiRegionDataset:
         combined_series = combined_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
         return dataclasses.replace(self, tag=combined_series)
 
+    def replace_tag_df(self, tag_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new dataset with all tags replaced by those in tag_df"""
+        return dataclasses.replace(self, tag=_EMPTY_TAG_SERIES).append_tag_df(tag_df)
+
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
             ts_df = self.timeseries.xs(
@@ -1572,25 +1576,30 @@ def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     """Convert provenance and source_url tags into source tags."""
     if TagType.SOURCE in ds_in.tag.index.get_level_values(TagField.TYPE):
         raise ValueError("source already in dataset")
-    ds_in_tag_extract_rows = ds_in.tag.index.get_level_values(TagField.TYPE).isin(
+    # Find rows of ds_in.tag used to build `source` tags and rows to copy unmodified.
+    ds_in_tag_extract_mask = ds_in.tag.index.get_level_values(TagField.TYPE).isin(
         [TagType.PROVENANCE, TagType.SOURCE_URL]
     )
-    other_tags_df = ds_in.tag.loc[~ds_in_tag_extract_rows].reset_index()
-    prov_source_df = ds_in.tag.loc[ds_in_tag_extract_rows].unstack(TagField.TYPE)
+    other_tags_df = ds_in.tag.loc[~ds_in_tag_extract_mask].reset_index()
+    # Fill in missing elements of the DataFrame with None in two steps because it can't be done
+    # by `unstack`.
+    extracted_tags_df = (
+        ds_in.tag.loc[ds_in_tag_extract_mask]
+        .unstack(TagField.TYPE, fill_value=pd.NA)
+        .replace({pd.NA: None})
+    )
     # Make a DataFrame with columns for each element in the JSON object.
     type_url_df = pd.DataFrame(
         {
-            "type": prov_source_df.loc[:, TagType.PROVENANCE],
-            "url": prov_source_df.loc[:, TagType.SOURCE_URL],
+            "type": extracted_tags_df.loc[:, TagType.PROVENANCE],
+            "url": extracted_tags_df.loc[:, TagType.SOURCE_URL],
         }
-    ).fillna(None)
-    json_list = type_url_df.to_json(orient="records", lines=True).splitlines()
-    source_df = pd.Series(
-        json_list, index=prov_source_df.index, name=TagField.CONTENT
-    ).reset_index()
-    source_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE
-    return (
-        dataclasses.replace(ds_in, tag=_EMPTY_TAG_SERIES)
-        .append_tag_df(source_df)
-        .append_tag_df(other_tags_df)
     )
+    # Use slow Source.content instead of something like https://stackoverflow.com/a/64700027
+    # because Pandas to_json encodes slightly differently, breaking tests that compare JSON
+    # objects as strings.
+    json_series = type_url_df.apply(lambda row: taglib.Source(**row.to_dict()).content, axis=1)
+    source_df = json_series.rename(TagField.CONTENT).reset_index()
+    source_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE
+
+    return ds_in.replace_tag_df(pd.concat([source_df, other_tags_df]))
