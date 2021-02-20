@@ -14,6 +14,7 @@ from pandas.core.dtypes.common import is_numeric_dtype
 from plotly import express as px
 
 from libs import pipeline
+from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 from libs.datasets import dataset_utils
 from libs.datasets import timeseries
@@ -33,6 +34,7 @@ def _location_id_to_agg(loc_id, just_levels=True):
     if just_levels:
         return region.level.value
 
+    # If just_levels=False counties are separated by state.
     if region.is_county():
         return region.state
     else:
@@ -97,10 +99,11 @@ def init(server):
     )
     agg_has_timeseries = _agg_wide_var_counts(wide_var_has_timeseries).reset_index()
 
-    wide_var_has_url = (
-        ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull().astype(int)
-    )
-    agg_has_url = _agg_wide_var_counts(wide_var_has_url).reset_index()
+    wide_var_has_mask = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+    agg_has_url = _agg_wide_var_counts(wide_var_has_mask.astype(int)).reset_index()
+
+    counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
+    county_variable_population_ratio = variable_population_ratio(counties)
 
     dash_app.layout = html.Div(
         children=[
@@ -132,6 +135,14 @@ def init(server):
                 columns=[{"name": i, "id": i} for i in agg_has_url.columns],
                 cell_selectable=True,
                 data=agg_has_url.to_dict("records"),
+                editable=False,
+            ),
+            html.P("Ratio of population in county data with a URL, by variable"),
+            dash_table.DataTable(
+                id="county_variable_population_ratio",
+                columns=[{"name": i, "id": i} for i in county_variable_population_ratio.columns],
+                cell_selectable=True,
+                data=county_variable_population_ratio.to_dict("records"),
                 editable=False,
                 page_action="native",
             ),
@@ -177,6 +188,20 @@ def init(server):
     return dash_app.server
 
 
+def variable_population_ratio(dataset: timeseries.MultiRegionDataset) -> pd.DataFrame:
+    # A DataFrame with location index and variable columns
+    has_url = dataset.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+    population_indexed = dataset.static[CommonFields.POPULATION].reindex(has_url.index)
+    population_total = population_indexed.sum()
+    # Make a DataFrame that is like has_url but filled with zeros.
+    zeros = pd.DataFrame(0, index=has_url.index, columns=has_url.columns)
+    # Where has_url is True add the population, otherwise add zero. The result is a series with
+    # PdFields.VARIABLE index
+    population_has_url = zeros.mask(has_url, population_indexed, axis=0).sum(axis=0)
+    population_ratio_has_url = population_has_url / population_total
+    return population_ratio_has_url.rename("population_ratio").reset_index()
+
+
 def _init_callbacks(dash_app, ds: timeseries.MultiRegionDataset, df_regions: pd.DataFrame):
 
     # Work-around to get initial selection, from
@@ -198,7 +223,6 @@ def _init_callbacks(dash_app, ds: timeseries.MultiRegionDataset, df_regions: pd.
         prevent_initial_call=False,
     )
     def update_figure(selected_row_ids):
-        print(f"update figure: {selected_row_ids}")
         # Not sure why this isn't consistent but oh well
         if isinstance(selected_row_ids, str):
             selected_row_id = selected_row_ids
