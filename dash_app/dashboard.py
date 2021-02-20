@@ -6,6 +6,7 @@ import git
 import more_itertools
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import PdFields
 from dash.dependencies import Input
 from dash.dependencies import Output
@@ -44,8 +45,14 @@ def _agg_wide_var_counts(wide_vars: pd.DataFrame) -> pd.DataFrame:
     assert wide_vars.columns.names == [PdFields.VARIABLE]
     assert is_numeric_dtype(more_itertools.one(set(wide_vars.dtypes)))
 
-    agg_counts = wide_vars.groupby(_location_id_to_agg).sum()
-    agg_counts = agg_counts.reindex(columns=pd.Index(CommonFields).intersection(agg_counts.columns))
+    agg_counts = (
+        wide_vars.groupby(_location_id_to_agg).sum().rename_axis(index=CommonFields.AGGREGATE_LEVEL)
+    )
+    agg_counts = agg_counts.groupby(common_fields.COMMON_FIELD_TO_GROUP, axis=1, sort=False).sum()
+    # Reindex columns to match order of FieldGroup enum.
+    agg_counts = agg_counts.reindex(
+        columns=pd.Index(common_fields.FieldGroup).intersection(agg_counts.columns)
+    )
 
     return agg_counts
 
@@ -65,7 +72,7 @@ def init(server):
     )
 
     # A table of regions in a DataFrame.
-    df_regions = ds.static
+    df_regions = ds.static.copy()
     df_regions["annotation_count"] = (
         ds.tag.loc[:, :, timeseries.ANNOTATION_TAG_TYPES]
         .index.get_level_values(CommonFields.LOCATION_ID)
@@ -74,26 +81,61 @@ def init(server):
     df_regions = df_regions.reset_index()  # Move location_id from the index to a regular column
     df_regions["id"] = df_regions[CommonFields.LOCATION_ID]
 
-    df_popular_urls = ds.tag.loc[:, :, TagType.SOURCE_URL].value_counts().reset_index()
+    df_popular_urls = (
+        ds.tag.loc[:, :, TagType.SOURCE_URL]
+        .value_counts()
+        .reset_index()
+        .rename(columns={"index": "URL", "content": "count"})
+    )
 
-    # wide_var_has_url = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
-    wide_var_has_ts = (
+    wide_var_has_timeseries = (
         ds.timeseries_wide_dates()
         .notnull()
         .any(1)
-        .unstack(PdFields.VARIABLE, fill_value=0)
+        .unstack(PdFields.VARIABLE, fill_value=False)
         .astype(int)
     )
+    agg_has_timeseries = _agg_wide_var_counts(wide_var_has_timeseries).reset_index()
 
-    agg_ts_counts = _agg_wide_var_counts(wide_var_has_ts).reset_index()
-
-    # combined_counts = (agg_url_counts.astype(str) + " / " + agg_ts_counts.astype(
-    # str)).reset_index()
+    wide_var_has_url = (
+        ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull().astype(int)
+    )
+    agg_has_url = _agg_wide_var_counts(wide_var_has_url).reset_index()
 
     dash_app.layout = html.Div(
         children=[
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
+            html.H2("Time-series count"),
+            dash_table.DataTable(
+                id="agg_has_timeseries",
+                columns=[{"name": i, "id": i} for i in agg_has_timeseries.columns],
+                cell_selectable=False,
+                data=agg_has_timeseries.to_dict("records"),
+                editable=False,
+                page_action="native",
+            ),
+            html.H2("Source URLs"),
+            dash_table.DataTable(
+                id="source_url_counts",
+                columns=[{"name": i, "id": i} for i in df_popular_urls.columns],
+                page_size=8,
+                data=df_popular_urls.to_dict("records"),
+                editable=False,
+                page_action="native",
+            ),
+            html.Br(),  # Give table above some space for page action controls
+            html.Br(),  # Give table above some space for page action controls
+            html.Br(),  # Give table above some space for page action controls
+            dash_table.DataTable(
+                id="agg_has_url",
+                columns=[{"name": i, "id": i} for i in agg_has_url.columns],
+                cell_selectable=True,
+                data=agg_has_url.to_dict("records"),
+                editable=False,
+                page_action="native",
+            ),
+            html.H2("Regions"),
             dash_table.DataTable(
                 id="datatable-regions",
                 columns=[
@@ -116,7 +158,9 @@ def init(server):
                 sort_mode="multi",
                 page_action="native",
                 style_table={"height": "300px", "overflowY": "auto"},
-                selected_rows=[0],
+                # selected_row_ids=[df_regions[CommonFields.POPULATION].idxmax()],
+                selected_rows=[df_regions[CommonFields.POPULATION].idxmax()],
+                # selected_rows=[0],
                 sort_by=[{"column_id": CommonFields.POPULATION, "direction": "desc"}],
             ),
             html.P(),
@@ -125,52 +169,42 @@ def init(server):
             dash_table.DataTable(
                 id="region-tag-table", columns=[{"name": i, "id": i} for i in TAG_TABLE_COLUMNS]
             ),
-            html.P(),
-            html.Hr(),
-            dash_table.DataTable(
-                id="source_url_counts",
-                columns=[{"name": i, "id": i} for i in ["index", "content",]],
-                cell_selectable=False,
-                page_size=8,
-                data=df_popular_urls.to_dict("records"),
-                editable=False,
-                filter_action="native",
-                sort_action="native",
-                sort_mode="multi",
-                page_action="native",
-                style_table={"height": "300px", "overflowY": "auto"},
-            ),
-            html.P(),
-            html.Hr(),
-            dash_table.DataTable(
-                id="agg_ts_counts",
-                columns=[{"name": i, "id": i} for i in agg_ts_counts.columns],
-                cell_selectable=False,
-                data=agg_ts_counts.to_dict("records"),
-                editable=False,
-                page_action="native",
-            ),
         ]
     )
 
-    _init_callbacks(dash_app, ds)
+    _init_callbacks(dash_app, ds, df_regions)
 
     return dash_app.server
 
 
-def _init_callbacks(dash_app, ds: timeseries.MultiRegionDataset):
+def _init_callbacks(dash_app, ds: timeseries.MultiRegionDataset, df_regions: pd.DataFrame):
+
+    # Work-around to get initial selection, from
+    # https://github.com/plotly/dash-table/issues/707#issuecomment-626890525
+    @dash_app.callback(
+        [Output("datatable-regions", "selected_row_ids")],
+        [Input("datatable-regions", "selected_rows")],
+        prevent_initial_call=False,
+    )
+    def update_selected_rows(selected_rows):
+        return [df_regions["id"].iat[more_itertools.one(selected_rows)]]
+
     # Input not in a list raises dash.exceptions.IncorrectTypeException: The input argument
     # `location-dropdown.value` must be a list or tuple of `dash.dependencies.Input`s.
     # but doesn't in the docs at https://dash.plotly.com/basic-callbacks. Odd.
     @dash_app.callback(
         [Output("region-graph", "figure"), Output("region-tag-table", "data")],
         [Input("datatable-regions", "selected_row_ids")],
-        prevent_initial_call=True,
+        prevent_initial_call=False,
     )
-    def update_figure(selected_rows):
-        one_region = ds.get_one_region(
-            pipeline.Region.from_location_id(more_itertools.one(selected_rows))
-        )
+    def update_figure(selected_row_ids):
+        print(f"update figure: {selected_row_ids}")
+        # Not sure why this isn't consistent but oh well
+        if isinstance(selected_row_ids, str):
+            selected_row_id = selected_row_ids
+        else:
+            selected_row_id = more_itertools.one(selected_row_ids)
+        one_region = ds.get_one_region(pipeline.Region.from_location_id(selected_row_id))
         interesting_ts = one_region.data.set_index(CommonFields.DATE).select_dtypes(
             include="number"
         )
