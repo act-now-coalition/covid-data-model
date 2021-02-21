@@ -1410,7 +1410,7 @@ def aggregate_regions(
     if CommonFields.AGGREGATE_LEVEL in dataset_in.static.columns:
         # location_id_to_level returns an AggregationLevel enum, but we use the str in DataFrames.
         # These are not equivalent so put the `value` attribute in static_agg.
-        static_agg[CommonFields.AGGREGATE_LEVEL] = (
+        static_agg.loc[:, CommonFields.AGGREGATE_LEVEL] = (
             static_agg.index.get_level_values(CommonFields.LOCATION_ID)
             .map(pipeline.location_id_to_level)
             .map(lambda l: l.value)
