@@ -1,3 +1,7 @@
+import pandas as pd
+
+from covidactnow.datapublic.common_fields import CommonFields
+
 from libs import pipeline
 from libs.datasets import timeseries
 
@@ -63,3 +67,40 @@ def replace_dc_county_with_state_data(
     dataset_without_dc_county = dataset_in.remove_regions([dc_county_region])
 
     return dataset_without_dc_county.append_regions(dc_county_dataset)
+
+
+def aggregate_puerto_rico_from_counties(
+    dataset: timeseries.MultiRegionDataset,
+) -> timeseries.MultiRegionDataset:
+    """Returns a dataset with NA static values for the state PR aggregated from counties."""
+    pr_county_mask = (dataset.static[CommonFields.STATE] == "PR") & (
+        dataset.static[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
+    )
+    if not pr_county_mask.any():
+        return dataset
+    pr_counties = dataset.static.loc[pr_county_mask]
+    aggregated = _aggregate_ignoring_nas(pr_counties.select_dtypes(include="number"))
+    pr_location_id = pipeline.Region.from_state("PR").location_id
+
+    patched_static = dataset.static.copy()
+    for field, aggregated_value in aggregated.items():
+        if pd.isna(patched_static.at[pr_location_id, field]):
+            patched_static.at[pr_location_id, field] = aggregated_value
+
+    return dataclasses.replace(dataset, static=patched_static)
+
+
+def _aggregate_ignoring_nas(df_in: pd.DataFrame) -> Mapping:
+    aggregated = {}
+    for field in df_in.columns:
+        if field == CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE:
+            licensed_beds = df_in[CommonFields.LICENSED_BEDS]
+            occupancy_rates = df_in[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
+            aggregated[field] = (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
+        elif field == CommonFields.ICU_TYPICAL_OCCUPANCY_RATE:
+            icu_beds = df_in[CommonFields.ICU_BEDS]
+            occupancy_rates = df_in[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
+            aggregated[field] = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
+        else:
+            aggregated[field] = df_in[field].sum()
+    return aggregated

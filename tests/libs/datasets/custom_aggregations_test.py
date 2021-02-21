@@ -1,10 +1,13 @@
 import dataclasses
 
+import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets import custom_aggregations
+from libs.datasets import timeseries
+from tests import test_helpers
 
 
 def test_replace_dc_county(nyc_region):
@@ -43,3 +46,25 @@ def test_replace_dc_county(nyc_region):
     ts1 = dc_state_dataset.timeseries[CommonFields.CASES].reset_index(drop=True)
     ts2 = dc_county_dataset.timeseries[CommonFields.CASES].reset_index(drop=True)
     assert ts1.equals(ts2)
+
+
+@pytest.mark.skip(reason="test not written, needs proper columns")
+def test_calculate_puerto_rico_bed_occupancy_rate():
+    ds = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,county,aggregate_level,date,population\n"
+            "iso1:us#iso2:us-pr,Texas,state,2020-04-01,4,,\n"
+            "iso1:us#iso2:us-pr,Texas,state,,,4,2500\n"
+        )
+    )
+
+    actual = custom_aggregations.aggregate_puerto_rico_from_counties(ds)
+
+    expected = timeseries.MultiRegionDataset.from_csv(
+        io.StringIO(
+            "location_id,aggregate_level,date,m1,s1,population\n"
+            "iso1:us,country,2020-04-01,7,,\n"
+            "iso1:us,country,,,10,10000\n"
+        )
+    )
+    test_helpers.assert_dataset_like(actual, expected)

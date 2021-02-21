@@ -1402,28 +1402,6 @@ def test_multi_region_dataset_get_subset():
     }
 
 
-@pytest.mark.skip(reason="test not written, needs proper columns")
-def test_calculate_puerto_rico_bed_occupancy_rate():
-    ds = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,county,aggregate_level,date,population\n"
-            "iso1:us#iso2:us-pr,Texas,state,2020-04-01,4,,\n"
-            "iso1:us#iso2:us-pr,Texas,state,,,4,2500\n"
-        )
-    )
-
-    actual = timeseries.aggregate_puerto_rico_from_counties(ds)
-
-    expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,aggregate_level,date,m1,s1,population\n"
-            "iso1:us,country,2020-04-01,7,,\n"
-            "iso1:us,country,,,10,10000\n"
-        )
-    )
-    test_helpers.assert_dataset_like(actual, expected)
-
-
 def test_dataset_regions_property(nyc_region):
     az_region = Region.from_state("AZ")
     dataset = test_helpers.build_dataset(

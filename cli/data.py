@@ -116,7 +116,10 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
-    multiregion_dataset = timeseries.aggregate_puerto_rico_from_counties(multiregion_dataset)
+
+    multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
+        multiregion_dataset
+    )
     multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
     multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(multiregion_dataset)
 
