@@ -99,7 +99,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     _logger.info("Finished combining datasets")
     multiregion_dataset = timeseries.drop_tail_positivity_outliers(multiregion_dataset)
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
-    _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER,)
+    _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
     multiregion_dataset = zeros_filter.drop_all_zero_timeseries(
         multiregion_dataset,
         [
@@ -110,9 +110,11 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
         ],
     )
     multiregion_dataset = ca_vaccination_backfill.derive_ca_county_vaccine_pct(multiregion_dataset)
+    multiregion_dataset = vaccine_backfills.backfill_vaccination_initiated(multiregion_dataset)
+
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
-    multiregion_dataset = timeseries.backfill_vaccination_initiated(multiregion_dataset)
+
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
