@@ -24,6 +24,7 @@ from libs.datasets.combined_datasets import (
 from libs.datasets import timeseries
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
+from libs.datasets import ca_vaccination_backfill
 from libs.datasets.sources import forecast_hub
 from libs.datasets import tail_filter
 from libs.datasets.sources import zeros_filter
@@ -109,6 +110,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
             CommonFields.VACCINATIONS_INITIATED,
         ],
     )
+    multiregion_dataset = ca_vaccination_backfill.derive_ca_county_vaccine_pct(multiregion_dataset)
     multiregion_dataset = timeseries.add_new_cases(multiregion_dataset)
     multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
     multiregion_dataset = timeseries.backfill_vaccination_initiated(multiregion_dataset)
