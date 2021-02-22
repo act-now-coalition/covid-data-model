@@ -25,7 +25,7 @@ exit_with_usage () {
 
 
 execute() {
-  cat > $DOTENV_PATH << EOF
+  cat > .env << EOF
 $DOTENV
 EOF
 
