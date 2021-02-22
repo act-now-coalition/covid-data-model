@@ -43,13 +43,9 @@ jobs:
     # if: github.event.inputs.deploy_to_prod == 'true'
     needs: [DeployDev]
 
-    environment:
-      name: dev
     runs-on: ubuntu-latest
 
     steps:
-    - name: test
-      run: echo ${{ job.environment.name }}
     - uses: actions/checkout@master
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
