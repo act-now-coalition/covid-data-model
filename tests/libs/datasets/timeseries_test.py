@@ -2,6 +2,7 @@ import datetime
 import io
 import pathlib
 import dataclasses
+import pickle
 
 import pytest
 import pandas as pd
@@ -1661,6 +1662,22 @@ def test_remove_test_positivity_outliers(last_value, is_outlier):
 
     else:
         test_helpers.assert_dataset_like(dataset_in, dataset_out, drop_na_dates=True)
+
+
+def test_pickle():
+    ts = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01"),
+            test_helpers.make_tag(date="2020-04-02"),
+        ],
+        source_url=UrlStr("http://public.com"),
+    )
+    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: ts})
+
+    ds_out = pickle.loads(pickle.dumps(ds_in))
+
+    test_helpers.assert_dataset_like(ds_in, ds_out)
 
 
 def test_make_source_tags():
