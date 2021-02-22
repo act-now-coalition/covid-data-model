@@ -102,7 +102,10 @@ def make_tag_df(
     region: Region, metric: CommonFields, records: List[taglib.TagInTimeseries]
 ) -> pd.DataFrame:
     df = pd.DataFrame(
-        {TagField.TYPE: [r.type for r in records], TagField.CONTENT: [r.content for r in records],}
+        {
+            TagField.TYPE: [r.tag_type for r in records],
+            TagField.CONTENT: [r.content for r in records],
+        }
     )
     df[TagField.LOCATION_ID] = region.location_id
     df[TagField.VARIABLE] = metric
