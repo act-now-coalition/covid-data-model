@@ -29,6 +29,8 @@ TAG_TABLE_COLUMNS = [TagField.VARIABLE, TagField.TYPE, TagField.CONTENT]
 
 
 def _location_id_to_agg(loc_id, just_levels=True):
+    """Turns a location_id into a label used for aggregation. For now this is only the
+    AggregationLevel but future UI changes could let the user aggregate regions by state etc."""
     region = pipeline.Region.from_location_id(loc_id)
 
     if just_levels:
