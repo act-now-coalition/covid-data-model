@@ -186,7 +186,7 @@ def test_annotation(rt_dataset, icu_dataset):
 
     assert one(timeseries_for_region.annotations.deaths.sources) == FieldSource(url=death_url)
     assert timeseries_for_region.annotations.deaths.anomalies == [
-        AnomalyAnnotation(date="2020-04-01", original_observation=10.0, type=tag.type)
+        AnomalyAnnotation(date="2020-04-01", original_observation=10.0, type=tag.tag_type)
     ]
 
     assert one(timeseries_for_region.annotations.newCases.sources) == FieldSource(url=new_cases_url)

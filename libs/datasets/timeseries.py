@@ -109,10 +109,17 @@ class OneRegionTimeseriesDataset:
         return source_url_series.groupby(level=0).agg(list).to_dict()
 
     def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
-        return_value = []
-        for _, row in self.tag.loc[[metric], ANNOTATION_TAG_TYPES].reset_index().iterrows():
-            return_value.append(taglib.AnnotationWithDate.make(row.tag_type, content=row.content))
-        return return_value
+        return self.tag_objects_df.loc[[metric], ANNOTATION_TAG_TYPES].to_list()
+
+    @cached_property
+    def tag_objects_df(self) -> pd.Series:
+        """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
+        assert self.tag.index.names[1] == TagField.TYPE
+        # Apply a function to each element in the Series self.tag with the function having access to
+        # the index of each element. From https://stackoverflow.com/a/47645833/341400.
+        return self.tag.to_frame().apply(
+            lambda row: taglib.TagInTimeseries.make(row.name[1], content=row.content), axis=1
+        )
 
     def __post_init__(self):
         assert CommonFields.LOCATION_ID in self.data.columns
@@ -632,6 +639,10 @@ class MultiRegionDataset:
         )
         combined_series = combined_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
         return dataclasses.replace(self, tag=combined_series)
+
+    def replace_tag_df(self, tag_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new dataset with all tags replaced by those in tag_df"""
+        return dataclasses.replace(self, tag=_EMPTY_TAG_SERIES).append_tag_df(tag_df)
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
