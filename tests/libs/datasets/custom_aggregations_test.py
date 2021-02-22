@@ -1,5 +1,6 @@
 import dataclasses
 
+import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
@@ -7,6 +8,16 @@ from libs.datasets import combined_datasets
 from libs.datasets import custom_aggregations
 
 
+@pytest.mark.slow
+def test_aggregate_to_new_york_city(nyc_region):
+    dataset_in = combined_datasets.load_us_timeseries_dataset().get_regions_subset(
+        custom_aggregations.ALL_NYC_REGIONS
+    )
+    dataset_out = custom_aggregations.aggregate_to_new_york_city(dataset_in)
+    assert dataset_out
+
+
+@pytest.mark.slow
 def test_replace_dc_county(nyc_region):
     dc_state_region = pipeline.Region.from_fips("11")
     dc_county_region = pipeline.Region.from_fips("11001")
