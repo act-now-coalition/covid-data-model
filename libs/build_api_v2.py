@@ -23,7 +23,6 @@ from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 from libs.datasets import timeseries
-from libs.datasets.taglib import TagType
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
@@ -130,41 +129,7 @@ def _build_metric_annotations(
     tag_series: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log
 ) -> Optional[FieldAnnotations]:
 
-    sources = [
-        FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url)
-        for tag in tag_series.tag_objects_df.loc[[field_name], [TagType.SOURCE]]
-    ]
-
-    if not sources:
-        # Fall back to using provenance and source_url.
-        # TODO(tom): Remove this block of code when we're pretty sure `source` has taken over.
-        sources_enum = set()
-        for source_str in tag_series.provenance.get(field_name, []):
-            sources_enum.add(_lookup_source_type(source_str, field_name, log))
-
-        if not sources_enum:
-            source_enum = None
-        else:
-            if len(sources_enum) > 1:
-                log.warning(METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE, field_name=field_name)
-            source_enum = sources_enum.pop()
-
-        source_urls = set(tag_series.source_url.get(field_name, []))
-        if not source_urls:
-            source_url = None
-        else:
-            if len(source_urls) > 1:
-                log.warning(
-                    METRIC_MULTIPLE_SOURCE_URLS_MESSAGE,
-                    field_name=field_name,
-                    urls=list(sorted(source_urls)),
-                )
-            # If multiple URLs actually happens in a meaningful way consider doing something better than
-            # returning one at random.
-            source_url = source_urls.pop()
-
-        if source_url or source_enum:
-            sources = [FieldSource(type=source_enum, url=source_url)]
+    sources = _sources_from_provenance_and_source_url(field_name, log, tag_series)
 
     anomalies = tag_series.annotations(field_name)
     anomalies = [
@@ -178,6 +143,37 @@ def _build_metric_annotations(
         return None
 
     return FieldAnnotations(sources=sources, anomalies=anomalies)
+
+
+def _sources_from_provenance_and_source_url(field_name, log, tag_series):
+    sources_enum = set()
+    for source_str in tag_series.provenance.get(field_name, []):
+        sources_enum.add(_lookup_source_type(source_str, field_name, log))
+    if not sources_enum:
+        source_enum = None
+    else:
+        if len(sources_enum) > 1:
+            log.warning(METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE, field_name=field_name)
+        source_enum = sources_enum.pop()
+
+    source_urls = set(tag_series.source_url.get(field_name, []))
+    if not source_urls:
+        source_url = None
+    else:
+        if len(source_urls) > 1:
+            log.warning(
+                METRIC_MULTIPLE_SOURCE_URLS_MESSAGE,
+                field_name=field_name,
+                urls=list(sorted(source_urls)),
+            )
+        # If multiple URLs actually happens in a meaningful way consider doing something better than
+        # returning one at random.
+        source_url = source_urls.pop()
+
+    if source_url or source_enum:
+        return [FieldSource(type=source_enum, url=source_url)]
+    else:
+        return []
 
 
 def _lookup_source_type(source_str, field_name, log) -> FieldSourceType:
