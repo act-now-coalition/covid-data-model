@@ -109,10 +109,10 @@ class OneRegionTimeseriesDataset:
         return source_url_series.groupby(level=0).agg(list).to_dict()
 
     def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
-        return self.tag_objects_df.loc[[metric], ANNOTATION_TAG_TYPES].to_list()
+        return self.tag_objects_series.loc[[metric], ANNOTATION_TAG_TYPES].to_list()
 
     @cached_property
-    def tag_objects_df(self) -> pd.Series:
+    def tag_objects_series(self) -> pd.Series:
         """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
         assert self.tag.index.names[1] == TagField.TYPE
         # Apply a function to each element in the Series self.tag with the function having access to

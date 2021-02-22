@@ -729,6 +729,30 @@ def test_one_region_annotations():
     } == {region_sf: [tag2a, tag2b], region_tx: [tag1],}
 
 
+def test_one_region_tag_objects_series():
+    values = [100, 200]
+    tag1 = test_helpers.make_tag(tag_type=TagType.ZSCORE_OUTLIER, date="2020-04-01")
+    tag2a = test_helpers.make_tag(date="2020-04-02")
+    tag2b = test_helpers.make_tag(date="2020-04-03")
+
+    one_region = test_helpers.build_one_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral(values, annotation=[tag1]),
+            CommonFields.ICU_BEDS: TimeseriesLiteral(values, provenance="prov1"),
+            CommonFields.DEATHS: TimeseriesLiteral(values, annotation=[tag2a, tag2b]),
+        }
+    )
+
+    assert isinstance(one_region.tag_objects_series, pd.Series)
+    assert one_region.tag.index.equals(one_region.tag_objects_series.index)
+    assert set(one_region.tag_objects_series.reset_index().itertuples(index=False)) == {
+        (CommonFields.CASES, tag1.tag_type, tag1),
+        (CommonFields.ICU_BEDS, "provenance", taglib.ProvenanceTag(source="prov1")),
+        (CommonFields.DEATHS, tag2a.tag_type, tag2a),
+        (CommonFields.DEATHS, tag2b.tag_type, tag2b),
+    }
+
+
 def test_timeseries_latest_values():
     dataset = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
