@@ -140,7 +140,7 @@ def _build_metric_annotations(
         # Fall back to using provenance and source_url.
         # TODO(tom): Remove this block of code when we're pretty sure `source` has all the data
         #  we need.
-        sources = _sources_from_provenance_and_source_url(field_name, log, tag_series)
+        sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
 
     anomalies = tag_series.annotations(field_name)
     anomalies = [
