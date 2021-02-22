@@ -559,7 +559,7 @@ def test_write_read_wide_dates_csv_with_annotation(tmpdir):
             [0, 2, 4],
             annotation=[
                 test_helpers.make_tag(date="2020-04-01"),
-                test_helpers.make_tag(type=TagType.ZSCORE_OUTLIER, date="2020-04-02"),
+                test_helpers.make_tag(TagType.ZSCORE_OUTLIER, date="2020-04-02"),
             ],
         ),
         CommonFields.CASES: [100, 200, 300],
@@ -731,7 +731,7 @@ def test_one_region_annotations():
 
 def test_one_region_tag_objects_series():
     values = [100, 200]
-    tag1 = test_helpers.make_tag(tag_type=TagType.ZSCORE_OUTLIER, date="2020-04-01")
+    tag1 = test_helpers.make_tag(TagType.ZSCORE_OUTLIER, date="2020-04-01")
     tag2a = test_helpers.make_tag(date="2020-04-02")
     tag2b = test_helpers.make_tag(date="2020-04-03")
 
