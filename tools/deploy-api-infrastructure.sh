@@ -5,11 +5,10 @@
 # Checks command-line arguments, sets variables, etc.
 prepare () {
   # Parse args if specified.
-  if [ $# -ne 2 ]; then
+  if [ $# -ne 1 ]; then
     exit_with_usage
   else
     ENV=$1
-    DOTENV_PATH=$2
   fi
 
   if [[ -z ${AWS_ACCESS_KEY_ID:-} || -z ${AWS_SECRET_ACCESS_KEY:-} || -z ${CLOUDFRONT_DISTRIBUTION_ID:-} || -z ${DOTENV:-} ]]; then

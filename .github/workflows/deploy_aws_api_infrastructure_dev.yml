@@ -36,7 +36,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         AWS_REGION: us-east-1
-      run: tools/deploy-api-infrastructure ".env" dev
+      run: tools/deploy-api-infrastructure.sh dev
 
   TestDev:
     if: github.event.inputs.deploy_to_prod == 'true'
@@ -85,4 +85,4 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         AWS_REGION: us-east-1
-      run: tools/deploy-api-infrastructure ".env" prod
+      run: tools/deploy-api-infrastructure.sh prod
