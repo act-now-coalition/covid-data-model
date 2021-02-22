@@ -105,7 +105,8 @@ def init(server):
     agg_has_url = _agg_wide_var_counts(wide_var_has_mask.astype(int)).reset_index()
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_variable_population_ratio = variable_population_ratio(counties)
+    has_url = counties.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+    county_variable_population_ratio = variable_population_ratio(counties, has_url)
 
     dash_app.layout = html.Div(
         children=[
@@ -190,9 +191,9 @@ def init(server):
     return dash_app.server
 
 
-def variable_population_ratio(dataset: timeseries.MultiRegionDataset) -> pd.DataFrame:
-    # A DataFrame with location index and variable columns
-    has_url = dataset.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+def variable_population_ratio(dataset: timeseries.MultiRegionDataset, has_url) -> pd.DataFrame:
+    assert has_url.index.names == [CommonFields.LOCATION_ID]
+    assert has_url.columns.names == [PdFields.VARIABLE]
     population_indexed = dataset.static[CommonFields.POPULATION].reindex(has_url.index)
     population_total = population_indexed.sum()
     # Make a DataFrame that is like has_url but filled with zeros.
