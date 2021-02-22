@@ -40,7 +40,7 @@ jobs:
       run: tools/deploy-api-infrastructure.sh dev
 
   TestDev:
-    # if: github.event.inputs.deploy_to_prod == 'true'
+    if: github.event.inputs.deploy_to_prod == 'true'
     needs: [DeployDev]
 
     runs-on: ubuntu-latest
@@ -58,7 +58,7 @@ jobs:
       run: pytest end_to_end_test.py
 
   DeployProd:
-    # if: github.event.inputs.deploy_to_prod == 'true'
+    if: github.event.inputs.deploy_to_prod == 'true'
     needs: [TestDev]
 
     environment:
