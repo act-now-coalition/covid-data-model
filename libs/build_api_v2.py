@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List
 from typing import Optional
 import pandas as pd
 from api.can_api_v2_definition import (
@@ -155,7 +156,9 @@ def _build_metric_annotations(
     return FieldAnnotations(sources=sources, anomalies=anomalies)
 
 
-def _sources_from_provenance_and_source_url(field_name, log, tag_series):
+def _sources_from_provenance_and_source_url(
+    field_name: CommonFields, tag_series: timeseries.OneRegionTimeseriesDataset, log
+) -> List[FieldSource]:
     sources_enum = set()
     for source_str in tag_series.provenance.get(field_name, []):
         sources_enum.add(_lookup_source_type(source_str, field_name, log))
