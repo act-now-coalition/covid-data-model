@@ -102,7 +102,10 @@ def make_tag_df(
     region: Region, metric: CommonFields, records: List[taglib.TagInTimeseries]
 ) -> pd.DataFrame:
     df = pd.DataFrame(
-        {TagField.TYPE: [r.type for r in records], TagField.CONTENT: [r.content for r in records],}
+        {
+            TagField.TYPE: [r.tag_type for r in records],
+            TagField.CONTENT: [r.content for r in records],
+        }
     )
     df[TagField.LOCATION_ID] = region.location_id
     df[TagField.VARIABLE] = metric
@@ -110,14 +113,14 @@ def make_tag_df(
 
 
 def make_tag(
-    type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
+    tag_type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
 ) -> taglib.TagInTimeseries:
-    if type in timeseries.ANNOTATION_TAG_TYPES:
+    if tag_type in timeseries.ANNOTATION_TAG_TYPES:
         # Force to the expected types and add defaults if not in kwargs
         kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
 
-    return taglib.TAG_TYPE_TO_CLASS[type](**kwargs)
+    return taglib.TAG_TYPE_TO_CLASS[tag_type](**kwargs)
 
 
 def build_dataset(

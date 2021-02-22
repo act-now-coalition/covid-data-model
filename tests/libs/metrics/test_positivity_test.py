@@ -275,11 +275,11 @@ def test_provenance():
 def test_preserve_tags():
     region_as = Region.from_state("AS")
     region_tx = Region.from_state("TX")
-    tag1 = test_helpers.make_tag(type=TagType.CUMULATIVE_LONG_TAIL_TRUNCATED, date="2020-04-04")
-    tag2 = test_helpers.make_tag(type=TagType.CUMULATIVE_TAIL_TRUNCATED, date="2020-04-04")
-    tag_drop = test_helpers.make_tag(type=TagType.ZSCORE_OUTLIER, date="2020-04-01")
-    tag3 = test_helpers.make_tag(type=TagType.ZSCORE_OUTLIER, date="2020-04-04")
-    tag4 = test_helpers.make_tag(type=TagType.ZSCORE_OUTLIER, date="2020-04-03")
+    tag1 = test_helpers.make_tag(TagType.CUMULATIVE_LONG_TAIL_TRUNCATED, date="2020-04-04")
+    tag2 = test_helpers.make_tag(TagType.CUMULATIVE_TAIL_TRUNCATED, date="2020-04-04")
+    tag_drop = test_helpers.make_tag(TagType.ZSCORE_OUTLIER, date="2020-04-01")
+    tag3 = test_helpers.make_tag(TagType.ZSCORE_OUTLIER, date="2020-04-04")
+    tag4 = test_helpers.make_tag(TagType.ZSCORE_OUTLIER, date="2020-04-03")
     metrics_as = {
         CommonFields.POSITIVE_TESTS: TimeseriesLiteral(
             [1, 2, 3, 4], annotation=[tag1], provenance="pos"
