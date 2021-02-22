@@ -252,7 +252,7 @@ def test_multiregion_provenance():
 def test_one_region_multiple_provenance():
     tag1 = test_helpers.make_tag(date="2020-04-01")
     tag2 = test_helpers.make_tag(date="2020-04-02")
-    dataset_in = test_helpers.build_default_region_dataset(
+    one_region = test_helpers.build_one_region_dataset(
         {
             CommonFields.ICU_BEDS: TimeseriesLiteral(
                 [0, 2, 4], annotation=[tag1, tag2], provenance=["prov1", "prov2"],
@@ -260,8 +260,6 @@ def test_one_region_multiple_provenance():
             CommonFields.CASES: [100, 200, 300],
         }
     )
-
-    one_region = dataset_in.get_one_region(test_helpers.DEFAULT_REGION)
 
     assert set(one_region.annotations(CommonFields.ICU_BEDS)) == {tag1, tag2}
     assert sorted(one_region.provenance[CommonFields.ICU_BEDS]) == ["prov1", "prov2"]
@@ -728,6 +726,14 @@ def test_one_region_annotations():
         region: one_region_dataset.annotations(CommonFields.CASES)
         for region, one_region_dataset in dataset_tx_and_sf.iter_one_regions()
     } == {region_sf: [tag2a, tag2b], region_tx: [tag1],}
+
+
+def test_one_region_empty_annotations():
+    one_region = test_helpers.build_one_region_dataset({CommonFields.CASES: [100, 200, 300]})
+
+    assert one_region.annotations(CommonFields.CASES) == []
+    assert one_region.source_url == {}
+    assert one_region.provenance == {}
 
 
 def test_one_region_tag_objects_series():
