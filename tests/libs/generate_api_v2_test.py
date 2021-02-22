@@ -110,6 +110,24 @@ def test_build_summary_for_fips(
                     },
                 ],
             ),
+            vaccinationsCompleted=FieldAnnotations(
+                sources=[
+                    FieldSource(
+                        type=FieldSourceType.CANScrapersStateProviders,
+                        url="https://covid19vaccine.health.ny.gov/covid-19-vaccine-tracker",
+                    )
+                ],
+                anomalies=[],
+            ),
+            vaccinationsInitiated=FieldAnnotations(
+                sources=[
+                    FieldSource(
+                        type=FieldSourceType.CANScrapersStateProviders,
+                        url="https://covid19vaccine.health.ny.gov/covid-19-vaccine-tracker",
+                    )
+                ],
+                anomalies=[],
+            ),
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),
         url="https://covidactnow.org/us/new_york-ny/county/bronx_county",
