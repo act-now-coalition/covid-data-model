@@ -133,7 +133,7 @@ def _build_metric_annotations(
 
     sources = [
         FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url)
-        for tag in tag_series.tag_objects_df.loc[[field_name], [TagType.SOURCE]]
+        for tag in tag_series.tag_objects_series.loc[[field_name], [TagType.SOURCE]]
     ]
 
     if not sources:
