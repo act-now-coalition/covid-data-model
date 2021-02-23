@@ -1671,10 +1671,7 @@ def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
             "url": extracted_tags_df.loc[:, TagType.SOURCE_URL],
         }
     )
-    # Use slow Source.content instead of something like https://stackoverflow.com/a/64700027
-    # because Pandas to_json encodes slightly differently, breaking tests that compare JSON
-    # objects as strings.
-    json_series = type_url_df.apply(lambda row: taglib.Source(**row.to_dict()).content, axis=1)
+    json_series = taglib.Source.attribute_df_to_json_series(type_url_df)
     source_df = json_series.rename(TagField.CONTENT).reset_index()
     source_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE
 

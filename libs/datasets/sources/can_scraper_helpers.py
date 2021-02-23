@@ -36,13 +36,13 @@ class Fields(GetByValueMixin, FieldNameAndCommonField, enum.Enum):
     LOCATION_TYPE = "location_type", CommonFields.AGGREGATE_LEVEL
     # Special transformation to FIPS
     LOCATION = "location", CommonFields.FIPS
-    VARIABLE_NAME = "variable_name", None
+    VARIABLE_NAME = "variable_name", PdFields.VARIABLE
     MEASUREMENT = "measurement", None
     UNIT = "unit", None
     AGE = "age", None
     RACE = "race", None
     SEX = "sex", None
-    VALUE = "value", None
+    VALUE = "value", PdFields.VALUE
     SOURCE_URL = "source_url", None
     SOURCE_NAME = "source_name", None
 
@@ -105,7 +105,11 @@ class CanScraperLoader:
         return all_df.loc[is_selected_data, :].copy()
 
     def query_multiple_variables(
-        self, variables: List[ScraperVariable], *, log_provider_coverage_warnings: bool = False
+        self,
+        variables: List[ScraperVariable],
+        *,
+        log_provider_coverage_warnings: bool = False,
+        source_type: str,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Queries multiple variables returning wide df with variable names as columns.
 
@@ -120,7 +124,6 @@ class CanScraperLoader:
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
         selected_data = []
-        source_urls = []
 
         for variable in variables:
             # Check that `variable` agrees with stuff in the ScraperVariable docstring.
@@ -144,47 +147,67 @@ class CanScraperLoader:
                     unit_counts=str(more_data[Fields.UNIT].value_counts().to_dict()),
                 )
 
-            # Rename fields if common field name exists
-            if variable.common_field:
-                data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
-
+            data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
             selected_data.append(data)
-            if Fields.SOURCE_URL in data.columns or Fields.SOURCE_NAME in data.columns:
-                source_urls.append(
-                    data.loc[
-                        :, [Fields.VARIABLE_NAME, Fields.SOURCE_URL, Fields.LOCATION, Fields.DATE]
-                    ]
-                )
 
-        combined_df = pd.concat(selected_data)
-        if source_urls:
-            combined_source_urls = pd.concat(source_urls).rename(
-                columns={
-                    Fields.LOCATION.value: CommonFields.FIPS,
-                    Fields.DATE.value: CommonFields.DATE,
-                    Fields.VARIABLE_NAME.value: PdFields.VARIABLE,
-                    Fields.SOURCE_URL.value: taglib.TagField.CONTENT,
-                }
-            )
-        else:
-            # TODO(tom): Make a better empty tag DataFr
-            combined_source_urls = pd.DataFrame([])
-
-        wide_df = combined_df.pivot_table(
-            index=[Fields.LOCATION.value, Fields.DATE.value, Fields.LOCATION_TYPE.value],
-            columns=Fields.VARIABLE_NAME.value,
-            values=Fields.VALUE.value,
-        ).reset_index()
-
-        data = wide_df.rename(
+        combined_df = pd.concat(selected_data).rename(
             columns={
                 Fields.LOCATION.value: CommonFields.FIPS,
                 Fields.DATE.value: CommonFields.DATE,
                 Fields.LOCATION_TYPE.value: CommonFields.AGGREGATE_LEVEL,
+                Fields.VARIABLE_NAME.value: PdFields.VARIABLE,
+                Fields.VALUE.value: PdFields.VALUE,
             }
         )
-        data.columns.name = None
-        return data, combined_source_urls
+
+        fips_level = (
+            combined_df.loc[:, CommonFields.FIPS].str.len().replace({2: "state", 5: "county"})
+        )
+        fips_level_mismatch = fips_level != combined_df.loc[:, CommonFields.AGGREGATE_LEVEL]
+        if fips_level_mismatch.any():
+            raise ValueError("location and location_type don't match")
+
+        source_columns = combined_df.columns.intersection(
+            [Fields.SOURCE_URL.value, Fields.SOURCE_NAME.value]
+        ).to_list()
+        if source_columns:
+            columns_rename = {
+                k: v
+                for k, v in {Fields.SOURCE_URL.value: "url", Fields.SOURCE_NAME: "name"}.items()
+                if k in source_columns
+            }
+
+            source_params_df = (
+                combined_df.loc[
+                    :, [CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE] + source_columns
+                ]
+                .rename(columns=columns_rename)
+                .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
+            )
+            source_params_df["type"] = source_type
+            source_df = (
+                taglib.Source.attribute_df_to_json_series(source_params_df)
+                .rename(taglib.TagField.CONTENT)
+                .reset_index()
+            )
+            source_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE
+        else:
+            source_df = pd.DataFrame([])
+
+        combined_indexed = combined_df.set_index(
+            [CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE]
+        )
+        dups = combined_indexed.index.duplicated(keep=False)
+        if dups.any():
+            raise ValueError(f"Duplicates: {combined_indexed.loc[dups]}")
+        wide_variables_df = (
+            combined_indexed[PdFields.VALUE]
+            .unstack()
+            .reset_index()
+            .rename_axis(None, axis="columns")
+        )
+
+        return wide_variables_df, source_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))
