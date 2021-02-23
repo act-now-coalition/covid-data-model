@@ -109,7 +109,12 @@ class OneRegionTimeseriesDataset:
         return source_url_series.groupby(level=0).agg(list).to_dict()
 
     def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
-        return self.tag_objects_series.loc[[metric], ANNOTATION_TAG_TYPES].to_list()
+        try:
+            return self.tag_objects_series.loc[[metric], ANNOTATION_TAG_TYPES].to_list()
+        except KeyError:
+            # Not very elegant but I can't find
+            # anything better in https://github.com/pandas-dev/pandas/issues/10695
+            return []
 
     @cached_property
     def tag_objects_series(self) -> pd.Series:
