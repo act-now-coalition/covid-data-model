@@ -1,3 +1,4 @@
+import dataclasses
 import itertools
 from typing import Dict, List
 import io
@@ -52,6 +53,7 @@ def build_can_scraper_dataframe(
                 "unit": variable.unit,
                 "age": variable.age,
                 "race": variable.race,
+                "ethnicity": variable.ethnicity,
                 "sex": variable.sex,
                 "value": value,
             }
@@ -90,6 +92,30 @@ def test_query_multiple_variables():
         f"36,2021-01-01,state,10\n"
         f"36,2021-01-02,state,20\n"
         f"36,2021-01-03,state,30\n"
+    )
+    expected = common_df.read_csv(expected_buf, set_index=False)
+    pd.testing.assert_frame_equal(expected, results)
+
+
+def test_query_multiple_variables_with_ethnicity():
+    variable = ccd_helpers.ScraperVariable(
+        variable_name="cases",
+        measurement="cumulative",
+        unit="people",
+        provider="cdc",
+        common_field=CommonFields.CASES,
+        ethnicity="all",
+    )
+    variable_hispanic = dataclasses.replace(variable, ethnicity="hispanic")
+
+    input_data = build_can_scraper_dataframe({variable: [100, 100], variable_hispanic: [40, 40]})
+    data = ccd_helpers.CanScraperLoader(input_data)
+    results, _ = data.query_multiple_variables([variable])
+
+    expected_buf = io.StringIO(
+        "fips,      date,aggregate_level,cases\n"
+        f" 36,2021-01-01,          state,  100\n"
+        f" 36,2021-01-02,          state,  100\n".replace(" ", "")
     )
     expected = common_df.read_csv(expected_buf, set_index=False)
     pd.testing.assert_frame_equal(expected, results)
