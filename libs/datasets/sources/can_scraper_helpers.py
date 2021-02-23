@@ -174,6 +174,10 @@ class CanScraperLoader:
                 f"{indexed.loc[dups].to_string(line_width=200, max_rows=200,max_colwidth=40)}"
             )
 
+        # Make a DataFrame with index=[FIPS,DATE], column=VARIABLE and value=VALUE. This used to
+        # use pivot_table but we don't want to aggregate observations. I tried using
+        # `DataFrame.pivot` but couldn't work around a mysterious
+        # "NotImplementedError: > 1 ndim Categorical are not supported at this time".
         wide_vars_df = indexed[PdFields.VALUE].unstack(level=PdFields.VARIABLE).reset_index()
         assert wide_vars_df.columns.names == [PdFields.VARIABLE]
         return wide_vars_df, combined_source_urls
