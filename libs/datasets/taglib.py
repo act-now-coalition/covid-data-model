@@ -11,6 +11,7 @@ from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
+from typing import Optional
 from typing import Tuple
 
 import pandas as pd
@@ -53,6 +54,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
 
     PROVENANCE = PdFields.PROVENANCE
     SOURCE_URL = "source_url"
+    SOURCE = "source"
 
 
 @dataclass(frozen=True)
@@ -111,11 +113,11 @@ class UrlStr(str):
     """Wraps str to provide some type safety."""
 
     # If we need to do more with URLs consider replacing UrlStr with https://pypi.org/project/yarl/
-    pass
+    @staticmethod
+    def make_optional(str_in: Optional[str]) -> Optional["UrlStr"]:
+        return UrlStr(str_in) if str_in else None
 
 
-# TODO(tom): Consider merging source_url into provenance. See
-#  https://github.com/covid-projections/covid-data-model/pull/935#pullrequestreview-587070370
 @dataclass(frozen=True)
 class SourceUrl(TagInTimeseries):
     source: UrlStr
@@ -129,6 +131,33 @@ class SourceUrl(TagInTimeseries):
     @property
     def content(self) -> str:
         return self.source
+
+
+@dataclass(frozen=True)
+class Source(TagInTimeseries):
+    type: str
+    url: Optional[UrlStr] = None
+    name: Optional[str] = None
+
+    TAG_TYPE = TagType.SOURCE
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        content_parsed = json.loads(content)
+        return cls(
+            type=content_parsed["type"],
+            url=UrlStr.make_optional(content_parsed.get("url", None)),
+            name=content_parsed.get("name", None),
+        )
+
+    @property
+    def content(self) -> str:
+        d = {"type": self.type}
+        if self.url:
+            d["url"] = self.url
+        if self.name:
+            d["name"] = self.name
+        return json.dumps(d, separators=(",", ":"))
 
 
 @dataclass(frozen=True)
@@ -175,6 +204,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.ZSCORE_OUTLIER: ZScoreOutlier,
     TagType.PROVENANCE: ProvenanceTag,
     TagType.SOURCE_URL: SourceUrl,
+    TagType.SOURCE: Source,
 }
 
 

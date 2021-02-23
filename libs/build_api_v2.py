@@ -24,6 +24,7 @@ from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 from libs.datasets import timeseries
+from libs.datasets.taglib import TagType
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
@@ -130,7 +131,16 @@ def _build_metric_annotations(
     tag_series: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log
 ) -> Optional[FieldAnnotations]:
 
-    sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
+    sources = [
+        FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url)
+        for tag in tag_series.tag_objects_series.loc[[field_name], [TagType.SOURCE]]
+    ]
+
+    if not sources:
+        # Fall back to using provenance and source_url.
+        # TODO(tom): Remove this block of code when we're pretty sure `source` has all the data
+        #  we need.
+        sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
 
     anomalies = tag_series.annotations(field_name)
     anomalies = [

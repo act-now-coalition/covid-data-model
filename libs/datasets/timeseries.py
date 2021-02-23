@@ -1640,3 +1640,36 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 
     dataset_without_pct = ds_in.drop_columns_if_present(list(field_map.values()))
     return dataset_without_pct.join_columns(ds_all_pct)
+
+
+def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+    """Convert provenance and source_url tags into source tags."""
+    # Separate ds_in.tag into tags to transform into `source` tags and tags to copy unmodified.
+    ds_in_tag_extract_mask = ds_in.tag.index.get_level_values(TagField.TYPE).isin(
+        [TagType.PROVENANCE, TagType.SOURCE_URL]
+    )
+    other_tags_df = ds_in.tag.loc[~ds_in_tag_extract_mask].reset_index()
+    # Fill in missing elements of the DataFrame with None in two steps because it can't be done
+    # by `unstack`.
+    extracted_tags_df = (
+        ds_in.tag.loc[ds_in_tag_extract_mask]
+        .unstack(TagField.TYPE, fill_value=pd.NA)
+        .replace(
+            {pd.NA: None}
+        )  # From https://github.com/pandas-dev/pandas/issues/17494#issuecomment-328966324
+    )
+    # Make a DataFrame with columns for each element in the JSON object.
+    type_url_df = pd.DataFrame(
+        {
+            "type": extracted_tags_df.loc[:, TagType.PROVENANCE],
+            "url": extracted_tags_df.loc[:, TagType.SOURCE_URL],
+        }
+    )
+    # Use slow Source.content instead of something like https://stackoverflow.com/a/64700027
+    # because Pandas to_json encodes slightly differently, breaking tests that compare JSON
+    # objects as strings.
+    json_series = type_url_df.apply(lambda row: taglib.Source(**row.to_dict()).content, axis=1)
+    source_df = json_series.rename(TagField.CONTENT).reset_index()
+    source_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE
+
+    return ds_in.replace_tag_df(pd.concat([source_df, other_tags_df]))

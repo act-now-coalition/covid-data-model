@@ -80,6 +80,7 @@ class TimeseriesLiteral(UserList):
     data: Sequence[float]
     provenance: Sequence[str]
     source_url: Sequence[UrlStr]
+    source: Sequence[taglib.Source] = ()
     annotation: Sequence[taglib.TagInTimeseries] = ()
 
     # noinspection PyMissingConstructor
@@ -88,13 +89,18 @@ class TimeseriesLiteral(UserList):
         *args,
         provenance: Union[None, str, List[str]] = None,
         source_url: Union[None, UrlStr, List[UrlStr]] = None,
+        source: Union[None, taglib.Source, List[taglib.Source]] = None,
         **kwargs,
     ):
         """Initialize `self`, doing some type conversion."""
         # UserList.__init__ attempts to set self.data, which fails on this frozen class. Instead
         # let the dataclasses code initialize `data`.
         self.__default_init__(  # pylint: disable=E1101
-            *args, provenance=_to_list(provenance), source_url=_to_list(source_url), **kwargs
+            *args,
+            provenance=_to_list(provenance),
+            source_url=_to_list(source_url),
+            source=_to_list(source),
+            **kwargs,
         )
 
 
@@ -172,6 +178,7 @@ def build_dataset(
             continue
 
         records = list(ts_literal.annotation)
+        records.extend(ts_literal.source)
         records.extend(
             make_tag(TagType.PROVENANCE, source=provenance) for provenance in ts_literal.provenance
         )
