@@ -24,7 +24,6 @@ from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 from libs.datasets import timeseries
-from libs.datasets.taglib import TagType
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
