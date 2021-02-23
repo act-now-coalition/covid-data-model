@@ -24,7 +24,6 @@ from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 from libs.datasets import timeseries
-from libs.datasets.taglib import TagType
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
@@ -133,7 +132,7 @@ def _build_metric_annotations(
 
     sources = [
         FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url)
-        for tag in tag_series.tag_objects_series.loc[[field_name], [TagType.SOURCE]]
+        for tag in tag_series.sources(field_name)
     ]
 
     if not sources:

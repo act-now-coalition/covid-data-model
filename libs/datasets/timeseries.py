@@ -116,6 +116,12 @@ class OneRegionTimeseriesDataset:
             # anything better in https://github.com/pandas-dev/pandas/issues/10695
             return []
 
+    def sources(self, field_name: FieldName) -> List[taglib.Source]:
+        try:
+            return self.tag_objects_series.loc[[field_name], [TagType.SOURCE]].to_list()
+        except KeyError:
+            return []
+
     @cached_property
     def tag_objects_series(self) -> pd.Series:
         """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
