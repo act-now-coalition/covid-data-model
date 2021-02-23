@@ -156,40 +156,19 @@ class CanScraperLoader:
             raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
 
         rename_columns = {f: f.common_field for f in Fields if f.common_field}
-        long_df = combined_data.rename(columns=rename_columns)
+        indexed = (
+            combined_data.rename(columns=rename_columns)
+            .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
+            .sort_index()
+        )
 
-        source_columns = long_df.columns.intersection(
-            [Fields.SOURCE_URL, Fields.SOURCE_NAME]
-        ).to_list()
-        if source_columns:
-            rename_columns = {
-                k: v
-                for k, v in {Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"}.items()
-                if k in source_columns
-            }
+        tag_df = taglib.Source.rename_and_make_tag_df(
+            indexed,
+            source_type=source_type,
+            rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
+        )
 
-            source_params_df = (
-                long_df.loc[
-                    :, [CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE] + source_columns
-                ]
-                .rename(columns=rename_columns)
-                .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
-            )
-            source_params_df["type"] = source_type
-            source_df = (
-                taglib.Source.attribute_df_to_json_series(source_params_df)
-                .rename(taglib.TagField.CONTENT)
-                .reset_index()
-            )
-            source_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE
-        else:
-            source_df = pd.DataFrame([])
-
-        indexed = long_df.set_index(
-            [CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE]
-        ).sort_index()
         dups = indexed.index.duplicated(keep=False)
-
         if dups.any():
             raise NotImplementedError(
                 f"No support for aggregating duplicate observations:\n"
@@ -202,7 +181,7 @@ class CanScraperLoader:
         # "NotImplementedError: > 1 ndim Categorical are not supported at this time".
         wide_vars_df = indexed[PdFields.VALUE].unstack(level=PdFields.VARIABLE).reset_index()
         assert wide_vars_df.columns.names == [PdFields.VARIABLE]
-        return wide_vars_df, source_df
+        return wide_vars_df, tag_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))

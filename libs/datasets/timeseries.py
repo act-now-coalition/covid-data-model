@@ -1665,16 +1665,8 @@ def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
         )  # From https://github.com/pandas-dev/pandas/issues/17494#issuecomment-328966324
     )
 
-    rename_columns = {
-        k: v
-        for k, v in {TagType.PROVENANCE: "type", TagType.SOURCE_URL: "url"}.items()
-        if k in extracted_tags_df.columns
-    }
-
-    # Make a DataFrame with columns for each element in the JSON object.
-    type_url_df = extracted_tags_df.rename(columns=rename_columns)
-    json_series = taglib.Source.attribute_df_to_json_series(type_url_df)
-    source_df = json_series.rename(TagField.CONTENT).reset_index()
-    source_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE
+    source_df = taglib.Source.rename_and_make_tag_df(
+        extracted_tags_df, rename={TagType.PROVENANCE: "type", TagType.SOURCE_URL: "url"}
+    )
 
     return ds_in.replace_tag_df(pd.concat([source_df, other_tags_df]))
