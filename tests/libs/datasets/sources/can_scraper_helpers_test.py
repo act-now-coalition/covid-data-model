@@ -94,7 +94,7 @@ def test_query_multiple_variables():
         f" 36,2021-01-03,                    30\n".replace(" ", "")
     )
     expected = common_df.read_csv(expected_buf, set_index=False)
-    pd.testing.assert_frame_equal(expected, results)
+    pd.testing.assert_frame_equal(expected, results, check_names=False)
 
 
 def test_query_multiple_variables_with_ethnicity():
@@ -112,14 +112,13 @@ def test_query_multiple_variables_with_ethnicity():
     data = ccd_helpers.CanScraperLoader(input_data)
     results, _ = data.query_multiple_variables([variable])
 
-    # TODO(tom): Fix to return 100 for cases.
     expected_buf = io.StringIO(
-        "fips,      date,aggregate_level,cases\n"
-        f" 36,2021-01-01,          state,   70\n"
-        f" 36,2021-01-02,          state,   70\n".replace(" ", "")
+        "fips,      date,cases\n"
+        f" 36,2021-01-01,  100\n"
+        f" 36,2021-01-02,  100\n".replace(" ", "")
     )
     expected = common_df.read_csv(expected_buf, set_index=False)
-    pd.testing.assert_frame_equal(expected, results)
+    pd.testing.assert_frame_equal(expected, results, check_names=False)
 
 
 def test_query_source_url():
@@ -142,7 +141,7 @@ def test_query_source_url():
         "  36,2021-01-03,                    30\n".replace(" ", "")
     )
     expected = common_df.read_csv(expected_data_buf, set_index=False)
-    pd.testing.assert_frame_equal(expected, results)
+    pd.testing.assert_frame_equal(expected, results, check_names=False)
 
     expected_tag_buf = io.StringIO(
         "fips,      date,              variable,       content\n"
@@ -151,4 +150,4 @@ def test_query_source_url():
         "  36,2021-01-03,vaccinations_completed,http://foo.com\n".replace(" ", "")
     )
     expected = common_df.read_csv(expected_tag_buf, set_index=False)
-    pd.testing.assert_frame_equal(expected, tags, check_like=True)
+    pd.testing.assert_frame_equal(expected, tags, check_like=True, check_names=False)
