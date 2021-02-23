@@ -244,7 +244,6 @@ def test_generate_infection_rate_new_orleans_patch():
     assert set(r.location_id for r in regions) == set(returned_location_ids)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("fips", ["48999", "48998"])
 def test_generate_infection_rate_metric_fake_fips(fips):
     with pytest.raises(timeseries.RegionLatestNotFound):

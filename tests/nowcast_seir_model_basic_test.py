@@ -85,7 +85,6 @@ def test_median_age_history():
     fig.savefig(TEST_OUTPUT_DIR / "test_median_age_history.pdf", bbox_inches="tight")
 
 
-@pytest.mark.slow
 def test_validate_rt_over_time():
     """
     Check that our Bettencourt R(t) predictions integrate properly to explain

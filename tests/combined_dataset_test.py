@@ -30,7 +30,6 @@ def test_unique_index_values_us_timeseries():
 
 
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
-@pytest.mark.slow
 @pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_combined_county_has_some_data(fips):
     region_data = combined_datasets.load_us_timeseries_dataset().get_one_region(
@@ -41,7 +40,6 @@ def test_combined_county_has_some_data(fips):
     assert region_data.latest[CommonFields.DEATHS] > 1
 
 
-@pytest.mark.slow
 def test_pr_aggregation():
     dataset = combined_datasets.load_us_timeseries_dataset()
     data = dataset.get_one_region(Region.from_fips("72")).latest
@@ -50,7 +48,6 @@ def test_pr_aggregation():
     assert data["icu_occupancy_rate"] < 1
 
 
-@pytest.mark.slow
 def test_nyc_aggregation(nyc_region):
     dataset = combined_datasets.load_us_timeseries_dataset()
     data = dataset.get_one_region(nyc_region).latest
@@ -61,7 +58,6 @@ def test_nyc_aggregation(nyc_region):
 
 
 # Check some counties picked arbitrarily: (Orange County, CA)/06059 and (Harris County, TX)/48201
-@pytest.mark.slow
 @pytest.mark.parametrize("fips", ["06059", "48201"])
 def test_combined_county_has_some_timeseries_data(fips):
     region = Region.from_fips(fips)
@@ -82,7 +78,6 @@ def test_combined_county_has_some_timeseries_data(fips):
     assert one_date[CommonFields.CURRENT_ICU] > 0
 
 
-@pytest.mark.slow
 def test_get_county_name():
     assert combined_datasets.get_county_name(Region.from_fips("06059")) == "Orange County"
     assert combined_datasets.get_county_name(Region.from_fips("48201")) == "Harris County"
@@ -210,7 +205,6 @@ def test_combined_datasets_uses_only_expected_fields():
             )
 
 
-@pytest.mark.slow
 def test_dataclass_include_exclude():
     orig_data_source_cls = CANScraperUSAFactsProvider
     orig_ds = orig_data_source_cls.make_dataset()
