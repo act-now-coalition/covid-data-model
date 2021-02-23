@@ -33,16 +33,16 @@ class Fields(GetByValueMixin, FieldNameAndCommonField, enum.Enum):
 
     PROVIDER = "provider", None
     DATE = "dt", CommonFields.DATE
-    LOCATION_TYPE = "location_type", CommonFields.AGGREGATE_LEVEL
+    LOCATION_TYPE = "location_type", None
     # Special transformation to FIPS
     LOCATION = "location", CommonFields.FIPS
-    VARIABLE_NAME = "variable_name", None
+    VARIABLE_NAME = "variable_name", PdFields.VARIABLE
     MEASUREMENT = "measurement", None
     UNIT = "unit", None
     AGE = "age", None
     RACE = "race", None
     SEX = "sex", None
-    VALUE = "value", None
+    VALUE = "value", PdFields.VALUE
     SOURCE_URL = "source_url", None
 
 
@@ -119,7 +119,6 @@ class CanScraperLoader:
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
         selected_data = []
-        source_urls = []
 
         for variable in variables:
             # Check that `variable` agrees with stuff in the ScraperVariable docstring.
@@ -143,47 +142,39 @@ class CanScraperLoader:
                     unit_counts=str(more_data[Fields.UNIT].value_counts().to_dict()),
                 )
 
-            # Rename fields if common field name exists
-            if variable.common_field:
-                data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
+            data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
 
             selected_data.append(data)
-            if Fields.SOURCE_URL in data.columns:
-                source_urls.append(
-                    data.loc[
-                        :, [Fields.VARIABLE_NAME, Fields.SOURCE_URL, Fields.LOCATION, Fields.DATE]
-                    ]
-                )
 
-        combined_df = pd.concat(selected_data)
-        if source_urls:
-            combined_source_urls = pd.concat(source_urls).rename(
-                columns={
-                    Fields.LOCATION.value: CommonFields.FIPS,
-                    Fields.DATE.value: CommonFields.DATE,
-                    Fields.VARIABLE_NAME.value: PdFields.VARIABLE,
-                    Fields.SOURCE_URL.value: taglib.TagField.CONTENT,
-                }
-            )
+        # TODO(tom): check LOCATION_TYPE matches LOCATION
+
+        rename_columns = {f: f.common_field for f in Fields if f.common_field}
+        long_df = pd.concat(selected_data).rename(columns=rename_columns)
+
+        if Fields.SOURCE_URL in long_df.columns:
+            combined_source_urls = long_df.loc[
+                :, [CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE, Fields.SOURCE_URL]
+            ].rename(columns={Fields.SOURCE_URL: taglib.TagField.CONTENT})
         else:
-            # TODO(tom): Make a better empty tag DataFr
+            # TODO(tom): Make a better empty tag DataFrame
             combined_source_urls = pd.DataFrame([])
 
-        wide_df = combined_df.pivot_table(
-            index=[Fields.LOCATION.value, Fields.DATE.value, Fields.LOCATION_TYPE.value],
-            columns=Fields.VARIABLE_NAME.value,
-            values=Fields.VALUE.value,
+        indexed = long_df.set_index([CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE])
+        dups = indexed.index.duplicated(keep=False)
+
+        if dups.any():
+            raise ValueError(
+                f"Duplicated observations will aggregate incorrectly: " f"{indexed.loc[dups]}"
+            )
+
+        wide_vars_df = long_df.pivot_table(
+            index=[CommonFields.FIPS, CommonFields.DATE],
+            columns=PdFields.VARIABLE,
+            values=PdFields.VALUE,
         ).reset_index()
 
-        data = wide_df.rename(
-            columns={
-                Fields.LOCATION.value: CommonFields.FIPS,
-                Fields.DATE.value: CommonFields.DATE,
-                Fields.LOCATION_TYPE.value: CommonFields.AGGREGATE_LEVEL,
-            }
-        )
-        data.columns.name = None
-        return data, combined_source_urls
+        wide_vars_df.columns.name = None
+        return wide_vars_df, combined_source_urls
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))

@@ -86,10 +86,10 @@ def test_query_multiple_variables():
     results, _ = data.query_multiple_variables([variable])
 
     expected_buf = io.StringIO(
-        "fips,date,aggregate_level,vaccinations_completed\n"
-        f"36,2021-01-01,state,10\n"
-        f"36,2021-01-02,state,20\n"
-        f"36,2021-01-03,state,30\n"
+        "fips,      date,vaccinations_completed\n"
+        f" 36,2021-01-01,                    10\n"
+        f" 36,2021-01-02,                    20\n"
+        f" 36,2021-01-03,                    30\n".replace(" ", "")
     )
     expected = common_df.read_csv(expected_buf, set_index=False)
     pd.testing.assert_frame_equal(expected, results)
@@ -109,10 +109,10 @@ def test_query_source_url():
     results, tags = data.query_multiple_variables([variable])
 
     expected_data_buf = io.StringIO(
-        "fips,      date,aggregate_level,vaccinations_completed\n"
-        "  36,2021-01-01,          state,                    10\n"
-        "  36,2021-01-02,          state,                    20\n"
-        "  36,2021-01-03,          state,                    30\n".replace(" ", "")
+        "fips,      date,vaccinations_completed\n"
+        "  36,2021-01-01,                    10\n"
+        "  36,2021-01-02,                    20\n"
+        "  36,2021-01-03,                    30\n".replace(" ", "")
     )
     expected = common_df.read_csv(expected_data_buf, set_index=False)
     pd.testing.assert_frame_equal(expected, results)
