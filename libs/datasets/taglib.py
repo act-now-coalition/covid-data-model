@@ -145,14 +145,18 @@ class Source(TagInTimeseries):
     def rename_and_make_tag_df(
         in_df: pd.DataFrame, *, source_type=None, rename: Mapping[str, str]
     ) -> pd.DataFrame:
-        """Creates a DataFrame containing a JSON Source for each row of `in_df`.
+        """Creates a Source for each row of `in_df`.
 
         Args:
-            in_df: DataFrame with columns to be used to create Source tags.
+            in_df: DataFrame with columns to be used to create Source tags and MultiIndex
+            starting with a location and variable. All index levels are returned in columns.
             rename: Maps from column of in_df to Source attribute name. Columns not in `rename` are
               ignored; add an identity mapping if a column in in_df is to be used as an attribute
               of Source.
-            source_type: optional static value for `type` attribute
+            source_type: optional static value for Source `type` attribute
+
+        Returns:
+            Source JSONs in a pd.DataFrame suitable for passing to MultiRegionDataset
         """
 
         assert in_df.index.names[0] in [CommonFields.FIPS, CommonFields.LOCATION_ID]

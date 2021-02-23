@@ -1723,6 +1723,8 @@ def test_make_source_tags():
 
 
 def test_make_source_tags_no_urls():
+    # There was a bug where `./run.py data update` failed at the very end when no timeseries had
+    # a source_url. This tests for it.
     ts_prov_only = TimeseriesLiteral(
         [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),], provenance="prov_only",
     )
