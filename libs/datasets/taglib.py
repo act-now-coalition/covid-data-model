@@ -141,6 +141,15 @@ class Source(TagInTimeseries):
 
     TAG_TYPE = TagType.SOURCE
 
+    @staticmethod
+    def attribute_df_to_json_series(attribute_df: pd.DataFrame) -> pd.Series:
+        assert attribute_df.columns.isin([f.name for f in dataclasses.fields(Source)]).all()
+        # TODO(tom): Somehow make sure every element in attribute_df is a non-empty str or None.
+        # Use slow Source.content instead of something like https://stackoverflow.com/a/64700027
+        # because Pandas to_json encodes slightly differently, breaking tests that compare JSON
+        # objects as strings.
+        return attribute_df.apply(lambda row: Source(**row.to_dict()).content, axis=1)
+
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
         content_parsed = json.loads(content)
