@@ -1607,8 +1607,8 @@
         },
         "description": "COVID risk levels for a region."
       },
-      "FieldSource": {
-        "title": "FieldSource",
+      "FieldSourceType": {
+        "title": "FieldSourceType",
         "enum": [
           "NYTimes",
           "CMSTesting",
@@ -1624,6 +1624,45 @@
         ],
         "description": "The data source of a field (metric or actual). This enumeration lists the places from which\nCAN fetches data. The source is tracked on a per field and region timeseries basis."
       },
+      "FieldSource": {
+        "title": "FieldSource",
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldSourceType"
+              }
+            ],
+            "description": "The type of data source from a CAN list of data source types"
+          },
+          "url": {
+            "title": "Url",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "URL of a webpage containing the data at the source"
+          },
+          "name": {
+            "title": "Name",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A human readable name of the source"
+          }
+        },
+        "description": "Base model for API output."
+      },
       "TagType": {
         "title": "TagType",
         "enum": [
@@ -1631,7 +1670,8 @@
           "cumulative_long_tail_truncated",
           "zscore_outlier",
           "provenance",
-          "source_url"
+          "source_url",
+          "source"
         ],
         "type": "string",
         "description": "The type of the annotation.\n\nEach enumeration refers to the method used to generate the annotation."
@@ -1676,6 +1716,7 @@
         "type": "object",
         "properties": {
           "sources": {
+            "title": "Sources",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FieldSource"

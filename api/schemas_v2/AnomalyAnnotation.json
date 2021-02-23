@@ -37,7 +37,8 @@
         "cumulative_long_tail_truncated",
         "zscore_outlier",
         "provenance",
-        "source_url"
+        "source_url",
+        "source"
       ],
       "type": "string"
     }
