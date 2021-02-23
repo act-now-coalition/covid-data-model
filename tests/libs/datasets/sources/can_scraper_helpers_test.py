@@ -6,6 +6,7 @@ import datetime
 from typing import Iterable
 from typing import Union
 
+import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 import pandas as pd
@@ -151,3 +152,34 @@ def test_query_source_url():
     )
     expected = common_df.read_csv(expected_tag_buf, set_index=False)
     pd.testing.assert_frame_equal(expected, tags, check_like=True, check_names=False)
+
+
+def test_query_multiple_variables_extra_field():
+    variable = ccd_helpers.ScraperVariable(
+        variable_name="cases",
+        measurement="cumulative",
+        unit="people",
+        provider="cdc",
+        common_field=CommonFields.CASES,
+    )
+    input_data = build_can_scraper_dataframe({variable: [10, 20, 30]})
+    input_data["extra_column"] = 123
+    data = ccd_helpers.CanScraperLoader(input_data)
+    with pytest.raises(ValueError):
+        data.query_multiple_variables([variable])
+
+
+def test_query_multiple_variables_duplicate_observation():
+    variable = ccd_helpers.ScraperVariable(
+        variable_name="cases",
+        measurement="cumulative",
+        unit="people",
+        provider="cdc",
+        common_field=CommonFields.CASES,
+        ethnicity="all",
+    )
+
+    input_data = build_can_scraper_dataframe({variable: [100, 100]})
+    data = ccd_helpers.CanScraperLoader(pd.concat([input_data, input_data]))
+    with pytest.raises(NotImplementedError):
+        data.query_multiple_variables([variable])

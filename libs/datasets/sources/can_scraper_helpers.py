@@ -161,7 +161,6 @@ class CanScraperLoader:
                 :, [CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE, Fields.SOURCE_URL]
             ].rename(columns={Fields.SOURCE_URL: taglib.TagField.CONTENT})
         else:
-            # TODO(tom): Make a better empty tag DataFrame
             combined_source_urls = pd.DataFrame([])
 
         indexed = long_df.set_index(
@@ -170,12 +169,13 @@ class CanScraperLoader:
         dups = indexed.index.duplicated(keep=False)
 
         if dups.any():
-            raise ValueError(
-                f"Duplicated observations will aggregate incorrectly:\n"
+            raise NotImplementedError(
+                f"No support for aggregating duplicate observations:\n"
                 f"{indexed.loc[dups].to_string(line_width=200, max_rows=200,max_colwidth=40)}"
             )
 
         wide_vars_df = indexed[PdFields.VALUE].unstack(level=PdFields.VARIABLE).reset_index()
+        assert wide_vars_df.columns.names == [PdFields.VARIABLE]
         return wide_vars_df, combined_source_urls
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
