@@ -66,6 +66,7 @@ class ScraperVariable:
     common_field: Optional[CommonFields] = None
     age: str = "all"
     race: str = "all"
+    ethnicity: str = "all"
     sex: str = "all"
 
 
