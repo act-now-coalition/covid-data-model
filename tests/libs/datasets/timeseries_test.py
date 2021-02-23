@@ -716,11 +716,14 @@ def test_one_region_annotations():
     )
 
     # get_one_region and iter_one_regions use separate code to split up the tags. Test both of them.
-    assert dataset_tx_and_sf.get_one_region(region_tx).annotations(CommonFields.CASES) == [tag1]
-    assert dataset_tx_and_sf.get_one_region(region_sf).annotations(CommonFields.CASES) == [
+    one_region_tx = dataset_tx_and_sf.get_one_region(region_tx)
+    assert one_region_tx.annotations(CommonFields.CASES) == [tag1]
+    one_region_sf = dataset_tx_and_sf.get_one_region(region_sf)
+    assert one_region_sf.annotations(CommonFields.CASES) == [
         tag2a,
         tag2b,
     ]
+    assert set(one_region_sf.sources(CommonFields.CASES)) == set()
 
     assert {
         region: one_region_dataset.annotations(CommonFields.CASES)
@@ -734,6 +737,8 @@ def test_one_region_empty_annotations():
     assert one_region.annotations(CommonFields.CASES) == []
     assert one_region.source_url == {}
     assert one_region.provenance == {}
+    assert set(one_region.sources(CommonFields.ICU_BEDS)) == set()
+    assert set(one_region.sources(CommonFields.CASES)) == set()
 
 
 def test_one_region_tag_objects_series():
@@ -1699,15 +1704,19 @@ def test_make_source_tags():
 
     dataset_out = timeseries.make_source_tags(dataset_in)
 
+    source_tag_prov_only = taglib.Source("prov_only")
     ts_prov_only_expected = TimeseriesLiteral(
         [0, 2, 4],
         annotation=[test_helpers.make_tag(date="2020-04-01"),],
-        source=taglib.Source("prov_only"),
+        source=source_tag_prov_only,
     )
-    ts_with_url_expected = TimeseriesLiteral(
-        [3, 5, 7], source=taglib.Source("prov_with_url", url=url_str)
-    )
+    source_tag_prov_with_url = taglib.Source("prov_with_url", url=url_str)
+    ts_with_url_expected = TimeseriesLiteral([3, 5, 7], source=source_tag_prov_with_url,)
     dataset_expected = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts_prov_only_expected, CommonFields.CASES: ts_with_url_expected}
     )
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+
+    one_region = dataset_out.get_one_region(test_helpers.DEFAULT_REGION)
+    assert one_region.sources(CommonFields.ICU_BEDS) == [source_tag_prov_only]
+    assert one_region.sources(CommonFields.CASES) == [source_tag_prov_with_url]
