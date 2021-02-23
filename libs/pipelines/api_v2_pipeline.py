@@ -164,7 +164,6 @@ def build_timeseries_for_region(
         )
     except Exception:
         log.exception(f"Failed to build timeseries for fips.")
-        raise
         return None
 
     return region_timeseries
