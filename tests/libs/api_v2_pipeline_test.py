@@ -220,6 +220,7 @@ def test_source(rt_dataset, icu_dataset):
             CommonFields.ICU_BEDS: TimeseriesLiteral(
                 [20, 20, 20], source=taglib.Source("NotFound")
             ),
+            CommonFields.CURRENT_ICU: [5, 5, 5],
             CommonFields.DEATHS: TimeseriesLiteral(
                 [2, 3, 2], annotation=[tag], source=taglib.Source("NYTimes", death_url)
             ),
