@@ -52,6 +52,7 @@ def build_can_scraper_dataframe(
                 "unit": variable.unit,
                 "age": variable.age,
                 "race": variable.race,
+                "ethnicity": variable.ethnicity,
                 "sex": variable.sex,
                 "value": value,
             }

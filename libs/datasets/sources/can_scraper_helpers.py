@@ -33,17 +33,20 @@ class Fields(GetByValueMixin, FieldNameAndCommonField, enum.Enum):
 
     PROVIDER = "provider", None
     DATE = "dt", CommonFields.DATE
-    LOCATION_TYPE = "location_type", None
-    # Special transformation to FIPS
     LOCATION = "location", CommonFields.FIPS
+    LOCATION_ID = "location_id", None
+    LOCATION_TYPE = "location_type", None
     VARIABLE_NAME = "variable_name", PdFields.VARIABLE
     MEASUREMENT = "measurement", None
     UNIT = "unit", None
     AGE = "age", None
     RACE = "race", None
+    ETHNICITY = "ethnicity", None
     SEX = "sex", None
     VALUE = "value", PdFields.VALUE
     SOURCE_URL = "source_url", None
+    SOURCE_NAME = "source_name", None
+    LAST_UPDATED = "last_updated", None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -66,6 +69,7 @@ class ScraperVariable:
     common_field: Optional[CommonFields] = None
     age: str = "all"
     race: str = "all"
+    ethnicity: str = "all"
     sex: str = "all"
 
 
@@ -89,7 +93,8 @@ class CanScraperLoader:
         # list of query parts, then joining them with `and`. For our current data this takes 23s
         # while the previous method of making a binary mask for each variable took 54s. This is run
         # during tests so the speed up is nice to have.
-        required_fields = ["provider", "variable_name", "age", "race", "sex"]
+        assert variable.race == "all"
+        required_fields = ["provider", "variable_name", "age", "race", "ethnicity", "sex"]
         assert all([getattr(variable, field) for field in required_fields])
         query_parts = [f"{field} == @variable.{field}" for field in required_fields]
         for optional_field in ["measurement", "unit"]:
@@ -143,8 +148,13 @@ class CanScraperLoader:
 
         # TODO(tom): check LOCATION_TYPE matches LOCATION
 
+        combined_data = pd.concat(selected_data)
+        unknown_columns = set(combined_data.columns) - set(Fields)
+        if unknown_columns:
+            raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
+
         rename_columns = {f: f.common_field for f in Fields if f.common_field}
-        long_df = pd.concat(selected_data).rename(columns=rename_columns)
+        long_df = combined_data.rename(columns=rename_columns)
 
         if Fields.SOURCE_URL in long_df.columns:
             combined_source_urls = long_df.loc[
@@ -154,21 +164,18 @@ class CanScraperLoader:
             # TODO(tom): Make a better empty tag DataFrame
             combined_source_urls = pd.DataFrame([])
 
-        indexed = long_df.set_index([CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE])
+        indexed = long_df.set_index(
+            [CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE]
+        ).sort_index()
         dups = indexed.index.duplicated(keep=False)
 
         if dups.any():
             raise ValueError(
-                f"Duplicated observations will aggregate incorrectly: " f"{indexed.loc[dups]}"
+                f"Duplicated observations will aggregate incorrectly:\n"
+                f"{indexed.loc[dups].to_string(line_width=200, max_rows=200,max_colwidth=40)}"
             )
 
-        wide_vars_df = long_df.pivot_table(
-            index=[CommonFields.FIPS, CommonFields.DATE],
-            columns=PdFields.VARIABLE,
-            values=PdFields.VALUE,
-        ).reset_index()
-
-        wide_vars_df.columns.name = None
+        wide_vars_df = indexed[PdFields.VALUE].unstack(level=PdFields.VARIABLE).reset_index()
         return wide_vars_df, combined_source_urls
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
