@@ -121,9 +121,8 @@ class CanScraperLoader:
         """
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
-        selected_data = []
-        source_urls = []
 
+        selected_data = []
         for variable in variables:
             # Check that `variable` agrees with stuff in the ScraperVariable docstring.
             if variable.common_field is None:
@@ -145,15 +144,9 @@ class CanScraperLoader:
                     measurement_counts=str(more_data[Fields.MEASUREMENT].value_counts().to_dict()),
                     unit_counts=str(more_data[Fields.UNIT].value_counts().to_dict()),
                 )
-
+            # Copy CommonField name to data. The loop is continued above when common_field is None.
             data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
             selected_data.append(data)
-            if Fields.SOURCE_URL in data.columns:
-                source_urls.append(
-                    data.loc[
-                        :, [Fields.VARIABLE_NAME, Fields.SOURCE_URL, Fields.LOCATION, Fields.DATE]
-                    ]
-                )
 
         # TODO(tom): check LOCATION_TYPE matches LOCATION
 

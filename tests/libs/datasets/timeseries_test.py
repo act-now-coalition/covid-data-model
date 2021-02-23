@@ -1720,3 +1720,26 @@ def test_make_source_tags():
     one_region = dataset_out.get_one_region(test_helpers.DEFAULT_REGION)
     assert one_region.sources(CommonFields.ICU_BEDS) == [source_tag_prov_only]
     assert one_region.sources(CommonFields.CASES) == [source_tag_prov_with_url]
+
+
+def test_make_source_tags_no_urls():
+    ts_prov_only = TimeseriesLiteral(
+        [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),], provenance="prov_only",
+    )
+    dataset_in = test_helpers.build_default_region_dataset({CommonFields.ICU_BEDS: ts_prov_only})
+
+    dataset_out = timeseries.make_source_tags(dataset_in)
+
+    source_tag_prov_only = taglib.Source("prov_only")
+    ts_prov_only_expected = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[test_helpers.make_tag(date="2020-04-01"),],
+        source=source_tag_prov_only,
+    )
+    dataset_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts_prov_only_expected}
+    )
+    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+
+    one_region = dataset_out.get_one_region(test_helpers.DEFAULT_REGION)
+    assert one_region.sources(CommonFields.ICU_BEDS) == [source_tag_prov_only]
