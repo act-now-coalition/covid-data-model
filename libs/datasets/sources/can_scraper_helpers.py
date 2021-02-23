@@ -118,8 +118,8 @@ class CanScraperLoader:
         """
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
-        selected_data = []
 
+        selected_data = []
         for variable in variables:
             # Check that `variable` agrees with stuff in the ScraperVariable docstring.
             if variable.common_field is None:
@@ -141,7 +141,7 @@ class CanScraperLoader:
                     measurement_counts=str(more_data[Fields.MEASUREMENT].value_counts().to_dict()),
                     unit_counts=str(more_data[Fields.UNIT].value_counts().to_dict()),
                 )
-
+            # Copy CommonField name to data. The loop is continued above when common_field is None.
             data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
 
             selected_data.append(data)
