@@ -165,21 +165,21 @@ class CanScraperLoader:
         rename_columns = {f: f.common_field for f in Fields if f.common_field}
         long_df = combined_data.rename(columns=rename_columns)
 
-        source_columns = combined_df.columns.intersection(
-            [Fields.SOURCE_URL.value, Fields.SOURCE_NAME.value]
+        source_columns = long_df.columns.intersection(
+            [Fields.SOURCE_URL, Fields.SOURCE_NAME]
         ).to_list()
         if source_columns:
-            columns_rename = {
+            rename_columns = {
                 k: v
-                for k, v in {Fields.SOURCE_URL.value: "url", Fields.SOURCE_NAME: "name"}.items()
+                for k, v in {Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"}.items()
                 if k in source_columns
             }
 
             source_params_df = (
-                combined_df.loc[
+                long_df.loc[
                     :, [CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE] + source_columns
                 ]
-                .rename(columns=columns_rename)
+                .rename(columns=rename_columns)
                 .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
             )
             source_params_df["type"] = source_type

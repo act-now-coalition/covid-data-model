@@ -12,11 +12,15 @@ import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 import pandas as pd
+from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
 # Match fields in the CAN Scraper DB
+from libs.datasets.taglib import UrlStr
+
 DEFAULT_LOCATION = "36"
 DEFAULT_LOCATION_TYPE = "state"
 
@@ -121,7 +125,7 @@ def test_query_multiple_variables_with_ethnicity():
 
     input_data = build_can_scraper_dataframe({variable: [100, 100], variable_hispanic: [40, 40]})
     data = ccd_helpers.CanScraperLoader(input_data)
-    results, _ = data.query_multiple_variables([variable])
+    results, _ = data.query_multiple_variables([variable], source_type="MySource")
 
     expected_buf = io.StringIO(
         "fips,      date,cases\n"
@@ -140,8 +144,8 @@ def test_query_source_url():
         provider="cdc",
         common_field=CommonFields.VACCINATIONS_COMPLETED,
     )
-
-    input_data = build_can_scraper_dataframe({variable: [10, 20, 30]}, source_url="http://foo.com")
+    source_url = UrlStr("http://foo.com")
+    input_data = build_can_scraper_dataframe({variable: [10, 20, 30]}, source_url=source_url)
     data = ccd_helpers.CanScraperLoader(input_data)
     results, tags = data.query_multiple_variables([variable], source_type="MySource")
 
@@ -154,17 +158,16 @@ def test_query_source_url():
     expected = common_df.read_csv(expected_data_buf, set_index=False)
     pd.testing.assert_frame_equal(expected, results, check_names=False)
 
-    expected_tag_buf = io.StringIO(
-        "fips,      date,              variable,       source\n"
-        '  36,2021-01-01,vaccinations_completed,"{""type"":""MySource"",'
-        '""url"":""http://foo.com""}"\n'
-        '  36,2021-01-02,vaccinations_completed,"{""type"":""MySource"",'
-        '""url"":""http://foo.com""}"\n'
-        '  36,2021-01-03,vaccinations_completed,"{""type"":""MySource"",'
-        '""url"":""http://foo.com""}"\n'.replace(" ", "")
+    expected_tag_df = pd.DataFrame(
+        {
+            CommonFields.FIPS: expected[CommonFields.FIPS],
+            CommonFields.DATE: expected[CommonFields.DATE],
+            PdFields.VARIABLE: "vaccinations_completed",
+            taglib.TagField.TYPE: taglib.TagType.SOURCE,
+            taglib.TagField.CONTENT: taglib.Source(type="MySource", url=source_url).content,
+        }
     )
-    expected = common_df.read_csv(expected_tag_buf, set_index=False)
-    pd.testing.assert_frame_equal(expected, tags, check_like=True, check_names=False)
+    pd.testing.assert_frame_equal(expected_tag_df, tags, check_like=True, check_names=False)
 
 
 def test_query_multiple_variables_extra_field():
@@ -179,7 +182,7 @@ def test_query_multiple_variables_extra_field():
     input_data["extra_column"] = 123
     data = ccd_helpers.CanScraperLoader(input_data)
     with pytest.raises(ValueError):
-        data.query_multiple_variables([variable])
+        data.query_multiple_variables([variable], source_type="MySource")
 
 
 def test_query_multiple_variables_duplicate_observation():
@@ -195,4 +198,4 @@ def test_query_multiple_variables_duplicate_observation():
     input_data = build_can_scraper_dataframe({variable: [100, 100]})
     data = ccd_helpers.CanScraperLoader(pd.concat([input_data, input_data]))
     with pytest.raises(NotImplementedError):
-        data.query_multiple_variables([variable])
+        data.query_multiple_variables([variable], source_type="MySource")
