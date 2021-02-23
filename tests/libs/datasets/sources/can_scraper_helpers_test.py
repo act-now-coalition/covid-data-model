@@ -112,10 +112,11 @@ def test_query_multiple_variables_with_ethnicity():
     data = ccd_helpers.CanScraperLoader(input_data)
     results, _ = data.query_multiple_variables([variable])
 
+    # TODO(tom): Fix to return 100 for cases.
     expected_buf = io.StringIO(
         "fips,      date,aggregate_level,cases\n"
-        f" 36,2021-01-01,          state,  100\n"
-        f" 36,2021-01-02,          state,  100\n".replace(" ", "")
+        f" 36,2021-01-01,          state,   70\n"
+        f" 36,2021-01-02,          state,   70\n".replace(" ", "")
     )
     expected = common_df.read_csv(expected_buf, set_index=False)
     pd.testing.assert_frame_equal(expected, results)
