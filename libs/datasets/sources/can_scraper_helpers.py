@@ -44,6 +44,7 @@ class Fields(GetByValueMixin, FieldNameAndCommonField, enum.Enum):
     SEX = "sex", None
     VALUE = "value", None
     SOURCE_URL = "source_url", None
+    SOURCE_NAME = "source_name", None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -148,7 +149,7 @@ class CanScraperLoader:
                 data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
 
             selected_data.append(data)
-            if Fields.SOURCE_URL in data.columns:
+            if Fields.SOURCE_URL in data.columns or Fields.SOURCE_NAME in data.columns:
                 source_urls.append(
                     data.loc[
                         :, [Fields.VARIABLE_NAME, Fields.SOURCE_URL, Fields.LOCATION, Fields.DATE]
