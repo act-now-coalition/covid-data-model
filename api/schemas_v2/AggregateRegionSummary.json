@@ -534,8 +534,8 @@
         "newCases"
       ]
     },
-    "FieldSource": {
-      "title": "FieldSource",
+    "FieldSourceType": {
+      "title": "FieldSourceType",
       "description": "The data source of a field (metric or actual). This enumeration lists the places from which\nCAN fetches data. The source is tracked on a per field and region timeseries basis.",
       "enum": [
         "NYTimes",
@@ -551,6 +551,45 @@
         "other"
       ]
     },
+    "FieldSource": {
+      "title": "FieldSource",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "The type of data source from a CAN list of data source types",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldSourceType"
+            }
+          ]
+        },
+        "url": {
+          "title": "Url",
+          "description": "URL of a webpage containing the data at the source",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "title": "Name",
+          "description": "A human readable name of the source",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
     "TagType": {
       "title": "TagType",
       "description": "The type of the annotation.\n\nEach enumeration refers to the method used to generate the annotation.",
@@ -559,7 +598,8 @@
         "cumulative_long_tail_truncated",
         "zscore_outlier",
         "provenance",
-        "source_url"
+        "source_url",
+        "source"
       ],
       "type": "string"
     },
@@ -600,6 +640,7 @@
       "type": "object",
       "properties": {
         "sources": {
+          "title": "Sources",
           "type": "array",
           "items": {
             "$ref": "#/definitions/FieldSource"

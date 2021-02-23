@@ -67,6 +67,7 @@ class ScraperVariable:
     common_field: Optional[CommonFields] = None
     age: str = "all"
     race: str = "all"
+    ethnicity: str = "all"
     sex: str = "all"
 
 
@@ -80,29 +81,24 @@ def _fips_from_int(param: pd.Series):
     return param.apply(lambda v: f"{v:0>{2 if v < 100 else 5}}")
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class CanScraperLoader:
 
-    timeseries_df: pd.DataFrame
+    all_df: pd.DataFrame
 
     def _get_rows(self, variable: ScraperVariable) -> pd.DataFrame:
-        all_df = self.timeseries_df
+        # Similar to dataset_utils.make_rows_key this builds a Pandas.eval query string by making a
+        # list of query parts, then joining them with `and`. For our current data this takes 23s
+        # while the previous method of making a binary mask for each variable took 54s. This is run
+        # during tests so the speed up is nice to have.
+        required_fields = ["provider", "variable_name", "age", "race", "sex"]
+        assert all([getattr(variable, field) for field in required_fields])
+        query_parts = [f"{field} == @variable.{field}" for field in required_fields]
+        for optional_field in ["measurement", "unit"]:
+            if getattr(variable, optional_field):
+                query_parts.append(f"{optional_field} == @variable.{optional_field}")
 
-        is_selected_data = (
-            (all_df[Fields.PROVIDER] == variable.provider)
-            & (all_df[Fields.VARIABLE_NAME] == variable.variable_name)
-            & (all_df[Fields.AGE] == variable.age)
-            & (all_df[Fields.RACE] == variable.race)
-            & (all_df[Fields.SEX] == variable.sex)
-        )
-        if variable.measurement:
-            is_selected_data = is_selected_data & (
-                all_df[Fields.MEASUREMENT] == variable.measurement
-            )
-        if variable.unit:
-            is_selected_data = is_selected_data & (all_df[Fields.UNIT] == variable.unit)
-
-        return all_df.loc[is_selected_data, :].copy()
+        return self.all_df.loc[self.all_df.eval(" and ".join(query_parts))].copy()
 
     def query_multiple_variables(
         self,
@@ -211,8 +207,8 @@ class CanScraperLoader:
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))
-        provider_mask = self.timeseries_df[Fields.PROVIDER] == provider_name
-        counts = self.timeseries_df.loc[provider_mask, Fields.VARIABLE_NAME].value_counts()
+        provider_mask = self.all_df[Fields.PROVIDER] == provider_name
+        counts = self.all_df.loc[provider_mask, Fields.VARIABLE_NAME].value_counts()
         variables_by_name = {var.variable_name: var for var in variables}
         for variable_name, count in counts.iteritems():
             if variable_name not in variables_by_name:
