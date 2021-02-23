@@ -33,18 +33,20 @@ class Fields(GetByValueMixin, FieldNameAndCommonField, enum.Enum):
 
     PROVIDER = "provider", None
     DATE = "dt", CommonFields.DATE
-    LOCATION_TYPE = "location_type", CommonFields.AGGREGATE_LEVEL
-    # Special transformation to FIPS
     LOCATION = "location", CommonFields.FIPS
+    LOCATION_ID = "location_id", None
+    LOCATION_TYPE = "location_type", None
     VARIABLE_NAME = "variable_name", PdFields.VARIABLE
     MEASUREMENT = "measurement", None
     UNIT = "unit", None
     AGE = "age", None
     RACE = "race", None
+    ETHNICITY = "ethnicity", None
     SEX = "sex", None
     VALUE = "value", PdFields.VALUE
     SOURCE_URL = "source_url", None
     SOURCE_NAME = "source_name", None
+    LAST_UPDATED = "last_updated", None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -91,7 +93,7 @@ class CanScraperLoader:
         # list of query parts, then joining them with `and`. For our current data this takes 23s
         # while the previous method of making a binary mask for each variable took 54s. This is run
         # during tests so the speed up is nice to have.
-        required_fields = ["provider", "variable_name", "age", "race", "sex"]
+        required_fields = ["provider", "variable_name", "age", "race", "ethnicity", "sex"]
         assert all([getattr(variable, field) for field in required_fields])
         query_parts = [f"{field} == @variable.{field}" for field in required_fields]
         for optional_field in ["measurement", "unit"]:
@@ -120,6 +122,7 @@ class CanScraperLoader:
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
         selected_data = []
+        source_urls = []
 
         for variable in variables:
             # Check that `variable` agrees with stuff in the ScraperVariable docstring.
@@ -145,23 +148,22 @@ class CanScraperLoader:
 
             data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
             selected_data.append(data)
+            if Fields.SOURCE_URL in data.columns:
+                source_urls.append(
+                    data.loc[
+                        :, [Fields.VARIABLE_NAME, Fields.SOURCE_URL, Fields.LOCATION, Fields.DATE]
+                    ]
+                )
 
-        combined_df = pd.concat(selected_data).rename(
-            columns={
-                Fields.LOCATION.value: CommonFields.FIPS,
-                Fields.DATE.value: CommonFields.DATE,
-                Fields.LOCATION_TYPE.value: CommonFields.AGGREGATE_LEVEL,
-                Fields.VARIABLE_NAME.value: PdFields.VARIABLE,
-                Fields.VALUE.value: PdFields.VALUE,
-            }
-        )
+        # TODO(tom): check LOCATION_TYPE matches LOCATION
 
-        fips_level = (
-            combined_df.loc[:, CommonFields.FIPS].str.len().replace({2: "state", 5: "county"})
-        )
-        fips_level_mismatch = fips_level != combined_df.loc[:, CommonFields.AGGREGATE_LEVEL]
-        if fips_level_mismatch.any():
-            raise ValueError("location and location_type don't match")
+        combined_data = pd.concat(selected_data)
+        unknown_columns = set(combined_data.columns) - set(Fields)
+        if unknown_columns:
+            raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
+
+        rename_columns = {f: f.common_field for f in Fields if f.common_field}
+        long_df = combined_data.rename(columns=rename_columns)
 
         source_columns = combined_df.columns.intersection(
             [Fields.SOURCE_URL.value, Fields.SOURCE_NAME.value]
@@ -190,20 +192,24 @@ class CanScraperLoader:
         else:
             source_df = pd.DataFrame([])
 
-        combined_indexed = combined_df.set_index(
-            [CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE]
-        )
-        dups = combined_indexed.index.duplicated(keep=False)
-        if dups.any():
-            raise ValueError(f"Duplicates: {combined_indexed.loc[dups]}")
-        wide_variables_df = (
-            combined_indexed[PdFields.VALUE]
-            .unstack()
-            .reset_index()
-            .rename_axis(None, axis="columns")
-        )
+        indexed = long_df.set_index(
+            [CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE]
+        ).sort_index()
+        dups = indexed.index.duplicated(keep=False)
 
-        return wide_variables_df, source_df
+        if dups.any():
+            raise NotImplementedError(
+                f"No support for aggregating duplicate observations:\n"
+                f"{indexed.loc[dups].to_string(line_width=200, max_rows=200,max_colwidth=40)}"
+            )
+
+        # Make a DataFrame with index=[FIPS,DATE], column=VARIABLE and value=VALUE. This used to
+        # use pivot_table but we don't want to aggregate observations. I tried using
+        # `DataFrame.pivot` but couldn't work around a mysterious
+        # "NotImplementedError: > 1 ndim Categorical are not supported at this time".
+        wide_vars_df = indexed[PdFields.VALUE].unstack(level=PdFields.VARIABLE).reset_index()
+        assert wide_vars_df.columns.names == [PdFields.VARIABLE]
+        return wide_vars_df, source_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))
