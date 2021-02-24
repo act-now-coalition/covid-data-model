@@ -85,7 +85,7 @@ def init(server):
     df_regions = df_regions.reset_index()  # Move location_id from the index to a regular column
     df_regions["id"] = df_regions[CommonFields.LOCATION_ID]
 
-    df_popular_urls = (
+    source_url_value_counts = (
         ds.tag.loc[:, :, TagType.SOURCE_URL]
         .value_counts()
         .reset_index()
@@ -105,8 +105,9 @@ def init(server):
     agg_has_url = _agg_wide_var_counts(wide_var_has_mask.astype(int)).reset_index()
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
+    # TODO(tom): update to work with Source tag
     has_url = counties.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
-    county_variable_population_ratio = variable_population_ratio(counties, has_url)
+    county_variable_population_ratio = population_ratio_by_variable(counties, has_url)
 
     dash_app.layout = html.Div(
         children=[
@@ -124,9 +125,9 @@ def init(server):
             html.H2("Source URLs"),
             dash_table.DataTable(
                 id="source_url_counts",
-                columns=[{"name": i, "id": i} for i in df_popular_urls.columns],
+                columns=[{"name": i, "id": i} for i in source_url_value_counts.columns],
                 page_size=8,
-                data=df_popular_urls.to_dict("records"),
+                data=source_url_value_counts.to_dict("records"),
                 editable=False,
                 page_action="native",
             ),
@@ -191,18 +192,21 @@ def init(server):
     return dash_app.server
 
 
-def variable_population_ratio(dataset: timeseries.MultiRegionDataset, has_url) -> pd.DataFrame:
-    assert has_url.index.names == [CommonFields.LOCATION_ID]
-    assert has_url.columns.names == [PdFields.VARIABLE]
-    population_indexed = dataset.static[CommonFields.POPULATION].reindex(has_url.index)
+def population_ratio_by_variable(
+    dataset: timeseries.MultiRegionDataset, df: pd.DataFrame
+) -> pd.DataFrame:
+    """Finds the ratio of the population where df is True, broken down by column/variable."""
+    assert df.index.names == [CommonFields.LOCATION_ID]
+    assert df.columns.names == [PdFields.VARIABLE]
+    population_indexed = dataset.static[CommonFields.POPULATION].reindex(df.index)
     population_total = population_indexed.sum()
-    # Make a DataFrame that is like has_url but filled with zeros.
-    zeros = pd.DataFrame(0, index=has_url.index, columns=has_url.columns)
-    # Where has_url is True add the population, otherwise add zero. The result is a series with
+    # Make a DataFrame that is like df but filled with zeros.
+    zeros = pd.DataFrame(0, index=df.index, columns=df.columns)
+    # Where df is True add the population, otherwise add zero. The result is a series with
     # PdFields.VARIABLE index
-    population_has_url = zeros.mask(has_url, population_indexed, axis=0).sum(axis=0)
-    population_ratio_has_url = population_has_url / population_total
-    return population_ratio_has_url.rename("population_ratio").reset_index()
+    population_where_true = zeros.mask(df, population_indexed, axis=0).sum(axis=0)
+    population_ratio = population_where_true / population_total
+    return population_ratio.rename("population_ratio").reset_index()
 
 
 def _init_callbacks(dash_app, ds: timeseries.MultiRegionDataset, df_regions: pd.DataFrame):
