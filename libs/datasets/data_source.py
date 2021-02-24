@@ -26,7 +26,7 @@ class DataSource(object):
 
     # Name of source
     # TODO(tom): Make an enum of these.
-    SOURCE_NAME = None
+    SOURCE_TYPE = None
 
     # Fields expected to be in the DataFrame loaded by common_df.read_csv
     EXPECTED_FIELDS: Optional[List[CommonFields]] = None
@@ -50,13 +50,13 @@ class DataSource(object):
         if not extra_fields.empty:
             _log.info(
                 "DataSource produced extra unexpected fields, which were dropped.",
-                cls=cls.SOURCE_NAME,
+                cls=cls.SOURCE_TYPE,
                 extra_fields=extra_fields,
             )
         if not missing_fields.empty:
             _log.info(
                 "DataSource failed to produce all expected fields",
-                cls=cls.SOURCE_NAME,
+                cls=cls.SOURCE_TYPE,
                 missing_fields=missing_fields,
             )
         return data
@@ -70,7 +70,7 @@ class DataSource(object):
         input_path = data_root / cls.COMMON_DF_CSV_PATH
         data = common_df.read_csv(input_path, set_index=False)
         data = cls._check_data(data)
-        return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)
+        return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_TYPE)
 
 
 # TODO(tom): Clean up the mess that is subclasses of DataSource and
@@ -100,7 +100,7 @@ class CanScraperBase(DataSource):
         )
         data = cls.transform_data(data)
         data = cls._check_data(data)
-        ds = MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_NAME)
+        ds = MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_TYPE)
         if not source_urls_df.empty:
             # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.
             source_urls_df = (

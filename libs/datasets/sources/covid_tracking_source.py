@@ -3,7 +3,7 @@ from libs.datasets import data_source
 
 
 class CovidTrackingDataSource(data_source.DataSource):
-    SOURCE_NAME = "covid_tracking"
+    SOURCE_TYPE = "covid_tracking"
 
     COMMON_DF_CSV_PATH = "data/covid-tracking/timeseries.csv"
 
