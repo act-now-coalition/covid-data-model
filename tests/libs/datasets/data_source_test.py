@@ -25,8 +25,13 @@ def test_state_providers_smoke_test():
 
 
 @pytest.mark.parametrize("reverse_observation_order", [False, True])
-def test_can_scraper_usa_facts_provider_returns_source_url(reverse_observation_order):
-    """Injects a tiny bit of data in a CanScraperLoader with a source_url for a quick test."""
+def test_can_scraper_returns_source_url(reverse_observation_order):
+    """Injects a tiny bit of data in a CanScraperLoader with a source_url."""
+
+    # Make a new subclass make_dataset lru_cache misses.
+    class CANScraperForTest(CANScraperUSAFactsProvider):
+        pass
+
     variable = ccd_helpers.ScraperVariable(
         variable_name="cases",
         measurement="cumulative",
@@ -45,12 +50,8 @@ def test_can_scraper_usa_facts_provider_returns_source_url(reverse_observation_o
     data = ccd_helpers.CanScraperLoader(input_data)
 
     with mock.patch("libs.datasets.data_source.CanScraperBase") as mock_can_scraper_base:
-        # Clear lru_cache so values of previous tests are not used.
-        CANScraperUSAFactsProvider.make_dataset.cache_clear()
         mock_can_scraper_base._get_covid_county_dataset.return_value = data
-        ds = CANScraperUSAFactsProvider.make_dataset()
-        # Clear lru_cache so subsequent tests don't get the mocked data.
-        CANScraperUSAFactsProvider.make_dataset.cache_clear()
+        ds = CANScraperForTest.make_dataset()
 
     # Check that the URL gets all the way to the OneRegionTimeseriesDataset.
     one_region = ds.get_one_region(
@@ -86,7 +87,6 @@ def test_data_source_make_dataset(tmpdir):
     # Load the fake data using the normal code path.
     with mock.patch("libs.datasets.data_source.dataset_utils") as mock_can_scraper_base:
         mock_can_scraper_base.LOCAL_PUBLIC_DATA_PATH = tmp_data_root
-        assert NYTimesForTest.make_dataset.cache_info().currsize == 0
         dataset_read = NYTimesForTest.make_dataset()
 
     # This dataset is exactly like dataset_start except the timeseries include `source`. The test
