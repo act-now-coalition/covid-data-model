@@ -647,7 +647,7 @@ class MultiRegionDataset:
 
     def append_fips_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df, containing a fips column, appended."""
-        additional_tag_df = _add_location_id(additional_tag_df)
+        additional_tag_df = _add_location_id(additional_tag_df).drop(columns=CommonFields.FIPS)
         return self.append_tag_df(additional_tag_df)
 
     def append_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -1709,6 +1709,8 @@ def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 
 def make_source_url_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     """Make source_url tags from source tags"""
+    # TODO(tom): When we have clearer view of how we want to build materialized views of tags
+    #  replace use of this function.
     assert TagType.SOURCE_URL not in ds_in.tag.index.get_level_values(TagField.TYPE)
     try:
         source_tags = ds_in.tag_objects_series.loc[:, :, [TagType.SOURCE]]
