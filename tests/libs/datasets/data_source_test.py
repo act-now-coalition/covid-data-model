@@ -8,10 +8,10 @@ from libs import pipeline
 from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.sources import can_scraper_state_providers
-from libs.datasets.sources.nytimes_dataset import NYTimesDataset
+from libs.datasets.sources import nytimes_dataset
+from libs.datasets.sources import can_scraper_usafacts
 from unittest import mock
 
-from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 from tests import test_helpers
 from libs.datasets.taglib import UrlStr
 from tests.libs.datasets.sources import can_scraper_helpers_test
@@ -26,10 +26,10 @@ def test_state_providers_smoke_test():
 
 @pytest.mark.parametrize("reverse_observation_order", [False, True])
 def test_can_scraper_returns_source_url(reverse_observation_order):
-    """Injects a tiny bit of data in a CanScraperLoader with a source_url."""
+    """Injects a tiny bit of data with a source_url in a CanScraperLoader."""
 
-    # Make a new subclass make_dataset lru_cache misses.
-    class CANScraperForTest(CANScraperUSAFactsProvider):
+    # Make a new subclass to keep this test separate from others in the make_dataset lru_cache.
+    class CANScraperForTest(can_scraper_usafacts.CANScraperUSAFactsProvider):
         pass
 
     variable = ccd_helpers.ScraperVariable(
@@ -63,8 +63,8 @@ def test_can_scraper_returns_source_url(reverse_observation_order):
 
 
 def test_data_source_make_dataset(tmpdir):
-    # Make a subclass of NYTimesDataset to avoid hitting its make_dataset lru_cache.
-    class NYTimesForTest(NYTimesDataset):
+    # Make a new subclass to keep this test separate from others in the make_dataset lru_cache.
+    class NYTimesForTest(nytimes_dataset.NYTimesDataset):
         pass
 
     region = pipeline.Region.from_state("AZ")
@@ -72,8 +72,8 @@ def test_data_source_make_dataset(tmpdir):
     tmp_data_root = pathlib.Path(tmpdir)
     csv_path = tmp_data_root / NYTimesForTest.COMMON_DF_CSV_PATH
     csv_path.parent.mkdir(parents=True)
-    cases_ts = test_helpers.TimeseriesLiteral([10, 20, 30], source=NYTimesDataset.source_tag())
-    deaths_ts = test_helpers.TimeseriesLiteral([1, 2, 3], source=NYTimesDataset.source_tag())
+    cases_ts = test_helpers.TimeseriesLiteral([10, 20, 30], source=NYTimesForTest.source_tag())
+    deaths_ts = test_helpers.TimeseriesLiteral([1, 2, 3], source=NYTimesForTest.source_tag())
 
     # Make a tiny fake NYTimes dataset and write it to disk.
     dataset_start = test_helpers.build_default_region_dataset(
