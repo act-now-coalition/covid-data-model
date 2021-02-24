@@ -4,7 +4,7 @@ from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
 class CANScraperStateProviders(data_source.CanScraperBase):
-    SOURCE_TYPE = "CANScrapersStateProviders"
+    SOURCE_NAME = "CANScrapersStateProviders"
 
     EXPECTED_FIELDS = [
         CommonFields.STAFFED_BEDS,

@@ -3,7 +3,7 @@ from libs.datasets import data_source
 
 
 class TestAndTraceData(data_source.DataSource):
-    SOURCE_TYPE = "TestAndTrace"
+    SOURCE_NAME = "TestAndTrace"
 
     COMMON_DF_CSV_PATH = "data/test-and-trace/state_data.csv"
 

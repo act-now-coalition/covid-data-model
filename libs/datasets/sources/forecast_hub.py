@@ -8,7 +8,7 @@ class ForecastHubDataset(data_source.DataSource):
     they are not included in CommonFields and would be filtered out regardless.
     """
 
-    SOURCE_TYPE = "ForecastHub"
+    SOURCE_NAME = "ForecastHub"
 
     COMMON_DF_CSV_PATH = "data/forecast-hub/timeseries-common.csv"
 

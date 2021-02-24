@@ -4,7 +4,7 @@ from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
 class CDCVaccinesDataset(data_source.CanScraperBase):
-    SOURCE_TYPE = "CDCVaccine"
+    SOURCE_NAME = "CDCVaccine"
 
     EXPECTED_FIELDS = [
         CommonFields.VACCINES_ADMINISTERED,

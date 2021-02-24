@@ -3,7 +3,7 @@ from libs.datasets import data_source
 
 
 class TexasHospitalizations(data_source.DataSource):
-    SOURCE_TYPE = "tx_hosp"
+    SOURCE_NAME = "tx_hosp"
 
     COMMON_DF_CSV_PATH = "data/states/tx/tx_fips_hospitalizations.csv"
 

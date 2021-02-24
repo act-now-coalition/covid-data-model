@@ -84,9 +84,9 @@ class DataSourceAndRegionMasks:
         return self.data_source_cls.EXPECTED_FIELDS
 
     @property
-    def SOURCE_TYPE(self):
+    def SOURCE_NAME(self):
         """Implements the same interface as the wrapped DataSource class."""
-        return self.data_source_cls.SOURCE_TYPE
+        return self.data_source_cls.SOURCE_NAME
 
     def make_dataset(self) -> MultiRegionDataset:
         """Returns the dataset of the wrapped DataSource class, with a subset of the regions.

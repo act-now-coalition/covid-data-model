@@ -25,7 +25,7 @@ class FIPSPopulation(data_source.DataSource):
 
     FILE_PATH = "data/misc/fips_population.csv"
 
-    SOURCE_TYPE = "FIPS"
+    SOURCE_NAME = "FIPS"
 
     class Fields(object):
         STATE = "state"

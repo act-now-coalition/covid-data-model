@@ -205,8 +205,8 @@ def test_combined_datasets_uses_only_expected_fields():
     for field_name, sources in combined_datasets.ALL_TIMESERIES_FEATURE_DEFINITION.items():
         for source in sources:
             assert field_name in source.EXPECTED_FIELDS, (
-                f"{source.SOURCE_TYPE} is in combined_datasets for {field_name} but the field "
-                f"is not in the {source.SOURCE_TYPE} EXPECTED_FIELDS."
+                f"{source.SOURCE_NAME} is in combined_datasets for {field_name} but the field "
+                f"is not in the {source.SOURCE_NAME} EXPECTED_FIELDS."
             )
 
 
@@ -220,7 +220,7 @@ def test_dataclass_include_exclude():
     ny_source = combined_datasets.datasource_regions(
         orig_data_source_cls, RegionMask(states=["NY"])
     )
-    assert ny_source.SOURCE_TYPE == orig_data_source_cls.SOURCE_TYPE
+    assert ny_source.SOURCE_NAME == orig_data_source_cls.SOURCE_NAME
     assert ny_source.EXPECTED_FIELDS == orig_data_source_cls.EXPECTED_FIELDS
     ny_ds = ny_source.make_dataset()
     assert "iso1:us#iso2:us-tx" not in ny_ds.static.index

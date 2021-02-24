@@ -5,7 +5,7 @@ from libs.datasets.timeseries import MultiRegionDataset
 
 
 class HHSHospitalDataset(data_source.DataSource):
-    SOURCE_TYPE = "HHSHospital"
+    SOURCE_NAME = "HHSHospital"
 
     COMMON_DF_CSV_PATH = "data/hospital-hhs/timeseries-common.csv"
 

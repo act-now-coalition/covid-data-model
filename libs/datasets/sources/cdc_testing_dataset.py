@@ -36,7 +36,7 @@ def remove_trailing_zeros(data: pd.DataFrame) -> pd.DataFrame:
 
 
 class CDCTestingDataset(data_source.CanScraperBase):
-    SOURCE_TYPE = "CDCTesting"
+    SOURCE_NAME = "CDCTesting"
 
     EXPECTED_FIELDS = [
         CommonFields.TEST_POSITIVITY_7D,
