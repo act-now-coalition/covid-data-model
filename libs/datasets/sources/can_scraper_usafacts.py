@@ -6,7 +6,7 @@ from libs.datasets import data_source
 
 
 class CANScraperUSAFactsProvider(data_source.CanScraperBase):
-    SOURCE_NAME = "USAFacts"
+    SOURCE_TYPE = "USAFacts"
 
     EXPECTED_FIELDS = [
         CommonFields.CASES,

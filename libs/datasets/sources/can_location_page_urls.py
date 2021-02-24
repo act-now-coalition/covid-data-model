@@ -8,7 +8,7 @@ from libs.datasets import timeseries
 
 
 class CANLocationPageURLS(data_source.DataSource):
-    SOURCE_NAME = "can_urls"
+    SOURCE_TYPE = "can_urls"
 
     STATIC_CSV = "data/misc/can_location_page_urls.csv"
 
