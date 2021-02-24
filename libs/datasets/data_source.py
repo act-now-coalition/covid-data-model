@@ -8,7 +8,6 @@ from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
-from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 from libs.datasets import dataset_utils
@@ -95,21 +94,20 @@ class CanScraperBase(DataSource):
         """Default implementation of make_dataset that loads data from the parquet file."""
         assert cls.VARIABLES
         ccd_dataset = CanScraperBase._get_covid_county_dataset()
-        data, source_urls_df = ccd_dataset.query_multiple_variables(
-            cls.VARIABLES, log_provider_coverage_warnings=True
+        data, source_df = ccd_dataset.query_multiple_variables(
+            cls.VARIABLES, log_provider_coverage_warnings=True, source_type=cls.SOURCE_TYPE
         )
         data = cls.transform_data(data)
         data = cls._check_data(data)
-        ds = MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_TYPE)
-        if not source_urls_df.empty:
+        ds = MultiRegionDataset.from_fips_timeseries_df(data)
+        if not source_df.empty:
             # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.
-            source_urls_df = (
-                source_urls_df.sort_values(CommonFields.DATE)
+            source_tag_df = (
+                source_df.sort_values(CommonFields.DATE)
                 .groupby([CommonFields.FIPS, PdFields.VARIABLE], sort=False)
                 .last()
                 .reset_index()
                 .drop(columns=[CommonFields.DATE])
             )
-            source_urls_df[taglib.TagField.TYPE] = taglib.TagType.SOURCE_URL
-            ds = ds.append_fips_tag_df(source_urls_df)
+            ds = ds.append_fips_tag_df(source_tag_df)
         return ds
