@@ -4,6 +4,8 @@ from libs.datasets import data_source
 
 class NYTimesDataset(data_source.DataSource):
     SOURCE_TYPE = "NYTimes"
+    SOURCE_NAME = "New York Times"
+    SOURCE_URL = "https://github.com/nytimes/covid-19-data"
 
     COMMON_DF_CSV_PATH = "data/cases-nytimes/timeseries-common.csv"
 

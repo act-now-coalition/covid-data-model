@@ -5,6 +5,7 @@ import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
+from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.sources import can_scraper_state_providers
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
@@ -59,15 +60,19 @@ def test_can_scraper_usa_facts_provider_returns_source_url(reverse_observation_o
 
 def test_data_source_make_dataset(tmpdir):
     region = pipeline.Region.from_state("AZ")
+    region_static = {CommonFields.STATE: "AZ", CommonFields.FIPS: "04"}
     tmp_data_root = pathlib.Path(tmpdir)
     csv_path = tmp_data_root / NYTimesDataset.COMMON_DF_CSV_PATH
     csv_path.parent.mkdir(parents=True)
+    cases_ts = test_helpers.TimeseriesLiteral([10, 20, 30], source=NYTimesDataset.source_tag())
+    deaths_ts = test_helpers.TimeseriesLiteral([1, 2, 3], source=NYTimesDataset.source_tag())
 
     # Make a tiny fake NYTimes dataset and write it to disk.
     dataset_start = test_helpers.build_default_region_dataset(
-        {CommonFields.CASES: [10, 20, 30], CommonFields.DEATHS: [1, 2, 3]},
+        # Make timeseries using just the real values, no source.
+        {CommonFields.CASES: list(cases_ts), CommonFields.DEATHS: list(deaths_ts)},
         region=region,
-        static={CommonFields.STATE: "AZ", CommonFields.FIPS: "04"},
+        static=region_static,
     )
     dataset_start.to_csv(csv_path, include_latest=False)
 
@@ -76,5 +81,12 @@ def test_data_source_make_dataset(tmpdir):
         mock_can_scraper_base.LOCAL_PUBLIC_DATA_PATH = tmp_data_root
         dataset_read = NYTimesDataset.make_dataset()
 
-    dataset_expected = dataset_start.add_provenance_all("NYTimes")
+    # This dataset is exactly like dataset_start except the timeseries include `source`. The test
+    # builds it from scratch instead of calling dataset_start.add_tag_all so this test can find
+    # problems with add_tag_all.
+    dataset_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: cases_ts, CommonFields.DEATHS: deaths_ts},
+        region=region,
+        static=region_static,
+    )
     test_helpers.assert_dataset_like(dataset_expected, dataset_read)

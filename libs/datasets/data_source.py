@@ -25,7 +25,7 @@ class DataSource(object):
     """Represents a single dataset source; loads data and produces a MultiRegionDataset."""
 
     # DataSource class name
-    # TODO(tom): Make an enum of these.
+    # TODO(tom): Make an enum of DataSource classes or their names
     SOURCE_TYPE = None
     SOURCE_NAME = None
     SOURCE_URL = None
@@ -40,6 +40,11 @@ class DataSource(object):
     # that contain redundant information about the location are ignored because cleaning them up
     # isn't worth the effort.
     IGNORED_FIELDS = (CommonFields.COUNTY, CommonFields.COUNTRY, CommonFields.STATE)
+
+    @classmethod
+    def source_tag(cls) -> taglib.Source:
+        # TODO(tom): Make a @property https://docs.python.org/3.9/library/functions.html#classmethod
+        return taglib.Source(type=cls.SOURCE_TYPE, url=cls.SOURCE_URL, name=cls.SOURCE_NAME)
 
     @classmethod
     def _check_data(cls, data: pd.DataFrame):
@@ -72,7 +77,7 @@ class DataSource(object):
         input_path = data_root / cls.COMMON_DF_CSV_PATH
         data = common_df.read_csv(input_path, set_index=False)
         data = cls._check_data(data)
-        return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_TYPE)
+        return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all(cls.source_tag())
 
 
 # TODO(tom): Clean up the mess that is subclasses of DataSource and

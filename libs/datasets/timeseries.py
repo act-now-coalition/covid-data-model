@@ -524,8 +524,8 @@ class MultiRegionDataset:
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
             if provenance_path.exists():
-                # TODO(tom): If this doesn't cause a problem delete add_provenance_csv
-                raise NotImplementedError("I don't think -provenance.csv is loaded anywhere...")
+                # TODO(tom): Try to delete add_provenance_csv which seems to be only used in tests.
+                dataset = dataset.add_provenance_csv(provenance_path)
         return dataset
 
     @staticmethod
