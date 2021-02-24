@@ -60,6 +60,7 @@ def create_standard_model(r0, sup, days=100, ratios=None):
     return model
 
 
+@pytest.mark.slow
 def test_run_model_orig():
     def sup(t):
         return 1.0 if t < 50 else 0.6
@@ -72,6 +73,7 @@ def test_run_model_orig():
     fig.savefig(TEST_OUTPUT_DIR / "test_run_model_orig.pdf", bbox_inches="tight")
 
 
+@pytest.mark.slow
 def test_restart_existing_model_from_ratios():
     ratios = steady_state_ratios(1.4)
 
