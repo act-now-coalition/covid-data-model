@@ -79,7 +79,7 @@ class DataSource(object):
         input_path = data_root / cls.COMMON_DF_CSV_PATH
         data = common_df.read_csv(input_path, set_index=False)
         data = cls._check_data(data)
-        return MultiRegionDataset.from_fips_timeseries_df(data).add_provenance_all(cls.SOURCE_TYPE)
+        return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all(cls.source_tag())
 
 
 # TODO(tom): Clean up the mess that is subclasses of DataSource and
