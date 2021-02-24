@@ -59,17 +59,22 @@ def test_can_scraper_usa_facts_provider_returns_source_url(reverse_observation_o
 
 def test_data_source_make_dataset(tmpdir):
     region = pipeline.Region.from_state("AZ")
-
-    dataset_in = test_helpers.build_default_region_dataset(
-        {CommonFields.CASES: [10, 20, 30], CommonFields.DEATHS: [1, 2, 3]},
-        region=region,
-        static={CommonFields.STATE: "AZ"},
-    )
     tmp_data_root = pathlib.Path(tmpdir)
     csv_path = tmp_data_root / NYTimesDataset.COMMON_DF_CSV_PATH
     csv_path.parent.mkdir(parents=True)
-    dataset_in.to_csv(csv_path)
+
+    # Make a tiny fake NYTimes dataset and write it to disk.
+    dataset_start = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: [10, 20, 30], CommonFields.DEATHS: [1, 2, 3]},
+        region=region,
+        static={CommonFields.STATE: "AZ", CommonFields.FIPS: "04"},
+    )
+    dataset_start.to_csv(csv_path, include_latest=False)
+
+    # Load the fake data using the normal code path.
     with mock.patch("libs.datasets.data_source.dataset_utils") as mock_can_scraper_base:
         mock_can_scraper_base.LOCAL_PUBLIC_DATA_PATH = tmp_data_root
-        ds_read = NYTimesDataset.make_dataset()
-    test_helpers.assert_dataset_like(dataset_in, ds_read)
+        dataset_read = NYTimesDataset.make_dataset()
+
+    dataset_expected = dataset_start.add_provenance_all("NYTimes")
+    test_helpers.assert_dataset_like(dataset_expected, dataset_read)

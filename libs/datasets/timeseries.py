@@ -805,17 +805,20 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask]
         return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
 
-    def to_csv(self, path: pathlib.Path):
+    def to_csv(self, path: pathlib.Path, include_latest=True):
         """Persists timeseries to CSV.
 
         Args:
             path: Path to write to.
         """
-        latest_data = self.static.reset_index()
-        _add_fips_if_missing(latest_data)
-
         timeseries_data = self._geo_data.join(self.timeseries).reset_index()
         _add_fips_if_missing(timeseries_data)
+
+        if include_latest:
+            latest_data = self.static.reset_index()
+            _add_fips_if_missing(latest_data)
+        else:
+            latest_data = pd.DataFrame([])
 
         # A DataFrame with timeseries data and latest data (with DATE=NaT) together
         combined = pd.concat([timeseries_data, latest_data], ignore_index=True)
