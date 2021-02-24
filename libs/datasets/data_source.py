@@ -8,11 +8,13 @@ from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 from libs.datasets import dataset_utils
 from libs.datasets import timeseries
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
+from libs.datasets.taglib import UrlStr
 from libs.datasets.timeseries import MultiRegionDataset
 from functools import lru_cache
 import pandas as pd
@@ -23,9 +25,12 @@ _log = structlog.get_logger()
 class DataSource(object):
     """Represents a single dataset source; loads data and produces a MultiRegionDataset."""
 
-    # Name of source
-    # TODO(tom): Make an enum of these.
-    SOURCE_TYPE = None
+    # Attributes set in subclasses and copied to a taglib.Source
+    # TODO(tom): Make SOURCE_TYPE an enum when cleaning the mess that is subclasses of DataSource.
+    # DataSource class name
+    SOURCE_TYPE: str = None
+    SOURCE_NAME: Optional[str] = None
+    SOURCE_URL: Optional[UrlStr] = None
 
     # Fields expected to be in the DataFrame loaded by common_df.read_csv
     EXPECTED_FIELDS: Optional[List[CommonFields]] = None
@@ -37,6 +42,11 @@ class DataSource(object):
     # that contain redundant information about the location are ignored because cleaning them up
     # isn't worth the effort.
     IGNORED_FIELDS = (CommonFields.COUNTY, CommonFields.COUNTRY, CommonFields.STATE)
+
+    @classmethod
+    def source_tag(cls) -> taglib.Source:
+        # TODO(tom): Make a @property https://docs.python.org/3.9/library/functions.html#classmethod
+        return taglib.Source(type=cls.SOURCE_TYPE, url=cls.SOURCE_URL, name=cls.SOURCE_NAME)
 
     @classmethod
     def _check_data(cls, data: pd.DataFrame):
