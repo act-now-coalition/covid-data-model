@@ -143,7 +143,7 @@ class Source(TagInTimeseries):
 
     @staticmethod
     def rename_and_make_tag_df(
-        in_df: pd.DataFrame, *, source_type=None, rename: Mapping[str, str]
+        in_df: pd.DataFrame, *, source_type: Optional[str] = None, rename: Mapping[str, str]
     ) -> pd.DataFrame:
         """Creates a Source for each row of `in_df`.
 
