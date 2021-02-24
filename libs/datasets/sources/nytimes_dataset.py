@@ -5,7 +5,7 @@ from libs.datasets.taglib import UrlStr
 
 class NYTimesDataset(data_source.DataSource):
     SOURCE_TYPE = "NYTimes"
-    SOURCE_NAME = "New York Times"
+    SOURCE_NAME = "The New York Times"
     SOURCE_URL = UrlStr("https://github.com/nytimes/covid-19-data")
 
     COMMON_DF_CSV_PATH = "data/cases-nytimes/timeseries-common.csv"
