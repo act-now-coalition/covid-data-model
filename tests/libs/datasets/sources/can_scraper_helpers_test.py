@@ -4,19 +4,34 @@ from typing import Dict, List
 import io
 import datetime
 from typing import Iterable
+from typing import Iterator
+from typing import Optional
 from typing import Union
 
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_df
 import pandas as pd
+from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
 # Match fields in the CAN Scraper DB
+from libs.datasets.taglib import UrlStr
+
 DEFAULT_LOCATION = "36"
 DEFAULT_LOCATION_TYPE = "state"
+
+
+def _make_iterator(maybe_iterable: Union[None, str, Iterable[str]]) -> Optional[Iterator[str]]:
+    if maybe_iterable is None:
+        return None
+    elif isinstance(maybe_iterable, str):
+        return itertools.repeat(maybe_iterable)
+    else:
+        return iter(maybe_iterable)
 
 
 def build_can_scraper_dataframe(
@@ -25,6 +40,7 @@ def build_can_scraper_dataframe(
     location_type=DEFAULT_LOCATION_TYPE,
     start_date="2021-01-01",
     source_url: Union[None, str, Iterable[str]] = None,
+    source_name: Union[None, str, Iterable[str]] = None,
 ) -> pd.DataFrame:
     """Creates a DataFrame with the same structure as the CAN Scraper parquet file.
 
@@ -32,12 +48,8 @@ def build_can_scraper_dataframe(
         source_url: None to not include the column or a string for every observation or
         an iterable of strings to add to each observation in the order created.
     """
-    if source_url is None:
-        source_url_iter = None
-    elif isinstance(source_url, str):
-        source_url_iter = itertools.repeat(source_url)
-    else:
-        source_url_iter = iter(source_url)
+    source_url_iter = _make_iterator(source_url)
+    source_name_iter = _make_iterator(source_name)
     start_date = datetime.datetime.fromisoformat(start_date)
     rows = []
     for variable, data in data_by_variable.items():
@@ -60,6 +72,8 @@ def build_can_scraper_dataframe(
             }
             if source_url:
                 row["source_url"] = next(source_url_iter)
+            if source_name:
+                row["source_name"] = next(source_name_iter)
             rows.append(row)
 
     return pd.DataFrame(rows)
@@ -86,7 +100,7 @@ def test_query_multiple_variables():
         {variable: [10, 20, 30], not_included_variable: [10, 20, 40]}
     )
     data = ccd_helpers.CanScraperLoader(input_data)
-    results, _ = data.query_multiple_variables([variable])
+    results, _ = data.query_multiple_variables([variable], source_type="MySource")
 
     expected_buf = io.StringIO(
         "fips,      date,vaccinations_completed\n"
@@ -111,7 +125,7 @@ def test_query_multiple_variables_with_ethnicity():
 
     input_data = build_can_scraper_dataframe({variable: [100, 100], variable_hispanic: [40, 40]})
     data = ccd_helpers.CanScraperLoader(input_data)
-    results, _ = data.query_multiple_variables([variable])
+    results, _ = data.query_multiple_variables([variable], source_type="MySource")
 
     expected_buf = io.StringIO(
         "fips,      date,cases\n"
@@ -130,10 +144,10 @@ def test_query_source_url():
         provider="cdc",
         common_field=CommonFields.VACCINATIONS_COMPLETED,
     )
-
-    input_data = build_can_scraper_dataframe({variable: [10, 20, 30]}, source_url="http://foo.com")
+    source_url = UrlStr("http://foo.com")
+    input_data = build_can_scraper_dataframe({variable: [10, 20, 30]}, source_url=source_url)
     data = ccd_helpers.CanScraperLoader(input_data)
-    results, tags = data.query_multiple_variables([variable])
+    results, tags = data.query_multiple_variables([variable], source_type="MySource")
 
     expected_data_buf = io.StringIO(
         "fips,      date,vaccinations_completed\n"
@@ -144,14 +158,16 @@ def test_query_source_url():
     expected = common_df.read_csv(expected_data_buf, set_index=False)
     pd.testing.assert_frame_equal(expected, results, check_names=False)
 
-    expected_tag_buf = io.StringIO(
-        "fips,      date,              variable,       content\n"
-        "  36,2021-01-01,vaccinations_completed,http://foo.com\n"
-        "  36,2021-01-02,vaccinations_completed,http://foo.com\n"
-        "  36,2021-01-03,vaccinations_completed,http://foo.com\n".replace(" ", "")
+    expected_tag_df = pd.DataFrame(
+        {
+            CommonFields.FIPS: expected[CommonFields.FIPS],
+            CommonFields.DATE: expected[CommonFields.DATE],
+            PdFields.VARIABLE: "vaccinations_completed",
+            taglib.TagField.TYPE: taglib.TagType.SOURCE,
+            taglib.TagField.CONTENT: taglib.Source(type="MySource", url=source_url).content,
+        }
     )
-    expected = common_df.read_csv(expected_tag_buf, set_index=False)
-    pd.testing.assert_frame_equal(expected, tags, check_like=True, check_names=False)
+    pd.testing.assert_frame_equal(expected_tag_df, tags, check_like=True, check_names=False)
 
 
 def test_query_multiple_variables_extra_field():
@@ -166,7 +182,7 @@ def test_query_multiple_variables_extra_field():
     input_data["extra_column"] = 123
     data = ccd_helpers.CanScraperLoader(input_data)
     with pytest.raises(ValueError):
-        data.query_multiple_variables([variable])
+        data.query_multiple_variables([variable], source_type="MySource")
 
 
 def test_query_multiple_variables_duplicate_observation():
@@ -182,4 +198,4 @@ def test_query_multiple_variables_duplicate_observation():
     input_data = build_can_scraper_dataframe({variable: [100, 100]})
     data = ccd_helpers.CanScraperLoader(pd.concat([input_data, input_data]))
     with pytest.raises(NotImplementedError):
-        data.query_multiple_variables([variable])
+        data.query_multiple_variables([variable], source_type="MySource")
