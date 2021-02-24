@@ -69,6 +69,7 @@ def init(server):
     dash_app.scripts.config.serve_locally = True
 
     ds = combined_datasets.load_us_timeseries_dataset().get_subset(exclude_county_999=True)
+    ds = timeseries.make_source_url_tags(ds)
 
     commit = git.Repo(dataset_utils.REPO_ROOT).head.commit
     commit_str = (
