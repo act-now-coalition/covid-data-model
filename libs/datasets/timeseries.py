@@ -481,6 +481,7 @@ class MultiRegionDataset:
         )
 
     def add_tag_all(self, tag: taglib.TagInTimeseries) -> "MultiRegionDataset":
+        """Returns a new object with given tag copied for every timeseries."""
         tag_df = pd.DataFrame(
             {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
             index=self.timeseries_wide_dates().index,
@@ -1661,6 +1662,8 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 
 def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     """Convert provenance and source_url tags into source tags."""
+    # TODO(tom): Make sure taglib.Source.rename_and_make_tag_df is tested well without tests that
+    #  call this function, then delete this function.
     # Separate ds_in.tag into tags to transform into `source` tags and tags to copy unmodified.
     ds_in_tag_extract_mask = ds_in.tag.index.get_level_values(TagField.TYPE).isin(
         [TagType.PROVENANCE, TagType.SOURCE_URL]
