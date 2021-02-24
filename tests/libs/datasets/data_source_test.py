@@ -1,3 +1,5 @@
+import pathlib
+
 import more_itertools
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
@@ -6,9 +8,11 @@ from libs import pipeline
 from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.sources import can_scraper_state_providers
+from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from unittest import mock
 
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
+from tests import test_helpers
 from libs.datasets.taglib import UrlStr
 from tests.libs.datasets.sources import can_scraper_helpers_test
 from tests.libs.datasets.sources.can_scraper_helpers_test import build_can_scraper_dataframe
@@ -55,3 +59,31 @@ def test_can_scraper_usa_facts_provider_returns_source_url(reverse_observation_o
     assert one_region.sources(CommonFields.CASES) == [
         taglib.Source(type="USAFacts", url=UrlStr(more_itertools.last(test_url)))
     ]
+
+
+def test_data_source_make_dataset(tmpdir):
+    # Make a subclass of NYTimesDataset to avoid hitting its make_dataset lru_cache.
+    class NYTimesForTest(NYTimesDataset):
+        pass
+
+    region = pipeline.Region.from_state("AZ")
+    tmp_data_root = pathlib.Path(tmpdir)
+    csv_path = tmp_data_root / NYTimesForTest.COMMON_DF_CSV_PATH
+    csv_path.parent.mkdir(parents=True)
+
+    # Make a tiny fake NYTimes dataset and write it to disk.
+    dataset_start = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: [10, 20, 30], CommonFields.DEATHS: [1, 2, 3]},
+        region=region,
+        static={CommonFields.STATE: "AZ", CommonFields.FIPS: "04"},
+    )
+    dataset_start.to_csv(csv_path, include_latest=False)
+
+    # Load the fake data using the normal code path.
+    with mock.patch("libs.datasets.data_source.dataset_utils") as mock_can_scraper_base:
+        mock_can_scraper_base.LOCAL_PUBLIC_DATA_PATH = tmp_data_root
+        assert NYTimesForTest.make_dataset.cache_info().currsize == 0
+        dataset_read = NYTimesForTest.make_dataset()
+
+    dataset_expected = dataset_start.add_provenance_all("NYTimes")
+    test_helpers.assert_dataset_like(dataset_expected, dataset_read)
