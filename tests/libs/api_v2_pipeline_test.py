@@ -199,9 +199,10 @@ def test_source(rt_dataset, icu_dataset):
     """Test the `source` tag can produce data similar to that in `test_annotation`."""
     region = Region.from_state("IL")
     tag = test_helpers.make_tag(date="2020-04-01", original_observation=10.0)
-    death_url = UrlStr("http://can.com/death_source")
+    deaths_url = UrlStr("http://can.com/death_source")
     cases_urls = [UrlStr("http://can.com/one"), UrlStr("http://can.com/two")]
     new_cases_url = UrlStr("http://can.com/new_cases")
+    deaths_source = taglib.Source("USAFacts", deaths_url, "*The* USA Facts")
 
     ds = test_helpers.build_default_region_dataset(
         {
@@ -222,7 +223,7 @@ def test_source(rt_dataset, icu_dataset):
             ),
             CommonFields.CURRENT_ICU: [5, 5, 5],
             CommonFields.DEATHS: TimeseriesLiteral(
-                [2, 3, 2], annotation=[tag], source=taglib.Source("NYTimes", death_url)
+                [2, 3, 2], annotation=[tag], source=deaths_source
             ),
         },
         region=region,
@@ -257,7 +258,7 @@ def test_source(rt_dataset, icu_dataset):
     assert timeseries_for_region.annotations.cases.anomalies == []
 
     assert one(timeseries_for_region.annotations.deaths.sources) == FieldSource(
-        type=FieldSourceType.NYTimes, url=death_url
+        type=FieldSourceType.USA_FACTS, url=deaths_url, name=deaths_source.name
     )
     assert timeseries_for_region.annotations.deaths.anomalies == [
         AnomalyAnnotation(date="2020-04-01", original_observation=10.0, type=tag.tag_type)
