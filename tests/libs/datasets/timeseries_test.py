@@ -2,6 +2,7 @@ import datetime
 import io
 import pathlib
 import dataclasses
+import pickle
 
 import pytest
 import pandas as pd
@@ -17,6 +18,7 @@ from libs import github_utils
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 from libs.datasets import dataset_pointer
+from libs.datasets import taglib
 
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagType
@@ -250,7 +252,7 @@ def test_multiregion_provenance():
 def test_one_region_multiple_provenance():
     tag1 = test_helpers.make_tag(date="2020-04-01")
     tag2 = test_helpers.make_tag(date="2020-04-02")
-    dataset_in = test_helpers.build_default_region_dataset(
+    one_region = test_helpers.build_one_region_dataset(
         {
             CommonFields.ICU_BEDS: TimeseriesLiteral(
                 [0, 2, 4], annotation=[tag1, tag2], provenance=["prov1", "prov2"],
@@ -258,8 +260,6 @@ def test_one_region_multiple_provenance():
             CommonFields.CASES: [100, 200, 300],
         }
     )
-
-    one_region = dataset_in.get_one_region(test_helpers.DEFAULT_REGION)
 
     assert set(one_region.annotations(CommonFields.ICU_BEDS)) == {tag1, tag2}
     assert sorted(one_region.provenance[CommonFields.ICU_BEDS]) == ["prov1", "prov2"]
@@ -558,7 +558,7 @@ def test_write_read_wide_dates_csv_with_annotation(tmpdir):
             [0, 2, 4],
             annotation=[
                 test_helpers.make_tag(date="2020-04-01"),
-                test_helpers.make_tag(type=TagType.ZSCORE_OUTLIER, date="2020-04-02"),
+                test_helpers.make_tag(TagType.ZSCORE_OUTLIER, date="2020-04-02"),
             ],
         ),
         CommonFields.CASES: [100, 200, 300],
@@ -716,16 +716,53 @@ def test_one_region_annotations():
     )
 
     # get_one_region and iter_one_regions use separate code to split up the tags. Test both of them.
-    assert dataset_tx_and_sf.get_one_region(region_tx).annotations(CommonFields.CASES) == [tag1]
-    assert dataset_tx_and_sf.get_one_region(region_sf).annotations(CommonFields.CASES) == [
+    one_region_tx = dataset_tx_and_sf.get_one_region(region_tx)
+    assert one_region_tx.annotations(CommonFields.CASES) == [tag1]
+    one_region_sf = dataset_tx_and_sf.get_one_region(region_sf)
+    assert one_region_sf.annotations(CommonFields.CASES) == [
         tag2a,
         tag2b,
     ]
+    assert set(one_region_sf.sources(CommonFields.CASES)) == set()
 
     assert {
         region: one_region_dataset.annotations(CommonFields.CASES)
         for region, one_region_dataset in dataset_tx_and_sf.iter_one_regions()
     } == {region_sf: [tag2a, tag2b], region_tx: [tag1],}
+
+
+def test_one_region_empty_annotations():
+    one_region = test_helpers.build_one_region_dataset({CommonFields.CASES: [100, 200, 300]})
+
+    assert one_region.annotations(CommonFields.CASES) == []
+    assert one_region.source_url == {}
+    assert one_region.provenance == {}
+    assert set(one_region.sources(CommonFields.ICU_BEDS)) == set()
+    assert set(one_region.sources(CommonFields.CASES)) == set()
+
+
+def test_one_region_tag_objects_series():
+    values = [100, 200]
+    tag1 = test_helpers.make_tag(TagType.ZSCORE_OUTLIER, date="2020-04-01")
+    tag2a = test_helpers.make_tag(date="2020-04-02")
+    tag2b = test_helpers.make_tag(date="2020-04-03")
+
+    one_region = test_helpers.build_one_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral(values, annotation=[tag1]),
+            CommonFields.ICU_BEDS: TimeseriesLiteral(values, provenance="prov1"),
+            CommonFields.DEATHS: TimeseriesLiteral(values, annotation=[tag2a, tag2b]),
+        }
+    )
+
+    assert isinstance(one_region.tag_objects_series, pd.Series)
+    assert one_region.tag.index.equals(one_region.tag_objects_series.index)
+    assert set(one_region.tag_objects_series.reset_index().itertuples(index=False)) == {
+        (CommonFields.CASES, tag1.tag_type, tag1),
+        (CommonFields.ICU_BEDS, "provenance", taglib.ProvenanceTag(source="prov1")),
+        (CommonFields.DEATHS, tag2a.tag_type, tag2a),
+        (CommonFields.DEATHS, tag2b.tag_type, tag2b),
+    }
 
 
 def test_timeseries_latest_values():
@@ -1636,3 +1673,75 @@ def test_remove_test_positivity_outliers(last_value, is_outlier):
 
     else:
         test_helpers.assert_dataset_like(dataset_in, dataset_out, drop_na_dates=True)
+
+
+def test_pickle():
+    ts = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01"),
+            test_helpers.make_tag(date="2020-04-02"),
+        ],
+        source_url=UrlStr("http://public.com"),
+    )
+    ds_in = test_helpers.build_default_region_dataset({CommonFields.CASES: ts})
+
+    ds_out = pickle.loads(pickle.dumps(ds_in))
+
+    test_helpers.assert_dataset_like(ds_in, ds_out)
+
+
+def test_make_source_tags():
+    url_str = UrlStr("http://foo.com/1")
+
+    ts_prov_only = TimeseriesLiteral(
+        [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),], provenance="prov_only",
+    )
+    ts_with_url = TimeseriesLiteral([3, 5, 7], provenance="prov_with_url", source_url=url_str)
+    dataset_in = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts_prov_only, CommonFields.CASES: ts_with_url}
+    )
+
+    dataset_out = timeseries.make_source_tags(dataset_in)
+
+    source_tag_prov_only = taglib.Source("prov_only")
+    ts_prov_only_expected = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[test_helpers.make_tag(date="2020-04-01"),],
+        source=source_tag_prov_only,
+    )
+    source_tag_prov_with_url = taglib.Source("prov_with_url", url=url_str)
+    ts_with_url_expected = TimeseriesLiteral([3, 5, 7], source=source_tag_prov_with_url,)
+    dataset_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts_prov_only_expected, CommonFields.CASES: ts_with_url_expected}
+    )
+    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+
+    one_region = dataset_out.get_one_region(test_helpers.DEFAULT_REGION)
+    assert one_region.sources(CommonFields.ICU_BEDS) == [source_tag_prov_only]
+    assert one_region.sources(CommonFields.CASES) == [source_tag_prov_with_url]
+
+
+def test_make_source_tags_no_urls():
+    # There was a bug where `./run.py data update` failed at the very end when no timeseries had
+    # a source_url. This tests for it.
+    ts_prov_only = TimeseriesLiteral(
+        [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),], provenance="prov_only",
+    )
+    dataset_in = test_helpers.build_default_region_dataset({CommonFields.ICU_BEDS: ts_prov_only})
+
+    dataset_out = timeseries.make_source_tags(dataset_in)
+
+    source_tag_prov_only = taglib.Source("prov_only")
+    ts_prov_only_expected = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[test_helpers.make_tag(date="2020-04-01"),],
+        source=source_tag_prov_only,
+    )
+    dataset_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts_prov_only_expected}
+    )
+    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+
+    one_region = dataset_out.get_one_region(test_helpers.DEFAULT_REGION)
+    assert one_region.sources(CommonFields.ICU_BEDS) == [source_tag_prov_only]

@@ -7,6 +7,7 @@ from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 from libs import build_api_v2
+from libs.datasets import taglib
 from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets.taglib import UrlStr
@@ -186,10 +187,86 @@ def test_annotation(rt_dataset, icu_dataset):
 
     assert one(timeseries_for_region.annotations.deaths.sources) == FieldSource(url=death_url)
     assert timeseries_for_region.annotations.deaths.anomalies == [
-        AnomalyAnnotation(date="2020-04-01", original_observation=10.0, type=tag.type)
+        AnomalyAnnotation(date="2020-04-01", original_observation=10.0, type=tag.tag_type)
     ]
 
     assert one(timeseries_for_region.annotations.newCases.sources) == FieldSource(url=new_cases_url)
+
+    assert timeseries_for_region.annotations.contactTracers is None
+
+
+def test_source(rt_dataset, icu_dataset):
+    """Test the `source` tag can produce data similar to that in `test_annotation`."""
+    region = Region.from_state("IL")
+    tag = test_helpers.make_tag(date="2020-04-01", original_observation=10.0)
+    deaths_url = UrlStr("http://can.com/death_source")
+    cases_urls = [UrlStr("http://can.com/one"), UrlStr("http://can.com/two")]
+    new_cases_url = UrlStr("http://can.com/new_cases")
+    deaths_source = taglib.Source("USAFacts", deaths_url, "*The* USA Facts")
+
+    ds = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral(
+                [100, 200, 300],
+                source=[
+                    taglib.Source("NYTimes", cases_urls[0]),
+                    taglib.Source("NYTimes", cases_urls[1]),
+                ],
+            ),
+            # NEW_CASES has only source_url set, to make sure that an annotation is still output.
+            CommonFields.NEW_CASES: TimeseriesLiteral(
+                [100, 100, 100], source=taglib.Source("NYTimes", new_cases_url)
+            ),
+            CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
+            CommonFields.ICU_BEDS: TimeseriesLiteral(
+                [20, 20, 20], source=taglib.Source("NotFound")
+            ),
+            CommonFields.CURRENT_ICU: [5, 5, 5],
+            CommonFields.DEATHS: TimeseriesLiteral(
+                [2, 3, 2], annotation=[tag], source=deaths_source
+            ),
+        },
+        region=region,
+        static={
+            CommonFields.POPULATION: 100_000,
+            CommonFields.STATE: "IL",
+            CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
+        },
+    )
+    regional_input = api_v2_pipeline.RegionalInput.from_region_and_model_output(
+        region, ds, rt_dataset, icu_dataset
+    )
+
+    with structlog.testing.capture_logs() as logs:
+        timeseries_for_region = api_v2_pipeline.build_timeseries_for_region(regional_input)
+
+    assert logs == [
+        {
+            "location_id": region.location_id,
+            "field_name": CommonFields.ICU_BEDS,
+            "provenance": "NotFound",
+            "event": build_api_v2.METRIC_SOURCES_NOT_FOUND_MESSAGE,
+            "log_level": "info",
+        },
+    ]
+    assert one(timeseries_for_region.annotations.icuBeds.sources).type == FieldSourceType.OTHER
+    assert timeseries_for_region.annotations.icuBeds.anomalies == []
+
+    assert timeseries_for_region.annotations.cases.sources == [
+        FieldSource(type=FieldSourceType.NYTimes, url=u) for u in cases_urls
+    ]
+    assert timeseries_for_region.annotations.cases.anomalies == []
+
+    assert one(timeseries_for_region.annotations.deaths.sources) == FieldSource(
+        type=FieldSourceType.USA_FACTS, url=deaths_url, name=deaths_source.name
+    )
+    assert timeseries_for_region.annotations.deaths.anomalies == [
+        AnomalyAnnotation(date="2020-04-01", original_observation=10.0, type=tag.tag_type)
+    ]
+
+    assert one(timeseries_for_region.annotations.newCases.sources) == FieldSource(
+        type=FieldSourceType.NYTimes, url=new_cases_url
+    )
 
     assert timeseries_for_region.annotations.contactTracers is None
 

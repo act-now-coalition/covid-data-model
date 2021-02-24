@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List
 from typing import Optional
 import pandas as pd
 from api.can_api_v2_definition import (
@@ -129,29 +130,43 @@ def _build_metric_annotations(
     tag_series: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log
 ) -> Optional[FieldAnnotations]:
 
+    sources = [
+        FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url, name=tag.name)
+        for tag in tag_series.sources(field_name)
+    ]
+
+    if not sources:
+        # Fall back to using provenance and source_url.
+        # TODO(tom): Remove this block of code when we're pretty sure `source` has all the data
+        #  we need.
+        sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
+
+    anomalies = tag_series.annotations(field_name)
+    anomalies = [
+        AnomalyAnnotation(
+            date=tag.date, original_observation=tag.original_observation, type=tag.tag_type
+        )
+        for tag in anomalies
+    ]
+
+    if not sources and not anomalies:
+        return None
+
+    return FieldAnnotations(sources=sources, anomalies=anomalies)
+
+
+def _sources_from_provenance_and_source_url(
+    field_name: CommonFields, tag_series: timeseries.OneRegionTimeseriesDataset, log
+) -> List[FieldSource]:
     sources_enum = set()
     for source_str in tag_series.provenance.get(field_name, []):
-        source_enum = FieldSourceType.get(source_str)
-        if source_enum is None:
-            source_enum = FieldSourceType.OTHER
-            log.info(
-                METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
-            )
-        sources_enum.add(source_enum)
+        sources_enum.add(_lookup_source_type(source_str, field_name, log))
     if not sources_enum:
         source_enum = None
     else:
         if len(sources_enum) > 1:
             log.warning(METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE, field_name=field_name)
         source_enum = sources_enum.pop()
-
-    anomalies = tag_series.annotations(field_name)
-    anomalies = [
-        AnomalyAnnotation(
-            date=tag.date, original_observation=tag.original_observation, type=tag.type
-        )
-        for tag in anomalies
-    ]
 
     source_urls = set(tag_series.source_url.get(field_name, []))
     if not source_urls:
@@ -168,14 +183,19 @@ def _build_metric_annotations(
         source_url = source_urls.pop()
 
     if source_url or source_enum:
-        sources = [FieldSource(type=source_enum, url=source_url)]
+        return [FieldSource(type=source_enum, url=source_url)]
     else:
-        sources = []
+        return []
 
-    if not sources and not anomalies:
-        return None
 
-    return FieldAnnotations(sources=sources, anomalies=anomalies)
+def _lookup_source_type(source_str, field_name, log) -> FieldSourceType:
+    source_enum = FieldSourceType.get(source_str)
+    if source_enum is None:
+        source_enum = FieldSourceType.OTHER
+        log.info(
+            METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
+        )
+    return source_enum
 
 
 def build_region_timeseries(

@@ -33,17 +33,20 @@ class Fields(GetByValueMixin, FieldNameAndCommonField, enum.Enum):
 
     PROVIDER = "provider", None
     DATE = "dt", CommonFields.DATE
-    LOCATION_TYPE = "location_type", CommonFields.AGGREGATE_LEVEL
-    # Special transformation to FIPS
     LOCATION = "location", CommonFields.FIPS
-    VARIABLE_NAME = "variable_name", None
+    LOCATION_ID = "location_id", None
+    LOCATION_TYPE = "location_type", None
+    VARIABLE_NAME = "variable_name", PdFields.VARIABLE
     MEASUREMENT = "measurement", None
     UNIT = "unit", None
     AGE = "age", None
     RACE = "race", None
+    ETHNICITY = "ethnicity", None
     SEX = "sex", None
-    VALUE = "value", None
+    VALUE = "value", PdFields.VALUE
     SOURCE_URL = "source_url", None
+    SOURCE_NAME = "source_name", None
+    LAST_UPDATED = "last_updated", None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -66,6 +69,7 @@ class ScraperVariable:
     common_field: Optional[CommonFields] = None
     age: str = "all"
     race: str = "all"
+    ethnicity: str = "all"
     sex: str = "all"
 
 
@@ -79,32 +83,31 @@ def _fips_from_int(param: pd.Series):
     return param.apply(lambda v: f"{v:0>{2 if v < 100 else 5}}")
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class CanScraperLoader:
 
-    timeseries_df: pd.DataFrame
+    all_df: pd.DataFrame
 
     def _get_rows(self, variable: ScraperVariable) -> pd.DataFrame:
-        all_df = self.timeseries_df
+        # Similar to dataset_utils.make_rows_key this builds a Pandas.eval query string by making a
+        # list of query parts, then joining them with `and`. For our current data this takes 23s
+        # while the previous method of making a binary mask for each variable took 54s. This is run
+        # during tests so the speed up is nice to have.
+        required_fields = ["provider", "variable_name", "age", "race", "ethnicity", "sex"]
+        assert all([getattr(variable, field) for field in required_fields])
+        query_parts = [f"{field} == @variable.{field}" for field in required_fields]
+        for optional_field in ["measurement", "unit"]:
+            if getattr(variable, optional_field):
+                query_parts.append(f"{optional_field} == @variable.{optional_field}")
 
-        is_selected_data = (
-            (all_df[Fields.PROVIDER] == variable.provider)
-            & (all_df[Fields.VARIABLE_NAME] == variable.variable_name)
-            & (all_df[Fields.AGE] == variable.age)
-            & (all_df[Fields.RACE] == variable.race)
-            & (all_df[Fields.SEX] == variable.sex)
-        )
-        if variable.measurement:
-            is_selected_data = is_selected_data & (
-                all_df[Fields.MEASUREMENT] == variable.measurement
-            )
-        if variable.unit:
-            is_selected_data = is_selected_data & (all_df[Fields.UNIT] == variable.unit)
-
-        return all_df.loc[is_selected_data, :].copy()
+        return self.all_df.loc[self.all_df.eval(" and ".join(query_parts))].copy()
 
     def query_multiple_variables(
-        self, variables: List[ScraperVariable], *, log_provider_coverage_warnings: bool = False
+        self,
+        variables: List[ScraperVariable],
+        *,
+        log_provider_coverage_warnings: bool = False,
+        source_type: str,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Queries multiple variables returning wide df with variable names as columns.
 
@@ -118,9 +121,8 @@ class CanScraperLoader:
         """
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
-        selected_data = []
-        source_urls = []
 
+        selected_data = []
         for variable in variables:
             # Check that `variable` agrees with stuff in the ScraperVariable docstring.
             if variable.common_field is None:
@@ -142,53 +144,49 @@ class CanScraperLoader:
                     measurement_counts=str(more_data[Fields.MEASUREMENT].value_counts().to_dict()),
                     unit_counts=str(more_data[Fields.UNIT].value_counts().to_dict()),
                 )
-
-            # Rename fields if common field name exists
-            if variable.common_field:
-                data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
-
+            # Copy CommonField name to data. The loop is continued above when common_field is None.
+            data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
             selected_data.append(data)
-            if Fields.SOURCE_URL in data.columns:
-                source_urls.append(
-                    data.loc[
-                        :, [Fields.VARIABLE_NAME, Fields.SOURCE_URL, Fields.LOCATION, Fields.DATE]
-                    ]
-                )
 
-        combined_df = pd.concat(selected_data)
-        if source_urls:
-            combined_source_urls = pd.concat(source_urls).rename(
-                columns={
-                    Fields.LOCATION.value: CommonFields.FIPS,
-                    Fields.DATE.value: CommonFields.DATE,
-                    Fields.VARIABLE_NAME.value: PdFields.VARIABLE,
-                    Fields.SOURCE_URL.value: taglib.TagField.CONTENT,
-                }
-            )
-        else:
-            # TODO(tom): Make a better empty tag DataFr
-            combined_source_urls = pd.DataFrame([])
+        # TODO(tom): check LOCATION_TYPE matches LOCATION
 
-        wide_df = combined_df.pivot_table(
-            index=[Fields.LOCATION.value, Fields.DATE.value, Fields.LOCATION_TYPE.value],
-            columns=Fields.VARIABLE_NAME.value,
-            values=Fields.VALUE.value,
-        ).reset_index()
+        combined_data = pd.concat(selected_data)
+        unknown_columns = set(combined_data.columns) - set(Fields)
+        if unknown_columns:
+            raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
 
-        data = wide_df.rename(
-            columns={
-                Fields.LOCATION.value: CommonFields.FIPS,
-                Fields.DATE.value: CommonFields.DATE,
-                Fields.LOCATION_TYPE.value: CommonFields.AGGREGATE_LEVEL,
-            }
+        rename_columns = {f: f.common_field for f in Fields if f.common_field}
+        indexed = (
+            combined_data.rename(columns=rename_columns)
+            .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
+            .sort_index()
         )
-        data.columns.name = None
-        return data, combined_source_urls
+
+        tag_df = taglib.Source.rename_and_make_tag_df(
+            indexed,
+            source_type=source_type,
+            rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
+        )
+
+        dups = indexed.index.duplicated(keep=False)
+        if dups.any():
+            raise NotImplementedError(
+                f"No support for aggregating duplicate observations:\n"
+                f"{indexed.loc[dups].to_string(line_width=200, max_rows=200,max_colwidth=40)}"
+            )
+
+        # Make a DataFrame with index=[FIPS,DATE], column=VARIABLE and value=VALUE. This used to
+        # use pivot_table but we don't want to aggregate observations. I tried using
+        # `DataFrame.pivot` but couldn't work around a mysterious
+        # "NotImplementedError: > 1 ndim Categorical are not supported at this time".
+        wide_vars_df = indexed[PdFields.VALUE].unstack(level=PdFields.VARIABLE).reset_index()
+        assert wide_vars_df.columns.names == [PdFields.VARIABLE]
+        return wide_vars_df, tag_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))
-        provider_mask = self.timeseries_df[Fields.PROVIDER] == provider_name
-        counts = self.timeseries_df.loc[provider_mask, Fields.VARIABLE_NAME].value_counts()
+        provider_mask = self.all_df[Fields.PROVIDER] == provider_name
+        counts = self.all_df.loc[provider_mask, Fields.VARIABLE_NAME].value_counts()
         variables_by_name = {var.variable_name: var for var in variables}
         for variable_name, count in counts.iteritems():
             if variable_name not in variables_by_name:

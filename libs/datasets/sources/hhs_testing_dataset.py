@@ -3,7 +3,7 @@ from libs.datasets import data_source
 
 
 class HHSTestingDataset(data_source.DataSource):
-    SOURCE_NAME = "HHSTesting"
+    SOURCE_TYPE = "HHSTesting"
 
     COMMON_DF_CSV_PATH = "data/testing-hhs/timeseries-common.csv"
 

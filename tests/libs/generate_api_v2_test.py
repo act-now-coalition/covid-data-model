@@ -79,11 +79,15 @@ def test_build_summary_for_fips(
         ),
         annotations=Annotations(
             cases=FieldAnnotations(
-                sources=[FieldSource(type=FieldSourceType.USA_FACTS, url=usafacts_url)],
+                sources=[
+                    FieldSource(name="USAFacts", type=FieldSourceType.USA_FACTS, url=usafacts_url)
+                ],
                 anomalies=[],
             ),
             deaths=FieldAnnotations(
-                sources=[FieldSource(type=FieldSourceType.USA_FACTS, url=usafacts_url)],
+                sources=[
+                    FieldSource(name="USAFacts", type=FieldSourceType.USA_FACTS, url=usafacts_url)
+                ],
                 anomalies=[],
             ),
             positiveTests=None,
@@ -109,6 +113,26 @@ def test_build_summary_for_fips(
                         "type": "zscore_outlier",
                     },
                 ],
+            ),
+            vaccinationsCompleted=FieldAnnotations(
+                sources=[
+                    FieldSource(
+                        name="New York State Department of Health",
+                        type=FieldSourceType.CANScrapersStateProviders,
+                        url="https://covid19vaccine.health.ny.gov/covid-19-vaccine-tracker",
+                    )
+                ],
+                anomalies=[],
+            ),
+            vaccinationsInitiated=FieldAnnotations(
+                sources=[
+                    FieldSource(
+                        name="New York State Department of Health",
+                        type=FieldSourceType.CANScrapersStateProviders,
+                        url="https://covid19vaccine.health.ny.gov/covid-19-vaccine-tracker",
+                    )
+                ],
+                anomalies=[],
             ),
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),

@@ -10,7 +10,7 @@ from libs.datasets import timeseries
 class CovidCareMapBeds(data_source.DataSource):
     STATIC_CSV = "data/covid-care-map/static.csv"
 
-    SOURCE_NAME = "CCM"
+    SOURCE_TYPE = "CCM"
 
     EXPECTED_FIELDS = [
         CommonFields.STAFFED_BEDS,
