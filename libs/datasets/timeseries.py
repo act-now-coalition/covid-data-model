@@ -480,6 +480,14 @@ class MultiRegionDataset:
             )
         )
 
+    def add_tag_all(self, tag: taglib.TagInTimeseries) -> "MultiRegionDataset":
+        """Returns a new object with given tag copied for every timeseries."""
+        tag_df = pd.DataFrame(
+            {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
+            index=self.timeseries_wide_dates().index,
+        ).reset_index()
+        return self.append_tag_df(tag_df)
+
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
         """Returns a new object containing data in self and given provenance information."""
         if not self.provenance.empty:
@@ -517,6 +525,7 @@ class MultiRegionDataset:
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
             if provenance_path.exists():
+                # TODO(tom): Try to delete add_provenance_csv which seems to be only used in tests.
                 dataset = dataset.add_provenance_csv(provenance_path)
         return dataset
 
@@ -1653,6 +1662,8 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 
 def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     """Convert provenance and source_url tags into source tags."""
+    # TODO(tom): Make sure taglib.Source.rename_and_make_tag_df is tested well without tests that
+    #  call this function, then delete this function.
     # Separate ds_in.tag into tags to transform into `source` tags and tags to copy unmodified.
     ds_in_tag_extract_mask = ds_in.tag.index.get_level_values(TagField.TYPE).isin(
         [TagType.PROVENANCE, TagType.SOURCE_URL]
