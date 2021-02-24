@@ -93,7 +93,6 @@ class CanScraperLoader:
         # list of query parts, then joining them with `and`. For our current data this takes 23s
         # while the previous method of making a binary mask for each variable took 54s. This is run
         # during tests so the speed up is nice to have.
-        assert variable.race == "all"
         required_fields = ["provider", "variable_name", "age", "race", "ethnicity", "sex"]
         assert all([getattr(variable, field) for field in required_fields])
         query_parts = [f"{field} == @variable.{field}" for field in required_fields]
@@ -104,7 +103,11 @@ class CanScraperLoader:
         return self.all_df.loc[self.all_df.eval(" and ".join(query_parts))].copy()
 
     def query_multiple_variables(
-        self, variables: List[ScraperVariable], *, log_provider_coverage_warnings: bool = False
+        self,
+        variables: List[ScraperVariable],
+        *,
+        log_provider_coverage_warnings: bool = False,
+        source_type: str,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Queries multiple variables returning wide df with variable names as columns.
 
@@ -143,7 +146,6 @@ class CanScraperLoader:
                 )
             # Copy CommonField name to data. The loop is continued above when common_field is None.
             data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
-
             selected_data.append(data)
 
         # TODO(tom): check LOCATION_TYPE matches LOCATION
@@ -154,20 +156,19 @@ class CanScraperLoader:
             raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
 
         rename_columns = {f: f.common_field for f in Fields if f.common_field}
-        long_df = combined_data.rename(columns=rename_columns)
+        indexed = (
+            combined_data.rename(columns=rename_columns)
+            .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
+            .sort_index()
+        )
 
-        if Fields.SOURCE_URL in long_df.columns:
-            combined_source_urls = long_df.loc[
-                :, [CommonFields.FIPS, CommonFields.DATE, PdFields.VARIABLE, Fields.SOURCE_URL]
-            ].rename(columns={Fields.SOURCE_URL: taglib.TagField.CONTENT})
-        else:
-            combined_source_urls = pd.DataFrame([])
+        tag_df = taglib.Source.rename_and_make_tag_df(
+            indexed,
+            source_type=source_type,
+            rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
+        )
 
-        indexed = long_df.set_index(
-            [CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE]
-        ).sort_index()
         dups = indexed.index.duplicated(keep=False)
-
         if dups.any():
             raise NotImplementedError(
                 f"No support for aggregating duplicate observations:\n"
@@ -180,7 +181,7 @@ class CanScraperLoader:
         # "NotImplementedError: > 1 ndim Categorical are not supported at this time".
         wide_vars_df = indexed[PdFields.VALUE].unstack(level=PdFields.VARIABLE).reset_index()
         assert wide_vars_df.columns.names == [PdFields.VARIABLE]
-        return wide_vars_df, combined_source_urls
+        return wide_vars_df, tag_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))

@@ -142,6 +142,36 @@ class Source(TagInTimeseries):
     TAG_TYPE = TagType.SOURCE
 
     @staticmethod
+    def rename_and_make_tag_df(
+        in_df: pd.DataFrame, *, source_type: Optional[str] = None, rename: Mapping[str, str]
+    ) -> pd.DataFrame:
+        """Creates a Source for each row of `in_df`.
+
+        Args:
+            in_df: DataFrame with columns to be used to create Source tags and MultiIndex
+            starting with a location and variable. All index levels are returned in columns.
+            rename: Maps from column of in_df to Source attribute name. Columns not in `rename` are
+              ignored; add an identity mapping if a column in in_df is to be used as an attribute
+              of Source.
+            source_type: optional static value for Source `type` attribute
+
+        Returns:
+            Source JSONs in a pd.DataFrame suitable for passing to MultiRegionDataset
+        """
+
+        assert in_df.index.names[0] in [CommonFields.FIPS, CommonFields.LOCATION_ID]
+        assert in_df.index.names[1] == PdFields.VARIABLE
+        # Make a DataFrame with columns for each attribute of Source
+        columns_to_keep = in_df.columns.intersection(rename.keys())
+        attribute_df = in_df.loc[:, columns_to_keep].rename(columns=rename)
+        if source_type:
+            attribute_df["type"] = source_type
+        json_series = Source.attribute_df_to_json_series(attribute_df)
+        source_df = json_series.rename(TagField.CONTENT).reset_index()
+        source_df[TagField.TYPE] = TagType.SOURCE
+        return source_df
+
+    @staticmethod
     def attribute_df_to_json_series(attribute_df: pd.DataFrame) -> pd.Series:
         assert attribute_df.columns.isin([f.name for f in dataclasses.fields(Source)]).all()
         # TODO(tom): Somehow make sure every element in attribute_df is a non-empty str or None.

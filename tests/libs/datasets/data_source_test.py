@@ -13,6 +13,7 @@ from unittest import mock
 
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 from tests import test_helpers
+from libs.datasets.taglib import UrlStr
 from tests.libs.datasets.sources import can_scraper_helpers_test
 from tests.libs.datasets.sources.can_scraper_helpers_test import build_can_scraper_dataframe
 
@@ -55,7 +56,9 @@ def test_can_scraper_usa_facts_provider_returns_source_url(reverse_observation_o
     one_region = ds.get_one_region(
         pipeline.Region.from_fips(can_scraper_helpers_test.DEFAULT_LOCATION)
     )
-    assert one_region.source_url == {CommonFields.CASES: [more_itertools.last(test_url)]}
+    assert one_region.sources(CommonFields.CASES) == [
+        taglib.Source(type="USAFacts", url=UrlStr(more_itertools.last(test_url)))
+    ]
 
 
 def test_data_source_make_dataset(tmpdir):
