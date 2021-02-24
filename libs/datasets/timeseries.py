@@ -480,6 +480,13 @@ class MultiRegionDataset:
             )
         )
 
+    def add_tag_all(self, tag: taglib.TagInTimeseries) -> "MultiRegionDataset":
+        tag_df = pd.DataFrame(
+            {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
+            index=self.timeseries_wide_dates().index,
+        ).reset_index()
+        return self.append_tag_df(tag_df)
+
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
         """Returns a new object containing data in self and given provenance information."""
         if not self.provenance.empty:
@@ -517,7 +524,8 @@ class MultiRegionDataset:
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
             if provenance_path.exists():
-                dataset = dataset.add_provenance_csv(provenance_path)
+                # TODO(tom): If this doesn't cause a problem delete add_provenance_csv
+                raise NotImplementedError("I don't think -provenance.csv is loaded anywhere...")
         return dataset
 
     @staticmethod

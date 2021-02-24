@@ -24,9 +24,11 @@ _log = structlog.get_logger()
 class DataSource(object):
     """Represents a single dataset source; loads data and produces a MultiRegionDataset."""
 
-    # Name of source
+    # DataSource class name
     # TODO(tom): Make an enum of these.
     SOURCE_TYPE = None
+    SOURCE_NAME = None
+    SOURCE_URL = None
 
     # Fields expected to be in the DataFrame loaded by common_df.read_csv
     EXPECTED_FIELDS: Optional[List[CommonFields]] = None
