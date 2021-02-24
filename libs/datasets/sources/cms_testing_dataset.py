@@ -3,7 +3,7 @@ from libs.datasets import data_source
 
 
 class CMSTestingDataset(data_source.DataSource):
-    SOURCE_NAME = "CMSTesting"
+    SOURCE_TYPE = "CMSTesting"
 
     COMMON_DF_CSV_PATH = "data/testing-cms/timeseries-common.csv"
 
