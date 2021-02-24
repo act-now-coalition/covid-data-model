@@ -99,31 +99,45 @@ def build_region_summary(
     )
 
 
+ACTUALS_NAME_TO_COMMON_FIELD = {
+    "cases": CommonFields.CASES,
+    "deaths": CommonFields.DEATHS,
+    "positiveTests": CommonFields.POSITIVE_TESTS,
+    "negativeTests": CommonFields.NEGATIVE_TESTS,
+    "contactTracers": CommonFields.CONTACT_TRACERS_COUNT,
+    "hospitalBeds": CommonFields.HOSPITAL_BEDS_IN_USE_ANY,
+    "icuBeds": CommonFields.ICU_BEDS,
+    "newCases": CommonFields.NEW_CASES,
+    "vaccinesDistributed": CommonFields.VACCINES_DISTRIBUTED,
+    "vaccinationsInitiated": CommonFields.VACCINATIONS_INITIATED,
+    "vaccinationsCompleted": CommonFields.VACCINATIONS_COMPLETED,
+}
+
+
+METRICS_NAME_TO_COMMON_FIELD = {
+    "contactTracerCapacityRatio": CommonFields.CONTACT_TRACERS_COUNT,
+    "caseDensity": CommonFields.CASES,  # TODO(chris): Fix this
+    "infectionRate": CommonFields.CASES,  # TODO(chris): Fix this
+    "testPositivityRatio": CommonFields.TEST_POSITIVITY,
+    "icuHeadroomRatio": CommonFields.CASES,  # TODO(chris): Fix this
+    "infectionRateCI90": CommonFields.CASES,  # TODO(chris): Fix this
+    "vaccinationsInitiatedRatio": CommonFields.VACCINATIONS_INITIATED_PCT,
+    "vaccinationsCompletedRatio": CommonFields.VACCINATIONS_COMPLETED_PCT,
+    "icuCapacityRatio": CommonFields.CURRENT_ICU,  # TODO(chris): Fix this
+}
+
+
 def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotations:
     assert one_region.tag.index.names == [TagField.VARIABLE, TagField.TYPE]
-    return Annotations(
-        cases=_build_metric_annotations(one_region, CommonFields.CASES, log),
-        deaths=_build_metric_annotations(one_region, CommonFields.DEATHS, log),
-        positiveTests=_build_metric_annotations(one_region, CommonFields.POSITIVE_TESTS, log),
-        negativeTests=_build_metric_annotations(one_region, CommonFields.NEGATIVE_TESTS, log),
-        contactTracers=_build_metric_annotations(
-            one_region, CommonFields.CONTACT_TRACERS_COUNT, log
-        ),
-        hospitalBeds=_build_metric_annotations(
-            one_region, CommonFields.HOSPITAL_BEDS_IN_USE_ANY, log
-        ),
-        icuBeds=_build_metric_annotations(one_region, CommonFields.ICU_BEDS, log),
-        newCases=_build_metric_annotations(one_region, CommonFields.NEW_CASES, log),
-        vaccinesDistributed=_build_metric_annotations(
-            one_region, CommonFields.VACCINES_DISTRIBUTED, log
-        ),
-        vaccinationsInitiated=_build_metric_annotations(
-            one_region, CommonFields.VACCINATIONS_INITIATED, log
-        ),
-        vaccinationsCompleted=_build_metric_annotations(
-            one_region, CommonFields.VACCINATIONS_COMPLETED, log
-        ),
-    )
+    name_and_common_field = [
+        *ACTUALS_NAME_TO_COMMON_FIELD.items(),
+        *METRICS_NAME_TO_COMMON_FIELD.items(),
+    ]
+    annotations = {
+        annotations_name: _build_metric_annotations(one_region, field_name, log)
+        for annotations_name, field_name in name_and_common_field
+    }
+    return Annotations(**annotations)
 
 
 def _build_metric_annotations(

@@ -244,9 +244,6 @@ class Annotations(base_model.APIBaseModel):
     testPositivityRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for testPositivityRatio"
     )
-    testPositivityRatioDetails: Optional[FieldAnnotations] = pydantic.Field(
-        None, description="Annotations for testPositivityRatioDetails"
-    )
     caseDensity: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for caseDensity"
     )
@@ -261,9 +258,6 @@ class Annotations(base_model.APIBaseModel):
     )
     icuHeadroomRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for icuHeadroomRatio"
-    )
-    icuHeadroomDetails: Optional[FieldAnnotations] = pydantic.Field(
-        None, description="Annotations for icuHeadroomDetails"
     )
     icuCapacityRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for icuCapacityRatio"
