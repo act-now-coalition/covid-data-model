@@ -62,10 +62,14 @@ def test_can_scraper_usa_facts_provider_returns_source_url(reverse_observation_o
 
 
 def test_data_source_make_dataset(tmpdir):
+    # Make a subclass of NYTimesDataset to avoid hitting its make_dataset lru_cache.
+    class NYTimesForTest(NYTimesDataset):
+        pass
+
     region = pipeline.Region.from_state("AZ")
     region_static = {CommonFields.STATE: "AZ", CommonFields.FIPS: "04"}
     tmp_data_root = pathlib.Path(tmpdir)
-    csv_path = tmp_data_root / NYTimesDataset.COMMON_DF_CSV_PATH
+    csv_path = tmp_data_root / NYTimesForTest.COMMON_DF_CSV_PATH
     csv_path.parent.mkdir(parents=True)
     cases_ts = test_helpers.TimeseriesLiteral([10, 20, 30], source=NYTimesDataset.source_tag())
     deaths_ts = test_helpers.TimeseriesLiteral([1, 2, 3], source=NYTimesDataset.source_tag())
@@ -82,7 +86,8 @@ def test_data_source_make_dataset(tmpdir):
     # Load the fake data using the normal code path.
     with mock.patch("libs.datasets.data_source.dataset_utils") as mock_can_scraper_base:
         mock_can_scraper_base.LOCAL_PUBLIC_DATA_PATH = tmp_data_root
-        dataset_read = NYTimesDataset.make_dataset()
+        assert NYTimesForTest.make_dataset.cache_info().currsize == 0
+        dataset_read = NYTimesForTest.make_dataset()
 
     # This dataset is exactly like dataset_start except the timeseries include `source`. The test
     # builds it from scratch instead of calling dataset_start.add_tag_all so this test can find

@@ -14,6 +14,7 @@ from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets import dataset_utils
 from libs.datasets import timeseries
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
+from libs.datasets.taglib import UrlStr
 from libs.datasets.timeseries import MultiRegionDataset
 from functools import lru_cache
 import pandas as pd
@@ -24,11 +25,12 @@ _log = structlog.get_logger()
 class DataSource(object):
     """Represents a single dataset source; loads data and produces a MultiRegionDataset."""
 
+    # Attributes set in subclasses and copied to a taglib.Source
+    # TODO(tom): Make SOURCE_TYPE an enum when cleaning the mess that is subclasses of DataSource.
     # DataSource class name
-    # TODO(tom): Make an enum of DataSource classes or their names
-    SOURCE_TYPE = None
-    SOURCE_NAME = None
-    SOURCE_URL = None
+    SOURCE_TYPE: str = None
+    SOURCE_NAME: Optional[str] = None
+    SOURCE_URL: Optional[UrlStr] = None
 
     # Fields expected to be in the DataFrame loaded by common_df.read_csv
     EXPECTED_FIELDS: Optional[List[CommonFields]] = None
