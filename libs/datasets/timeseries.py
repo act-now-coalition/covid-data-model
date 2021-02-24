@@ -52,6 +52,8 @@ TAG_INDEX_FIELDS = [
     TagField.TYPE,
 ]
 
+TAG_DF_COLUMNS = TAG_INDEX_FIELDS + [TagField.CONTENT]
+
 ANNOTATION_TAG_TYPES = [
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
     TagType.CUMULATIVE_TAIL_TRUNCATED,
@@ -128,8 +130,11 @@ class OneRegionTimeseriesDataset:
         assert self.tag.index.names[1] == TagField.TYPE
         # Apply a function to each element in the Series self.tag with the function having access to
         # the index of each element. From https://stackoverflow.com/a/47645833/341400.
+        # result_type reduce forces the return value to be a Series, even when tag is empty.
         return self.tag.to_frame().apply(
-            lambda row: taglib.TagInTimeseries.make(row.name[1], content=row.content), axis=1
+            lambda row: taglib.TagInTimeseries.make(row.name[1], content=row.content),
+            axis=1,
+            result_type="reduce",
         )
 
     def __post_init__(self):
@@ -640,6 +645,7 @@ class MultiRegionDataset:
         """Returns a new dataset with additional_tag_df appended."""
         if additional_tag_df.empty:
             return self
+        assert additional_tag_df.columns.symmetric_difference(TAG_DF_COLUMNS, sort=False).empty
         # Sort by index fields, and within rows having identical index fields, by content. This
         # makes the order of values in combined_series identical, independent of the order they
         # were appended.
@@ -654,6 +660,21 @@ class MultiRegionDataset:
     def replace_tag_df(self, tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with all tags replaced by those in tag_df"""
         return dataclasses.replace(self, tag=_EMPTY_TAG_SERIES).append_tag_df(tag_df)
+
+    @cached_property
+    def tag_objects_series(self) -> pd.Series:
+        """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
+        # This is similar to OneRegionTimeseriesDataset.tag_objects_series but index is slightly
+        # different.
+        assert self.tag.index.names[2] == TagField.TYPE
+        # Apply a function to each element in the Series self.tag with the function having access to
+        # the index of each element. From https://stackoverflow.com/a/47645833/341400.
+        # result_type reduce forces the return value to be a Series, even when tag is empty.
+        return self.tag.to_frame().apply(
+            lambda row: taglib.TagInTimeseries.make(row.name[2], content=row.content),
+            axis=1,
+            result_type="reduce",
+        )
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
@@ -1673,3 +1694,17 @@ def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     )
 
     return ds_in.replace_tag_df(pd.concat([source_df, other_tags_df]))
+
+
+def make_source_url_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+    """Make source_url tags from source tags"""
+    assert TagType.SOURCE_URL not in ds_in.tag.index.get_level_values(TagField.TYPE)
+    try:
+        source_tags = ds_in.tag_objects_series.loc[:, :, [TagType.SOURCE]]
+    except KeyError:
+        return ds_in
+    source_url = (
+        source_tags.apply(lambda tag: tag.url).dropna().rename(TagField.CONTENT).reset_index()
+    )
+    source_url[TagField.TYPE] = TagType.SOURCE_URL
+    return ds_in.append_tag_df(source_url)
