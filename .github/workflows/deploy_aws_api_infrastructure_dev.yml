@@ -8,9 +8,10 @@ on:
       - 'api/awsauth/**'
 
   workflow_dispatch:
-    deploy_to_prod:
-      description: 'If "true" will run full CI pipeline and deploy to prod'
-      default: "false"
+    inputs:
+      deploy_to_prod:
+        description: 'If "true" will run full CI pipeline and deploy to prod'
+        default: "false"
 
 defaults:
   run:
