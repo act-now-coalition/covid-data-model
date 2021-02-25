@@ -116,14 +116,14 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
 
 METRICS_NAME_TO_COMMON_FIELD = {
     "contactTracerCapacityRatio": CommonFields.CONTACT_TRACERS_COUNT,
-    "caseDensity": CommonFields.CASES,  # TODO(chris): Fix this
-    "infectionRate": CommonFields.CASES,  # TODO(chris): Fix this
+    "caseDensity": CommonFields.CASES,
+    "infectionRate": CommonFields.CASES,
     "testPositivityRatio": CommonFields.TEST_POSITIVITY,
-    "icuHeadroomRatio": CommonFields.CASES,  # TODO(chris): Fix this
-    "infectionRateCI90": CommonFields.CASES,  # TODO(chris): Fix this
+    "icuHeadroomRatio": CommonFields.CURRENT_ICU_TOTAL,
+    "infectionRateCI90": CommonFields.CASES,
     "vaccinationsInitiatedRatio": CommonFields.VACCINATIONS_INITIATED_PCT,
     "vaccinationsCompletedRatio": CommonFields.VACCINATIONS_COMPLETED_PCT,
-    "icuCapacityRatio": CommonFields.CURRENT_ICU,  # TODO(chris): Fix this
+    "icuCapacityRatio": CommonFields.CURRENT_ICU,
 }
 
 
