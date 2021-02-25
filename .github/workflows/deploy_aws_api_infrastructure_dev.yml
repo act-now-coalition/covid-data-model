@@ -2,7 +2,7 @@ name: Deploy AWS API Infrastructure
 
 on:
   push:
-    branch:
+    branches:
       - main
     paths:
       - 'api/awsauth/**'
