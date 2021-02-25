@@ -13,46 +13,28 @@ npm install -g serverless
 
 ## Deploy
 
-Currently we have a `dev` and `prod` stage.
+Currently we have a `dev` and `prod` stage (Serverless Framework uses "stages" as "environments") deployed via Github Actions.
 
-Deploys are set up to look for environment variables in a `.env` file.
-
-Create a .env file similar to this template:
-
-```
-# AWS Dynamo Table Name for API Keys
-API_KEY_TABLE_NAME=
-
-# If true, will send email on registration
-EMAILS_ENABLED=
-
-# Sentry DSN for reporting errors
-SENTRY_DSN=
-
-# Sentry environment to choose where to send notificaions.
-# Should be either 'staging' or 'production'
-SENTRY_ENVIRONMENT=
-
-# Cloudfront distribution ID number for data deploy
-CLOUDFRONT_DISTRIBUTION_ID=
-
-# AWS Kinesis Firehose table name for metric collections
-FIREHOSE_TABLE_NAME=
-
-# Hubspot credentials
-HUBSPOT_API_KEY=
-HUBSPOT_ENABLED=
-
-# Emails added to the blocklist will be blocked from successful API requests.
-# Accepts JSON encoded lists, i.e.: ["email@domain.com"]
-EMAIL_BLOCKLIST=[]
-```
+A .env file is used to configure most of the environment variables for deploy.
 
 `pydantic` uses the `python-dotenv` package to instantiate an
 [EnvConstants](https://github.com/covid-projections/covid-data-model/blob/main/api/awsauth/awsauth/config.py#L4)
 object with the contents of the .env file.  Refer to the class for the most up to
 date variables.
 
-```
-sls deploy --stage {dev,prod}
-```
+## Deploying code to production
+
+When code in api/awsauth is merged, the deploy process is automatically kicked off.
+It will deploy to dev and then run tests.  Once the tests succeed, the deploy waits for a
+manual approval to deploy to prod. This is limited right now to make sure that someone is around to
+help monitor the API after it's deployed.
+
+
+## Updating .env file
+
+If you are making changes that require the .env file to be chnaged, follow these steps:
+
+ 1. Request access to the [API .env content doc](https://docs.google.com/document/d/1lHD2cG0FYKoOc5Q17ugg20m-WcucD7UfkiTSChpmUhQ)
+ 2. Update value for dev and prod
+ 3. Update Github action secrets
+ 4. Trigger deploy.
