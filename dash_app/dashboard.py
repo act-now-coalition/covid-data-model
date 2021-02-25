@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -12,6 +14,7 @@ from dash.dependencies import Input
 from dash.dependencies import Output
 from pandas.core.dtypes.common import is_numeric_dtype
 from plotly import express as px
+from typing_extensions import final
 
 from libs import pipeline
 from libs.datasets import AggregationLevel
@@ -61,6 +64,57 @@ def _agg_wide_var_counts(wide_vars: pd.DataFrame) -> pd.DataFrame:
     return agg_counts
 
 
+@final
+@dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
+class PerRegionStats:
+    # A table with one row per region and various columns
+    regions: pd.DataFrame
+    # A table of count of timeseries, with one row per region and a column per variable
+    wide_var_has_timeseries: pd.DataFrame
+    # A table of count of URLs, with one row per region and a column per variable
+    wide_var_has_url: pd.DataFrame
+
+    @staticmethod
+    def make(ds: timeseries.MultiRegionDataset) -> "PerRegionStats":
+        wide_var_has_timeseries = (
+            ds.timeseries_wide_dates()
+            .notnull()
+            .any(1)
+            .unstack(PdFields.VARIABLE, fill_value=False)
+            .astype(int)
+        )
+        wide_var_has_url = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+
+        # Use an index to preserve the order while keeping only columns actually present.
+        static_columns = pd.Index(
+            [
+                CommonFields.LOCATION_ID,
+                CommonFields.COUNTY,
+                CommonFields.STATE,
+                CommonFields.POPULATION,
+            ]
+        ).intersection(ds.static.columns)
+
+        regions = ds.static.loc[:, static_columns].copy()
+        regions["annotation_count"] = (
+            ds.tag.loc[:, :, timeseries.ANNOTATION_TAG_TYPES]
+            .index.get_level_values(CommonFields.LOCATION_ID)
+            .value_counts()
+        )
+        regions["url_count"] = wide_var_has_url.sum(axis=1)
+        regions["timeseries_count"] = wide_var_has_timeseries.sum(axis=1)
+        regions["no_url_count"] = regions["timeseries_count"] - regions["url_count"]
+        regions = regions.reset_index()  # Move location_id from the index to a regular column
+        # Add location_id as the row id, used by DataTable. Maybe it makes more sense to rename the
+        # DataFrame index to "id" and call reset_index() just before to_dict("records"). I dunno.
+        regions["id"] = regions[CommonFields.LOCATION_ID]
+        return PerRegionStats(
+            wide_var_has_timeseries=wide_var_has_timeseries,
+            wide_var_has_url=wide_var_has_url,
+            regions=regions,
+        )
+
+
 def init(server):
     dash_app = dash.Dash(__name__, server=server, external_stylesheets=EXTERNAL_STYLESHEETS)
 
@@ -68,13 +122,17 @@ def init(server):
     dash_app.css.config.serve_locally = True
     dash_app.scripts.config.serve_locally = True
 
-    ds = combined_datasets.load_us_timeseries_dataset().get_subset(exclude_county_999=True)
-    ds = timeseries.make_source_url_tags(ds)
-
     commit = git.Repo(dataset_utils.REPO_ROOT).head.commit
     commit_str = (
         f"commit {commit.hexsha} at {commit.committed_datetime.isoformat()}: {commit.summary}"
     )
+
+    ds = combined_datasets.load_us_timeseries_dataset().get_subset(exclude_county_999=True)
+    ds = timeseries.make_source_url_tags(ds)
+
+    summary = PerRegionStats.make(ds)
+
+    agg_has_timeseries = _agg_wide_var_counts(summary.wide_var_has_timeseries).reset_index()
 
     source_url_value_counts = (
         ds.tag.loc[:, :, TagType.SOURCE_URL]
@@ -82,41 +140,11 @@ def init(server):
         .reset_index()
         .rename(columns={"index": "URL", "content": "count"})
     )
-
-    wide_var_has_timeseries = (
-        ds.timeseries_wide_dates()
-        .notnull()
-        .any(1)
-        .unstack(PdFields.VARIABLE, fill_value=False)
-        .astype(int)
-    )
-    agg_has_timeseries = _agg_wide_var_counts(wide_var_has_timeseries).reset_index()
-
-    wide_var_has_url = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
-    agg_has_url = _agg_wide_var_counts(wide_var_has_url.astype(int)).reset_index()
+    agg_has_url = _agg_wide_var_counts(summary.wide_var_has_url.astype(int)).reset_index()
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    # TODO(tom): update to work with Source tag
     has_url = counties.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
     county_variable_population_ratio = population_ratio_by_variable(counties, has_url)
-
-    # A table of regions in a DataFrame.
-    static_columns = pd.Index(
-        [CommonFields.LOCATION_ID, CommonFields.COUNTY, CommonFields.STATE, CommonFields.POPULATION]
-    ).intersection(ds.static.columns)
-    df_regions = ds.static.loc[:, static_columns].copy()
-    df_regions["annotation_count"] = (
-        ds.tag.loc[:, :, timeseries.ANNOTATION_TAG_TYPES]
-        .index.get_level_values(CommonFields.LOCATION_ID)
-        .value_counts()
-    )
-    df_regions["url_count"] = wide_var_has_url.sum(axis=1)
-    df_regions["timeseries_count"] = wide_var_has_timeseries.sum(axis=1)
-    df_regions["no_url_count"] = df_regions["timeseries_count"] - df_regions["url_count"]
-    df_regions = df_regions.reset_index()  # Move location_id from the index to a regular column
-    # Add location_id as the row id, used by DataTable. Maybe it makes more sense to rename the
-    # DataFrame index to "id" and call reset_index() just before to_dict("records"). I dunno.
-    df_regions["id"] = df_regions[CommonFields.LOCATION_ID]
 
     dash_app.layout = html.Div(
         children=[
@@ -162,11 +190,11 @@ def init(server):
             html.H2("Regions"),
             dash_table.DataTable(
                 id="datatable-regions",
-                columns=[{"name": i, "id": i} for i in df_regions.columns if i != "id"],
+                columns=[{"name": i, "id": i} for i in summary.regions.columns if i != "id"],
                 cell_selectable=False,
                 page_size=8,
                 row_selectable="single",
-                data=df_regions.to_dict("records"),
+                data=summary.regions.to_dict("records"),
                 editable=False,
                 filter_action="native",
                 sort_action="native",
@@ -174,7 +202,7 @@ def init(server):
                 page_action="native",
                 style_table={"height": "300px", "overflowY": "auto"},
                 # selected_row_ids=[df_regions[CommonFields.POPULATION].idxmax()],
-                selected_rows=[df_regions[CommonFields.POPULATION].idxmax()],
+                selected_rows=[summary.regions[CommonFields.POPULATION].idxmax()],
                 # selected_rows=[0],
                 sort_by=[{"column_id": CommonFields.POPULATION, "direction": "desc"}],
             ),
@@ -187,7 +215,7 @@ def init(server):
         ]
     )
 
-    _init_callbacks(dash_app, ds, df_regions)
+    _init_callbacks(dash_app, ds, summary.regions)
 
     return dash_app.server
 
