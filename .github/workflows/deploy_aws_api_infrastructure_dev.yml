@@ -1,17 +1,93 @@
-name: Deploy AWS API Infrastructure - Dev
-
-# NOTE: Not yet functional - hopefully will be shortly :)
+name: Deploy AWS API Infrastructure
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - 'api/awsauth/**'
 
+  workflow_dispatch:
+    deploy_to_prod:
+      description: 'If "true" will run full CI pipeline and deploy to prod'
+      default: "false"
 
 defaults:
   run:
     working-directory: api/awsauth/
 
 jobs:
-  deploy-dev:
+
+  DeployDev:
+    environment:
+      name: dev
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '12.x'
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Install Serverless Framework and NPM dependencies
+      run: |
+        npm install -g serverless
+        npm install
+    - name: Deploy
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+        DOTENV: ${{ secrets.DOTENV }}
+        AWS_REGION: us-east-1
+      run: tools/deploy-api-infrastructure.sh dev
+
+  TestDev:
+    if: github.event.inputs.deploy_to_prod == 'true'
+    needs: [DeployDev]
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@master
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+
+    - name: Install test requirements
+      run: pip install -r requirements_test.txt
+    - name: Run tests
+      run: pytest end_to_end_test.py
+
+  DeployProd:
+    if: github.event.inputs.deploy_to_prod == 'true'
+    needs: [TestDev]
+
+    environment:
+      name: prod
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '12.x'
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Install Serverless Framework and NPM dependencies
+      run: |
+        npm install -g serverless
+        npm install
+    - name: Deploy
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+        DOTENV: ${{ secrets.DOTENV }}
+        AWS_REGION: us-east-1
+      run: tools/deploy-api-infrastructure.sh prod
