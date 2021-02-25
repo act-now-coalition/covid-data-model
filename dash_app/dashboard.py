@@ -76,16 +76,6 @@ def init(server):
         f"commit {commit.hexsha} at {commit.committed_datetime.isoformat()}: {commit.summary}"
     )
 
-    # A table of regions in a DataFrame.
-    df_regions = ds.static.copy()
-    df_regions["annotation_count"] = (
-        ds.tag.loc[:, :, timeseries.ANNOTATION_TAG_TYPES]
-        .index.get_level_values(CommonFields.LOCATION_ID)
-        .value_counts()
-    )
-    df_regions = df_regions.reset_index()  # Move location_id from the index to a regular column
-    df_regions["id"] = df_regions[CommonFields.LOCATION_ID]
-
     source_url_value_counts = (
         ds.tag.loc[:, :, TagType.SOURCE_URL]
         .value_counts()
@@ -102,13 +92,31 @@ def init(server):
     )
     agg_has_timeseries = _agg_wide_var_counts(wide_var_has_timeseries).reset_index()
 
-    wide_var_has_mask = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
-    agg_has_url = _agg_wide_var_counts(wide_var_has_mask.astype(int)).reset_index()
+    wide_var_has_url = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+    agg_has_url = _agg_wide_var_counts(wide_var_has_url.astype(int)).reset_index()
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
     # TODO(tom): update to work with Source tag
     has_url = counties.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
     county_variable_population_ratio = population_ratio_by_variable(counties, has_url)
+
+    # A table of regions in a DataFrame.
+    static_columns = pd.Index(
+        [CommonFields.LOCATION_ID, CommonFields.COUNTY, CommonFields.STATE, CommonFields.POPULATION]
+    ).intersection(ds.static.columns)
+    df_regions = ds.static.loc[:, static_columns].copy()
+    df_regions["annotation_count"] = (
+        ds.tag.loc[:, :, timeseries.ANNOTATION_TAG_TYPES]
+        .index.get_level_values(CommonFields.LOCATION_ID)
+        .value_counts()
+    )
+    df_regions["url_count"] = wide_var_has_url.sum(axis=1)
+    df_regions["timeseries_count"] = wide_var_has_timeseries.sum(axis=1)
+    df_regions["no_url_count"] = df_regions["timeseries_count"] - df_regions["url_count"]
+    df_regions = df_regions.reset_index()  # Move location_id from the index to a regular column
+    # Add location_id as the row id, used by DataTable. Maybe it makes more sense to rename the
+    # DataFrame index to "id" and call reset_index() just before to_dict("records"). I dunno.
+    df_regions["id"] = df_regions[CommonFields.LOCATION_ID]
 
     dash_app.layout = html.Div(
         children=[
@@ -154,16 +162,7 @@ def init(server):
             html.H2("Regions"),
             dash_table.DataTable(
                 id="datatable-regions",
-                columns=[
-                    {"name": i, "id": i}
-                    for i in [
-                        CommonFields.LOCATION_ID,
-                        CommonFields.COUNTY,
-                        CommonFields.STATE,
-                        CommonFields.POPULATION,
-                        "annotation_count",
-                    ]
-                ],
+                columns=[{"name": i, "id": i} for i in df_regions.columns if i != "id"],
                 cell_selectable=False,
                 page_size=8,
                 row_selectable="single",
