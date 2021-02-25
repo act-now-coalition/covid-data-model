@@ -29,6 +29,10 @@ custom:
     # which should be none of them.
     include:
       - ''
+  # Lambda @ edge has a strict 1MB size limit, slim down requirements files to
+  # try to fit in under that limit
+  pythonRequirements:
+    slim: true
 
 plugins:
   - serverless-python-requirements

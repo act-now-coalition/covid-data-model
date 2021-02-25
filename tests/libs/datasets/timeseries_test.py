@@ -765,6 +765,13 @@ def test_one_region_tag_objects_series():
     }
 
 
+def test_one_region_tag_objects_series_empty():
+    one_region = test_helpers.build_one_region_dataset({CommonFields.CASES: [1, 2, 3]})
+    assert one_region.tag.empty
+    assert isinstance(one_region.tag_objects_series, pd.Series)
+    assert one_region.tag_objects_series.empty
+
+
 def test_timeseries_latest_values():
     dataset = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1745,3 +1752,44 @@ def test_make_source_tags_no_urls():
 
     one_region = dataset_out.get_one_region(test_helpers.DEFAULT_REGION)
     assert one_region.sources(CommonFields.ICU_BEDS) == [source_tag_prov_only]
+
+
+def test_make_source_url_tags():
+    url_str = UrlStr("http://foo.com/1")
+
+    source_tag_prov_only = taglib.Source("prov_only")
+    ts_prov_only = TimeseriesLiteral(
+        [0, 2, 4],
+        annotation=[test_helpers.make_tag(date="2020-04-01"),],
+        source=source_tag_prov_only,
+    )
+    source_tag_prov_with_url = taglib.Source("prov_with_url", url=url_str)
+    ts_with_url = TimeseriesLiteral([3, 5, 7], source=source_tag_prov_with_url,)
+    dataset_in = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts_prov_only, CommonFields.CASES: ts_with_url}
+    )
+
+    dataset_out = timeseries.make_source_url_tags(dataset_in)
+
+    ts_with_url_expected = TimeseriesLiteral(
+        [3, 5, 7], source=source_tag_prov_with_url, source_url=url_str
+    )
+    dataset_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.ICU_BEDS: ts_prov_only, CommonFields.CASES: ts_with_url_expected}
+    )
+    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+
+
+def test_make_source_url_tags_no_source_tags():
+    dataset_in = test_helpers.build_default_region_dataset({CommonFields.CASES: [1, 2, 3]})
+    dataset_out = timeseries.make_source_url_tags(dataset_in)
+    assert dataset_in == dataset_out
+
+
+def test_make_source_url_tags_has_source_url():
+    url_str = UrlStr("http://foo.com/1")
+    dataset_in = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: TimeseriesLiteral([1, 2, 3], source_url=url_str)}
+    )
+    with pytest.raises(AssertionError):
+        timeseries.make_source_url_tags(dataset_in)
