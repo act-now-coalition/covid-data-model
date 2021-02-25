@@ -13,7 +13,7 @@ npm install -g serverless
 
 ## Deploy
 
-Currently we have a `dev` and `prod` stage deployed via Github Actions.
+Currently we have a `dev` and `prod` stage (Serverless Framework uses "stages" as "environments") deployed via Github Actions.
 
 A .env file is used to configure most of the environment variables for deploy.
 
@@ -25,8 +25,8 @@ date variables.
 ## Deploying code to production
 
 When code in api/awsauth is merged, the deploy process is automatically kicked off.
-It will deploy to dev and then run tests.  One the tests succeed, the deploy waits for a
-manual approval to deploy. This is limited right now to make sure that someone is around to
+It will deploy to dev and then run tests.  Once the tests succeed, the deploy waits for a
+manual approval to deploy to prod. This is limited right now to make sure that someone is around to
 help monitor the API after it's deployed.
 
 
