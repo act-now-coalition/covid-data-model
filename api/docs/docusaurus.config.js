@@ -3,8 +3,13 @@ module.exports = {
   tagline: "API Documentation",
   url: "https://apidocs.covidactnow.org",
   baseUrl: "/",
+  scripts: [
+    {
+      src: "/scripts/gtag_conversion_event.js",
+    },
+  ],
   customFields: {
-    registerUrl: "https://api.covidactnow.org/v2/register"
+    registerUrl: "https://api.covidactnow.org/v2/register",
   },
   onBrokenLinks: "throw",
   favicon: "img/favicon.ico",
@@ -12,7 +17,10 @@ module.exports = {
   projectName: "covid-data-model", // Usually your repo name.
   themeConfig: {
     googleAnalytics: {
-      trackingID: 'UA-160622988-1',
+      trackingID: "UA-160622988-1",
+    },
+    gtag: {
+      trackingID: "AW-527465415",
     },
     navbar: {
       title: "",
