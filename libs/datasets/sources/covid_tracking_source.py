@@ -1,9 +1,12 @@
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
+from libs.datasets.taglib import UrlStr
 
 
 class CovidTrackingDataSource(data_source.DataSource):
-    SOURCE_NAME = "covid_tracking"
+    SOURCE_TYPE = "covid_tracking"
+    SOURCE_NAME = "The COVID Tracking Project"
+    SOURCE_URL = UrlStr("https://covidtracking.com/")
 
     COMMON_DF_CSV_PATH = "data/covid-tracking/timeseries.csv"
 

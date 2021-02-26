@@ -52,6 +52,8 @@ TAG_INDEX_FIELDS = [
     TagField.TYPE,
 ]
 
+TAG_DF_COLUMNS = TAG_INDEX_FIELDS + [TagField.CONTENT]
+
 ANNOTATION_TAG_TYPES = [
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
     TagType.CUMULATIVE_TAIL_TRUNCATED,
@@ -95,10 +97,31 @@ class OneRegionTimeseriesDataset:
         return source_url_series.groupby(level=0).agg(list).to_dict()
 
     def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
-        return_value = []
-        for _, row in self.tag.loc[[metric], ANNOTATION_TAG_TYPES].reset_index().iterrows():
-            return_value.append(taglib.AnnotationWithDate.make(row.tag_type, content=row.content))
-        return return_value
+        try:
+            return self.tag_objects_series.loc[[metric], ANNOTATION_TAG_TYPES].to_list()
+        except KeyError:
+            # Not very elegant but I can't find
+            # anything better in https://github.com/pandas-dev/pandas/issues/10695
+            return []
+
+    def sources(self, field_name: FieldName) -> List[taglib.Source]:
+        try:
+            return self.tag_objects_series.loc[[field_name], [TagType.SOURCE]].to_list()
+        except KeyError:
+            return []
+
+    @cached_property
+    def tag_objects_series(self) -> pd.Series:
+        """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
+        assert self.tag.index.names[1] == TagField.TYPE
+        # Apply a function to each element in the Series self.tag with the function having access to
+        # the index of each element. From https://stackoverflow.com/a/47645833/341400.
+        # result_type reduce forces the return value to be a Series, even when tag is empty.
+        return self.tag.to_frame().apply(
+            lambda row: taglib.TagInTimeseries.make(row.name[1], content=row.content),
+            axis=1,
+            result_type="reduce",
+        )
 
     def __post_init__(self):
         assert CommonFields.LOCATION_ID in self.data.columns
@@ -448,6 +471,14 @@ class MultiRegionDataset:
             )
         )
 
+    def add_tag_all(self, tag: taglib.TagInTimeseries) -> "MultiRegionDataset":
+        """Returns a new object with given tag copied for every timeseries."""
+        tag_df = pd.DataFrame(
+            {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
+            index=self.timeseries_wide_dates().index,
+        ).reset_index()
+        return self.append_tag_df(tag_df)
+
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
         """Returns a new object containing data in self and given provenance information."""
         if not self.provenance.empty:
@@ -485,6 +516,7 @@ class MultiRegionDataset:
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
             if provenance_path.exists():
+                # TODO(tom): Try to delete add_provenance_csv which seems to be only used in tests.
                 dataset = dataset.add_provenance_csv(provenance_path)
         return dataset
 
@@ -601,13 +633,14 @@ class MultiRegionDataset:
 
     def append_fips_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df, containing a fips column, appended."""
-        additional_tag_df = _add_location_id(additional_tag_df)
+        additional_tag_df = _add_location_id(additional_tag_df).drop(columns=CommonFields.FIPS)
         return self.append_tag_df(additional_tag_df)
 
     def append_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df appended."""
         if additional_tag_df.empty:
             return self
+        assert additional_tag_df.columns.symmetric_difference(TAG_DF_COLUMNS, sort=False).empty
         # Sort by index fields, and within rows having identical index fields, by content. This
         # makes the order of values in combined_series identical, independent of the order they
         # were appended.
@@ -618,6 +651,25 @@ class MultiRegionDataset:
         )
         combined_series = combined_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
         return dataclasses.replace(self, tag=combined_series)
+
+    def replace_tag_df(self, tag_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new dataset with all tags replaced by those in tag_df"""
+        return dataclasses.replace(self, tag=_EMPTY_TAG_SERIES).append_tag_df(tag_df)
+
+    @cached_property
+    def tag_objects_series(self) -> pd.Series:
+        """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
+        # This is similar to OneRegionTimeseriesDataset.tag_objects_series but index is slightly
+        # different.
+        assert self.tag.index.names[2] == TagField.TYPE
+        # Apply a function to each element in the Series self.tag with the function having access to
+        # the index of each element. From https://stackoverflow.com/a/47645833/341400.
+        # result_type reduce forces the return value to be a Series, even when tag is empty.
+        return self.tag.to_frame().apply(
+            lambda row: taglib.TagInTimeseries.make(row.name[2], content=row.content),
+            axis=1,
+            result_type="reduce",
+        )
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
@@ -769,17 +821,20 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask]
         return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
 
-    def to_csv(self, path: pathlib.Path):
+    def to_csv(self, path: pathlib.Path, include_latest=True):
         """Persists timeseries to CSV.
 
         Args:
             path: Path to write to.
         """
-        latest_data = self.static.reset_index()
-        _add_fips_if_missing(latest_data)
-
         timeseries_data = self._geo_data.join(self.timeseries).reset_index()
         _add_fips_if_missing(timeseries_data)
+
+        if include_latest:
+            latest_data = self.static.reset_index()
+            _add_fips_if_missing(latest_data)
+        else:
+            latest_data = pd.DataFrame([])
 
         # A DataFrame with timeseries data and latest data (with DATE=NaT) together
         combined = pd.concat([timeseries_data, latest_data], ignore_index=True)
@@ -1194,3 +1249,45 @@ def combined_datasets(
         tag=output_tag.sort_index(),
         static=output_static_df,
     )
+
+
+def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+    """Convert provenance and source_url tags into source tags."""
+    # TODO(tom): Make sure taglib.Source.rename_and_make_tag_df is tested well without tests that
+    #  call this function, then delete this function.
+    # Separate ds_in.tag into tags to transform into `source` tags and tags to copy unmodified.
+    ds_in_tag_extract_mask = ds_in.tag.index.get_level_values(TagField.TYPE).isin(
+        [TagType.PROVENANCE, TagType.SOURCE_URL]
+    )
+    other_tags_df = ds_in.tag.loc[~ds_in_tag_extract_mask].reset_index()
+    # Fill in missing elements of the DataFrame with None in two steps because it can't be done
+    # by `unstack`.
+    extracted_tags_df = (
+        ds_in.tag.loc[ds_in_tag_extract_mask]
+        .unstack(TagField.TYPE, fill_value=pd.NA)
+        .replace(
+            {pd.NA: None}
+        )  # From https://github.com/pandas-dev/pandas/issues/17494#issuecomment-328966324
+    )
+
+    source_df = taglib.Source.rename_and_make_tag_df(
+        extracted_tags_df, rename={TagType.PROVENANCE: "type", TagType.SOURCE_URL: "url"}
+    )
+
+    return ds_in.replace_tag_df(pd.concat([source_df, other_tags_df]))
+
+
+def make_source_url_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+    """Make source_url tags from source tags"""
+    # TODO(tom): When we have clearer view of how we want to build materialized views of tags
+    #  replace use of this function.
+    assert TagType.SOURCE_URL not in ds_in.tag.index.get_level_values(TagField.TYPE)
+    try:
+        source_tags = ds_in.tag_objects_series.loc[:, :, [TagType.SOURCE]]
+    except KeyError:
+        return ds_in
+    source_url = (
+        source_tags.apply(lambda tag: tag.url).dropna().rename(TagField.CONTENT).reset_index()
+    )
+    source_url[TagField.TYPE] = TagType.SOURCE_URL
+    return ds_in.append_tag_df(source_url)

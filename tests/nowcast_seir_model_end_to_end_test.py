@@ -127,6 +127,7 @@ def test_historical_peaks_positivity_to_real_cfr():
     fig.savefig(TEST_OUTPUT_DIR / "test_historical_peaks_positivity_to_real_cfr.pdf")
 
 
+@pytest.mark.slow
 def test_demonstrate_hospitalization_delay_changes():
     """
     Demonstrates that hospitalization peaks are delayed relative to new cases

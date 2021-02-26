@@ -11,6 +11,7 @@ from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
+from typing import Optional
 from typing import Tuple
 
 import pandas as pd
@@ -53,6 +54,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
 
     PROVENANCE = PdFields.PROVENANCE
     SOURCE_URL = "source_url"
+    SOURCE = "source"
 
 
 @dataclass(frozen=True)
@@ -63,7 +65,7 @@ class TagInTimeseries(ABC):
     TAG_TYPE: ClassVar[TagType]
 
     @property
-    def type(self) -> TagType:
+    def tag_type(self) -> TagType:
         return self.TAG_TYPE
 
     @property
@@ -87,7 +89,7 @@ class TagInTimeseries(ABC):
         return {
             TagField.LOCATION_ID: location_id,
             TagField.VARIABLE: variable,
-            TagField.TYPE: self.type,
+            TagField.TYPE: self.tag_type,
             TagField.CONTENT: self.content,
         }
 
@@ -111,11 +113,11 @@ class UrlStr(str):
     """Wraps str to provide some type safety."""
 
     # If we need to do more with URLs consider replacing UrlStr with https://pypi.org/project/yarl/
-    pass
+    @staticmethod
+    def make_optional(str_in: Optional[str]) -> Optional["UrlStr"]:
+        return UrlStr(str_in) if str_in else None
 
 
-# TODO(tom): Consider merging source_url into provenance. See
-#  https://github.com/covid-projections/covid-data-model/pull/935#pullrequestreview-587070370
 @dataclass(frozen=True)
 class SourceUrl(TagInTimeseries):
     source: UrlStr
@@ -129,6 +131,72 @@ class SourceUrl(TagInTimeseries):
     @property
     def content(self) -> str:
         return self.source
+
+
+@dataclass(frozen=True)
+class Source(TagInTimeseries):
+    type: str
+    url: Optional[UrlStr] = None
+    name: Optional[str] = None
+
+    TAG_TYPE = TagType.SOURCE
+
+    @staticmethod
+    def rename_and_make_tag_df(
+        in_df: pd.DataFrame, *, source_type: Optional[str] = None, rename: Mapping[str, str]
+    ) -> pd.DataFrame:
+        """Creates a Source for each row of `in_df`.
+
+        Args:
+            in_df: DataFrame with columns to be used to create Source tags and MultiIndex
+            starting with a location and variable. All index levels are returned in columns.
+            rename: Maps from column of in_df to Source attribute name. Columns not in `rename` are
+              ignored; add an identity mapping if a column in in_df is to be used as an attribute
+              of Source.
+            source_type: optional static value for Source `type` attribute
+
+        Returns:
+            Source JSONs in a pd.DataFrame suitable for passing to MultiRegionDataset
+        """
+
+        assert in_df.index.names[0] in [CommonFields.FIPS, CommonFields.LOCATION_ID]
+        assert in_df.index.names[1] == PdFields.VARIABLE
+        # Make a DataFrame with columns for each attribute of Source
+        columns_to_keep = in_df.columns.intersection(rename.keys())
+        attribute_df = in_df.loc[:, columns_to_keep].rename(columns=rename)
+        if source_type:
+            attribute_df["type"] = source_type
+        json_series = Source.attribute_df_to_json_series(attribute_df)
+        source_df = json_series.rename(TagField.CONTENT).reset_index()
+        source_df[TagField.TYPE] = TagType.SOURCE
+        return source_df
+
+    @staticmethod
+    def attribute_df_to_json_series(attribute_df: pd.DataFrame) -> pd.Series:
+        assert attribute_df.columns.isin([f.name for f in dataclasses.fields(Source)]).all()
+        # TODO(tom): Somehow make sure every element in attribute_df is a non-empty str or None.
+        # Use slow Source.content instead of something like https://stackoverflow.com/a/64700027
+        # because Pandas to_json encodes slightly differently, breaking tests that compare JSON
+        # objects as strings.
+        return attribute_df.apply(lambda row: Source(**row.to_dict()).content, axis=1)
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        content_parsed = json.loads(content)
+        return cls(
+            type=content_parsed["type"],
+            url=UrlStr.make_optional(content_parsed.get("url", None)),
+            name=content_parsed.get("name", None),
+        )
+
+    @property
+    def content(self) -> str:
+        d = {"type": self.type}
+        if self.url:
+            d["url"] = self.url
+        if self.name:
+            d["name"] = self.name
+        return json.dumps(d, separators=(",", ":"))
 
 
 @dataclass(frozen=True)
@@ -175,6 +243,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.ZSCORE_OUTLIER: ZScoreOutlier,
     TagType.PROVENANCE: ProvenanceTag,
     TagType.SOURCE_URL: SourceUrl,
+    TagType.SOURCE: Source,
 }
 
 

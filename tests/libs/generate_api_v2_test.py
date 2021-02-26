@@ -33,7 +33,11 @@ def test_build_summary_for_fips(
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
     nyc_latest = fips_timeseries.latest
     log = structlog.get_logger()
-    usafacts_url = "https://usafacts.org/issues/coronavirus/"
+    field_source_usafacts = FieldSource(
+        name="USAFacts",
+        type=FieldSourceType.USA_FACTS,
+        url="https://usafacts.org/issues/coronavirus/",
+    )
 
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
         fips_timeseries, nyc_rt_dataset, nyc_icu_dataset, log,
@@ -41,6 +45,7 @@ def test_build_summary_for_fips(
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     assert latest_metric
     summary = build_api_v2.build_region_summary(fips_timeseries, latest_metric, risk_levels, log)
+    field_source_hhshospital = FieldSource(type=FieldSourceType.HHSHospital)
     expected = RegionSummary(
         population=nyc_latest["population"],
         state="NY",
@@ -78,22 +83,12 @@ def test_build_summary_for_fips(
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
         ),
         annotations=Annotations(
-            cases=FieldAnnotations(
-                sources=[FieldSource(type=FieldSourceType.USA_FACTS, url=usafacts_url)],
-                anomalies=[],
-            ),
-            deaths=FieldAnnotations(
-                sources=[FieldSource(type=FieldSourceType.USA_FACTS, url=usafacts_url)],
-                anomalies=[],
-            ),
+            cases=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
+            deaths=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             positiveTests=None,
             negativeTests=None,
-            hospitalBeds=FieldAnnotations(
-                sources=[FieldSource(type=FieldSourceType.HHSHospital)], anomalies=[]
-            ),
-            icuBeds=FieldAnnotations(
-                sources=[FieldSource(type=FieldSourceType.HHSHospital)], anomalies=[]
-            ),
+            hospitalBeds=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
+            icuBeds=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
             contactTracers=None,
             newCases=FieldAnnotations(
                 sources=[],
@@ -110,6 +105,31 @@ def test_build_summary_for_fips(
                     },
                 ],
             ),
+            vaccinationsCompleted=FieldAnnotations(
+                sources=[
+                    FieldSource(
+                        name="New York State Department of Health",
+                        type=FieldSourceType.CANScrapersStateProviders,
+                        url="https://covid19vaccine.health.ny.gov/covid-19-vaccine-tracker",
+                    )
+                ],
+                anomalies=[],
+            ),
+            vaccinationsInitiated=FieldAnnotations(
+                sources=[
+                    FieldSource(
+                        name="New York State Department of Health",
+                        type=FieldSourceType.CANScrapersStateProviders,
+                        url="https://covid19vaccine.health.ny.gov/covid-19-vaccine-tracker",
+                    )
+                ],
+                anomalies=[],
+            ),
+            caseDensity=FieldAnnotations(sources=[field_source_usafacts], anomalies=[]),
+            icuCapacityRatio=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
+            icuHeadroomRatio=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
+            infectionRate=FieldAnnotations(sources=[field_source_usafacts], anomalies=[]),
+            infectionRateCI90=FieldAnnotations(sources=[field_source_usafacts], anomalies=[]),
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),
         url="https://covidactnow.org/us/new_york-ny/county/bronx_county",

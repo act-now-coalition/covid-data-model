@@ -138,6 +138,7 @@ Fields:
         description="""
 New confirmed or suspected cases.
 
+
 New cases are a processed timeseries of cases - summing new cases may not equal
 the cumulative case count.
 
@@ -209,7 +210,7 @@ class FieldAnnotations(base_model.APIBaseModel):
 class Annotations(base_model.APIBaseModel):
     """Annotations for each field."""
 
-    # Keep this list of fields in sync with the fields in `Actuals`.
+    # Keep this list of fields in sync with the fields in `Actuals`
     cases: Optional[FieldAnnotations] = pydantic.Field(None, description="Annotations for cases")
     deaths: Optional[FieldAnnotations] = pydantic.Field(None, description="Annotations for deaths")
     positiveTests: Optional[FieldAnnotations] = pydantic.Field(
@@ -238,6 +239,34 @@ class Annotations(base_model.APIBaseModel):
     )
     vaccinationsCompleted: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinationsCompleted"
+    )
+    # Keep this list of fields in sync with the fields in `Metrics`
+    testPositivityRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for testPositivityRatio"
+    )
+    caseDensity: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for caseDensity"
+    )
+    contactTracerCapacityRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for contactTracerCapacityRatio"
+    )
+    infectionRate: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for infectionRate"
+    )
+    infectionRateCI90: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for infectionRateCI90"
+    )
+    icuHeadroomRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for icuHeadroomRatio"
+    )
+    icuCapacityRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for icuCapacityRatio"
+    )
+    vaccinationsInitiatedRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsInitiatedRatio"
+    )
+    vaccinationsCompletedRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsCompletedRatio"
     )
 
 

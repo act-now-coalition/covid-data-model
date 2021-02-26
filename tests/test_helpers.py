@@ -80,6 +80,7 @@ class TimeseriesLiteral(UserList):
     data: Sequence[float]
     provenance: Sequence[str]
     source_url: Sequence[UrlStr]
+    source: Sequence[taglib.Source] = ()
     annotation: Sequence[taglib.TagInTimeseries] = ()
 
     # noinspection PyMissingConstructor
@@ -88,13 +89,18 @@ class TimeseriesLiteral(UserList):
         *args,
         provenance: Union[None, str, List[str]] = None,
         source_url: Union[None, UrlStr, List[UrlStr]] = None,
+        source: Union[None, taglib.Source, List[taglib.Source]] = None,
         **kwargs,
     ):
         """Initialize `self`, doing some type conversion."""
         # UserList.__init__ attempts to set self.data, which fails on this frozen class. Instead
         # let the dataclasses code initialize `data`.
         self.__default_init__(  # pylint: disable=E1101
-            *args, provenance=_to_list(provenance), source_url=_to_list(source_url), **kwargs
+            *args,
+            provenance=_to_list(provenance),
+            source_url=_to_list(source_url),
+            source=_to_list(source),
+            **kwargs,
         )
 
 
@@ -102,7 +108,10 @@ def make_tag_df(
     region: Region, metric: CommonFields, records: List[taglib.TagInTimeseries]
 ) -> pd.DataFrame:
     df = pd.DataFrame(
-        {TagField.TYPE: [r.type for r in records], TagField.CONTENT: [r.content for r in records],}
+        {
+            TagField.TYPE: [r.tag_type for r in records],
+            TagField.CONTENT: [r.content for r in records],
+        }
     )
     df[TagField.LOCATION_ID] = region.location_id
     df[TagField.VARIABLE] = metric
@@ -110,14 +119,14 @@ def make_tag_df(
 
 
 def make_tag(
-    type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
+    tag_type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
 ) -> taglib.TagInTimeseries:
-    if type in timeseries.ANNOTATION_TAG_TYPES:
+    if tag_type in timeseries.ANNOTATION_TAG_TYPES:
         # Force to the expected types and add defaults if not in kwargs
         kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
 
-    return taglib.TAG_TYPE_TO_CLASS[type](**kwargs)
+    return taglib.TAG_TYPE_TO_CLASS[tag_type](**kwargs)
 
 
 def build_dataset(
@@ -169,6 +178,7 @@ def build_dataset(
             continue
 
         records = list(ts_literal.annotation)
+        records.extend(ts_literal.source)
         records.extend(
             make_tag(TagType.PROVENANCE, source=provenance) for provenance in ts_literal.provenance
         )

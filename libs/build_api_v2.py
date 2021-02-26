@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List
 from typing import Optional
 import pandas as pd
 from api.can_api_v2_definition import (
@@ -98,60 +99,88 @@ def build_region_summary(
     )
 
 
+ACTUALS_NAME_TO_COMMON_FIELD = {
+    "cases": CommonFields.CASES,
+    "deaths": CommonFields.DEATHS,
+    "positiveTests": CommonFields.POSITIVE_TESTS,
+    "negativeTests": CommonFields.NEGATIVE_TESTS,
+    "contactTracers": CommonFields.CONTACT_TRACERS_COUNT,
+    "hospitalBeds": CommonFields.HOSPITAL_BEDS_IN_USE_ANY,
+    "icuBeds": CommonFields.ICU_BEDS,
+    "newCases": CommonFields.NEW_CASES,
+    "vaccinesDistributed": CommonFields.VACCINES_DISTRIBUTED,
+    "vaccinationsInitiated": CommonFields.VACCINATIONS_INITIATED,
+    "vaccinationsCompleted": CommonFields.VACCINATIONS_COMPLETED,
+}
+
+
+METRICS_NAME_TO_COMMON_FIELD = {
+    "contactTracerCapacityRatio": CommonFields.CONTACT_TRACERS_COUNT,
+    "caseDensity": CommonFields.CASES,
+    "infectionRate": CommonFields.CASES,
+    "testPositivityRatio": CommonFields.TEST_POSITIVITY,
+    "icuHeadroomRatio": CommonFields.CURRENT_ICU_TOTAL,
+    "infectionRateCI90": CommonFields.CASES,
+    "vaccinationsInitiatedRatio": CommonFields.VACCINATIONS_INITIATED_PCT,
+    "vaccinationsCompletedRatio": CommonFields.VACCINATIONS_COMPLETED_PCT,
+    "icuCapacityRatio": CommonFields.CURRENT_ICU,
+}
+
+
 def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotations:
     assert one_region.tag.index.names == [TagField.VARIABLE, TagField.TYPE]
-    return Annotations(
-        cases=_build_metric_annotations(one_region, CommonFields.CASES, log),
-        deaths=_build_metric_annotations(one_region, CommonFields.DEATHS, log),
-        positiveTests=_build_metric_annotations(one_region, CommonFields.POSITIVE_TESTS, log),
-        negativeTests=_build_metric_annotations(one_region, CommonFields.NEGATIVE_TESTS, log),
-        contactTracers=_build_metric_annotations(
-            one_region, CommonFields.CONTACT_TRACERS_COUNT, log
-        ),
-        hospitalBeds=_build_metric_annotations(
-            one_region, CommonFields.HOSPITAL_BEDS_IN_USE_ANY, log
-        ),
-        icuBeds=_build_metric_annotations(one_region, CommonFields.ICU_BEDS, log),
-        newCases=_build_metric_annotations(one_region, CommonFields.NEW_CASES, log),
-        vaccinesDistributed=_build_metric_annotations(
-            one_region, CommonFields.VACCINES_DISTRIBUTED, log
-        ),
-        vaccinationsInitiated=_build_metric_annotations(
-            one_region, CommonFields.VACCINATIONS_INITIATED, log
-        ),
-        vaccinationsCompleted=_build_metric_annotations(
-            one_region, CommonFields.VACCINATIONS_COMPLETED, log
-        ),
-    )
+    name_and_common_field = [
+        *ACTUALS_NAME_TO_COMMON_FIELD.items(),
+        *METRICS_NAME_TO_COMMON_FIELD.items(),
+    ]
+    annotations = {
+        annotations_name: _build_metric_annotations(one_region, field_name, log)
+        for annotations_name, field_name in name_and_common_field
+    }
+    return Annotations(**annotations)
 
 
 def _build_metric_annotations(
     tag_series: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log
 ) -> Optional[FieldAnnotations]:
 
+    sources = [
+        FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url, name=tag.name)
+        for tag in tag_series.sources(field_name)
+    ]
+
+    if not sources:
+        # Fall back to using provenance and source_url.
+        # TODO(tom): Remove this block of code when we're pretty sure `source` has all the data
+        #  we need.
+        sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
+
+    anomalies = tag_series.annotations(field_name)
+    anomalies = [
+        AnomalyAnnotation(
+            date=tag.date, original_observation=tag.original_observation, type=tag.tag_type
+        )
+        for tag in anomalies
+    ]
+
+    if not sources and not anomalies:
+        return None
+
+    return FieldAnnotations(sources=sources, anomalies=anomalies)
+
+
+def _sources_from_provenance_and_source_url(
+    field_name: CommonFields, tag_series: timeseries.OneRegionTimeseriesDataset, log
+) -> List[FieldSource]:
     sources_enum = set()
     for source_str in tag_series.provenance.get(field_name, []):
-        source_enum = FieldSourceType.get(source_str)
-        if source_enum is None:
-            source_enum = FieldSourceType.OTHER
-            log.info(
-                METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
-            )
-        sources_enum.add(source_enum)
+        sources_enum.add(_lookup_source_type(source_str, field_name, log))
     if not sources_enum:
         source_enum = None
     else:
         if len(sources_enum) > 1:
             log.warning(METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE, field_name=field_name)
         source_enum = sources_enum.pop()
-
-    anomalies = tag_series.annotations(field_name)
-    anomalies = [
-        AnomalyAnnotation(
-            date=tag.date, original_observation=tag.original_observation, type=tag.type
-        )
-        for tag in anomalies
-    ]
 
     source_urls = set(tag_series.source_url.get(field_name, []))
     if not source_urls:
@@ -168,14 +197,19 @@ def _build_metric_annotations(
         source_url = source_urls.pop()
 
     if source_url or source_enum:
-        sources = [FieldSource(type=source_enum, url=source_url)]
+        return [FieldSource(type=source_enum, url=source_url)]
     else:
-        sources = []
+        return []
 
-    if not sources and not anomalies:
-        return None
 
-    return FieldAnnotations(sources=sources, anomalies=anomalies)
+def _lookup_source_type(source_str, field_name, log) -> FieldSourceType:
+    source_enum = FieldSourceType.get(source_str)
+    if source_enum is None:
+        source_enum = FieldSourceType.OTHER
+        log.info(
+            METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
+        )
+    return source_enum
 
 
 def build_region_timeseries(
