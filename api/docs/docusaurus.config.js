@@ -3,6 +3,11 @@ module.exports = {
   tagline: "API Documentation",
   url: "https://apidocs.covidactnow.org",
   baseUrl: "/",
+  scripts: [
+    {
+      src: "/scripts/gtag_conversion_event.js",
+    },
+  ],
   customFields: {
     registerUrl: "https://api.covidactnow.org/v2/register",
   },
