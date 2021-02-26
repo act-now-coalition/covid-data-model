@@ -1165,36 +1165,6 @@ def test_timeseries_empty_static_not_empty():
     assert dataset.get_one_region(Region.from_fips("97111")).latest["m1"] == 1234
 
 
-def test_aggregate_states_to_country():
-    ts = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,county,aggregate_level,date,m1,m2,population\n"
-            "iso1:us#fips:97111,Bar County,county,2020-04-03,3,,\n"
-            "iso1:us#fips:97222,Foo County,county,2020-04-01,,10,\n"
-            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,1,2,\n"
-            "iso1:us#iso2:us-tx,Texas,state,2020-04-02,3,4,\n"
-            "iso1:us#iso2:us-tx,Texas,state,,,,1000\n"
-            "iso1:us#iso2:us-az,Arizona,state,2020-04-01,1,2,\n"
-            "iso1:us#iso2:us-az,Arizona,state,,,,2000\n"
-        )
-    )
-    region_us = Region.from_iso1("us")
-    country = timeseries.aggregate_regions(
-        ts,
-        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        [],
-        reporting_ratio_required_to_aggregate=1.0,
-    )
-    expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,aggregate_level,date,m1,m2,population\n"
-            "iso1:us,country,2020-04-01,2,4,\n"
-            "iso1:us,country,,,,3000\n"
-        )
-    )
-    test_helpers.assert_dataset_like(country, expected)
-
-
 def test_combined_timeseries():
     ds1 = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1324,69 +1294,6 @@ def test_combined_static():
     test_helpers.assert_dataset_like(expected, combined, drop_na_timeseries=True)
 
 
-def test_aggregate_states_to_country_scale():
-    ts = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,county,aggregate_level,date,m1,m2,population\n"
-            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,4,2,\n"
-            "iso1:us#iso2:us-tx,Texas,state,2020-04-02,4,4,\n"
-            "iso1:us#iso2:us-tx,Texas,state,,,,2500\n"
-            "iso1:us#iso2:us-az,Arizona,state,2020-04-01,8,20,\n"
-            "iso1:us#iso2:us-az,Arizona,state,2020-04-02,12,40,\n"
-            "iso1:us#iso2:us-az,Arizona,state,,,,7500\n"
-        )
-    )
-    region_us = Region.from_iso1("us")
-    country = timeseries.aggregate_regions(
-        ts,
-        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        [timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),],
-    )
-    # The column m1 is scaled by population.
-    # On 2020-04-01: 4 * 0.25 + 8 * 0.75 = 7
-    # On 2020-04-02: 4 * 0.25 + 12 * 0.75 = 10
-    expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,aggregate_level,date,m1,m2,population\n"
-            "iso1:us,country,2020-04-01,7,22,\n"
-            "iso1:us,country,2020-04-02,10,44,\n"
-            "iso1:us,country,,,,10000\n"
-        )
-    )
-    test_helpers.assert_dataset_like(country, expected)
-
-
-def test_aggregate_states_to_country_scale_static():
-    ts = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,county,aggregate_level,date,m1,s1,population\n"
-            "iso1:us#iso2:us-tx,Texas,state,2020-04-01,4,,\n"
-            "iso1:us#iso2:us-tx,Texas,state,,,4,2500\n"
-            "iso1:us#iso2:us-az,Arizona,state,2020-04-01,8,,\n"
-            "iso1:us#iso2:us-az,Arizona,state,,,12,7500\n"
-        )
-    )
-    region_us = Region.from_iso1("us")
-    country = timeseries.aggregate_regions(
-        ts,
-        {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        [
-            timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),
-            timeseries.StaticWeightedAverageAggregation(FieldName("s1"), CommonFields.POPULATION),
-        ],
-    )
-    # The column m1 is scaled by population.
-    # 4 * 0.25 + 12 * 0.75 = 10
-    expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,aggregate_level,date,m1,s1,population\n"
-            "iso1:us,country,2020-04-01,7,,\n"
-            "iso1:us,country,,,10,10000\n"
-        )
-    )
-    test_helpers.assert_dataset_like(country, expected)
-
-
 def test_timeseries_rows():
     ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1455,32 +1362,6 @@ def test_dataset_regions_property(nyc_region):
     assert dataset.timeseries_regions == set([az_region, nyc_region])
 
 
-@pytest.mark.parametrize("reporting_ratio,expected_na", [(0.09, False), (0.1, False), (0.11, True)])
-def test_weighted_reporting_ratio(reporting_ratio, expected_na):
-    ny_region = Region.from_state("NY")
-    az_region = Region.from_state("AZ")
-    us_region = Region.from_iso1("us")
-    aggregate_map = {
-        ny_region: us_region,
-        az_region: us_region,
-    }
-    metrics = {ny_region: {CommonFields.CASES: [100]}, az_region: {CommonFields.CASES: [None]}}
-    static = {ny_region: {CommonFields.POPULATION: 100}, az_region: {CommonFields.POPULATION: 900}}
-    dataset = test_helpers.build_dataset(metrics, static_by_region_then_field_name=static)
-
-    aggregation = timeseries.aggregate_regions(
-        dataset,
-        aggregate_map,
-        aggregations=[],
-        reporting_ratio_required_to_aggregate=reporting_ratio,
-    )
-    cases = aggregation.timeseries[CommonFields.CASES]
-    if expected_na:
-        assert not len(cases)
-    else:
-        assert len(cases)
-
-
 def test_provenance_map():
     region_tx = Region.from_state("TX")
     region_sf = Region.from_fips("06075")
@@ -1525,85 +1406,6 @@ def test_provenance_map_empty():
     )
 
     assert dataset.provenance_map() == {}
-
-
-@pytest.mark.parametrize(
-    "initiated_values,initiated_expected", [([50, None], [50, None]), ([None, None], [50, 150])]
-)
-def test_backfill_vaccine_initiated(initiated_values, initiated_expected):
-    ny_region = Region.from_state("NY")
-    az_region = Region.from_state("AZ")
-
-    # Initiated has a hole, but since they're reporting some data we don't
-    # want to fill
-    ny_metrics = {
-        CommonFields.VACCINES_ADMINISTERED: [100, 200],
-        CommonFields.VACCINATIONS_INITIATED: initiated_values,
-        CommonFields.VACCINATIONS_COMPLETED: [50, 50],
-    }
-    az_metrics = {
-        CommonFields.VACCINES_ADMINISTERED: [100, 200],
-        CommonFields.VACCINATIONS_COMPLETED: [30, 40],
-        CommonFields.VACCINATIONS_INITIATED: [70, 160],
-    }
-    metrics = {ny_region: ny_metrics, az_region: az_metrics}
-    dataset = test_helpers.build_dataset(metrics)
-    result = timeseries.backfill_vaccination_initiated(dataset)
-    expected_ny = {
-        CommonFields.VACCINES_ADMINISTERED: [100, 200],
-        CommonFields.VACCINATIONS_COMPLETED: [50, 50],
-        CommonFields.VACCINATIONS_INITIATED: initiated_expected,
-    }
-    expected_metrics = {ny_region: expected_ny, az_region: az_metrics}
-    expected_dataset = test_helpers.build_dataset(expected_metrics)
-
-    test_helpers.assert_dataset_like(result, expected_dataset)
-
-
-def test_derive_vaccine_pct():
-    region_tx = Region.from_state("TX")
-    region_sf = Region.from_fips("06075")
-    # TX has metrics that will be transformed to a percent of the population. Include some other
-    # data to make sure it is not dropped.
-    tx_timeseries_in = {
-        CommonFields.VACCINATIONS_INITIATED: TimeseriesLiteral(
-            [1_000, 2_000],
-            annotation=[test_helpers.make_tag(date="2020-04-01")],
-            provenance=["prov1"],
-        ),
-        CommonFields.VACCINATIONS_COMPLETED: [None, 1_000],
-        CommonFields.CASES: TimeseriesLiteral([1, 2], provenance=["caseprov"]),
-    }
-    # SF does not have any vaccination metrics that can be transformed to a percentage so for it
-    # the input and output are the same.
-    sf_timeseries = {
-        CommonFields.VACCINATIONS_COMPLETED_PCT: [0.1, 1],
-    }
-    static_data_map = {
-        region_tx: {CommonFields.POPULATION: 100_000},
-        region_sf: {CommonFields.POPULATION: 10_000},
-    }
-
-    ds_in = test_helpers.build_dataset(
-        {region_tx: tx_timeseries_in, region_sf: sf_timeseries},
-        static_by_region_then_field_name=static_data_map,
-    )
-
-    ds_out = timeseries.derive_vaccine_pct(ds_in)
-
-    ds_expected = test_helpers.build_dataset(
-        {
-            region_tx: {
-                **tx_timeseries_in,
-                CommonFields.VACCINATIONS_INITIATED_PCT: [1, 2],
-                CommonFields.VACCINATIONS_COMPLETED_PCT: [None, 1],
-            },
-            region_sf: sf_timeseries,
-        },
-        static_by_region_then_field_name=static_data_map,
-    )
-
-    test_helpers.assert_dataset_like(ds_out, ds_expected)
 
 
 def test_write_read_dataset_pointer_with_source_url(tmpdir):

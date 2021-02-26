@@ -1,3 +1,16 @@
+import dataclasses
+
+import pandas as pd
+from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import PdFields
+
+from libs.datasets import timeseries
+from libs.datasets import combined_datasets
+
+
+MultiRegionDataset = timeseries.MultiRegionDataset
+
+
 def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     """Returns a new dataset containing everything all the input and vaccination percentage
     metrics derived from the corresponding non-percentage field where not already set."""

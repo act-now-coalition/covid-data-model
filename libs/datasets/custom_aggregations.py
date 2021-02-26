@@ -1,3 +1,4 @@
+from typing import Mapping
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
