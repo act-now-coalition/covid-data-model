@@ -2,11 +2,13 @@ import pathlib
 
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
-
+from libs.datasets import AggregationLevel
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets.timeseries import MultiRegionDataset
+from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.pipeline import Region
+from libs.pipeline import RegionMask
 from libs.qa.common_df_diff import DatasetDiff
 from tests import test_helpers
 
@@ -45,3 +47,17 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
     test_helpers.assert_dataset_like(
         timeseries_loaded, multiregion_timeseries_nyc, drop_na_timeseries=True
     )
+
+
+def test_include_exclude_regions():
+
+    mask = combined_datasets.DataSourceAndRegionMasks(
+        NYTimesDataset,
+        exclude=[
+            Region.from_fips("36061"),
+            RegionMask(level=AggregationLevel.COUNTY, states=["DC"]),
+        ],
+    )
+
+    location_ids = mask._get_location_ids(mask.exclude)
+    assert location_ids == ["iso1:us#iso2:us-ny#fips:36061", "iso1:us#iso2:us-dc#fips:11001"]
