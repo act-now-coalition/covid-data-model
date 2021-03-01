@@ -36,6 +36,9 @@ EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 TAG_TABLE_COLUMNS = [TagField.VARIABLE, TagField.TYPE, TagField.CONTENT]
 
 
+# TODO(tom): Move all the aggregation and statistics stuff to a different module and test it.
+
+
 def _location_id_to_agg(loc_id):
     """Turns a location_id into a label used for aggregation. For now this is only the
     AggregationLevel but future UI changes could let the user aggregate regions by state etc."""
@@ -96,16 +99,23 @@ def _agg_wide_var_counts(
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class AggregatedStats:
-    # A table of count of timeseries, with index of regions and columns of variables
+    """Aggregated statistics, where index are regions and columns are variables. Either axis may
+    be filtered to keep only a subset and/or aggregated."""
+
+    # TODO(tom): Move all these into one DataFrame so one vector operation can apply to all of them.
+
+    # A table of count of timeseries
     has_timeseries: pd.DataFrame
-    # A table of count of URLs, with index of regions and columns of variables
+    # A table of count of URLs
     has_url: pd.DataFrame
-    # A table of count of annotations, with index of regions and columns of variables
+    # A table of count of annotations
     annotation_count: pd.DataFrame
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class PerRegionStats(AggregatedStats):
+    """Instances of AggregatedStats where each row represents one region."""
+
     @staticmethod
     def make(ds: timeseries.MultiRegionDataset) -> "PerRegionStats":
         wide_var_has_timeseries = (
@@ -113,7 +123,7 @@ class PerRegionStats(AggregatedStats):
             .notnull()
             .any(1)
             .unstack(PdFields.VARIABLE, fill_value=False)
-            .astype(int)
+            .astype(bool)
         )
         wide_var_has_url = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
         # Need to use pivot_table instead of unstack to aggregate using sum.
@@ -132,7 +142,9 @@ class PerRegionStats(AggregatedStats):
             annotation_count=wide_var_annotation_count,
         )
 
-    def aggregate(self, regions, variables) -> AggregatedStats:
+    def aggregate(
+        self, regions: RegionAggregationMethod, variables: VariableAggregationMethod
+    ) -> AggregatedStats:
         return AggregatedStats(
             has_timeseries=_agg_wide_var_counts(self.has_timeseries, regions, variables),
             has_url=_agg_wide_var_counts(self.has_url, regions, variables),
@@ -154,6 +166,7 @@ class PerRegionStats(AggregatedStats):
         )
 
     def stats_for_locations(self, location_ids: pd.Index) -> pd.DataFrame:
+        """Returns a DataFrame of statistics with `location_ids` as the index."""
         assert location_ids.names == [CommonFields.LOCATION_ID]
         # The stats likely don't have a value for every region. Replace any NAs with 0 so that
         # subtracting them produces a real value.
@@ -218,8 +231,13 @@ def init(server):
     )
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    has_url = counties.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
-    county_variable_population_ratio = population_ratio_by_variable(counties, has_url)
+    county_stats = PerRegionStats.make(counties)
+    county_variable_population_ratio = pd.DataFrame(
+        {
+            "has_url": population_ratio_by_variable(counties, county_stats.has_url),
+            "has_timeseries": population_ratio_by_variable(counties, county_stats.has_timeseries),
+        }
+    )
 
     region_df = region_table(per_region_stats_all_vars, ds)
 
