@@ -77,7 +77,11 @@ def test_aggregate_states_to_country_scale():
     country = region_aggregation.aggregate_regions(
         ts,
         {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
-        [timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),],
+        [
+            region_aggregation.StaticWeightedAverageAggregation(
+                FieldName("m1"), CommonFields.POPULATION
+            ),
+        ],
     )
     # The column m1 is scaled by population.
     # On 2020-04-01: 4 * 0.25 + 8 * 0.75 = 7
@@ -108,8 +112,12 @@ def test_aggregate_states_to_country_scale_static():
         ts,
         {Region.from_state("AZ"): region_us, Region.from_state("TX"): region_us},
         [
-            timeseries.StaticWeightedAverageAggregation(FieldName("m1"), CommonFields.POPULATION),
-            timeseries.StaticWeightedAverageAggregation(FieldName("s1"), CommonFields.POPULATION),
+            region_aggregation.StaticWeightedAverageAggregation(
+                FieldName("m1"), CommonFields.POPULATION
+            ),
+            region_aggregation.StaticWeightedAverageAggregation(
+                FieldName("s1"), CommonFields.POPULATION
+            ),
         ],
     )
     # The column m1 is scaled by population.

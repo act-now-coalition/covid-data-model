@@ -5,7 +5,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
-from libs.datasets import combined_datasets
 
 
 MultiRegionDataset = timeseries.MultiRegionDataset
@@ -42,7 +41,9 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     # Possible optimization: Replace the combine+drop+join with a single function that copies from
     # ds_derived_pct only where a timeseries is all NaN in the original dataset.
     ds_list = [ds_in, ds_derived_pct]
-    ds_all_pct = combined_datasets({field_pct: ds_list for field_pct in field_map.values()}, {})
+    ds_all_pct = timeseries.combined_datasets(
+        {field_pct: ds_list for field_pct in field_map.values()}, {}
+    )
 
     dataset_without_pct = ds_in.drop_columns_if_present(list(field_map.values()))
     return dataset_without_pct.join_columns(ds_all_pct)

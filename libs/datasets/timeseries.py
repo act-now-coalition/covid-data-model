@@ -266,12 +266,12 @@ _EMPTY_TAG_SERIES = pd.Series(
 
 # An empty pd.DataFrame with the structure expected for the static attribute. Use this when
 # a dataset does not have any static values.
-_EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
+EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
 
 
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
 # variable> and column labels <date>.
-_EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
+EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
     [],
     dtype="float",
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
@@ -282,7 +282,7 @@ _EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
 # date> and column labels <variable>. This is the structure of most CSV files in this repo as of
 # Nov 2020.
-_EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
+EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
     [],
     dtype="float",
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, CommonFields.DATE]),
@@ -310,7 +310,7 @@ class MultiRegionDataset:
     # Static data, each identified by variable name and region. This includes county name,
     # state etc (GEO_DATA_COLUMNS) and metrics that change so slowly they can be
     # considered constant, such as population and hospital beds.
-    static: pd.DataFrame = _EMPTY_REGIONAL_ATTRIBUTES_DF
+    static: pd.DataFrame = EMPTY_REGIONAL_ATTRIBUTES_DF
 
     # A Series of tag CONTENT values having index with levels TAG_INDEX_FIELDS (LOCATION_ID,
     # VARIABLE, TYPE). Rows with identical index values may exist.
@@ -360,11 +360,11 @@ class MultiRegionDataset:
     def timeseries_wide_dates(self) -> pd.DataFrame:
         """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
         if self.timeseries.empty:
-            return _EMPTY_TIMESERIES_WIDE_DATES_DF
+            return EMPTY_TIMESERIES_WIDE_DATES_DF
         timeseries_long = self._timeseries_long()
         dates = timeseries_long.index.get_level_values(CommonFields.DATE)
         if dates.empty:
-            return _EMPTY_TIMESERIES_WIDE_DATES_DF
+            return EMPTY_TIMESERIES_WIDE_DATES_DF
         start_date = dates.min()
         end_date = dates.max()
         date_range = pd.date_range(start=start_date, end=end_date)
@@ -1117,10 +1117,6 @@ def drop_regions_without_population(
     return mrts.get_locations_subset(locations_with_population)
 
 
-# Column for the aggregated location_id
-LOCATION_ID_AGG = "location_id_agg"
-
-
 class DatasetName(str):
     """Human readable name for a dataset. In the future this may be an enum, for now it
     provides some type safety."""
@@ -1228,21 +1224,21 @@ def combined_datasets(
         # Transform from a column for each date to a column for each variable (with rows for dates).
         # stack and unstack does the transform quickly but does not handle an empty DataFrame.
         if output_timeseries_wide_dates.empty:
-            output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+            output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         else:
             output_timeseries_wide_variables = (
                 output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
             )
         output_tag = pd.concat(tag_series)
     else:
-        output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         output_tag = _EMPTY_TAG_SERIES
     if static_series:
         output_static_df = pd.concat(
             static_series, axis=1, sort=True, verify_integrity=True
         ).rename_axis(index=CommonFields.LOCATION_ID)
     else:
-        output_static_df = _EMPTY_REGIONAL_ATTRIBUTES_DF
+        output_static_df = EMPTY_REGIONAL_ATTRIBUTES_DF
 
     return MultiRegionDataset(
         timeseries=output_timeseries_wide_variables,

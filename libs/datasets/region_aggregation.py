@@ -48,6 +48,10 @@ _log = structlog.get_logger()
 MultiRegionDataset = timeseries.MultiRegionDataset
 
 
+# Column for the aggregated location_id
+LOCATION_ID_AGG = "location_id_agg"
+
+
 @dataclass(frozen=True)
 class StaticWeightedAverageAggregation:
     """Represents an an average of `field` with static weights in `scale_field`."""
@@ -176,7 +180,6 @@ def aggregate_regions(
         static_agg = static_agg.rename_axis(index=CommonFields.LOCATION_ID)
 
     if CommonFields.AGGREGATE_LEVEL in dataset_in.static.columns:
-        print(static_agg.index)
         # location_id_to_level returns an AggregationLevel enum, but we use the str in DataFrames.
         # These are not equivalent so put the `value` attribute in static_agg.
         static_agg[CommonFields.AGGREGATE_LEVEL] = (
@@ -288,10 +291,10 @@ def _aggregate_dataframe_by_region(
 
     if CommonFields.DATE in df_in.index.names:
         groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE, PdFields.VARIABLE]
-        empty_result = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        empty_result = timeseries.EMPTY_TIMESERIES_WIDE_VARIABLES_DF
     else:
         groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
-        empty_result = _EMPTY_REGIONAL_ATTRIBUTES_DF
+        empty_result = timeseries.EMPTY_REGIONAL_ATTRIBUTES_DF
 
     # df_in is sometimes empty in unittests. Return a DataFrame that is also empty and
     # has enough of an index that the test passes.
