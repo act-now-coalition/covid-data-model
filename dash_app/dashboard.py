@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Collection
 
 import dash
 import dash_core_components as dcc
@@ -66,9 +67,8 @@ def _agg_wide_var_counts(wide_vars: pd.DataFrame) -> pd.DataFrame:
     return agg_counts
 
 
-@final
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
-class PerRegionWideVarStats:
+class PerRegionStats:
     # A table with one row per region and various columns
 
     # A table of count of timeseries, with one row per region and a column per variable
@@ -78,10 +78,8 @@ class PerRegionWideVarStats:
 
     annotation_count: pd.DataFrame
 
-    dataset: timeseries.MultiRegionDataset
-
     @staticmethod
-    def make(ds: timeseries.MultiRegionDataset) -> "PerRegionWideVarStats":
+    def make(ds: timeseries.MultiRegionDataset) -> "PerRegionStats":
         wide_var_has_timeseries = (
             ds.timeseries_wide_dates()
             .notnull()
@@ -90,42 +88,54 @@ class PerRegionWideVarStats:
             .astype(int)
         )
         wide_var_has_url = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
-        wide_var_annotation_count = (
-            ds.tag.loc[:, :, timeseries.ANNOTATION_TAG_TYPES]
-            .notnull()
-            .reset_index()
-            .pivot_table(index=CommonFields.LOCATION_ID, columns=PdFields.VARIABLE, aggfunc=np.sum)
+        wide_var_annotation_count = pd.pivot_table(
+            ds.tag.loc[:, :, timeseries.ANNOTATION_TAG_TYPES].notnull().reset_index(),
+            values=TagField.CONTENT,
+            index=CommonFields.LOCATION_ID,
+            columns=PdFields.VARIABLE,
+            aggfunc=np.sum,
+            fill_value=0,
         )
 
-        return PerRegionWideVarStats(
+        return PerRegionStats(
             has_timeseries=wide_var_has_timeseries,
             has_url=wide_var_has_url,
             annotation_count=wide_var_annotation_count,
-            dataset=ds,
         )
 
-    @cached_property
-    def region_table(self) -> pd.DataFrame:
-        # Use an index to preserve the order while keeping only columns actually present.
-        static_columns = pd.Index(
-            [
-                CommonFields.LOCATION_ID,
-                CommonFields.COUNTY,
-                CommonFields.STATE,
-                CommonFields.POPULATION,
-            ]
-        ).intersection(self.dataset.static.columns)
+    def subset_variables(self, variables: Collection[CommonFields]) -> "PerRegionStats":
+        return PerRegionStats(
+            has_timeseries=self.has_timeseries.loc[
+                :, self.has_timeseries.columns.intersection(variables)
+            ],
+            has_url=self.has_timeseries.loc[:, self.has_url.columns.intersection(variables)],
+            annotation_count=self.annotation_count.loc[
+                :, self.annotation_count.columns.intersection(variables)
+            ],
+        )
 
-        regions = self.dataset.static.loc[:, static_columns].copy()
-        regions["annotation_count"] = self.annotation_count.sum(axis=1)
-        regions["url_count"] = self.has_url.sum(axis=1)
-        regions["timeseries_count"] = self.has_timeseries.sum(axis=1)
-        regions["no_url_count"] = regions["timeseries_count"] - regions["url_count"]
-        regions = regions.reset_index()  # Move location_id from the index to a regular column
-        # Add location_id as the row id, used by DataTable. Maybe it makes more sense to rename the
-        # DataFrame index to "id" and call reset_index() just before to_dict("records"). I dunno.
-        regions["id"] = regions[CommonFields.LOCATION_ID]
-        return regions
+
+def region_table(stats: PerRegionStats, dataset: timeseries.MultiRegionDataset) -> pd.DataFrame:
+    # Use an index to preserve the order while keeping only columns actually present.
+    static_columns = pd.Index(
+        [
+            CommonFields.LOCATION_ID,
+            CommonFields.COUNTY,
+            CommonFields.STATE,
+            CommonFields.POPULATION,
+        ]
+    ).intersection(dataset.static.columns)
+
+    regions = dataset.static.loc[:, static_columns].copy()
+    regions["annotation_count"] = stats.annotation_count.sum(axis=1)
+    regions["url_count"] = stats.has_url.sum(axis=1)
+    regions["timeseries_count"] = stats.has_timeseries.sum(axis=1)
+    regions["no_url_count"] = regions["timeseries_count"] - regions["url_count"]
+    regions = regions.reset_index()  # Move location_id from the index to a regular column
+    # Add location_id as the row id, used by DataTable. Maybe it makes more sense to rename the
+    # DataFrame index to "id" and call reset_index() just before to_dict("records"). I dunno.
+    regions["id"] = regions[CommonFields.LOCATION_ID]
+    return regions
 
 
 def init(server):
@@ -145,9 +155,11 @@ def init(server):
 
     variable_groups = list(common_fields.FieldGroup) + ["all"]
 
-    summary = PerRegionWideVarStats.make(ds)
+    per_region_stats_all_vars = PerRegionStats.make(ds)
 
-    agg_has_timeseries = _agg_wide_var_counts(summary.has_timeseries).reset_index()
+    agg_has_timeseries = _agg_wide_var_counts(
+        per_region_stats_all_vars.has_timeseries
+    ).reset_index()
 
     source_url_value_counts = (
         ds.tag.loc[:, :, TagType.SOURCE_URL]
@@ -155,11 +167,13 @@ def init(server):
         .reset_index()
         .rename(columns={"index": "URL", "content": "count"})
     )
-    agg_has_url = _agg_wide_var_counts(summary.has_url.astype(int)).reset_index()
+    agg_has_url = _agg_wide_var_counts(per_region_stats_all_vars.has_url.astype(int)).reset_index()
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
     has_url = counties.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
     county_variable_population_ratio = population_ratio_by_variable(counties, has_url)
+
+    region_df = region_table(per_region_stats_all_vars, ds)
 
     dash_app.layout = html.Div(
         children=[
@@ -210,11 +224,11 @@ def init(server):
             ),
             dash_table.DataTable(
                 id="datatable-regions",
-                columns=[{"name": i, "id": i} for i in summary.region_table.columns if i != "id"],
+                columns=[{"name": i, "id": i} for i in region_df.columns if i != "id"],
                 cell_selectable=False,
                 page_size=8,
                 row_selectable="single",
-                data=summary.region_table.to_dict("records"),
+                data=region_df.to_dict("records"),
                 editable=False,
                 filter_action="native",
                 sort_action="native",
@@ -222,7 +236,7 @@ def init(server):
                 page_action="native",
                 style_table={"height": "330px", "overflowY": "auto"},
                 # selected_row_ids=[df_regions[CommonFields.POPULATION].idxmax()],
-                selected_rows=[summary.region_table[CommonFields.POPULATION].idxmax()],
+                selected_rows=[region_df[CommonFields.POPULATION].idxmax()],
                 # selected_rows=[0],
                 sort_by=[{"column_id": CommonFields.POPULATION, "direction": "desc"}],
             ),
@@ -235,7 +249,7 @@ def init(server):
         ]
     )
 
-    _init_callbacks(dash_app, ds, summary.region_table)
+    _init_callbacks(dash_app, ds, per_region_stats_all_vars, region_df["id"])
 
     return dash_app.server
 
@@ -257,7 +271,28 @@ def population_ratio_by_variable(
     return population_ratio.rename("population_ratio").reset_index()
 
 
-def _init_callbacks(dash_app, ds: timeseries.MultiRegionDataset, df_regions: pd.DataFrame):
+def _init_callbacks(
+    dash_app,
+    ds: timeseries.MultiRegionDataset,
+    per_region_stats_all_vars: PerRegionStats,
+    region_id_series: pd.Series,
+):
+    @dash_app.callback(
+        [Output("datatable-regions", "data"), Output("datatable-regions", "columns")],
+        [Input("regions-variable-dropdown", "value")],
+        prevent_initial_call=True,
+    )
+    def update_regions_table_variables(variable_dropdown_value):
+        if variable_dropdown_value == "all":
+            per_region_stats = per_region_stats_all_vars
+        else:
+            selected_variables = common_fields.FIELD_GROUP_TO_LIST_FIELDS[variable_dropdown_value]
+            per_region_stats = per_region_stats_all_vars.subset_variables(selected_variables)
+
+        region_df = region_table(per_region_stats, ds)
+        columns = [{"name": i, "id": i} for i in region_df.columns if i != "id"]
+        data = region_df.to_dict("records")
+        return data, columns
 
     # Work-around to get initial selection, from
     # https://github.com/plotly/dash-table/issues/707#issuecomment-626890525
@@ -267,7 +302,8 @@ def _init_callbacks(dash_app, ds: timeseries.MultiRegionDataset, df_regions: pd.
         prevent_initial_call=False,
     )
     def update_selected_rows(selected_rows):
-        return [df_regions["id"].iat[more_itertools.one(selected_rows)]]
+        selected_row = more_itertools.one(selected_rows)
+        return [region_id_series.iat[selected_row]]
 
     # Input not in a list raises dash.exceptions.IncorrectTypeException: The input argument
     # `location-dropdown.value` must be a list or tuple of `dash.dependencies.Input`s.
