@@ -69,13 +69,11 @@ def _agg_wide_var_counts(wide_vars: pd.DataFrame) -> pd.DataFrame:
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class PerRegionStats:
-    # A table with one row per region and various columns
-
-    # A table of count of timeseries, with one row per region and a column per variable
+    # A table of count of timeseries, with index of regions and columns of variables
     has_timeseries: pd.DataFrame
-    # A table of count of URLs, with one row per region and a column per variable
+    # A table of count of URLs, with index of regions and columns of variables
     has_url: pd.DataFrame
-
+    # A table of count of annotations, with index of regions and columns of variables
     annotation_count: pd.DataFrame
 
     @staticmethod
@@ -88,6 +86,7 @@ class PerRegionStats:
             .astype(int)
         )
         wide_var_has_url = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+        # Need to use pivot_table instead of unstack to aggregate using sum.
         wide_var_annotation_count = pd.pivot_table(
             ds.tag.loc[:, :, timeseries.ANNOTATION_TAG_TYPES].notnull().reset_index(),
             values=TagField.CONTENT,
@@ -104,6 +103,7 @@ class PerRegionStats:
         )
 
     def subset_variables(self, variables: Collection[CommonFields]) -> "PerRegionStats":
+        """Returns a new PerRegionStats with only `variables` in the columns."""
         return PerRegionStats(
             has_timeseries=self.has_timeseries.loc[
                 :, self.has_timeseries.columns.intersection(variables)
@@ -217,6 +217,7 @@ def init(server):
                 page_action="native",
             ),
             html.H2("Regions"),
+            html.P("Select variables: "),  # TODO(tom): better formatting
             dcc.Dropdown(
                 id="regions-variable-dropdown",
                 options=[{"label": n, "value": n} for n in variable_groups],
@@ -310,10 +311,13 @@ def _init_callbacks(
     # but doesn't in the docs at https://dash.plotly.com/basic-callbacks. Odd.
     @dash_app.callback(
         [Output("region-graph", "figure"), Output("region-tag-table", "data")],
-        [Input("datatable-regions", "selected_row_ids")],
+        [
+            Input("datatable-regions", "selected_row_ids"),
+            Input("regions-variable-dropdown", "value"),
+        ],
         prevent_initial_call=False,
     )
-    def update_figure(selected_row_ids):
+    def update_figure(selected_row_ids, variable_dropdown_value):
         # Not sure why this isn't consistent but oh well
         if isinstance(selected_row_ids, str):
             selected_row_id = selected_row_ids
@@ -323,7 +327,19 @@ def _init_callbacks(
         interesting_ts = one_region.data.set_index(CommonFields.DATE).select_dtypes(
             include="number"
         )
-        fig = px.scatter(interesting_ts.reset_index(), x="date", y=interesting_ts.columns.to_list())
+        interesting_ts = interesting_ts.dropna(axis=1, how="all")
+
         tag_df = one_region.tag.reset_index()
         assert list(tag_df.columns) == TAG_TABLE_COLUMNS
+
+        # Keep only variables that have been selected in regions-variable-dropdown.
+        if variable_dropdown_value != "all":
+            selected_variables = common_fields.FIELD_GROUP_TO_LIST_FIELDS[variable_dropdown_value]
+            interesting_ts = interesting_ts.loc[
+                :, interesting_ts.columns.intersection(selected_variables)
+            ]
+
+            tag_df = tag_df.loc[tag_df[TagField.VARIABLE].isin(selected_variables)]
+
+        fig = px.scatter(interesting_ts.reset_index(), x="date", y=interesting_ts.columns.to_list())
         return fig, tag_df.to_dict("records")
