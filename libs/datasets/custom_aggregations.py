@@ -5,6 +5,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
 from libs.datasets import timeseries
+from libs.datasets import region_aggregation
 
 NEW_YORK_COUNTY = "New York County"
 NEW_YORK_COUNTY_FIPS = "36061"
@@ -35,7 +36,7 @@ def aggregate_to_new_york_city(
     static_excluding_numbers = ds_in.get_regions_subset([nyc_region]).static.select_dtypes(
         exclude="number"
     )
-    nyc_dataset = timeseries.aggregate_regions(
+    nyc_dataset = region_aggregation.aggregate_regions(
         ds_in, nyc_map, reporting_ratio_required_to_aggregate=None
     ).add_static_values(static_excluding_numbers.reset_index())
 
@@ -62,7 +63,7 @@ def replace_dc_county_with_state_data(
     static_excluding_numbers = dataset_in.get_regions_subset(
         [dc_county_region]
     ).static.select_dtypes(exclude="number")
-    dc_county_dataset = timeseries.aggregate_regions(dataset_in, dc_map).add_static_values(
+    dc_county_dataset = region_aggregation.aggregate_regions(dataset_in, dc_map).add_static_values(
         static_excluding_numbers.reset_index()
     )
     dataset_without_dc_county = dataset_in.remove_regions([dc_county_region])

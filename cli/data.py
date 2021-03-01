@@ -22,6 +22,7 @@ from libs.datasets.combined_datasets import (
     ALL_FIELDS_FEATURE_DEFINITION,
 )
 from libs.datasets import timeseries
+from libs.datasets import region_aggregation
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets import ca_vaccination_backfill
@@ -132,7 +133,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
 
     if aggregate_to_country:
-        country_dataset = timeseries.aggregate_regions(
+        country_dataset = region_aggregation.aggregate_regions(
             multiregion_dataset,
             pipeline.us_states_to_country_map(),
             reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
@@ -155,7 +156,7 @@ def aggregate_cbsa(output_path: pathlib.Path):
 @click.argument("output_path", type=pathlib.Path)
 def aggregate_states_to_country(output_path: pathlib.Path):
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    country_dataset = timeseries.aggregate_regions(
+    country_dataset = region_aggregation.aggregate_regions(
         us_timeseries, pipeline.us_states_to_country_map(),
     )
     country_dataset.to_csv(output_path)
