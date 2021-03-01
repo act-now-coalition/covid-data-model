@@ -83,7 +83,16 @@ def test_build_summary_for_fips(
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
         ),
         annotations=Annotations(
-            cases=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
+            cases=FieldAnnotations(
+                sources=[field_source_usafacts],
+                anomalies=[
+                    {
+                        "date": datetime.date(2021, 2, 25),
+                        "original_observation": 102666.0,
+                        "type": "cumulative_tail_truncated",
+                    }
+                ],
+            ),
             deaths=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             positiveTests=None,
             negativeTests=None,
@@ -125,11 +134,38 @@ def test_build_summary_for_fips(
                 ],
                 anomalies=[],
             ),
-            caseDensity=FieldAnnotations(sources=[field_source_usafacts], anomalies=[]),
+            caseDensity=FieldAnnotations(
+                sources=[field_source_usafacts],
+                anomalies=[
+                    {
+                        "date": datetime.date(2021, 2, 25),
+                        "original_observation": 102666.0,
+                        "type": "cumulative_tail_truncated",
+                    }
+                ],
+            ),
             icuCapacityRatio=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
             icuHeadroomRatio=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
-            infectionRate=FieldAnnotations(sources=[field_source_usafacts], anomalies=[]),
-            infectionRateCI90=FieldAnnotations(sources=[field_source_usafacts], anomalies=[]),
+            infectionRate=FieldAnnotations(
+                sources=[field_source_usafacts],
+                anomalies=[
+                    {
+                        "date": datetime.date(2021, 2, 25),
+                        "original_observation": 102666.0,
+                        "type": "cumulative_tail_truncated",
+                    }
+                ],
+            ),
+            infectionRateCI90=FieldAnnotations(
+                sources=[field_source_usafacts],
+                anomalies=[
+                    {
+                        "date": datetime.date(2021, 2, 25),
+                        "original_observation": 102666.0,
+                        "type": "cumulative_tail_truncated",
+                    }
+                ],
+            ),
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),
         url="https://covidactnow.org/us/new_york-ny/county/bronx_county",
