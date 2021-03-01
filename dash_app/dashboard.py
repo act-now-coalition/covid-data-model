@@ -82,7 +82,7 @@ def _agg_wide_var_counts(
 
     agg_counts = axis0_groupby.sum().rename_axis(index=CommonFields.AGGREGATE_LEVEL)
 
-    if var_group_by != VariableAggregationMethod.NONE:
+    if var_group_by == VariableAggregationMethod.FIELD_GROUP:
         agg_counts = agg_counts.groupby(
             common_fields.COMMON_FIELD_TO_GROUP, axis=1, sort=False
         ).sum()
@@ -210,16 +210,11 @@ def init(server):
     per_region_stats_all_vars = PerRegionStats.make(ds)
 
     agg_stats = per_region_stats_all_vars.aggregate(
-        RegionAggregationMethod.LEVEL, VariableAggregationMethod.NONE
+        RegionAggregationMethod.LEVEL, VariableAggregationMethod.FIELD_GROUP
     )
-    agg_has_timeseries = agg_stats.has_timeseries.reset_index()
-    agg_has_url = agg_stats.has_url.reset_index()
 
     source_url_value_counts = (
-        ds.tag.loc[:, :, TagType.SOURCE_URL]
-        .value_counts()
-        .reset_index()
-        .rename(columns={"index": "URL", "content": "count"})
+        ds.tag.loc[:, :, TagType.SOURCE_URL].value_counts().rename_axis(index="URL").rename("count")
     )
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
@@ -233,41 +228,18 @@ def init(server):
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
             html.H2("Time-series count"),
-            dash_table.DataTable(
-                id="agg_has_timeseries",
-                columns=[{"name": i, "id": i} for i in agg_has_timeseries.columns],
-                cell_selectable=False,
-                data=agg_has_timeseries.to_dict("records"),
-                editable=False,
-                page_action="native",
-            ),
+            dash_table_from_data_frame(agg_stats.has_timeseries, id="agg_has_timeseries"),
             html.H2("Source URLs"),
-            dash_table.DataTable(
-                id="source_url_counts",
-                columns=[{"name": i, "id": i} for i in source_url_value_counts.columns],
-                page_size=8,
-                data=source_url_value_counts.to_dict("records"),
-                editable=False,
-                page_action="native",
+            dash_table_from_data_frame(
+                source_url_value_counts, id="source_url_counts", page_size=8
             ),
             html.Br(),  # Give table above some space for page action controls
             html.Br(),  # Give table above some space for page action controls
             html.Br(),  # Give table above some space for page action controls
-            dash_table.DataTable(
-                id="agg_has_url",
-                columns=[{"name": i, "id": i} for i in agg_has_url.columns],
-                cell_selectable=True,
-                data=agg_has_url.to_dict("records"),
-                editable=False,
-            ),
+            dash_table_from_data_frame(agg_stats.has_url, id="agg_has_url"),
             html.P("Ratio of population in county data with a URL, by variable"),
-            dash_table.DataTable(
-                id="county_variable_population_ratio",
-                columns=[{"name": i, "id": i} for i in county_variable_population_ratio.columns],
-                cell_selectable=True,
-                data=county_variable_population_ratio.to_dict("records"),
-                editable=False,
-                page_action="native",
+            dash_table_from_data_frame(
+                county_variable_population_ratio, id="county_variable_population_ratio"
             ),
             html.H2("Regions"),
             html.Div(
@@ -316,6 +288,20 @@ def init(server):
     return dash_app.server
 
 
+def dash_table_from_data_frame(df: pd.DataFrame, *, id, **kwargs):
+    """Returns a dash_table.DataTable that will render `df` in a simple HTML table."""
+    df_all_columns = df.reset_index()
+    return dash_table.DataTable(
+        id=id,
+        columns=[{"name": i, "id": i} for i in df_all_columns.columns],
+        cell_selectable=False,
+        data=df_all_columns.to_dict("records"),
+        editable=False,
+        page_action="native",
+        **kwargs,
+    )
+
+
 def population_ratio_by_variable(
     dataset: timeseries.MultiRegionDataset, df: pd.DataFrame
 ) -> pd.DataFrame:
@@ -330,7 +316,7 @@ def population_ratio_by_variable(
     # PdFields.VARIABLE index
     population_where_true = zeros.mask(df, population_indexed, axis=0).sum(axis=0)
     population_ratio = population_where_true / population_total
-    return population_ratio.rename("population_ratio").reset_index()
+    return population_ratio.rename("population_ratio")
 
 
 def _init_callbacks(
