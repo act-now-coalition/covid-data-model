@@ -14,15 +14,19 @@ from covidactnow.datapublic import common_df
 import pandas as pd
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs import pipeline
+from libs.datasets import data_source
 from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
 # Match fields in the CAN Scraper DB
 from libs.datasets.taglib import UrlStr
+from tests import test_helpers
 
 DEFAULT_LOCATION = "36"
 DEFAULT_LOCATION_TYPE = "state"
+DEFAULT_LOCATION_ID = pipeline.Region.from_fips(DEFAULT_LOCATION).location_id
 
 
 def _make_iterator(maybe_iterable: Union[None, str, Iterable[str]]) -> Optional[Iterator[str]]:
@@ -38,6 +42,7 @@ def build_can_scraper_dataframe(
     data_by_variable: Dict[ccd_helpers.ScraperVariable, List[float]],
     location=DEFAULT_LOCATION,
     location_type=DEFAULT_LOCATION_TYPE,
+    location_id=DEFAULT_LOCATION_ID,
     start_date="2021-01-01",
     source_url: Union[None, str, Iterable[str]] = None,
     source_name: Union[None, str, Iterable[str]] = None,
@@ -60,6 +65,7 @@ def build_can_scraper_dataframe(
                 "provider": variable.provider,
                 "dt": date,
                 "location_type": location_type,
+                "location_id": location_id,
                 "location": location,
                 "variable_name": variable.variable_name,
                 "measurement": variable.measurement,
@@ -199,3 +205,13 @@ def test_query_multiple_variables_duplicate_observation():
     data = ccd_helpers.CanScraperLoader(pd.concat([input_data, input_data]))
     with pytest.raises(NotImplementedError):
         data.query_multiple_variables([variable], source_type="MySource")
+
+
+def test_single_provider_per_class():
+    cls: data_source.CanScraperBase
+    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+        providers = set(v.provider for v in cls.VARIABLES)
+        assert len(providers) == 1
+
+        variable_names = set(v.variable_name for v in cls.VARIABLES)
+        assert len(variable_names) == len(cls.VARIABLES)

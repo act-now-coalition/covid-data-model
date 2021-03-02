@@ -9,6 +9,7 @@ from typing import Tuple
 import more_itertools
 import structlog
 import pandas as pd
+from backports.cached_property import cached_property
 from covidactnow.datapublic.common_fields import FieldNameAndCommonField
 from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import CommonFields
@@ -88,6 +89,24 @@ class CanScraperLoader:
 
     all_df: pd.DataFrame
 
+    @cached_property
+    def indexed_df(self) -> pd.DataFrame:
+        indexed_df = self.all_df.set_index(
+            [
+                Fields.PROVIDER,
+                Fields.VARIABLE_NAME,
+                Fields.MEASUREMENT,
+                Fields.UNIT,
+                Fields.LOCATION,
+                Fields.AGE,
+                Fields.RACE,
+                Fields.ETHNICITY,
+                Fields.SEX,
+                Fields.DATE,
+            ]
+        ).sort_index()
+        return indexed_df
+
     def _get_rows(self, variable: ScraperVariable) -> pd.DataFrame:
         # Similar to dataset_utils.make_rows_key this builds a Pandas.eval query string by making a
         # list of query parts, then joining them with `and`. For our current data this takes 23s
@@ -100,7 +119,7 @@ class CanScraperLoader:
             if getattr(variable, optional_field):
                 query_parts.append(f"{optional_field} == @variable.{optional_field}")
 
-        return self.all_df.loc[self.all_df.eval(" and ".join(query_parts))].copy()
+        return self.indexed_df.query(" and ".join(query_parts))
 
     def query_multiple_variables(
         self,
@@ -122,7 +141,7 @@ class CanScraperLoader:
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
 
-        selected_data = []
+        selected_data = {}
         for variable in variables:
             # Check that `variable` agrees with stuff in the ScraperVariable docstring.
             if variable.common_field is None:
@@ -134,31 +153,22 @@ class CanScraperLoader:
                 assert variable.measurement
                 assert variable.unit
 
-            data = self._get_rows(variable)
-            if data.empty and log_provider_coverage_warnings:
-                _logger.info("No data rows found for variable", variable=variable)
-                more_data = self._get_rows(dataclasses.replace(variable, measurement="", unit=""))
-                _logger.info(
-                    "Try these parameters",
-                    variable_name=variable.variable_name,
-                    measurement_counts=str(more_data[Fields.MEASUREMENT].value_counts().to_dict()),
-                    unit_counts=str(more_data[Fields.UNIT].value_counts().to_dict()),
-                )
-            # Copy CommonField name to data. The loop is continued above when common_field is None.
-            data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
-            selected_data.append(data)
+            selected_data[variable.common_field] = self.indexed_df.loc(axis=0)[
+                variable.provider, variable.variable_name, variable.measurement, variable.unit
+            ]
 
-        # TODO(tom): check LOCATION_TYPE matches LOCATION
+        combined_data = pd.concat(selected_data, axis=0, names=[PdFields.VARIABLE])
 
-        combined_data = pd.concat(selected_data)
         unknown_columns = set(combined_data.columns) - set(Fields)
         if unknown_columns:
             raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
 
-        rename_columns = {f: f.common_field for f in Fields if f.common_field}
+        demo_columns = ["age", "race", "ethnicity", "sex"]
         indexed = (
-            combined_data.rename(columns=rename_columns)
-            .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
+            combined_data.query(" and ".join(f"{field} == 'all'" for field in demo_columns))
+            .droplevel(demo_columns)
+            .rename_axis(index={Fields.DATE: CommonFields.DATE, Fields.LOCATION: CommonFields.FIPS})
+            .reorder_levels([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
             .sort_index()
         )
 
