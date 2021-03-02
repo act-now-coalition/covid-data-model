@@ -22,6 +22,8 @@ from covidactnow.datapublic.common_fields import PdFields
 from libs.datasets import dataset_utils
 from libs.datasets import taglib
 
+DEMOGRAPHIC_BUCKET = "demographic_bucket"
+
 PARQUET_PATH = "data/can-scrape/can_scrape_api_covid_us.parquet"
 
 
@@ -124,25 +126,15 @@ class CanScraperLoader:
             .drop_duplicates()
             .set_index(demo_columns, drop=False)
             .apply(make_short_name, axis=1)
-            .rename("demographic_bucket")
+            .rename(DEMOGRAPHIC_BUCKET)
         )
         # Use join on because it preserves the indexed_df index
-        rv = indexed_df.join(all_ares, on=demo_columns)
+        rv = (
+            indexed_df.join(all_ares, on=demo_columns)
+            .set_index(DEMOGRAPHIC_BUCKET)
+            .droplevel(demo_columns)
+        )
         return rv
-
-    def _get_rows(self, variable: ScraperVariable) -> pd.DataFrame:
-        # Similar to dataset_utils.make_rows_key this builds a Pandas.eval query string by making a
-        # list of query parts, then joining them with `and`. For our current data this takes 23s
-        # while the previous method of making a binary mask for each variable took 54s. This is run
-        # during tests so the speed up is nice to have.
-        required_fields = ["provider", "variable_name", "age", "race", "ethnicity", "sex"]
-        assert all([getattr(variable, field) for field in required_fields])
-        query_parts = [f"{field} == @variable.{field}" for field in required_fields]
-        for optional_field in ["measurement", "unit"]:
-            if getattr(variable, optional_field):
-                query_parts.append(f"{optional_field} == @variable.{optional_field}")
-
-        return self.indexed_df.query(" and ".join(query_parts))
 
     def query_multiple_variables(
         self,
@@ -185,22 +177,18 @@ class CanScraperLoader:
 
         combined_rows = pd.concat(selected_data, axis=0, names=[PdFields.VARIABLE])
 
-        unknown_columns = set(combined_rows.columns) - set(Fields) - {"demographic_bucket"}
+        unknown_columns = set(combined_rows.columns) - set(Fields) - {DEMOGRAPHIC_BUCKET}
         if unknown_columns:
             raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
 
         indexed = (
-            combined_rows.loc[combined_rows.demographic_bucket == "all"]
-            .droplevel(demo_columns)
-            .rename_axis(index={Fields.DATE: CommonFields.DATE, Fields.LOCATION: CommonFields.FIPS})
-            .reorder_levels([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
+            combined_rows.rename_axis(
+                index={Fields.DATE: CommonFields.DATE, Fields.LOCATION: CommonFields.FIPS}
+            )
+            .reorder_levels(
+                [CommonFields.FIPS, PdFields.VARIABLE, DEMOGRAPHIC_BUCKET, CommonFields.DATE]
+            )
             .sort_index()
-        )
-
-        tag_df = taglib.Source.rename_and_make_tag_df(
-            indexed,
-            source_type=source_type,
-            rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
         )
 
         dups = indexed.index.duplicated(keep=False)
@@ -209,6 +197,12 @@ class CanScraperLoader:
                 f"No support for aggregating duplicate observations:\n"
                 f"{indexed.loc[dups].to_string(line_width=200, max_rows=200,max_colwidth=40)}"
             )
+
+        tag_df = taglib.Source.rename_and_make_tag_df(
+            indexed.loc(axis=0)[:, :, "all"],
+            source_type=source_type,
+            rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
+        )
 
         # Make a DataFrame with index=[FIPS,DATE], column=VARIABLE and value=VALUE. This used to
         # use pivot_table but we don't want to aggregate observations. I tried using
