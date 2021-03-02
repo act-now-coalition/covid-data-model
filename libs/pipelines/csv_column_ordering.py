@@ -1,3 +1,11 @@
+"""
+Module to specify columns in output csvs.
+
+Changing the column ordering breaks many of our users who rely on column indices
+to reference in excel and google sheets.  The timeseries and summary csvs use these
+to determine column ordering.  Recommended to be append only.
+"""
+
 SUMMARY_ORDER = [
     "fips",
     "country",

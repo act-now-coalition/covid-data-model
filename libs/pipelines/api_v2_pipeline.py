@@ -278,7 +278,7 @@ def deploy_csv_api_output(
 
     data = _model_to_dict(api_output.__dict__)
     rows = dataset_deployer.remove_root_wrapper(data)
-    dataset_deployer.write_nested_csv(rows, output_path, columns=columns)
+    dataset_deployer.write_nested_csv(rows, output_path, header=columns)
 
 
 def generate_from_loaded_data(
