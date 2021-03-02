@@ -22,15 +22,13 @@ from tests.libs.datasets.sources.can_scraper_helpers_test import build_can_scrap
 def test_state_providers_smoke_test():
     """Make sure *something* is returned without any raised exceptions."""
     assert can_scraper_state_providers.CANScraperStateProviders.make_dataset()
+    assert can_scraper_state_providers.CANScraperStateProviders.make_dataset()
+    assert can_scraper_state_providers.CANScraperStateProviders.make_dataset.cache_info().hits > 0
 
 
 @pytest.mark.parametrize("reverse_observation_order", [False, True])
 def test_can_scraper_returns_source_url(reverse_observation_order):
     """Injects a tiny bit of data with a source_url in a CanScraperLoader."""
-
-    # Make a new subclass to keep this test separate from others in the make_dataset lru_cache.
-    class CANScraperForTest(can_scraper_usafacts.CANScraperUSAFactsProvider):
-        pass
 
     variable = ccd_helpers.ScraperVariable(
         variable_name="cases",
@@ -47,11 +45,12 @@ def test_can_scraper_returns_source_url(reverse_observation_order):
         # observations are not sorted by increasing date.
         input_data = input_data.iloc[::-1]
 
-    data = ccd_helpers.CanScraperLoader(input_data)
+    class CANScraperForTest(can_scraper_usafacts.CANScraperUSAFactsProvider):
+        @staticmethod
+        def _get_covid_county_dataset():
+            return ccd_helpers.CanScraperLoader(input_data)
 
-    with mock.patch("libs.datasets.data_source.CanScraperBase") as mock_can_scraper_base:
-        mock_can_scraper_base._get_covid_county_dataset.return_value = data
-        ds = CANScraperForTest.make_dataset()
+    ds = CANScraperForTest.make_dataset()
 
     # Check that the URL gets all the way to the OneRegionTimeseriesDataset.
     one_region = ds.get_one_region(
