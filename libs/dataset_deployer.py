@@ -71,7 +71,10 @@ def flatten_dict(data: dict, level_separator: str = ".") -> dict:
 
 
 def write_nested_csv(
-    data: List[dict], output_path: pathlib.Path, keys_to_skip: Optional[List[str]] = None
+    data: List[dict],
+    output_path: pathlib.Path,
+    keys_to_skip: Optional[List[str]] = None,
+    columns: Optional[List[str]] = None,
 ):
     """Writes list of data as a nested csv.
 
@@ -79,6 +82,7 @@ def write_nested_csv(
         data: list of data to write.
         output_path: Path of file to write to.
         keys_to_skip: Keys to skip.  Keys can be flattened entries or top level keys.
+        columns: Columns to output.  If specified, header will be in order of columns.
 
     """
     keys_to_skip = keys_to_skip or []
@@ -89,8 +93,11 @@ def write_nested_csv(
     first_row = data[0]
     first_row = {key: value for key, value in first_row.items() if key not in keys_to_skip}
 
-    header = flatten_dict(first_row).keys()
-    header = [column for column in header if column not in keys_to_skip]
+    if columns:
+        header = columns
+    else:
+        header = flatten_dict(first_row).keys()
+        header = [column for column in header if column not in keys_to_skip]
 
     header_set = set(header)
     _logger.info(f"Writing to {output_path}")
