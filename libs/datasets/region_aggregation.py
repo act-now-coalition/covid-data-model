@@ -1,47 +1,16 @@
-import dataclasses
-import datetime
-import pathlib
-import re
 from dataclasses import dataclass
-from functools import lru_cache
-from itertools import chain
-from typing import Any
-from typing import Collection
-from typing import Dict
-from typing import Iterable
-from typing import List, Optional, Union, TextIO
-from typing import Mapping
-from typing import Set
-from typing import Sequence
-from typing import Tuple
+from typing import List, Optional, Mapping, Sequence
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
-from pandas.core.dtypes.common import is_numeric_dtype
-from typing_extensions import final
 
 import pandas as pd
-import numpy as np
 import structlog
-from covidactnow.datapublic import common_df
 from libs import pipeline
-from libs.datasets import dataset_pointer
-from libs.datasets import dataset_utils
-from libs.datasets.dataset_utils import AggregationLevel
-from libs.datasets.dataset_utils import DatasetType
-from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
-from libs.datasets.dataset_utils import NON_NUMERIC_COLUMNS
-from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
-from libs.datasets import taglib
-from libs.datasets.taglib import TagField
-from libs.datasets.taglib import TagType
-from libs.datasets.taglib import UrlStr
 
 from libs.datasets import timeseries
 from libs.pipeline import Region
-import pandas.core.groupby.generic
-from backports.cached_property import cached_property
 
 _log = structlog.get_logger()
 

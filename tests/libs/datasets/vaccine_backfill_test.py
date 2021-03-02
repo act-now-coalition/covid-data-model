@@ -1,32 +1,9 @@
-import datetime
-import io
-import pathlib
-import dataclasses
-import pickle
-
 import pytest
-import pandas as pd
-import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import PdFields
 
-from covidactnow.datapublic.common_test_helpers import to_dict
-
-from libs import github_utils
-from libs.datasets import AggregationLevel
-from libs.datasets import combined_datasets
-from libs.datasets import dataset_pointer
-from libs.datasets import taglib
-
-from libs.datasets import timeseries
-from libs.datasets.taglib import TagType
-from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 from tests import test_helpers
-from tests.dataset_utils_test import read_csv_and_index_fips
-from tests.dataset_utils_test import read_csv_and_index_fips_date
 from tests.test_helpers import TimeseriesLiteral
 from libs.datasets import vaccine_backfills
 

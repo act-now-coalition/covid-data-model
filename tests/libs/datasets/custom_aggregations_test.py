@@ -1,5 +1,5 @@
 import dataclasses
-
+import io
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 

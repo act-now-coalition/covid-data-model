@@ -1,4 +1,5 @@
 from typing import Mapping
+import dataclasses
 import pandas as pd
 
 from covidactnow.datapublic.common_fields import CommonFields
@@ -6,6 +7,8 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
 from libs.datasets import timeseries
 from libs.datasets import region_aggregation
+from libs.datasets import AggregationLevel
+
 
 NEW_YORK_COUNTY = "New York County"
 NEW_YORK_COUNTY_FIPS = "36061"
