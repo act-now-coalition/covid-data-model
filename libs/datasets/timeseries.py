@@ -61,20 +61,6 @@ ANNOTATION_TAG_TYPES = [
 ]
 
 
-class DuplicateDataException(Exception):
-    def __init__(self, message, duplicates):
-        self.message = message
-        self.duplicates = duplicates
-        super().__init__()
-
-    def __str__(self):
-        return f"DuplicateDataException({self.message})"
-
-
-class BadMultiRegionWarning(UserWarning):
-    pass
-
-
 class RegionLatestNotFound(IndexError):
     """Requested region's latest values not found in combined data"""
 
@@ -280,12 +266,12 @@ _EMPTY_TAG_SERIES = pd.Series(
 
 # An empty pd.DataFrame with the structure expected for the static attribute. Use this when
 # a dataset does not have any static values.
-_EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
+EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
 
 
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
 # variable> and column labels <date>.
-_EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
+EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
     [],
     dtype="float",
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
@@ -296,7 +282,7 @@ _EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
 # date> and column labels <variable>. This is the structure of most CSV files in this repo as of
 # Nov 2020.
-_EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
+EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
     [],
     dtype="float",
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, CommonFields.DATE]),
@@ -324,7 +310,7 @@ class MultiRegionDataset:
     # Static data, each identified by variable name and region. This includes county name,
     # state etc (GEO_DATA_COLUMNS) and metrics that change so slowly they can be
     # considered constant, such as population and hospital beds.
-    static: pd.DataFrame = _EMPTY_REGIONAL_ATTRIBUTES_DF
+    static: pd.DataFrame = EMPTY_REGIONAL_ATTRIBUTES_DF
 
     # A Series of tag CONTENT values having index with levels TAG_INDEX_FIELDS (LOCATION_ID,
     # VARIABLE, TYPE). Rows with identical index values may exist.
@@ -374,11 +360,11 @@ class MultiRegionDataset:
     def timeseries_wide_dates(self) -> pd.DataFrame:
         """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
         if self.timeseries.empty:
-            return _EMPTY_TIMESERIES_WIDE_DATES_DF
+            return EMPTY_TIMESERIES_WIDE_DATES_DF
         timeseries_long = self._timeseries_long()
         dates = timeseries_long.index.get_level_values(CommonFields.DATE)
         if dates.empty:
-            return _EMPTY_TIMESERIES_WIDE_DATES_DF
+            return EMPTY_TIMESERIES_WIDE_DATES_DF
         start_date = dates.min()
         end_date = dates.max()
         date_range = pd.date_range(start=start_date, end=end_date)
@@ -1131,354 +1117,6 @@ def drop_regions_without_population(
     return mrts.get_locations_subset(locations_with_population)
 
 
-def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDataset:
-    """Backfills vaccination initiated data from total doses administered and total completed.
-
-    Args:
-        dataset: Input dataset.
-
-    Returns: New dataset with backfilled data.
-    """
-    fields = [
-        CommonFields.VACCINES_ADMINISTERED,
-        CommonFields.VACCINATIONS_INITIATED,
-        CommonFields.VACCINATIONS_COMPLETED,
-    ]
-    df = dataset.timeseries_wide_dates().loc[(slice(None), fields), :]
-    df_var_first = df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
-
-    administered = df_var_first.loc[CommonFields.VACCINES_ADMINISTERED]
-    inititiated = df_var_first.loc[[CommonFields.VACCINATIONS_INITIATED]]
-    completed = df_var_first.loc[[CommonFields.VACCINATIONS_COMPLETED]]
-
-    computed_initiated = administered - completed
-
-    # Rename index value to be initiated
-    computed_initiated = computed_initiated.rename(
-        index={CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_INITIATED}
-    )
-
-    locations = df.index.get_level_values(CommonFields.LOCATION_ID).unique()
-    locations_with_initiated = (
-        inititiated.notna()
-        .any(axis="columns")
-        .index.get_level_values(CommonFields.LOCATION_ID)
-        .unique()
-    )
-    locations_without_initiated = locations.difference(locations_with_initiated)
-
-    combined_initiated_df = pd.concat(
-        [
-            inititiated.loc[
-                (slice(CommonFields.VACCINATIONS_INITIATED), locations_with_initiated), :
-            ],
-            computed_initiated.loc[
-                (slice(CommonFields.VACCINATIONS_INITIATED), locations_without_initiated), :
-            ],
-        ]
-    )
-
-    combined_initiated_df = combined_initiated_df.reorder_levels(
-        [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-    )
-    initiated_dataset = MultiRegionDataset.from_timeseries_wide_dates_df(combined_initiated_df)
-
-    # locations that are na for all vaccinations initiated
-    timeseries_copy = dataset.timeseries.copy()
-    timeseries_copy.loc[:, CommonFields.VACCINATIONS_INITIATED] = initiated_dataset.timeseries.loc[
-        :, CommonFields.VACCINATIONS_INITIATED
-    ]
-
-    return dataclasses.replace(dataset, timeseries=timeseries_copy)
-
-
-# Column for the aggregated location_id
-LOCATION_ID_AGG = "location_id_agg"
-
-
-@dataclass(frozen=True)
-class StaticWeightedAverageAggregation:
-    """Represents an an average of `field` with static weights in `scale_field`."""
-
-    # field/column/metric that gets aggregated using a weighted average
-    field: FieldName
-    # static field that used to produce the weights
-    scale_factor: FieldName
-
-
-WEIGHTED_AGGREGATIONS = (
-    # Maybe test_positivity is better averaged using time-varying total tests, but it isn't
-    # implemented. See TODO next to call to _find_scale_factors.
-    StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY, CommonFields.POPULATION),
-    StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_7D, CommonFields.POPULATION),
-    StaticWeightedAverageAggregation(CommonFields.TEST_POSITIVITY_14D, CommonFields.POPULATION),
-    StaticWeightedAverageAggregation(
-        CommonFields.VACCINATIONS_INITIATED_PCT, CommonFields.POPULATION
-    ),
-    StaticWeightedAverageAggregation(
-        CommonFields.VACCINATIONS_COMPLETED_PCT, CommonFields.POPULATION
-    ),
-    StaticWeightedAverageAggregation(
-        CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE, CommonFields.MAX_BED_COUNT
-    ),
-    StaticWeightedAverageAggregation(
-        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE, CommonFields.ICU_BEDS
-    ),
-)
-
-
-def _apply_scaling_factor(
-    df_in: pd.DataFrame,
-    scale_factors: pd.DataFrame,
-    aggregations: Sequence[StaticWeightedAverageAggregation],
-) -> pd.DataFrame:
-    """Returns a copy of df_in with some fields scaled according to `aggregations`.
-
-    Args:
-        df_in: Input un-aggregated timeseries or static data
-        scale_factors: For each scale_factor field, the per-region scaling factor
-        aggregations: Describes the fields to be scaled
-        """
-    assert df_in.index.names in (
-        [CommonFields.LOCATION_ID, CommonFields.DATE],
-        [CommonFields.LOCATION_ID],
-    )
-
-    # Scaled fields are modified in-place
-    df_out = df_in.copy()
-
-    for agg in aggregations:
-        if agg.field in df_in.columns and agg.scale_factor in scale_factors.columns:
-            df_out[agg.field] = df_out[agg.field] * scale_factors[agg.scale_factor]
-
-    return df_out
-
-
-def _find_scale_factors(
-    aggregations: Sequence[StaticWeightedAverageAggregation],
-    location_id_map: Mapping[str, str],
-    static_agg: pd.DataFrame,
-    static_in: pd.DataFrame,
-    location_ids: Sequence[str],
-) -> pd.DataFrame:
-    assert static_in.index.names == [CommonFields.LOCATION_ID]
-    assert static_agg.index.names == [CommonFields.LOCATION_ID]
-    # For each location_id, calculate the scaling factor from the static data.
-    scale_factors = pd.DataFrame([], index=pd.Index(location_ids).unique().sort_values())
-    for scale_factor_field in {agg.scale_factor for agg in aggregations}:
-        if scale_factor_field in static_in.columns and scale_factor_field in static_agg.columns:
-            # Make a series with index of the un-aggregated location_ids that has values of the
-            # corresponding aggregated field value.
-            agg_values = (
-                static_in.index.to_series(index=static_in.index)
-                .map(location_id_map)  # Maps from un-aggregated to aggregated location_id
-                .map(static_agg[scale_factor_field])  # Gets the aggregated value
-            )
-            scale_factors[scale_factor_field] = static_in[scale_factor_field] / agg_values
-    return scale_factors
-
-
-def _calculate_weighted_reporting_ratio(
-    long_all_values: pd.Series,
-    location_id_map: Mapping[str, str],
-    scale_series: pd.Series,
-    groupby_columns: List[str],
-) -> pd.Series:
-    """Calculates weighted ratio of locations reporting data scaled by `scale_series`.
-
-    Args:
-        long_all_values: All values as a series
-        location_id_map: Map of input region location_id to aggregate region location id.
-        scale_series: Series with index of CommonFields.LOCATION_ID of weights for each
-            location id. For example, population of each location id.
-        groupby_columns: Columns to group scaled values by when aggregating.
-
-    Returns: Series of scaled ratio of regions reporting with an index of `groupby_columns`.
-    """
-    assert long_all_values.index.names == [CommonFields.LOCATION_ID] + groupby_columns
-    assert scale_series.index.names == [CommonFields.LOCATION_ID]
-
-    scale_field = "scale"
-
-    location_id_df = pd.DataFrame(
-        location_id_map.items(), columns=[CommonFields.LOCATION_ID, LOCATION_ID_AGG]
-    ).set_index(CommonFields.LOCATION_ID)
-    location_id_df[scale_field] = scale_series
-    location_id_aggregated_scale_field = location_id_df.groupby(LOCATION_ID_AGG)[scale_field].sum()
-
-    long_all_scaled_count = long_all_values.notna() * scale_series
-    long_agg_scaled = long_all_scaled_count.groupby(groupby_columns).sum()
-    return long_agg_scaled / location_id_aggregated_scale_field
-
-
-def _aggregate_dataframe_by_region(
-    df_in: pd.DataFrame,
-    location_id_map: Mapping[str, str],
-    *,
-    reporting_ratio_location_weights: Optional[pd.Series] = None,
-    reporting_ratio_required: float = 1.0,
-) -> pd.DataFrame:
-    """Aggregates a DataFrame using given region map. The output contains dates iff the input does."""
-
-    if CommonFields.DATE in df_in.index.names:
-        groupby_columns = [LOCATION_ID_AGG, CommonFields.DATE, PdFields.VARIABLE]
-        empty_result = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
-    else:
-        groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
-        empty_result = _EMPTY_REGIONAL_ATTRIBUTES_DF
-
-    # df_in is sometimes empty in unittests. Return a DataFrame that is also empty and
-    # has enough of an index that the test passes.
-    if df_in.empty:
-        return empty_result
-
-    df = df_in.copy()  # Copy because the index is modified below
-
-    # Add a new level in the MultiIndex with the new location_id_agg
-    # From https://stackoverflow.com/a/56278735
-    old_idx = df.index.to_frame()
-    # Add location_id_agg so that when location_id is removed the remaining MultiIndex levels
-    # match the levels of groupby_columns.
-    old_idx.insert(1, LOCATION_ID_AGG, old_idx[CommonFields.LOCATION_ID].map(location_id_map))
-    df.index = pd.MultiIndex.from_frame(old_idx)
-
-    # Stack into a Series with several levels in the index.
-    long_all_values = df.rename_axis(columns=PdFields.VARIABLE).stack(dropna=True)
-    assert long_all_values.index.names == [CommonFields.LOCATION_ID] + groupby_columns
-
-    # Aggregate by location_id_agg, optional date and variable.
-    long_agg = long_all_values.groupby(groupby_columns, sort=False).sum()
-
-    if reporting_ratio_required:
-        weighted_reporting_ratio = _calculate_weighted_reporting_ratio(
-            long_all_values, location_id_map, reporting_ratio_location_weights, groupby_columns
-        )
-        is_valid_reporting_ratio = weighted_reporting_ratio >= reporting_ratio_required
-        long_agg = long_agg.loc[is_valid_reporting_ratio]
-
-    df_out = (
-        long_agg.unstack()
-        .rename_axis(index={LOCATION_ID_AGG: CommonFields.LOCATION_ID})
-        .sort_index()
-        .reindex(columns=df_in.columns)
-    )
-    assert df_in.index.names == df_out.index.names
-    return df_out
-
-
-def aggregate_regions(
-    dataset_in: MultiRegionDataset,
-    aggregate_map: Mapping[Region, Region],
-    aggregations: Sequence[StaticWeightedAverageAggregation] = WEIGHTED_AGGREGATIONS,
-    *,
-    reporting_ratio_required_to_aggregate: Optional[float] = None,
-) -> MultiRegionDataset:
-    """Produces a dataset with dataset_in aggregated using sum or weighted aggregation.
-
-    Args:
-        dataset_in: Input dataset.
-        aggregate_map: Region mapping input region to aggregate region.
-        aggregations: Sequence of aggregation overrides to apply aggregations other
-            than sum to fields.
-        reporting_ratio_required_to_aggregate: Ratio of locations per aggregate region required
-            to compute aggregate value for individual data points. Uses population to weight
-            ratio.
-
-    Returns: Dataset with values aggregated to aggregate regions.
-    """
-    assert (
-        reporting_ratio_required_to_aggregate is None
-        or 0 < reporting_ratio_required_to_aggregate <= 1.0
-    )
-    dataset_in = dataset_in.get_regions_subset(aggregate_map.keys())
-    location_id_map = {
-        region_in.location_id: region_agg.location_id
-        for region_in, region_agg in aggregate_map.items()
-    }
-
-    scale_fields = {agg.scale_factor for agg in aggregations}
-    scaled_fields = {agg.field for agg in aggregations}
-    agg_common_fields = scale_fields.intersection(scaled_fields)
-    # Check that a field is not both scaled and used as the scale factor. While that
-    # could make sense it isn't implemented.
-    if agg_common_fields:
-        raise ValueError("field and scale_factor have values in common")
-    # TODO(tom): Do something smarter with non-number columns in static. Currently they are
-    # silently dropped. Functions such as aggregate_to_new_york_city manually copy non-number
-    # columns.
-    static_in = dataset_in.static.select_dtypes(include="number")
-    scale_field_missing = scale_fields.difference(static_in.columns)
-    if scale_field_missing:
-        raise ValueError("Unable to do scaling due to missing column")
-    # Split static_in into two DataFrames, by column:
-    scale_fields_mask = static_in.columns.isin(scale_fields)
-    # Static input values used to create scale factors and ...
-    static_in_scale_fields = static_in.loc[:, scale_fields_mask]
-    # ... all other static input values.
-    static_in_other_fields = static_in.loc[:, ~scale_fields_mask]
-
-    populations = None
-    if reporting_ratio_required_to_aggregate is not None:
-        populations = static_in.loc[:, CommonFields.POPULATION]
-
-    static_agg_scale_fields = _aggregate_dataframe_by_region(
-        static_in_scale_fields,
-        location_id_map,
-        reporting_ratio_location_weights=populations,
-        reporting_ratio_required=reporting_ratio_required_to_aggregate,
-    )
-    location_ids = dataset_in.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
-    # TODO(tom): Add support for time-varying scale factors, for example to scale
-    # test_positivity by number of tests.
-
-    scale_factors = _find_scale_factors(
-        aggregations,
-        location_id_map,
-        static_agg_scale_fields,
-        static_in_scale_fields,
-        location_ids,
-    )
-
-    static_other_fields_scaled = _apply_scaling_factor(
-        static_in_other_fields, scale_factors, aggregations
-    )
-    timeseries_scaled = _apply_scaling_factor(dataset_in.timeseries, scale_factors, aggregations)
-
-    static_agg_other_fields = _aggregate_dataframe_by_region(
-        static_other_fields_scaled,
-        location_id_map,
-        reporting_ratio_location_weights=populations,
-        reporting_ratio_required=reporting_ratio_required_to_aggregate,
-    )
-    timeseries_agg = _aggregate_dataframe_by_region(
-        timeseries_scaled,
-        location_id_map,
-        reporting_ratio_location_weights=populations,
-        reporting_ratio_required=reporting_ratio_required_to_aggregate,
-    )
-    static_agg = pd.concat([static_agg_scale_fields, static_agg_other_fields], axis=1)
-    if static_agg.index.name != CommonFields.LOCATION_ID:
-        # It looks like concat doesn't always set the index name, but haven't worked out
-        # the pattern of when the fix is needed.
-        static_agg = static_agg.rename_axis(index=CommonFields.LOCATION_ID)
-
-    if CommonFields.AGGREGATE_LEVEL in dataset_in.static.columns:
-        # location_id_to_level returns an AggregationLevel enum, but we use the str in DataFrames.
-        # These are not equivalent so put the `value` attribute in static_agg.
-        static_agg[CommonFields.AGGREGATE_LEVEL] = (
-            static_agg.index.get_level_values(CommonFields.LOCATION_ID)
-            .map(pipeline.location_id_to_level)
-            .map(lambda l: l.value)
-        )
-    if CommonFields.FIPS in dataset_in.static.columns:
-        static_agg[CommonFields.FIPS] = static_agg.index.get_level_values(
-            CommonFields.LOCATION_ID
-        ).map(pipeline.location_id_to_fips)
-
-    # TODO(tom): Copy tags (annotations and provenance) to the return value.
-    return MultiRegionDataset(timeseries=timeseries_agg, static=static_agg)
-
-
 class DatasetName(str):
     """Human readable name for a dataset. In the future this may be an enum, for now it
     provides some type safety."""
@@ -1586,99 +1224,27 @@ def combined_datasets(
         # Transform from a column for each date to a column for each variable (with rows for dates).
         # stack and unstack does the transform quickly but does not handle an empty DataFrame.
         if output_timeseries_wide_dates.empty:
-            output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+            output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         else:
             output_timeseries_wide_variables = (
                 output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
             )
         output_tag = pd.concat(tag_series)
     else:
-        output_timeseries_wide_variables = _EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         output_tag = _EMPTY_TAG_SERIES
     if static_series:
         output_static_df = pd.concat(
             static_series, axis=1, sort=True, verify_integrity=True
         ).rename_axis(index=CommonFields.LOCATION_ID)
     else:
-        output_static_df = _EMPTY_REGIONAL_ATTRIBUTES_DF
+        output_static_df = EMPTY_REGIONAL_ATTRIBUTES_DF
 
     return MultiRegionDataset(
         timeseries=output_timeseries_wide_variables,
         tag=output_tag.sort_index(),
         static=output_static_df,
     )
-
-
-def _aggregate_ignoring_nas(df_in: pd.DataFrame) -> Mapping:
-    aggregated = {}
-    for field in df_in.columns:
-        if field == CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE:
-            licensed_beds = df_in[CommonFields.LICENSED_BEDS]
-            occupancy_rates = df_in[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
-            aggregated[field] = (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
-        elif field == CommonFields.ICU_TYPICAL_OCCUPANCY_RATE:
-            icu_beds = df_in[CommonFields.ICU_BEDS]
-            occupancy_rates = df_in[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
-            aggregated[field] = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
-        else:
-            aggregated[field] = df_in[field].sum()
-    return aggregated
-
-
-def aggregate_puerto_rico_from_counties(dataset: MultiRegionDataset) -> MultiRegionDataset:
-    """Returns a dataset with NA static values for the state PR aggregated from counties."""
-    pr_county_mask = (dataset.static[CommonFields.STATE] == "PR") & (
-        dataset.static[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-    )
-    if not pr_county_mask.any():
-        return dataset
-    pr_counties = dataset.static.loc[pr_county_mask]
-    aggregated = _aggregate_ignoring_nas(pr_counties.select_dtypes(include="number"))
-    pr_location_id = pipeline.Region.from_state("PR").location_id
-
-    patched_static = dataset.static.copy()
-    for field, aggregated_value in aggregated.items():
-        if pd.isna(patched_static.at[pr_location_id, field]):
-            patched_static.at[pr_location_id, field] = aggregated_value
-
-    return dataclasses.replace(dataset, static=patched_static)
-
-
-def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
-    """Returns a new dataset containing everything all the input and vaccination percentage
-    metrics derived from the corresponding non-percentage field where not already set."""
-    field_map = {
-        CommonFields.VACCINATIONS_INITIATED: CommonFields.VACCINATIONS_INITIATED_PCT,
-        CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_COMPLETED_PCT,
-    }
-    ds_in_wide_dates = ds_in.timeseries_wide_dates()
-    ds_in_wide_dates = ds_in_wide_dates.loc[
-        ds_in_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(field_map.keys())
-    ]
-    # TODO(tom): Preserve provenance and other tags from the original vaccination fields.
-    # ds_in_wide_dates / dataset.static.loc[:, CommonFields.POPULATION] doesn't seem to align the
-    # location_id correctly so be more explicit with `div`:
-    derived_pct_df = (
-        ds_in_wide_dates.div(
-            ds_in.static.loc[:, CommonFields.POPULATION],
-            level=CommonFields.LOCATION_ID,
-            axis="index",
-        )
-        * 100.0
-    )
-    derived_pct_df = derived_pct_df.rename(index=field_map, level=PdFields.VARIABLE)
-    # Make a dataset containing only the derived percentage metrics.
-    ds_derived_pct = MultiRegionDataset.from_timeseries_wide_dates_df(derived_pct_df)
-
-    # Combine the derived percentage with any percentages in ds_in to make a dataset containing
-    # only the percentage metrics.
-    # Possible optimization: Replace the combine+drop+join with a single function that copies from
-    # ds_derived_pct only where a timeseries is all NaN in the original dataset.
-    ds_list = [ds_in, ds_derived_pct]
-    ds_all_pct = combined_datasets({field_pct: ds_list for field_pct in field_map.values()}, {})
-
-    dataset_without_pct = ds_in.drop_columns_if_present(list(field_map.values()))
-    return dataset_without_pct.join_columns(ds_all_pct)
 
 
 def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:

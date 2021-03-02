@@ -21,6 +21,7 @@ from libs import parallel_utils
 from libs import pipeline
 from libs import build_api_v2
 from libs.datasets import timeseries
+from libs.datasets import vaccine_backfills
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets import AggregationLevel
@@ -314,7 +315,7 @@ def generate_from_loaded_data(
     log.info("Running test positivity.")
     regions_data = test_positivity.run_and_maybe_join_columns(selected_dataset, log)
 
-    regions_data = timeseries.derive_vaccine_pct(regions_data)
+    regions_data = vaccine_backfills.derive_vaccine_pct(regions_data)
 
     log.info(f"Joining inputs by region.")
     icu_data_map = dict(model_output.icu.iter_one_regions())
