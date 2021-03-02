@@ -193,16 +193,6 @@ def _add_state_if_missing(df: pd.DataFrame):
         )
 
 
-def _add_aggregate_level_if_missing(df: pd.DataFrame):
-    """Adds the aggregate level column if missing, in place."""
-    assert CommonFields.LOCATION_ID in df.columns
-
-    if CommonFields.AGGREGATE_LEVEL not in df.columns:
-        df[CommonFields.AGGREGATE_LEVEL] = df[CommonFields.LOCATION_ID].apply(
-            lambda x: Region.from_location_id(x).level.value
-        )
-
-
 def _geodata_df_to_static_attribute_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
     """Creates a DataFrame to use as static from geo data taken from timeseries CSV."""
     assert geodata_df.index.names == [None]  # [CommonFields.LOCATION_ID, CommonFields.DATE]
@@ -448,6 +438,7 @@ class MultiRegionDataset:
             # are not modified.
             timeseries_df = timeseries_df.fillna(np.nan).apply(pd.to_numeric).sort_index()
         geodata_df = timeseries_and_geodata_df.loc[:, geodata_column_mask]
+
         static_df = _geodata_df_to_static_attribute_df(
             geodata_df.reset_index().drop(columns=[CommonFields.DATE])
         )
@@ -576,7 +567,6 @@ class MultiRegionDataset:
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
         ts_df = _add_location_id(ts_df)
         _add_state_if_missing(ts_df)
-        _add_aggregate_level_if_missing(ts_df)
 
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
