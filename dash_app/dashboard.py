@@ -10,7 +10,6 @@ import git
 import more_itertools
 import pandas as pd
 import numpy as np
-from backports.cached_property import cached_property
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import PdFields
@@ -19,7 +18,6 @@ from dash.dependencies import Input
 from dash.dependencies import Output
 from pandas.core.dtypes.common import is_numeric_dtype
 from plotly import express as px
-from typing_extensions import final
 
 from libs import pipeline
 from libs.datasets import AggregationLevel
