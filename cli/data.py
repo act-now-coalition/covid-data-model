@@ -26,6 +26,7 @@ from libs.datasets import region_aggregation
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets import ca_vaccination_backfill
+from libs.datasets import vaccine_backfills
 from libs.datasets.sources import forecast_hub
 from libs.datasets import tail_filter
 from libs.datasets.sources import zeros_filter
