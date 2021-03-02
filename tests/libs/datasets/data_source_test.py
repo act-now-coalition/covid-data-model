@@ -5,6 +5,7 @@ import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
+from libs.datasets import data_source
 from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.sources import can_scraper_state_providers
@@ -22,15 +23,13 @@ from tests.libs.datasets.sources.can_scraper_helpers_test import build_can_scrap
 def test_state_providers_smoke_test():
     """Make sure *something* is returned without any raised exceptions."""
     assert can_scraper_state_providers.CANScraperStateProviders.make_dataset()
+    assert can_scraper_state_providers.CANScraperStateProviders.make_dataset()
+    assert can_scraper_state_providers.CANScraperStateProviders.make_dataset.cache_info().hits > 0
 
 
 @pytest.mark.parametrize("reverse_observation_order", [False, True])
 def test_can_scraper_returns_source_url(reverse_observation_order):
     """Injects a tiny bit of data with a source_url in a CanScraperLoader."""
-
-    # Make a new subclass to keep this test separate from others in the make_dataset lru_cache.
-    class CANScraperForTest(can_scraper_usafacts.CANScraperUSAFactsProvider):
-        pass
 
     variable = ccd_helpers.ScraperVariable(
         variable_name="cases",
@@ -47,11 +46,12 @@ def test_can_scraper_returns_source_url(reverse_observation_order):
         # observations are not sorted by increasing date.
         input_data = input_data.iloc[::-1]
 
-    data = ccd_helpers.CanScraperLoader(input_data)
+    class CANScraperForTest(can_scraper_usafacts.CANScraperUSAFactsProvider):
+        @staticmethod
+        def _get_covid_county_dataset():
+            return ccd_helpers.CanScraperLoader(input_data)
 
-    with mock.patch("libs.datasets.data_source.CanScraperBase") as mock_can_scraper_base:
-        mock_can_scraper_base._get_covid_county_dataset.return_value = data
-        ds = CANScraperForTest.make_dataset()
+    ds = CANScraperForTest.make_dataset()
 
     # Check that the URL gets all the way to the OneRegionTimeseriesDataset.
     one_region = ds.get_one_region(
@@ -98,3 +98,30 @@ def test_data_source_make_dataset(tmpdir):
         static=region_static,
     )
     test_helpers.assert_dataset_like(dataset_expected, dataset_read)
+
+
+def test_can_scraper_class_single_provider():
+    cls: data_source.CanScraperBase
+    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+        providers = set(v.provider for v in cls.VARIABLES)
+        assert len(providers) == 1
+
+
+def test_can_scraper_class_unique_variable_names():
+    cls: data_source.CanScraperBase
+    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+        variables_not_none = [v for v in cls.VARIABLES if v.common_field is not None]
+        # Source `variable_name` may be duplicated with different measurement or unit.
+        assert len(variables_not_none) == len(
+            set((v.variable_name, v.measurement, v.unit) for v in variables_not_none)
+        )
+        # Destination `common_field` is expected to be unique
+        assert len(variables_not_none) == len(set(v.common_field for v in variables_not_none))
+
+
+def test_can_scraper_class_variable_set_expected_fields_unset():
+    cls: data_source.CanScraperBase
+    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+        # EXPECTED_FIELDS is empty. It is computed from VARIABLES.
+        assert not cls.EXPECTED_FIELDS
+        assert cls.VARIABLES

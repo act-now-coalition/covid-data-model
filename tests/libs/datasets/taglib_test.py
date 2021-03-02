@@ -1,12 +1,11 @@
 from libs.datasets import taglib
 from libs.datasets import timeseries
-from tests.test_helpers import get_concrete_subclasses
+from tests import test_helpers
 
 
 def _get_subclass_tag_types(cls):
-    """Returns a list of all TAG_TYPE subclasses of concrete subclasses of cls. By concrete I
-    mean no abstract methods and not directly subclassing abc.ABC."""
-    return [k.TAG_TYPE for k in get_concrete_subclasses(cls)]
+    """Returns a list of all TAG_TYPE subclasses of concrete subclasses of cls."""
+    return [k.TAG_TYPE for k in test_helpers.get_concrete_subclasses(cls)]
 
 
 def test_all_tag_subclasses_accounted_for():

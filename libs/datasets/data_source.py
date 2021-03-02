@@ -1,4 +1,5 @@
 import pathlib
+from typing import Collection
 from typing import List
 from typing import Optional
 from typing import Union
@@ -49,8 +50,8 @@ class DataSource(object):
         return taglib.Source(type=cls.SOURCE_TYPE, url=cls.SOURCE_URL, name=cls.SOURCE_NAME)
 
     @classmethod
-    def _check_data(cls, data: pd.DataFrame):
-        expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
+    def _check_data(cls, data: pd.DataFrame, expected_fields: Collection[str]):
+        expected_fields = pd.Index({*expected_fields, *TIMESERIES_INDEX_FIELDS})
         # Keep only the expected fields.
         found_expected_fields = data.columns.intersection(expected_fields)
         data = data[found_expected_fields]
@@ -78,7 +79,7 @@ class DataSource(object):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.COMMON_DF_CSV_PATH
         data = common_df.read_csv(input_path, set_index=False)
-        data = cls._check_data(data)
+        data = cls._check_data(data, cls.EXPECTED_FIELDS)
         return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all(cls.source_tag())
 
 
@@ -102,13 +103,13 @@ class CanScraperBase(DataSource):
     @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         """Default implementation of make_dataset that loads data from the parquet file."""
-        assert cls.VARIABLES
-        ccd_dataset = CanScraperBase._get_covid_county_dataset()
+        ccd_dataset = cls._get_covid_county_dataset()
         data, source_df = ccd_dataset.query_multiple_variables(
             cls.VARIABLES, log_provider_coverage_warnings=True, source_type=cls.SOURCE_TYPE
         )
         data = cls.transform_data(data)
-        data = cls._check_data(data)
+        expected_fields = [v.common_field for v in cls.VARIABLES if v.common_field is not None]
+        data = cls._check_data(data, expected_fields)
         ds = MultiRegionDataset.from_fips_timeseries_df(data)
         if not source_df.empty:
             # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.

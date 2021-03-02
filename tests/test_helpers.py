@@ -2,7 +2,6 @@ import abc
 import dataclasses
 import inspect
 from typing import Iterable
-from typing import Iterable
 from typing import List
 
 from collections import UserList
@@ -10,7 +9,6 @@ from typing import Any
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
-from typing import Type
 from typing import Type
 from typing import TypeVar
 from typing import Union
@@ -34,6 +32,8 @@ from libs.pipeline import Region
 # cases. It is factored out here in an attempt to reduce how much it is hard-coded into our source.
 DEFAULT_FIPS = "97222"
 DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
+
+DEFAULT_START_DATE = "2020-04-01"
 
 
 T = TypeVar("T")
@@ -140,7 +140,7 @@ def build_dataset(
         Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]]
     ],
     *,
-    start_date="2020-04-01",
+    start_date=DEFAULT_START_DATE,
     timeseries_columns: Optional[Sequence[FieldName]] = None,
     static_by_region_then_field_name: Optional[Mapping[Region, Mapping[FieldName, Any]]] = None,
 ) -> timeseries.MultiRegionDataset:
@@ -213,7 +213,7 @@ def build_default_region_dataset(
     metrics: Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]],
     *,
     region=DEFAULT_REGION,
-    start_date="2020-04-01",
+    start_date=DEFAULT_START_DATE,
     static: Optional[Mapping[FieldName, Any]] = None,
 ) -> timeseries.MultiRegionDataset:
     """Returns a `MultiRegionDataset` containing metrics in one region"""
