@@ -86,10 +86,8 @@ def write_nested_csv(
     first_row = data[0]
     first_row = {key: value for key, value in first_row.items()}
 
-    all_columns = flatten_dict(first_row).keys()
-    # Assert that all columns specified are included in data
+    all_columns = list(flatten_dict(first_row).keys())
     header = header or all_columns
-    assert all([column in all_columns for column in header])
 
     header_set = set(header)
     _logger.info(f"Writing to {output_path}")
