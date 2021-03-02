@@ -103,7 +103,6 @@ class CanScraperBase(DataSource):
     @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         """Default implementation of make_dataset that loads data from the parquet file."""
-        assert cls.VARIABLES
         ccd_dataset = cls._get_covid_county_dataset()
         data, source_df = ccd_dataset.query_multiple_variables(
             cls.VARIABLES, log_provider_coverage_warnings=True, source_type=cls.SOURCE_TYPE
