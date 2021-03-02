@@ -38,10 +38,6 @@ def remove_trailing_zeros(data: pd.DataFrame) -> pd.DataFrame:
 class CDCTestingDataset(data_source.CanScraperBase):
     SOURCE_TYPE = "CDCTesting"
 
-    EXPECTED_FIELDS = [
-        CommonFields.TEST_POSITIVITY_7D,
-    ]
-
     VARIABLES = [
         ccd_helpers.ScraperVariable(
             variable_name="pcr_tests_positive",

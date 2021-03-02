@@ -119,10 +119,9 @@ def test_can_scraper_class_unique_variable_names():
         assert len(variables_not_none) == len(set(v.common_field for v in variables_not_none))
 
 
-def test_can_scraper_class_expected_matches_common_fields():
+def test_can_scraper_class_variable_set_expected_fields_unset():
     cls: data_source.CanScraperBase
     for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
-        variables_not_none = [v for v in cls.VARIABLES if v.common_field is not None]
-        cls_variable_common_fields = set(v.common_field for v in variables_not_none)
-        cls_expected_fields = set(cls.EXPECTED_FIELDS)
-        assert cls_variable_common_fields == cls_expected_fields
+        # EXPECTED_FIELDS is empty. It is computed from VARIABLES.
+        assert not cls.EXPECTED_FIELDS
+        assert cls.VARIABLES

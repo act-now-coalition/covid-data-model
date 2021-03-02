@@ -109,9 +109,7 @@ class CanScraperBase(DataSource):
             cls.VARIABLES, log_provider_coverage_warnings=True, source_type=cls.SOURCE_TYPE
         )
         data = cls.transform_data(data)
-        expected_fields = cls.EXPECTED_FIELDS
-        if not expected_fields:
-            expected_fields = [v.common_field for v in cls.VARIABLES]
+        expected_fields = [v.common_field for v in cls.VARIABLES if v.common_field is not None]
         data = cls._check_data(data, expected_fields)
         ds = MultiRegionDataset.from_fips_timeseries_df(data)
         if not source_df.empty:
