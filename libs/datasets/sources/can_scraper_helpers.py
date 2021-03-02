@@ -84,6 +84,20 @@ def _fips_from_int(param: pd.Series):
     return param.apply(lambda v: f"{v:0>{2 if v < 100 else 5}}")
 
 
+demo_columns = ["age", "race", "ethnicity", "sex"]
+
+
+def make_short_name(row: pd.Series) -> str:
+    non_all = []
+    for field in demo_columns:
+        if row[field] != "all":
+            non_all.append(f"{field}:{row[field]}")
+    if non_all:
+        return ";".join(non_all)
+    else:
+        return "all"
+
+
 @dataclasses.dataclass(frozen=True)
 class CanScraperLoader:
 
@@ -105,7 +119,16 @@ class CanScraperLoader:
                 Fields.DATE,
             ]
         ).sort_index()
-        return indexed_df
+        all_ares = (
+            self.all_df.loc[:, demo_columns]
+            .drop_duplicates()
+            .set_index(demo_columns, drop=False)
+            .apply(make_short_name, axis=1)
+            .rename("demographic_bucket")
+        )
+        # Use join on because it preserves the indexed_df index
+        rv = indexed_df.join(all_ares, on=demo_columns)
+        return rv
 
     def _get_rows(self, variable: ScraperVariable) -> pd.DataFrame:
         # Similar to dataset_utils.make_rows_key this builds a Pandas.eval query string by making a
@@ -153,19 +176,21 @@ class CanScraperLoader:
                 assert variable.measurement
                 assert variable.unit
 
-            selected_data[variable.common_field] = self.indexed_df.loc(axis=0)[
-                variable.provider, variable.variable_name, variable.measurement, variable.unit
-            ]
+            try:
+                selected_data[variable.common_field] = self.indexed_df.loc(axis=0)[
+                    variable.provider, variable.variable_name, variable.measurement, variable.unit
+                ]
+            except KeyError:
+                pass
 
-        combined_data = pd.concat(selected_data, axis=0, names=[PdFields.VARIABLE])
+        combined_rows = pd.concat(selected_data, axis=0, names=[PdFields.VARIABLE])
 
-        unknown_columns = set(combined_data.columns) - set(Fields)
+        unknown_columns = set(combined_rows.columns) - set(Fields) - {"demographic_bucket"}
         if unknown_columns:
             raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
 
-        demo_columns = ["age", "race", "ethnicity", "sex"]
         indexed = (
-            combined_data.query(" and ".join(f"{field} == 'all'" for field in demo_columns))
+            combined_rows.loc[combined_rows.demographic_bucket == "all"]
             .droplevel(demo_columns)
             .rename_axis(index={Fields.DATE: CommonFields.DATE, Fields.LOCATION: CommonFields.FIPS})
             .reorder_levels([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
