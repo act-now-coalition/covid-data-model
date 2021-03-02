@@ -1,4 +1,7 @@
+import abc
 import dataclasses
+import inspect
+from typing import Iterable
 from typing import List
 
 from collections import UserList
@@ -6,6 +9,7 @@ from typing import Any
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Type
 from typing import TypeVar
 from typing import Union
 
@@ -314,3 +318,19 @@ def assert_dataset_like(
         tag1 = ds1.tag.astype("string")
         tag2 = ds2.tag.astype("string")
         pd.testing.assert_series_equal(tag1, tag2)
+
+
+def get_subclasses(cls) -> Iterable[Type]:
+    """Yields all subclasses of `cls`."""
+    # From https://stackoverflow.com/a/33607093
+    for subclass in cls.__subclasses__():
+        yield from get_subclasses(subclass)
+        yield subclass
+
+
+def get_concrete_subclasses(cls) -> Iterable[Type]:
+    """Yields all subclasses of `cls` that have no abstract methods and do not directly subclass
+    abc.ABC."""
+    for subcls in get_subclasses(cls):
+        if not inspect.isabstract(subcls) and abc.ABC not in subcls.__bases__:
+            yield subcls

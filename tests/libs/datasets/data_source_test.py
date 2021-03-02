@@ -5,6 +5,7 @@ import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
+from libs.datasets import data_source
 from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.sources import can_scraper_state_providers
@@ -97,3 +98,31 @@ def test_data_source_make_dataset(tmpdir):
         static=region_static,
     )
     test_helpers.assert_dataset_like(dataset_expected, dataset_read)
+
+
+def test_can_scraper_class_single_provider():
+    cls: data_source.CanScraperBase
+    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+        providers = set(v.provider for v in cls.VARIABLES)
+        assert len(providers) == 1
+
+
+def test_can_scraper_class_unique_variable_names():
+    cls: data_source.CanScraperBase
+    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+        variables_not_none = [v for v in cls.VARIABLES if v.common_field is not None]
+        # Source `variable_name` may be duplicated with different measurement or unit.
+        assert len(variables_not_none) == len(
+            set((v.variable_name, v.measurement, v.unit) for v in variables_not_none)
+        )
+        # Destination `common_field` is expected to be unique
+        assert len(variables_not_none) == len(set(v.common_field for v in variables_not_none))
+
+
+def test_can_scraper_class_expected_matches_common_fields():
+    cls: data_source.CanScraperBase
+    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+        variables_not_none = [v for v in cls.VARIABLES if v.common_field is not None]
+        cls_variable_common_fields = set(v.common_field for v in variables_not_none)
+        cls_expected_fields = set(cls.EXPECTED_FIELDS)
+        assert cls_variable_common_fields == cls_expected_fields
