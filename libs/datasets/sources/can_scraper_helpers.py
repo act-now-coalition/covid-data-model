@@ -22,7 +22,7 @@ from covidactnow.datapublic.common_fields import PdFields
 from libs.datasets import dataset_utils
 from libs.datasets import taglib
 
-DEMOGRAPHIC_BUCKET = "demographic_bucket"
+DEMOGRAPHIC_BUCKET = PdFields.DEMOGRAPHIC_BUCKET
 
 PARQUET_PATH = "data/can-scrape/can_scrape_api_covid_us.parquet"
 
@@ -218,9 +218,7 @@ class CanScraperLoader:
             rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
         )
 
-        rows_df = indexed[PdFields.VALUE].xs(
-            "all", axis=0, level=DEMOGRAPHIC_BUCKET, drop_level=True
-        )
+        rows_df = indexed[PdFields.VALUE]
         return rows_df, tag_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):

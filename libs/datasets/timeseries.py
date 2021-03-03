@@ -26,6 +26,7 @@ import numpy as np
 import structlog
 from covidactnow.datapublic import common_df
 from libs import pipeline
+from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import dataset_pointer
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
@@ -289,9 +290,24 @@ EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
     columns=pd.Index([], name=PdFields.VARIABLE),
 )
 
+EMPTY_TIMESERIES_LONG_SERIES = pd.Series(
+    [],
+    dtype="float",
+    index=pd.MultiIndex.from_tuples(
+        [],
+        names=[
+            CommonFields.LOCATION_ID,
+            PdFields.VARIABLE,
+            PdFields.DEMOGRAPHIC_BUCKET,
+            CommonFields.DATE,
+        ],
+    ),
+)
 
+
+# eq=False because instances are large and we want to compare by id instead of value
 @final
-@dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
+@dataclass_with_default_init(frozen=True, eq=False)
 class MultiRegionDataset:
     """A set of timeseries and static values from any number of regions.
 
@@ -304,8 +320,8 @@ class MultiRegionDataset:
     information.
     """
 
-    # Timeseries metrics with float values. Each timeseries is identified by a variable name and region
-    timeseries: pd.DataFrame
+    # Timeseries metrics with float values.
+    timeseries_long: pd.DataFrame
 
     # Static data, each identified by variable name and region. This includes county name,
     # state etc (GEO_DATA_COLUMNS) and metrics that change so slowly they can be
@@ -315,6 +331,34 @@ class MultiRegionDataset:
     # A Series of tag CONTENT values having index with levels TAG_INDEX_FIELDS (LOCATION_ID,
     # VARIABLE, TYPE). Rows with identical index values may exist.
     tag: pd.Series = _EMPTY_TAG_SERIES
+
+    # noinspection PyMissingConstructor
+    def __init__(
+        self,
+        *args,
+        timeseries: Optional[pd.DataFrame] = None,
+        timeseries_long: Optional[pd.Series] = None,
+        **kwargs,
+    ):
+        if timeseries is not None:
+            timeseries_long = (
+                timeseries.assign(**{PdFields.DEMOGRAPHIC_BUCKET: "all"})
+                .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)
+                .stack()
+                .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
+            )
+
+        self.__default_init__(  # pylint: disable=E1101
+            *args, timeseries_long=timeseries_long, **kwargs,
+        )
+
+    @cached_property
+    def timeseries(self) -> pd.DataFrame:
+        """Timeseries metrics with float values. Each timeseries is identified by a variable name
+       and region"""
+        return self.timeseries_long.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0).unstack(
+            PdFields.VARIABLE
+        )
 
     @property
     def timeseries_regions(self) -> Set[Region]:
@@ -418,7 +462,13 @@ class MultiRegionDataset:
             CommonFields.LOCATION_ID,
             PdFields.VARIABLE,
             CommonFields.DATE,
+        ] or timeseries_long.index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.VARIABLE,
+            PdFields.DEMOGRAPHIC_BUCKET,
+            CommonFields.DATE,
         ]
+
         assert timeseries_long.name == PdFields.VALUE
         assert is_numeric_dtype(timeseries_long.dtype)
 
@@ -508,7 +558,9 @@ class MultiRegionDataset:
 
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
-        combined_df = common_df.read_csv(path_or_buf, set_index=False)
+        combined_df = common_df.read_csv(path_or_buf, set_index=False).rename_axis(
+            columns=PdFields.VARIABLE
+        )
         if CommonFields.LOCATION_ID not in combined_df.columns:
             raise ValueError("MultiRegionDataset.from_csv requires location_id column")
 
@@ -774,7 +826,9 @@ class MultiRegionDataset:
     def _trim_timeseries(self, *, after: datetime.datetime) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries data after given date."""
         ts_rows_mask = self.timeseries.index.get_level_values(CommonFields.DATE) > after
-        return dataclasses.replace(self, timeseries=self.timeseries.loc[ts_rows_mask, :])
+        return dataclasses.replace(
+            self, timeseries=self.timeseries.loc[ts_rows_mask, :], timeseries_long=None
+        )
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
         return self.timeseries.groupby(CommonFields.LOCATION_ID)
@@ -830,7 +884,9 @@ class MultiRegionDataset:
             timeseries_wide_dates.index
         )
         tag = self.tag.loc[tag_mask]
-        return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
+        return dataclasses.replace(
+            self, timeseries=timeseries_wide_variables, tag=tag, timeseries_long=None
+        )
 
     def to_csv(self, path: pathlib.Path, include_latest=True):
         """Persists timeseries to CSV.
@@ -953,7 +1009,7 @@ def _diff_preserving_first_value(series):
         new_cases[first_date] = cases[first_date]
 
     # Return a DataFrame so NEW_CASES is a column with DATE index.
-    return pd.DataFrame({CommonFields.NEW_CASES: new_cases})
+    return pd.DataFrame({CommonFields.NEW_CASES: new_cases}).rename_axis(columns=PdFields.VARIABLE)
 
 
 def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
@@ -1051,9 +1107,9 @@ def drop_new_case_outliers(
         )
     df_copy.loc[to_exclude, CommonFields.NEW_CASES] = np.nan
 
-    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy).append_tag_df(
-        new_tags.as_dataframe()
-    )
+    new_timeseries = dataclasses.replace(
+        timeseries, timeseries=df_copy, timeseries_long=None
+    ).append_tag_df(new_tags.as_dataframe())
 
     return new_timeseries
 
@@ -1108,7 +1164,9 @@ def drop_tail_positivity_outliers(
 
     df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
 
-    return dataclasses.replace(dataset, timeseries=df_copy).append_tag_df(new_tags.as_dataframe())
+    return dataclasses.replace(dataset, timeseries=df_copy, timeseries_long=None).append_tag_df(
+        new_tags.as_dataframe()
+    )
 
 
 def drop_regions_without_population(
