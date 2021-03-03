@@ -1,7 +1,6 @@
 import dataclasses
 import itertools
 from typing import Dict, List
-import io
 import datetime
 from typing import Iterable
 from typing import Iterator
@@ -10,9 +9,7 @@ from typing import Union
 
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic import common_df
 import pandas as pd
-from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import data_source
 from libs.datasets import taglib

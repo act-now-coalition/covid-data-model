@@ -1,6 +1,5 @@
 import abc
 import pathlib
-from typing import Collection
 from typing import List
 from typing import Optional
 from typing import Union

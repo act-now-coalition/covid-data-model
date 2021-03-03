@@ -1,6 +1,5 @@
 import dataclasses
 
-import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs.datasets.sources import cdc_testing_dataset
