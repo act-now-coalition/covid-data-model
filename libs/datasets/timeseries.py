@@ -482,7 +482,7 @@ class MultiRegionDataset:
         assert timeseries_and_geodata_df.index.names == [None]
         timeseries_and_geodata_df = timeseries_and_geodata_df.set_index(
             [CommonFields.LOCATION_ID, CommonFields.DATE]
-        )
+        ).rename_axis(columns=PdFields.VARIABLE)
 
         geodata_column_mask = timeseries_and_geodata_df.columns.isin(
             set(TIMESERIES_INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
@@ -658,13 +658,7 @@ class MultiRegionDataset:
         assert self.timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
         assert self.timeseries.index.is_unique
         assert self.timeseries.index.is_monotonic_increasing
-        if self.timeseries.columns.names == [None]:
-            # TODO(tom): Ideally __post_init__ doesn't modify any values but tracking
-            # down all the places that create a DataFrame to add a column name seems like
-            # a PITA. After that is done remove this branch, leaving only the assert check.
-            self.timeseries.rename_axis(columns=PdFields.VARIABLE, inplace=True)
-        else:
-            assert self.timeseries.columns.names == [PdFields.VARIABLE]
+        assert self.timeseries.columns.names == [PdFields.VARIABLE]
         numeric_columns = self.timeseries.dtypes.apply(is_numeric_dtype)
         assert numeric_columns.all()
         assert self.static.index.names == [CommonFields.LOCATION_ID]
@@ -689,7 +683,13 @@ class MultiRegionDataset:
         common_location_id = self.static.index.intersection(other.static.index)
         if not common_location_id.empty:
             raise ValueError("Do not use append_regions with duplicate location_id")
-        timeseries_df = pd.concat([self.timeseries, other.timeseries]).sort_index()
+        # TODO(tom): check if rename_axis is needed once we have
+        #  https://pandas.pydata.org/docs/whatsnew/v1.2.0.html#index-column-name-preservation-when-aggregating
+        timeseries_df = (
+            pd.concat([self.timeseries, other.timeseries])
+            .sort_index()
+            .rename_axis(columns=PdFields.VARIABLE)
+        )
         static_df = pd.concat([self.static, other.static]).sort_index()
         tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
@@ -1024,8 +1024,10 @@ def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     # the first day as appropriate new case data.
     # We want as_index=True so that the DataFrame returned by each _diff_preserving_first_value call
     # has the location_id added as an index before being concat-ed.
-    new_cases = cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False).apply(
-        _diff_preserving_first_value
+    new_cases = (
+        cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False)
+        .apply(_diff_preserving_first_value)
+        .rename_axis(columns=PdFields.VARIABLE)
     )
 
     # Replacing days with single back tracking adjustments to be 0, reduces
