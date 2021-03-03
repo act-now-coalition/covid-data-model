@@ -341,12 +341,15 @@ class MultiRegionDataset:
         **kwargs,
     ):
         if timeseries is not None:
-            timeseries_long = (
-                timeseries.assign(**{PdFields.DEMOGRAPHIC_BUCKET: "all"})
-                .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)
-                .stack()
-                .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
-            )
+            if timeseries.empty:
+                timeseries_long = EMPTY_TIMESERIES_LONG_SERIES
+            else:
+                timeseries_long = (
+                    timeseries.assign(**{PdFields.DEMOGRAPHIC_BUCKET: "all"})
+                    .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)
+                    .stack()
+                    .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
+                )
 
         self.__default_init__(  # pylint: disable=E1101
             *args, timeseries_long=timeseries_long, **kwargs,
@@ -356,9 +359,11 @@ class MultiRegionDataset:
     def timeseries(self) -> pd.DataFrame:
         """Timeseries metrics with float values. Each timeseries is identified by a variable name
        and region"""
-        return self.timeseries_long.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0).unstack(
-            PdFields.VARIABLE
-        )
+        try:
+            long_all_xs = self.timeseries_long.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0)
+        except KeyError:
+            return EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        return long_all_xs.unstack(PdFields.VARIABLE)
 
     @property
     def timeseries_regions(self) -> Set[Region]:
