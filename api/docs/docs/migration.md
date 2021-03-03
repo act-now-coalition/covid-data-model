@@ -2,6 +2,7 @@
 id: migration
 title: Covid Tracking Migration Guide
 description: Migrating from the Covid Tracking Project
+image: /img/can_logo.png
 ---
 
 On March 7th, [The Covid Tracking Project](https://covidtracking.com) (CTP) will be winding down their daily updates. Throughout the pandemic they have provided an amazing service and resource with their daily data collection and in-depth reporting. For those looking for a replacement, the Covid Act Now API can be used to serve many of the same use cases.
@@ -43,6 +44,8 @@ Many of the fields in the Covid Tracking API do overlap. Cases, deaths, and hosp
 | positiveTestsViral    | actuals.positiveTests                  |
 | positive              | actuals.cases                          |
 | positiveIncrease      | actuals.newCases                       |
+
+See [data definitions](/data-definitions) for all included fields.
 
 ## **Getting Started**
 
