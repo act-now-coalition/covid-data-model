@@ -347,6 +347,8 @@ class MultiRegionDataset:
     # Timeseries metrics with float values.
     timeseries_long: pd.DataFrame
 
+    variables: Optional[Sequence[CommonFields]]
+
     # Static data, each identified by variable name and region. This includes county name,
     # state etc (GEO_DATA_COLUMNS) and metrics that change so slowly they can be
     # considered constant, such as population and hospital beds.
@@ -359,16 +361,19 @@ class MultiRegionDataset:
     # noinspection PyMissingConstructor
     def __init__(
         self,
-        *args,
+        *,
         timeseries: Optional[pd.DataFrame] = None,
         timeseries_long: Optional[pd.Series] = None,
+        variables: Optional[Sequence[CommonFields]] = None,
         **kwargs,
     ):
         if timeseries is not None:
             timeseries_long = _timeseries_wide_vars_to_long(timeseries)
+            if variables is None:
+                variables = timeseries.columns
 
         self.__default_init__(  # pylint: disable=E1101
-            *args, timeseries_long=timeseries_long, **kwargs,
+            timeseries_long=timeseries_long, variables=variables, **kwargs,
         )
 
     @cached_property
@@ -378,8 +383,19 @@ class MultiRegionDataset:
         try:
             long_all_xs = self.timeseries_long.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0)
         except KeyError:
-            return EMPTY_TIMESERIES_WIDE_VARIABLES_DF
-        return long_all_xs.unstack(PdFields.VARIABLE)
+            wide_var_df = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        else:
+            wide_var_df = long_all_xs.unstack(PdFields.VARIABLE)
+        if self.variables is not None:
+            missing_variables = pd.Index(self.variables).difference(wide_var_df.columns)
+            missing_empty_columns = pd.DataFrame(
+                [],
+                columns=missing_variables,
+                index=EMPTY_TIMESERIES_WIDE_VARIABLES_DF.index,
+                dtype="float",
+            )
+            wide_var_df = pd.concat([wide_var_df, missing_empty_columns], axis=1)
+        return wide_var_df
 
     @property
     def timeseries_regions(self) -> Set[Region]:
