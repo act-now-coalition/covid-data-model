@@ -239,7 +239,13 @@ def deploy_bulk_files(
     deploy_json_api_output(bulk_summaries, output_path)
 
     output_path = path_builder.bulk_summary(bulk_summaries, FileType.CSV, state=state)
-    deploy_csv_api_output(bulk_summaries, output_path, csv_column_ordering.SUMMARY_ORDER)
+
+    # States were the only summary file to contain all icu headroom details
+    summary_order = csv_column_ordering.SUMMARY_ORDER_NO_HEADROOM_DETAILS
+    if path_builder.level is AggregationLevel.STATE:
+        summary_order = csv_column_ordering.SUMMARY_ORDER
+
+    deploy_csv_api_output(bulk_summaries, output_path, summary_order)
 
 
 def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathlib.Path) -> None:
