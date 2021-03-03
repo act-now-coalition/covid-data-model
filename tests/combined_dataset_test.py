@@ -5,6 +5,7 @@ import structlog
 
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets, CommonFields
+from libs.datasets import data_source
 from libs.datasets import timeseries
 from libs.datasets.combined_datasets import provenance_wide_metrics_to_series
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
@@ -15,6 +16,7 @@ from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvide
 
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
+from tests import test_helpers
 from tests.dataset_utils_test import read_csv_and_index_fips_date
 import pytest
 
