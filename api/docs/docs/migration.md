@@ -1,84 +1,71 @@
 ---
 id: migration
-title: Migrating to v2
-description: Migrating to v2 of the Covid Act Now API.
+title: Migrating from The Covid Tracking Project
+description: Migrating from the Covid Tracking Project
 ---
 
 
-Lots has changed in the COVID data landscape since we create the first version of our API.
-Our API largely was focused around interventions taken at the state level and the API structure reflected that.
+On March 7th, [The Covid Tracking Project](https://covidtracking.com) (CTP) will be winding down their daily updates. Throughout the pandemic they have provided an amazing service and resource with their daily data collection and in-depth reporting. We think the Covid Act Now API can be a helpful resource to those looking for similar data.
 
-Additionally, the data reported and collected has evolved. When we first launched our API few states were reporting
-hospitalizations and even fewer reporting test data.
+The Covid Act Now API provides access to comprehensive COVID data — both current and historical. The data is available for all US states, counties, and metros and is aggregated from a number of official sources, quality assured, and updated daily.
 
-:::note
+Our API powers all data available on [covidactnow.org](https://covidactnow.org) including daily updates to cases, hospitalization, testing, and vaccination data. It includes raw data, risk levels, and metrics (including daily new cases, infection rate, test positivity, and ICU utilization) to help you understand covid spread for a location.
 
-API v1 is now deprecated.  We will continue to update v1 endpoints
-until October 5th, 2020 and will remove access to v1 data on October 26th, 2020.
+We also provide county and metro data where available. Typically county data is not as complete as state data but coverage is improving. Our county data is collected from a wide variety of sources that include federal, state, and local dashboards.
 
-If you have any questions, please don't hesitate to reach out at <api@covidactnow.org>.
+If you’re a current CTP user, hopefully we are able to help fill your COVID data needs after March 7th.  
 
-:::
+## Covid Act Now API Overview
+
+In general, the Covid Act Now API provides much of the same data as Covid Tracking. However there are some differences:
+
+**Our API includes slightly different hospitalization data**  
+We include current bed capacity and total beds occupied as well (including COVID and non-COVID patients). We currently ingest hospitalization data at the state and county level from HHS.
+
+**Vaccination data**  
+Our API includes vaccination data. We include doses distributed, vaccinations initiated, and vaccinations completed.
+
+**Additional metrics and risk levels**  
+We calculate metrics and risk levels derived from the raw data.  These metrics include but are not limited to daily new cases per 100k, infection rate, and test positivity.
+
+**CTP has much more detailed testing data**  
+When CTP was started, it initially focused on testing data whereas we focused on broader datasets, other metrics, and county data. While not immediately planned, we may add more detailed testing data in the future. We have focused more on surfacing test positivity - and provide it for all states and most counties.
+
+**Our API requires an API Key**  
+Something
+
+Many of the fields in the Covid Tracking API do overlap.  Cases, deaths, and hospitalization/ICU data have the largest commonalities. 
+
+| CTP field name        | CAN Field Name                         |
+| --------------------- | -------------------------------------- |
+| date                  | date                                   |
+| fips                  | fips                                   |
+| state                 | state                                  |
+| death                 | actuals.deaths                         |
+| hospitalizedCurrently | actuals.hospitalBeds.currentUsageCovid |
+| inIcuCurrently        | actuals.icuBeds.currentUsageCovid      |
+| negative              | actuals.negativeTests                  |
+| positive              | actuals.cases                          |
+| positiveIncrease      | actuals.newCases                       |
+
+As there are different sources for each of these values, the exact values may not match 1:1. 
 
 
-### Top level metrics included
+## **Getting Started**
 
-We are now surfacing the top level metrics that power the CAN risk levels.
+To get started, [register to get your API key](/access). 
 
-These are available under `metrics` and `metricsTimeseries` keys.
+Many of endpoints from The Covid Tracking Project are available in our API.  Below is a summary of similar endpoints:
 
-The following metrics are available:
- - **caseDensity** - The number of cases per 100k population calculated using a 7-day rolling average.
- - **testPositivity** - The ratio of people who test positive calculated using a 7-day rolling average.
- - **infectionRate** - R<sub>t</sub>, or the estimated number of infections arising from a typical case.
- - **icuHeadroomRatio** - Remaining ICU headroom capacity for COVID patients.
- - **contactTracer** - Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.
+| Description                          | Covid Tracking endpoint          | Covid Act Now endpoint             |
+| ------------------------------------ | -------------------------------- | ---------------------------------- |
+| Current values for all states        | /v1/states/current.{csv,json}    | /v2/states.{csv,json}              |
+| Historical values for all states     | /v1/states/daily.{csv,json}      | /v2/states.timeseries.{csv,json}   |
+| Current values for a single state    | /v1/states/ca/daily.{csv,json}   | /v2/state/CA.timeseries.{csv,json} |
+| Historical values for a single state | /v1/states/ca/current.{csv,json} | /v2/state/CA.{csv,json}            |
 
+Additional notes:
 
-### All queries require an API key
+- All covid act now links must include the API key, so `/v2/states.json` would be `https://api.covdactnow.org/v2/states.json?apiKey=YOUR_API_KEY`. 
+- When querying a specific state, states are required to be upper case. 
 
-We are now requiring an API key to access the data. All requests should include an
-`apiKey` query parameter to authenticate.
-
-Sign up [here](/access) to get an API key.
-
-```diff
-- https://data.covidactnow.org/latest/states.json
-+ https://api.covidactnow.org/v2/states.json?apiKey={apiKey}
-```
-
-### Interventions are no longer included at the route level
-We no longer surface projections by intervention.
-
-Here are examples of API endpoint changes:
-```diff
-- https://data.covidactnow.org/latest/state/{state}.{intervention}.json
-+ https://api.covidactnow.org/v2/state/{state}.json?apiKey={apiKey}
-```
-```diff
-- https://data.covidactnow.org/latest/county/{fips}.{intervention}.json
-+ https://api.covidactnow.org/v2/county/{fips}.json?apiKey={apiKey}
-```
-```diff
-- https://data.covidactnow.org/latest/counties.{intervention}.json
-+ https://api.covidactnow.org/v2/counties.json?apiKey={apiKey}
-```
-```diff
-- https://data.covidactnow.org/latest/states.{intervention}.json
-+ https://api.covidactnow.org/v2/states.json?apiKey={apiKey}
-```
-
-### Projections deprecated
-
-The projections and projections timeseries are not included in the new API.
-If you still need access to our intervention projection models, please use the [V1 API](https://github.com/covid-projections/covid-data-model/blob/main/api/README.V1.md).
-
-As our projection models evolve, we are planning on adding projections back in, but they may look
-different than the old format.
-
-### Fields renamed
-
-Many fields have been slightly renamed for clarity.  Double check the [API Reference](/api) for details.
-
-### States reported by state code
-States are now reported by the 2-letter state code rather than the full state name.
