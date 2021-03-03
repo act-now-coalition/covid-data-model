@@ -208,6 +208,55 @@
         }
       ]
     },
+    "/state/{state}.timeseries.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "State Data"
+        ],
+        "summary": "Single State Timeseries CSV",
+        "description": "Region Summary with Timeseries for a single state.",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "state",
+          "in": "path",
+          "description": "2 Letter State Cocde",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
     "/cbsa/{cbsa_code}.json?apiKey={apiKey}": {
       "get": {
         "tags": [
