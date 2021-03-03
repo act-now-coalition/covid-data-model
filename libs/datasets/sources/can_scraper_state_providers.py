@@ -6,24 +6,6 @@ from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 class CANScraperStateProviders(data_source.CanScraperBase):
     SOURCE_TYPE = "CANScrapersStateProviders"
 
-    EXPECTED_FIELDS = [
-        CommonFields.STAFFED_BEDS,
-        CommonFields.CASES,
-        CommonFields.DEATHS,
-        CommonFields.VACCINES_ALLOCATED,
-        CommonFields.VACCINES_ADMINISTERED,
-        CommonFields.VACCINES_DISTRIBUTED,
-        CommonFields.VACCINATIONS_INITIATED,
-        CommonFields.VACCINATIONS_COMPLETED,
-        CommonFields.TOTAL_TESTS_VIRAL,
-        CommonFields.ICU_BEDS,
-        CommonFields.CURRENT_HOSPITALIZED,
-        CommonFields.POSITIVE_TESTS_VIRAL,
-        CommonFields.CURRENT_ICU,
-        CommonFields.VACCINATIONS_INITIATED_PCT,
-        CommonFields.VACCINATIONS_COMPLETED_PCT,
-    ]
-
     VARIABLES = [
         ccd_helpers.ScraperVariable(variable_name="pcr_tests_negative", provider="state"),
         ccd_helpers.ScraperVariable(variable_name="unspecified_tests_total", provider="state"),

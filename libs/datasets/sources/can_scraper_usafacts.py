@@ -8,11 +8,6 @@ from libs.datasets import data_source
 class CANScraperUSAFactsProvider(data_source.CanScraperBase):
     SOURCE_TYPE = "USAFacts"
 
-    EXPECTED_FIELDS = [
-        CommonFields.CASES,
-        CommonFields.DEATHS,
-    ]
-
     VARIABLES = [
         ccd_helpers.ScraperVariable(
             variable_name="cases",

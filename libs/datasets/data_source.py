@@ -1,4 +1,6 @@
+import abc
 import pathlib
+from typing import Collection
 from typing import List
 from typing import Optional
 from typing import Union
@@ -28,12 +30,12 @@ class DataSource(object):
     # Attributes set in subclasses and copied to a taglib.Source
     # TODO(tom): Make SOURCE_TYPE an enum when cleaning the mess that is subclasses of DataSource.
     # DataSource class name
-    SOURCE_TYPE: str = None
+    SOURCE_TYPE: str
     SOURCE_NAME: Optional[str] = None
     SOURCE_URL: Optional[UrlStr] = None
 
     # Fields expected to be in the DataFrame loaded by common_df.read_csv
-    EXPECTED_FIELDS: Optional[List[CommonFields]] = None
+    EXPECTED_FIELDS: List[CommonFields]
 
     # Path of the CSV to be loaded by the default `make_dataset` implementation.
     COMMON_DF_CSV_PATH: Optional[Union[pathlib.Path, str]] = None
@@ -82,9 +84,17 @@ class DataSource(object):
         return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all(cls.source_tag())
 
 
+# TODO(tom): Once using Python 3.9 replace all this metaclass stuff with @classmethod and
+#  @property on an EXPECTED_FIELDS method in CanScraperBase
+class _CanScraperBaseMeta(type(abc.ABC)):
+    @property
+    def EXPECTED_FIELDS(cls):
+        return [v.common_field for v in cls.VARIABLES if v.common_field is not None]
+
+
 # TODO(tom): Clean up the mess that is subclasses of DataSource and
 #  instances of DataSourceAndRegionMasks
-class CanScraperBase(DataSource):
+class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
     # Must be set in subclasses.
     VARIABLES: List[ccd_helpers.ScraperVariable]
 
@@ -102,8 +112,7 @@ class CanScraperBase(DataSource):
     @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         """Default implementation of make_dataset that loads data from the parquet file."""
-        assert cls.VARIABLES
-        ccd_dataset = CanScraperBase._get_covid_county_dataset()
+        ccd_dataset = cls._get_covid_county_dataset()
         data, source_df = ccd_dataset.query_multiple_variables(
             cls.VARIABLES, log_provider_coverage_warnings=True, source_type=cls.SOURCE_TYPE
         )

@@ -6,14 +6,6 @@ from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 class CDCVaccinesDataset(data_source.CanScraperBase):
     SOURCE_TYPE = "CDCVaccine"
 
-    EXPECTED_FIELDS = [
-        CommonFields.VACCINES_ADMINISTERED,
-        CommonFields.VACCINES_ALLOCATED,
-        CommonFields.VACCINES_DISTRIBUTED,
-        CommonFields.VACCINATIONS_INITIATED,
-        CommonFields.VACCINATIONS_COMPLETED,
-    ]
-
     VARIABLES = [
         ccd_helpers.ScraperVariable(
             variable_name="total_vaccine_allocated",

@@ -1,26 +1,11 @@
-import abc
-import inspect
-from typing import Iterable
-from typing import Type
-
 from libs.datasets import taglib
 from libs.datasets import timeseries
-
-
-def _get_subclasses(cls) -> Iterable[Type]:
-    """Yields all subclasses of `cls`."""
-    # From https://stackoverflow.com/a/33607093
-    for subclass in cls.__subclasses__():
-        yield from _get_subclasses(subclass)
-        yield subclass
+from tests import test_helpers
 
 
 def _get_subclass_tag_types(cls):
-    """Returns a list of all TAG_TYPE subclasses of concrete subclasses of cls. By concrete I
-    mean no abstract methods and not directly subclassing abc.ABC."""
-    not_abstract_subclasses = [k for k in _get_subclasses(cls) if not inspect.isabstract(k)]
-    not_abc = [k for k in not_abstract_subclasses if abc.ABC not in k.__bases__]
-    return [k.TAG_TYPE for k in not_abc]
+    """Returns a list of all TAG_TYPE subclasses of concrete subclasses of cls."""
+    return [k.TAG_TYPE for k in test_helpers.get_concrete_subclasses(cls)]
 
 
 def test_all_tag_subclasses_accounted_for():
