@@ -9,6 +9,7 @@ import pyseir.run
 from libs.metrics import test_positivity
 from libs.pipelines.api_v2_paths import APIOutputPathBuilder
 from libs.pipelines.api_v2_paths import FileType
+from libs.pipelines import csv_column_ordering
 from api.can_api_v2_definition import AggregateRegionSummary
 from api.can_api_v2_definition import AggregateRegionSummaryWithTimeseries
 from api.can_api_v2_definition import Metrics
@@ -20,6 +21,7 @@ from libs.metrics import top_level_metric_risk_levels
 from libs import parallel_utils
 from libs import pipeline
 from libs import build_api_v2
+
 from libs.datasets import timeseries
 from libs.datasets import vaccine_backfills
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -228,19 +230,7 @@ def deploy_bulk_files(
     flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
 
     output_path = path_builder.bulk_flattened_timeseries_data(FileType.CSV, state=state)
-    deploy_csv_api_output(
-        flattened_timeseries,
-        output_path,
-        keys_to_skip=[
-            "actuals.date",
-            "metrics.date",
-            "annotations",
-            # TODO: Remove once solution to prevent order of CSV Columns from changing is done.
-            # https://trello.com/c/H8PPYLFD/818-preserve-ordering-of-csv-columns
-            "metrics.vaccinationsInitiatedRatio",
-            "metrics.vaccinationsCompletedRatio",
-        ],
-    )
+    deploy_csv_api_output(flattened_timeseries, output_path, csv_column_ordering.TIMESERIES_ORDER)
 
     output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON, state=state)
     deploy_json_api_output(bulk_timeseries, output_path)
@@ -249,17 +239,7 @@ def deploy_bulk_files(
     deploy_json_api_output(bulk_summaries, output_path)
 
     output_path = path_builder.bulk_summary(bulk_summaries, FileType.CSV, state=state)
-    deploy_csv_api_output(
-        bulk_summaries,
-        output_path,
-        keys_to_skip=[
-            "annotations",
-            # TODO: Remove once solution to prevent order of CSV Columns from changing is done.
-            # https://trello.com/c/H8PPYLFD/818-preserve-ordering-of-csv-columns
-            "metrics.vaccinationsInitiatedRatio",
-            "metrics.vaccinationsCompletedRatio",
-        ],
-    )
+    deploy_csv_api_output(bulk_summaries, output_path, csv_column_ordering.SUMMARY_ORDER)
 
 
 def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathlib.Path) -> None:
@@ -291,16 +271,14 @@ def _model_to_dict(data: dict):
 
 
 def deploy_csv_api_output(
-    api_output: pydantic.BaseModel,
-    output_path: pathlib.Path,
-    keys_to_skip: Optional[List[str]] = None,
+    api_output: pydantic.BaseModel, output_path: pathlib.Path, columns: List[str]
 ) -> None:
     if not hasattr(api_output, "__root__"):
         raise AssertionError("Missing root data")
 
     data = _model_to_dict(api_output.__dict__)
     rows = dataset_deployer.remove_root_wrapper(data)
-    dataset_deployer.write_nested_csv(rows, output_path, keys_to_skip=keys_to_skip)
+    dataset_deployer.write_nested_csv(rows, output_path, header=columns)
 
 
 def generate_from_loaded_data(

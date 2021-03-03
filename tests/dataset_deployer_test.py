@@ -11,10 +11,19 @@ def test_flatten_dict():
     assert results == expected
 
 
-def test_write_nested_csv_with_skipped_keys(tmp_path):
+def test_write_nested_csv_with_specified_header(tmp_path):
     output_path = tmp_path / "output.csv"
 
     data = [{"foo": {"bar": 1, "baz": 2}, "bar": {"baz": 1}}]
-    dataset_deployer.write_nested_csv(data, output_path, keys_to_skip=["foo.bar", "bar"])
+    dataset_deployer.write_nested_csv(data, output_path, header=["foo.baz"])
     header = output_path.read_text().split("\n")[0]
     assert header == "foo.baz"
+
+
+def test_write_nested_csv_without_header(tmp_path):
+    output_path = tmp_path / "output.csv"
+
+    data = [{"foo": {"bar": 1, "baz": 2}, "bar": {"baz": 1}}]
+    dataset_deployer.write_nested_csv(data, output_path)
+    header = output_path.read_text().split("\n")[0]
+    assert header == "foo.bar,foo.baz,bar.baz"
