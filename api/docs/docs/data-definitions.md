@@ -20,6 +20,7 @@ Read more about the data included in the Covid Act Now API.
 
   New confirmed or suspected cases.
 
+
 New cases are a processed timeseries of cases - summing new cases may not equal
 the cumulative case count.
 

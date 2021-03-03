@@ -1,0 +1,58 @@
+{
+  "title": "FieldSource",
+  "description": "Base model for API output.",
+  "type": "object",
+  "properties": {
+    "type": {
+      "description": "The type of data source from a CAN list of data source types",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldSourceType"
+        }
+      ]
+    },
+    "url": {
+      "title": "Url",
+      "description": "URL of a webpage containing the data at the source",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "title": "Name",
+      "description": "A human readable name of the source",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "FieldSourceType": {
+      "title": "FieldSourceType",
+      "description": "The data source of a field (metric or actual). This enumeration lists the places from which\nCAN fetches data. The source is tracked on a per field and region timeseries basis.",
+      "enum": [
+        "NYTimes",
+        "CMSTesting",
+        "CDCTesting",
+        "HHSTesting",
+        "HHSHospital",
+        "Valorum",
+        "covid_tracking",
+        "USAFacts",
+        "TestAndTrace",
+        "CANScrapersStateProviders",
+        "other"
+      ]
+    }
+  }
+}
