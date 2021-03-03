@@ -1,9 +1,8 @@
 ---
 id: migration
-title: Migrating from The Covid Tracking Project
+title: Covid Tracking Migration Guide
 description: Migrating from the Covid Tracking Project
 ---
-
 
 On March 7th, [The Covid Tracking Project](https://covidtracking.com) (CTP) will be winding down their daily updates. Throughout the pandemic they have provided an amazing service and resource with their daily data collection and in-depth reporting. We think the Covid Act Now API can be a helpful resource to those looking for similar data.
 
