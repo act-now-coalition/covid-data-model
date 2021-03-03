@@ -180,8 +180,13 @@ class Source(TagInTimeseries):
     def attribute_df_to_json_series(attribute_df: pd.DataFrame) -> pd.Series:
         """Turns a pd.DataFrame of attributes in columns into a pd.Series with the same index."""
         assert attribute_df.columns.isin([f.name for f in dataclasses.fields(Source)]).all()
+        # Convert any kind of NA into an empty string so that join/merge below works. Currently
+        # it doesn't work because copying NA between column and index changes it from np.nan to
+        # NA (or something like that). We could fix this by changing to consistent use of np.nan
+        # but that depends on buggy behavior documented at https://stackoverflow.com/a/53719315.
+        # Instead convert to empty string and let Source.__init__ convert that back to None.
+        attribute_df = attribute_df.fillna("")
         attribute_columns = attribute_df.columns.to_list()
-        # TODO(tom): Somehow make sure every element in attribute_df is a non-empty str or None.
         # Use slow Source.content instead of something like https://stackoverflow.com/a/64700027
         # because Pandas to_json encodes slightly differently, breaking tests that compare JSON
         # objects as strings.
