@@ -220,6 +220,7 @@ def test_dataclass_include_exclude():
     ny_source = combined_datasets.datasource_regions(
         orig_data_source_cls, RegionMask(states=["NY"])
     )
+    # pylint: disable=E1101
     assert ny_source.SOURCE_TYPE == orig_data_source_cls.SOURCE_TYPE
     assert ny_source.EXPECTED_FIELDS == orig_data_source_cls.EXPECTED_FIELDS
     ny_ds = ny_source.make_dataset()
