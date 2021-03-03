@@ -202,20 +202,20 @@ def test_source(rt_dataset, icu_dataset):
     deaths_url = UrlStr("http://can.com/death_source")
     cases_urls = [UrlStr("http://can.com/one"), UrlStr("http://can.com/two")]
     new_cases_url = UrlStr("http://can.com/new_cases")
-    deaths_source = taglib.Source("USAFacts", deaths_url, "*The* USA Facts")
+    deaths_source = taglib.Source("USAFacts", url=deaths_url, name="*The* USA Facts")
 
     ds = test_helpers.build_default_region_dataset(
         {
             CommonFields.CASES: TimeseriesLiteral(
                 [100, 200, 300],
                 source=[
-                    taglib.Source("NYTimes", cases_urls[0]),
-                    taglib.Source("NYTimes", cases_urls[1]),
+                    taglib.Source("NYTimes", url=cases_urls[0]),
+                    taglib.Source("NYTimes", url=cases_urls[1]),
                 ],
             ),
             # NEW_CASES has only source_url set, to make sure that an annotation is still output.
             CommonFields.NEW_CASES: TimeseriesLiteral(
-                [100, 100, 100], source=taglib.Source("NYTimes", new_cases_url)
+                [100, 100, 100], source=taglib.Source("NYTimes", url=new_cases_url)
             ),
             CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
             CommonFields.ICU_BEDS: TimeseriesLiteral(
