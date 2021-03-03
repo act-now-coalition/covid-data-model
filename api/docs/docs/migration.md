@@ -2,7 +2,7 @@
 id: migration
 title: Covid Tracking Migration Guide
 description: Migrating from the Covid Tracking Project
-image: /img/can_logo.png
+image: /img/migration_guide.png
 ---
 
 On March 7th, [The Covid Tracking Project](https://covidtracking.com) (CTP) will be winding down their daily updates. Throughout the pandemic they have provided an amazing service and resource with their daily data collection and in-depth reporting. For those looking for a replacement, the Covid Act Now API can be used to serve many of the same use cases.
@@ -15,19 +15,19 @@ Our API powers all data available on [covidactnow.org](https://covidactnow.org) 
 
 In general, the Covid Act Now API provides much of the same data as The Covid Tracking Project. However there are some differences:
 
-**County and metro data**  
+#### County and metro data
 In addition to state-level data as was provided by Covid Tracking Project, we also provide county and metro data where available. Typically county data is not as complete as state data but coverage is improving. Our county data is collected from a wide variety of sources that include federal, state, and local dashboards.
 
-M**etrics and risk levels**  
+#### Metrics and risk levels  
 We calculate metrics and risk levels derived from the raw data. These metrics include daily new cases per 100k, infection rate (R_t), test positivity, percent of population vaccinated, and ICU utilization.
 
-**Vaccination data**  
+#### Vaccination data
 Our API includes vaccination data. We include doses distributed, vaccinations initiated, and vaccinations completed.
 
-**Testing data**  
+#### Testing data
 For testing data, we focus on test positivity via PCR specimens which has become the standard metric tracked by most health departments. We have positive and negative PCR tests for all states and a computed test positivity percentage for all states and most counties.
 
-**Hospitalization data**  
+#### Hospitalization data
 We currently ingest hospitalization data at the state and county level from HHS. For both ICU and overall hospitalization we include total staffed beds, beds in use by COVID patients, and total beds in use.
 
 Many of the fields in the Covid Tracking API do overlap. Cases, deaths, and hospitalization/ICU data have the largest commonalities.

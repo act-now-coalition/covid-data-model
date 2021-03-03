@@ -44,7 +44,7 @@
   
   /* ------ Schema Styling Overrides ------- */
   
-  .redocusaurus table th, table td {
+  .redocusaurus table th, .redocusaurus table td {
     border: none;
   }
   
