@@ -131,7 +131,7 @@ class CanScraperLoader:
         # Use join on because it preserves the indexed_df index
         rv = (
             indexed_df.join(all_ares, on=demo_columns)
-            .set_index(DEMOGRAPHIC_BUCKET)
+            .set_index(DEMOGRAPHIC_BUCKET, append=True)
             .droplevel(demo_columns)
         )
         return rv
@@ -168,8 +168,9 @@ class CanScraperLoader:
                 assert variable.measurement
                 assert variable.unit
 
+            indexed_df = self.indexed_df
             try:
-                selected_data[variable.common_field] = self.indexed_df.loc(axis=0)[
+                selected_data[variable.common_field] = indexed_df.loc(axis=0)[
                     variable.provider, variable.variable_name, variable.measurement, variable.unit
                 ]
             except KeyError:
@@ -199,7 +200,7 @@ class CanScraperLoader:
             )
 
         tag_df = taglib.Source.rename_and_make_tag_df(
-            indexed.loc(axis=0)[:, :, "all"],
+            indexed.xs("all", axis=0, level=DEMOGRAPHIC_BUCKET, drop_level=True),
             source_type=source_type,
             rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
         )

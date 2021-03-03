@@ -1,7 +1,6 @@
 import dataclasses
 import itertools
 from typing import Dict, List
-import io
 import datetime
 from typing import Iterable
 from typing import Iterator
@@ -10,25 +9,21 @@ from typing import Union
 
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic import common_df
 import pandas as pd
-from covidactnow.datapublic.common_fields import PdFields
 
-from libs import pipeline
 from libs.datasets import data_source
 from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
-
-# Match fields in the CAN Scraper DB
-from libs.datasets.sources import can_scraper_usafacts
 from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral
 
+
 DEFAULT_LOCATION = "36"
 DEFAULT_LOCATION_TYPE = "state"
+DEFAULT_LOCATION_ID = Region.from_fips(DEFAULT_LOCATION).location_id
 DEFAULT_START_DATE = test_helpers.DEFAULT_START_DATE
 
 
@@ -226,13 +221,3 @@ def test_query_multiple_variables_duplicate_observation():
     data = ccd_helpers.CanScraperLoader(pd.concat([input_data, input_data]))
     with pytest.raises(NotImplementedError):
         data.query_multiple_variables([variable], source_type="MySource")
-
-
-def test_single_provider_per_class():
-    cls: data_source.CanScraperBase
-    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
-        providers = set(v.provider for v in cls.VARIABLES)
-        assert len(providers) == 1
-
-        variable_names = set(v.variable_name for v in cls.VARIABLES)
-        assert len(variable_names) == len(cls.VARIABLES)
