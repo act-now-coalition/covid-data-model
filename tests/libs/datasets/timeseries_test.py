@@ -839,6 +839,7 @@ def test_timeseries_latest_values_copied_to_static():
         dataset.latest_in_static(s1)
 
 
+@pytest.mark.needsempty
 def test_join_columns():
     ts_1 = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -945,6 +946,7 @@ def test_join_columns_missing_regions():
     test_helpers.assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
 
 
+@pytest.mark.needsempty
 def test_iter_one_region():
     ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1008,6 +1010,7 @@ def test_drop_regions_without_population():
     assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20200"]]
 
 
+@pytest.mark.needsempty
 def test_merge_provenance():
     ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -1573,3 +1576,7 @@ def test_make_source_url_tags_has_source_url():
     )
     with pytest.raises(AssertionError):
         timeseries.make_source_url_tags(dataset_in)
+
+
+def test_check_timeseries_wide_vars_structure_empty():
+    timeseries._check_timeseries_wide_vars_structure(timeseries.EMPTY_TIMESERIES_WIDE_VARIABLES_DF)

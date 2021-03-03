@@ -66,6 +66,7 @@ def test_aggregate():
     }
 
 
+@pytest.mark.needsempty
 @pytest.mark.parametrize("reporting_ratio,expected_na", [(0.8, False), (0.91, True)])
 def test_aggregate_reporting_ratio(reporting_ratio, expected_na):
     ny_region = Region.from_state("NY")

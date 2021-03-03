@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+import pytest
 import structlog
 from covidactnow.datapublic.common_fields import CommonFields
 
@@ -141,6 +142,7 @@ def test_calculate_test_positivity_extra_day():
     pd.testing.assert_series_equal(positive_rate, expected)
 
 
+@pytest.mark.needsempty
 def test_top_level_metrics_basic():
     metrics = {
         CommonFields.CASES: [10, 20, None, 40],
@@ -179,6 +181,7 @@ def test_top_level_metrics_basic():
     pd.testing.assert_frame_equal(expected, results)
 
 
+@pytest.mark.needsempty
 def test_top_level_metrics_incomplete_latest():
     region_ny = Region.from_state("NY")
     # This test doesn't have ICU_BEDS set in `latest`. It checks that the metrics are still built.

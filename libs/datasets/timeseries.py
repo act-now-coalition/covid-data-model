@@ -305,6 +305,30 @@ EMPTY_TIMESERIES_LONG_SERIES = pd.Series(
 )
 
 
+def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame):
+    """Asserts that a DataFrame has the structure expected with wide-variable columns. For now
+    these are expected to not have a demographic bucket column."""
+    assert wide_vars_df.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    assert wide_vars_df.index.is_unique
+    assert wide_vars_df.index.is_monotonic_increasing
+    assert wide_vars_df.columns.names == [PdFields.VARIABLE]
+    numeric_columns = wide_vars_df.dtypes.apply(is_numeric_dtype)
+    assert numeric_columns.all()
+
+
+def _timeseries_wide_vars_to_long(wide_vars_df: pd.DataFrame) -> pd.Series:
+    if wide_vars_df.empty:
+        return EMPTY_TIMESERIES_LONG_SERIES
+    else:
+        _check_timeseries_wide_vars_structure(wide_vars_df)
+        return (
+            wide_vars_df.assign(**{PdFields.DEMOGRAPHIC_BUCKET: "all"})
+            .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)
+            .stack()
+            .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
+        )
+
+
 # eq=False because instances are large and we want to compare by id instead of value
 @final
 @dataclass_with_default_init(frozen=True, eq=False)
@@ -341,15 +365,7 @@ class MultiRegionDataset:
         **kwargs,
     ):
         if timeseries is not None:
-            if timeseries.empty:
-                timeseries_long = EMPTY_TIMESERIES_LONG_SERIES
-            else:
-                timeseries_long = (
-                    timeseries.assign(**{PdFields.DEMOGRAPHIC_BUCKET: "all"})
-                    .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)
-                    .stack()
-                    .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
-                )
+            timeseries_long = _timeseries_wide_vars_to_long(timeseries)
 
         self.__default_init__(  # pylint: disable=E1101
             *args, timeseries_long=timeseries_long, **kwargs,
@@ -463,22 +479,18 @@ class MultiRegionDataset:
     @staticmethod
     def from_timeseries_long(timeseries_long: pd.Series) -> "MultiRegionDataset":
         """Make a new dataset from a Series of values."""
-        assert timeseries_long.index.names == [
-            CommonFields.LOCATION_ID,
-            PdFields.VARIABLE,
-            CommonFields.DATE,
-        ] or timeseries_long.index.names == [
-            CommonFields.LOCATION_ID,
-            PdFields.VARIABLE,
-            PdFields.DEMOGRAPHIC_BUCKET,
-            CommonFields.DATE,
-        ]
+        if PdFields.DEMOGRAPHIC_BUCKET not in timeseries_long.index.names:
+            # There is similar logic in _timeseries_wide_vars_to_long but it starts with a DataFrame
+            timeseries_long = (
+                timeseries_long.to_frame()
+                .assign(**{PdFields.DEMOGRAPHIC_BUCKET: "all"})
+                .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)[PdFields.VALUE]
+                .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
+            )
 
-        assert timeseries_long.name == PdFields.VALUE
-        assert is_numeric_dtype(timeseries_long.dtype)
+        assert timeseries_long.index.names == EMPTY_TIMESERIES_LONG_SERIES.index.names
 
-        timeseries_wide_variables = timeseries_long.unstack(PdFields.VARIABLE).sort_index()
-        return MultiRegionDataset(timeseries=timeseries_wide_variables)
+        return MultiRegionDataset(timeseries_long=timeseries_long)
 
     @staticmethod
     def from_geodata_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -660,12 +672,8 @@ class MultiRegionDataset:
         # These asserts provide runtime-checking and a single place for humans reading the code to
         # check what is expected of the attributes, beyond type.
         # timeseries.index order is important for _timeseries_latest_values correctness.
-        assert self.timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-        assert self.timeseries.index.is_unique
-        assert self.timeseries.index.is_monotonic_increasing
-        assert self.timeseries.columns.names == [PdFields.VARIABLE]
-        numeric_columns = self.timeseries.dtypes.apply(is_numeric_dtype)
-        assert numeric_columns.all()
+        _check_timeseries_wide_vars_structure(self.timeseries)
+
         assert self.static.index.names == [CommonFields.LOCATION_ID]
         assert self.static.index.is_unique
         assert self.static.index.is_monotonic_increasing
