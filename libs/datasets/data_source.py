@@ -1,3 +1,4 @@
+import abc
 import pathlib
 from typing import Collection
 from typing import List
@@ -29,12 +30,12 @@ class DataSource(object):
     # Attributes set in subclasses and copied to a taglib.Source
     # TODO(tom): Make SOURCE_TYPE an enum when cleaning the mess that is subclasses of DataSource.
     # DataSource class name
-    SOURCE_TYPE: str = None
+    SOURCE_TYPE: str
     SOURCE_NAME: Optional[str] = None
     SOURCE_URL: Optional[UrlStr] = None
 
     # Fields expected to be in the DataFrame loaded by common_df.read_csv
-    EXPECTED_FIELDS: Optional[List[CommonFields]] = None
+    EXPECTED_FIELDS: List[CommonFields]
 
     # Path of the CSV to be loaded by the default `make_dataset` implementation.
     COMMON_DF_CSV_PATH: Optional[Union[pathlib.Path, str]] = None
@@ -50,8 +51,8 @@ class DataSource(object):
         return taglib.Source(type=cls.SOURCE_TYPE, url=cls.SOURCE_URL, name=cls.SOURCE_NAME)
 
     @classmethod
-    def _check_data(cls, data: pd.DataFrame, expected_fields: Collection[str]):
-        expected_fields = pd.Index({*expected_fields, *TIMESERIES_INDEX_FIELDS})
+    def _check_data(cls, data: pd.DataFrame):
+        expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
         # Keep only the expected fields.
         found_expected_fields = data.columns.intersection(expected_fields)
         data = data[found_expected_fields]
@@ -79,13 +80,21 @@ class DataSource(object):
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.COMMON_DF_CSV_PATH
         data = common_df.read_csv(input_path, set_index=False)
-        data = cls._check_data(data, cls.EXPECTED_FIELDS)
+        data = cls._check_data(data)
         return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all(cls.source_tag())
+
+
+# TODO(tom): Once using Python 3.9 replace all this metaclass stuff with @classmethod and
+#  @property on an EXPECTED_FIELDS method in CanScraperBase
+class _CanScraperBaseMeta(type(abc.ABC)):
+    @property
+    def EXPECTED_FIELDS(cls):
+        return [v.common_field for v in cls.VARIABLES if v.common_field is not None]
 
 
 # TODO(tom): Clean up the mess that is subclasses of DataSource and
 #  instances of DataSourceAndRegionMasks
-class CanScraperBase(DataSource):
+class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
     # Must be set in subclasses.
     VARIABLES: List[ccd_helpers.ScraperVariable]
 
@@ -108,8 +117,7 @@ class CanScraperBase(DataSource):
             cls.VARIABLES, log_provider_coverage_warnings=True, source_type=cls.SOURCE_TYPE
         )
         data = cls.transform_data(data)
-        expected_fields = [v.common_field for v in cls.VARIABLES if v.common_field is not None]
-        data = cls._check_data(data, expected_fields)
+        data = cls._check_data(data)
         ds = MultiRegionDataset.from_fips_timeseries_df(data)
         if not source_df.empty:
             # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.
