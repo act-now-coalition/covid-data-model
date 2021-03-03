@@ -21,6 +21,8 @@ from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import PdFields
 from covidactnow.datapublic.common_fields import ValueAsStrMixin
 
+from libs.dataclass_utils import dataclass_with_default_init
+
 
 @enum.unique
 class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
@@ -133,13 +135,16 @@ class SourceUrl(TagInTimeseries):
         return self.source
 
 
-@dataclass(frozen=True)
+@dataclass_with_default_init(frozen=True)
 class Source(TagInTimeseries):
     type: str
     url: Optional[UrlStr] = None
     name: Optional[str] = None
 
     TAG_TYPE = TagType.SOURCE
+
+    def __init__(self, type, *, url=None, name=None):
+        self.__default_init__(type=type, url=(url or None), name=(name or None))
 
     @staticmethod
     def rename_and_make_tag_df(
