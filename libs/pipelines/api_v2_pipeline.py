@@ -205,6 +205,17 @@ def deploy_single_level(
     for timeseries in all_timeseries:
         output_path = path_builder.single_timeseries(timeseries, FileType.JSON)
         deploy_json_api_output(timeseries, output_path)
+        # TODO(chris): Remove this state specific block and produce timeseries csvs for all
+        # individual regions.
+        # Currently this is slow and adds a decent amount of time to the pipeline (~10 minutes
+        # I think) if ran on all regions.
+        if level is AggregationLevel.STATE:
+            output_path = path_builder.single_timeseries(timeseries, FileType.CSV)
+            bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=[timeseries])
+            flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
+            deploy_csv_api_output(
+                flattened_timeseries, output_path, csv_column_ordering.TIMESERIES_ORDER
+            )
 
     deploy_bulk_files(path_builder, all_timeseries, all_summaries)
 

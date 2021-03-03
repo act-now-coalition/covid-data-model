@@ -85,7 +85,7 @@ def test_build_timeseries_and_summary_outputs_for_il_state_with_empty_test_posti
     assert timeseries
 
 
-def test_build_api_output_for_intervention(nyc_regional_input, tmp_path):
+def test_build_api_output_for_county(nyc_regional_input, tmp_path):
     county_output = tmp_path
     all_timeseries_api = api_v2_pipeline.run_on_regions([nyc_regional_input])
 
@@ -101,6 +101,27 @@ def test_build_api_output_for_intervention(nyc_regional_input, tmp_path):
         "county/NY.timeseries.csv",
         "county/NY.json",
         "county/NY.csv",
+    ]
+
+    output_paths = [
+        str(path.relative_to(tmp_path)) for path in tmp_path.glob("**/*") if not path.is_dir()
+    ]
+    assert set(output_paths) == set(expected_outputs)
+
+
+def test_build_api_output_for_state(il_regional_input, tmp_path):
+    county_output = tmp_path
+    all_timeseries_api = api_v2_pipeline.run_on_regions([il_regional_input])
+
+    api_v2_pipeline.deploy_single_level(all_timeseries_api, AggregationLevel.STATE, county_output)
+    expected_outputs = [
+        "states.timeseries.json",
+        "states.csv",
+        "states.timeseries.csv",
+        "states.json",
+        "state/IL.timeseries.json",
+        "state/IL.timeseries.csv",
+        "state/IL.json",
     ]
 
     output_paths = [
