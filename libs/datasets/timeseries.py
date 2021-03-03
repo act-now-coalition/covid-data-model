@@ -305,12 +305,16 @@ EMPTY_TIMESERIES_LONG_SERIES = pd.Series(
 )
 
 
+def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex):
+    assert timeseries_index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    assert timeseries_index.is_unique
+    assert timeseries_index.is_monotonic_increasing
+
+
 def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame):
     """Asserts that a DataFrame has the structure expected with wide-variable columns. For now
     these are expected to not have a demographic bucket column."""
-    assert wide_vars_df.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    assert wide_vars_df.index.is_unique
-    assert wide_vars_df.index.is_monotonic_increasing
+    _check_timeseries_wide_vars_index(wide_vars_df.index)
     assert wide_vars_df.columns.names == [PdFields.VARIABLE]
     numeric_columns = wide_vars_df.dtypes.apply(is_numeric_dtype)
     assert numeric_columns.all()
@@ -347,7 +351,9 @@ class MultiRegionDataset:
     # Timeseries metrics with float values.
     timeseries_long: pd.DataFrame
 
-    variables: Optional[Sequence[CommonFields]]
+    variables: Optional[pd.Index]
+
+    timeseries_index: Optional[pd.MultiIndex]
 
     # Static data, each identified by variable name and region. This includes county name,
     # state etc (GEO_DATA_COLUMNS) and metrics that change so slowly they can be
@@ -364,16 +370,22 @@ class MultiRegionDataset:
         *,
         timeseries: Optional[pd.DataFrame] = None,
         timeseries_long: Optional[pd.Series] = None,
-        variables: Optional[Sequence[CommonFields]] = None,
+        variables: Optional[pd.Index] = None,
+        timeseries_index: Optional[pd.MultiIndex] = None,
         **kwargs,
     ):
         if timeseries is not None:
             timeseries_long = _timeseries_wide_vars_to_long(timeseries)
             if variables is None:
                 variables = timeseries.columns
+            if timeseries_index is None:
+                timeseries_index = timeseries.index
 
         self.__default_init__(  # pylint: disable=E1101
-            timeseries_long=timeseries_long, variables=variables, **kwargs,
+            timeseries_long=timeseries_long,
+            variables=variables,
+            timeseries_index=timeseries_index,
+            **kwargs,
         )
 
     @cached_property
@@ -395,6 +407,9 @@ class MultiRegionDataset:
                 dtype="float",
             )
             wide_var_df = pd.concat([wide_var_df, missing_empty_columns], axis=1)
+        if self.timeseries_index is not None:
+            # TODO(tom): Update timeseries_index in places where regions are added and removed.
+            wide_var_df = wide_var_df.reindex(index=self.timeseries_index)
         return wide_var_df
 
     @property
@@ -689,6 +704,8 @@ class MultiRegionDataset:
         # check what is expected of the attributes, beyond type.
         # timeseries.index order is important for _timeseries_latest_values correctness.
         _check_timeseries_wide_vars_structure(self.timeseries)
+        if self.timeseries_index is not None:
+            _check_timeseries_wide_vars_index(self.timeseries_index)
 
         assert self.static.index.names == [CommonFields.LOCATION_ID]
         assert self.static.index.is_unique
