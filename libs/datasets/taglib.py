@@ -178,12 +178,28 @@ class Source(TagInTimeseries):
 
     @staticmethod
     def attribute_df_to_json_series(attribute_df: pd.DataFrame) -> pd.Series:
+        """Turns a pd.DataFrame of attributes in columns into a pd.Series with the same index."""
         assert attribute_df.columns.isin([f.name for f in dataclasses.fields(Source)]).all()
+        attribute_columns = attribute_df.columns.to_list()
         # TODO(tom): Somehow make sure every element in attribute_df is a non-empty str or None.
         # Use slow Source.content instead of something like https://stackoverflow.com/a/64700027
         # because Pandas to_json encodes slightly differently, breaking tests that compare JSON
         # objects as strings.
-        return attribute_df.apply(lambda row: Source(**row.to_dict()).content, axis=1)
+
+        # Make a pd.Series that has an index of the unique rows of attribute_df and values of
+        # Source.content (a JSON str). This is done so the very slow lambda is only called once
+        # per unique values. This speeds up 'data update' by several minutes. Too bad Pandas doesn't
+        # cache apply return values internally like it does for datetime conversion.
+        unique_contents = (
+            attribute_df.drop_duplicates()
+            .set_index(attribute_columns, drop=False)
+            .apply(lambda row: Source(**row.to_dict()).content, axis=1, result_type="reduce")
+            .rename(TagField.CONTENT)
+        )
+        assert unique_contents.index.names == attribute_columns
+        # Left join to return a pd.Series with the same index as attribute_df and values from
+        # unique_contents.
+        return attribute_df.join(unique_contents, on=attribute_columns)[TagField.CONTENT]
 
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
