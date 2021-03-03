@@ -101,6 +101,87 @@
           "$ref": "#/definitions/FieldAnnotations"
         }
       ]
+    },
+    "testPositivityRatio": {
+      "title": "Testpositivityratio",
+      "description": "Annotations for testPositivityRatio",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "caseDensity": {
+      "title": "Casedensity",
+      "description": "Annotations for caseDensity",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "contactTracerCapacityRatio": {
+      "title": "Contacttracercapacityratio",
+      "description": "Annotations for contactTracerCapacityRatio",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "infectionRate": {
+      "title": "Infectionrate",
+      "description": "Annotations for infectionRate",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "infectionRateCI90": {
+      "title": "Infectionrateci90",
+      "description": "Annotations for infectionRateCI90",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "icuHeadroomRatio": {
+      "title": "Icuheadroomratio",
+      "description": "Annotations for icuHeadroomRatio",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "icuCapacityRatio": {
+      "title": "Icucapacityratio",
+      "description": "Annotations for icuCapacityRatio",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "vaccinationsInitiatedRatio": {
+      "title": "Vaccinationsinitiatedratio",
+      "description": "Annotations for vaccinationsInitiatedRatio",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "vaccinationsCompletedRatio": {
+      "title": "Vaccinationscompletedratio",
+      "description": "Annotations for vaccinationsCompletedRatio",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
     }
   },
   "definitions": {

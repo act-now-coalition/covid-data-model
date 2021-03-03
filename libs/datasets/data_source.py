@@ -85,7 +85,8 @@ class DataSource(object):
 
 
 # TODO(tom): Once using Python 3.9 replace all this metaclass stuff with @classmethod and
-#  @property on an EXPECTED_FIELDS method in CanScraperBase
+#  @property on an EXPECTED_FIELDS method in CanScraperBase. Also try to remove the disable=E1101
+#  in many places in the code.
 class _CanScraperBaseMeta(type(abc.ABC)):
     @property
     def EXPECTED_FIELDS(cls):
@@ -114,7 +115,10 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
         """Default implementation of make_dataset that loads data from the parquet file."""
         ccd_dataset = cls._get_covid_county_dataset()
         rows_df, source_df = ccd_dataset.query_multiple_variables(
-            cls.VARIABLES, log_provider_coverage_warnings=True, source_type=cls.SOURCE_TYPE
+            # pylint: disable=E1101
+            cls.VARIABLES,
+            log_provider_coverage_warnings=True,
+            source_type=cls.SOURCE_TYPE,
         )
         # XXX(tom) --  Does this matter? -- XXX
         # data = cls.transform_data(data)

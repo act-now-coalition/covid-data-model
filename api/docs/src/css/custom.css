@@ -18,6 +18,14 @@
   /* CAN Colors */
   --ifm-color-primary: rgb(0, 208, 125);
   --ifm-link-color: rgb(59, 188, 230);
+
+  /* Table Settings */
+  --ifm-table-cell-padding: 10px;
+  --ifm-table-stripe-background: none;
+}
+
+table td {
+  border: var(--ifm-table-border-width) solid var(--ifm-table-border-color);
 }
 
 .pagination-nav__link:hover {

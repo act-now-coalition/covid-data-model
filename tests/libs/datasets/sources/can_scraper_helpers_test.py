@@ -1,6 +1,7 @@
 import dataclasses
 import itertools
 from typing import Dict, List
+import io
 import datetime
 from typing import Iterable
 from typing import Iterator
@@ -9,7 +10,9 @@ from typing import Union
 
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic import common_df
 import pandas as pd
+from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import data_source
 from libs.datasets import taglib
@@ -21,6 +24,7 @@ from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral
 
 
+# Match fields in the CAN Scraper DB
 DEFAULT_LOCATION = "36"
 DEFAULT_LOCATION_TYPE = "state"
 DEFAULT_LOCATION_ID = Region.from_fips(DEFAULT_LOCATION).location_id

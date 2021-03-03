@@ -5,7 +5,6 @@ import structlog
 
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets, CommonFields
-from libs.datasets import data_source
 from libs.datasets import timeseries
 from libs.datasets.combined_datasets import provenance_wide_metrics_to_series
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
@@ -16,7 +15,6 @@ from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvide
 
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
-from tests import test_helpers
 from tests.dataset_utils_test import read_csv_and_index_fips_date
 import pytest
 
@@ -219,6 +217,7 @@ def test_dataclass_include_exclude_attributes():
     ny_source = combined_datasets.datasource_regions(
         orig_data_source_cls, RegionMask(states=["NY"])
     )
+    # pylint: disable=E1101
     assert ny_source.SOURCE_TYPE == orig_data_source_cls.SOURCE_TYPE
     assert ny_source.EXPECTED_FIELDS == orig_data_source_cls.EXPECTED_FIELDS
 

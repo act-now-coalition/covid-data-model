@@ -144,6 +144,7 @@ class Source(TagInTimeseries):
     TAG_TYPE = TagType.SOURCE
 
     def __init__(self, type, *, url=None, name=None):
+        # pylint: disable=E1101
         self.__default_init__(type=type, url=(url or None), name=(name or None))
 
     @staticmethod
