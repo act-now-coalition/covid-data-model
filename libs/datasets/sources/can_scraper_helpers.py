@@ -113,7 +113,7 @@ class CanScraperLoader:
                 Fields.VARIABLE_NAME,
                 Fields.MEASUREMENT,
                 Fields.UNIT,
-                Fields.LOCATION,
+                Fields.LOCATION_ID,
                 Fields.AGE,
                 Fields.RACE,
                 Fields.ETHNICITY,
@@ -128,7 +128,7 @@ class CanScraperLoader:
             .apply(make_short_name, axis=1)
             .rename(DEMOGRAPHIC_BUCKET)
         )
-        # Use join on because it preserves the indexed_df index
+        # Use `join(other, on=...)` because it preserves the indexed_df index
         rv = (
             indexed_df.join(all_ares, on=demo_columns)
             .set_index(DEMOGRAPHIC_BUCKET, append=True)
@@ -156,22 +156,35 @@ class CanScraperLoader:
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
 
-        selected_data = {}
-        for variable in variables:
-            # Check that `variable` agrees with stuff in the ScraperVariable docstring.
-            if variable.common_field is None:
-                assert variable.measurement == ""
-                assert variable.unit == ""
-                continue
+        variables_drop, variables_return = [], []
+        for v in variables:
+            if v.common_field is None:
+                variables_drop.append(v)
             else:
-                # Must be set when copying to the return value
-                assert variable.measurement
-                assert variable.unit
+                variables_return.append(v)
 
-            indexed_df = self.indexed_df
+        # Check that `variable` agrees with stuff in the ScraperVariable docstring.
+        for v in variables_drop:
+            assert v.measurement == ""
+            assert v.unit == ""
+
+        selected_data = {}
+        indexed_df = self.indexed_df
+        assert indexed_df.index.names[0:4] == [
+            Fields.PROVIDER,
+            Fields.VARIABLE_NAME,
+            Fields.MEASUREMENT,
+            Fields.UNIT,
+        ]
+        #                                  Fields.LOCATION_ID, Fields.DATE, DEMOGRAPHIC_BUCKET]
+        for v in variables_return:
+            # Must be set when copying to the return value
+            assert v.measurement
+            assert v.unit
+
             try:
-                selected_data[variable.common_field] = indexed_df.loc(axis=0)[
-                    variable.provider, variable.variable_name, variable.measurement, variable.unit
+                selected_data[v.common_field] = indexed_df.loc(axis=0)[
+                    v.provider, v.variable_name, v.measurement, v.unit
                 ]
             except KeyError:
                 pass
@@ -184,10 +197,10 @@ class CanScraperLoader:
 
         indexed = (
             combined_rows.rename_axis(
-                index={Fields.DATE: CommonFields.DATE, Fields.LOCATION: CommonFields.FIPS}
+                index={Fields.DATE: CommonFields.DATE, Fields.LOCATION_ID: CommonFields.LOCATION_ID}
             )
             .reorder_levels(
-                [CommonFields.FIPS, PdFields.VARIABLE, DEMOGRAPHIC_BUCKET, CommonFields.DATE]
+                [CommonFields.LOCATION_ID, PdFields.VARIABLE, DEMOGRAPHIC_BUCKET, CommonFields.DATE]
             )
             .sort_index()
         )
@@ -205,13 +218,10 @@ class CanScraperLoader:
             rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
         )
 
-        # Make a DataFrame with index=[FIPS,DATE], column=VARIABLE and value=VALUE. This used to
-        # use pivot_table but we don't want to aggregate observations. I tried using
-        # `DataFrame.pivot` but couldn't work around a mysterious
-        # "NotImplementedError: > 1 ndim Categorical are not supported at this time".
-        wide_vars_df = indexed[PdFields.VALUE].unstack(level=PdFields.VARIABLE).reset_index()
-        assert wide_vars_df.columns.names == [PdFields.VARIABLE]
-        return wide_vars_df, tag_df
+        rows_df = indexed[PdFields.VALUE].xs(
+            "all", axis=0, level=DEMOGRAPHIC_BUCKET, drop_level=True
+        )
+        return rows_df, tag_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))

@@ -406,12 +406,23 @@ class MultiRegionDataset:
         """Make a new dataset from a DataFrame as returned by timeseries_wide_dates."""
         assert timeseries_wide_dates.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
         assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
-        timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
-            timeseries_wide_dates.columns
+        timeseries_wide_dates.columns = pd.to_datetime(timeseries_wide_dates.columns)
+        return MultiRegionDataset.from_timeseries_long(
+            timeseries_wide_dates.stack().rename(PdFields.VALUE)
         )
-        timeseries_wide_variables = (
-            timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
-        )
+
+    @staticmethod
+    def from_timeseries_long(timeseries_long: pd.Series) -> "MultiRegionDataset":
+        """Make a new dataset from a Series of values."""
+        assert timeseries_long.index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.VARIABLE,
+            CommonFields.DATE,
+        ]
+        assert timeseries_long.name == PdFields.VALUE
+        assert is_numeric_dtype(timeseries_long.dtype)
+
+        timeseries_wide_variables = timeseries_long.unstack(PdFields.VARIABLE).sort_index()
         return MultiRegionDataset(timeseries=timeseries_wide_variables)
 
     @staticmethod

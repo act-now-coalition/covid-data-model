@@ -120,7 +120,6 @@ def test_query_multiple_variables():
     expected_ds = test_helpers.build_default_region_dataset(
         {CommonFields.VACCINATIONS_COMPLETED: vaccinations_completed},
         region=Region.from_fips("36"),
-        static={CommonFields.STATE: "NY", CommonFields.FIPS: "36"},
     )
 
     test_helpers.assert_dataset_like(ds, expected_ds)
@@ -151,9 +150,7 @@ def test_query_multiple_variables_with_ethnicity():
 
     cases = TimeseriesLiteral([100, 100], source=taglib.Source(type="MySource"))
     expected_ds = test_helpers.build_default_region_dataset(
-        {CommonFields.CASES: cases},
-        region=Region.from_fips("36"),
-        static={CommonFields.STATE: "NY", CommonFields.FIPS: "36"},
+        {CommonFields.CASES: cases}, region=Region.from_fips("36"),
     )
 
     test_helpers.assert_dataset_like(ds, expected_ds)
@@ -186,7 +183,6 @@ def test_query_source_url():
     expected_ds = test_helpers.build_default_region_dataset(
         {CommonFields.VACCINATIONS_COMPLETED: vaccinations_completed},
         region=Region.from_fips("36"),
-        static={CommonFields.STATE: "NY", CommonFields.FIPS: "36"},
     )
 
     test_helpers.assert_dataset_like(ds, expected_ds)
