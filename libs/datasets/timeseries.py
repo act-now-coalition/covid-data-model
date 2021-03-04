@@ -873,7 +873,10 @@ class MultiRegionDataset:
         """Returns a new object containing only timeseries data after given date."""
         ts_rows_mask = self.timeseries.index.get_level_values(CommonFields.DATE) > after
         return dataclasses.replace(
-            self, timeseries=self.timeseries.loc[ts_rows_mask, :], timeseries_long=None
+            self,
+            timeseries=self.timeseries.loc[ts_rows_mask, :],
+            timeseries_index=None,
+            timeseries_long=None,
         )
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
@@ -930,8 +933,13 @@ class MultiRegionDataset:
             timeseries_wide_dates.index
         )
         tag = self.tag.loc[tag_mask]
+        # Don't keep the old timeseries_index because the set of timeseries has changed.
         return dataclasses.replace(
-            self, timeseries=timeseries_wide_variables, tag=tag, timeseries_long=None
+            self,
+            timeseries=timeseries_wide_variables,
+            timeseries_index=None,
+            tag=tag,
+            timeseries_long=None,
         )
 
     def to_csv(self, path: pathlib.Path, include_latest=True):
