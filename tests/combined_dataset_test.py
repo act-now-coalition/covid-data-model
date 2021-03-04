@@ -5,6 +5,7 @@ import structlog
 
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets, CommonFields
+from libs.datasets import data_source
 from libs.datasets import timeseries
 from libs.datasets.combined_datasets import provenance_wide_metrics_to_series
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
@@ -15,6 +16,7 @@ from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvide
 
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
+from tests import test_helpers
 from tests.dataset_utils_test import read_csv_and_index_fips_date
 import pytest
 
@@ -210,12 +212,9 @@ def test_combined_datasets_uses_only_expected_fields():
             )
 
 
-@pytest.mark.slow
-def test_dataclass_include_exclude():
+def test_dataclass_include_exclude_attributes():
+    """Tests just the class attributes without calling the slow make_dataset()."""
     orig_data_source_cls = CANScraperUSAFactsProvider
-    orig_ds = orig_data_source_cls.make_dataset()
-    assert "iso1:us#iso2:us-tx" in orig_ds.static.index
-    assert "iso1:us#iso2:us-ny" in orig_ds.static.index
 
     ny_source = combined_datasets.datasource_regions(
         orig_data_source_cls, RegionMask(states=["NY"])
@@ -223,6 +222,42 @@ def test_dataclass_include_exclude():
     # pylint: disable=E1101
     assert ny_source.SOURCE_TYPE == orig_data_source_cls.SOURCE_TYPE
     assert ny_source.EXPECTED_FIELDS == orig_data_source_cls.EXPECTED_FIELDS
+
+
+def test_dataclass_include_exclude():
+    """Tests datasource_regions using mock data for speed."""
+    region_data = {CommonFields.CASES: [100, 200, 300], CommonFields.DEATHS: [0, 1, 2]}
+    regions_orig = [Region.from_state(state) for state in "AZ CA NY IL TX".split()] + [
+        Region.from_fips(fips) for fips in "06037 06045 17031 17201".split()
+    ]
+    dataset_orig = test_helpers.build_dataset(
+        {region: region_data for region in regions_orig},
+        static_by_region_then_field_name={
+            region: {
+                CommonFields.STATE: region.state,
+                CommonFields.FIPS: region.fips,
+                CommonFields.AGGREGATE_LEVEL: region.level.value,
+            }
+            for region in regions_orig
+        },
+    )
+
+    # Make a new subclass to keep this test separate from others in the make_dataset lru_cache.
+    class DataSourceForTest(data_source.DataSource):
+        SOURCE_TYPE = "DataSourceForTest"
+
+        @classmethod
+        def make_dataset(cls) -> timeseries.MultiRegionDataset:
+            return dataset_orig
+
+    orig_data_source_cls = DataSourceForTest
+    orig_ds = orig_data_source_cls.make_dataset()
+    assert "iso1:us#iso2:us-tx" in orig_ds.static.index
+    assert "iso1:us#iso2:us-ny" in orig_ds.static.index
+
+    ny_source = combined_datasets.datasource_regions(
+        orig_data_source_cls, RegionMask(states=["NY"])
+    )
     ny_ds = ny_source.make_dataset()
     assert "iso1:us#iso2:us-tx" not in ny_ds.static.index
     assert "iso1:us#iso2:us-ny" in ny_ds.static.index
