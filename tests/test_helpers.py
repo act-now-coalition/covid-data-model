@@ -17,7 +17,6 @@ from typing import Union
 
 import more_itertools
 import pandas as pd
-import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName

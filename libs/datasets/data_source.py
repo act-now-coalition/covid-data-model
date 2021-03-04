@@ -98,11 +98,6 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
     # Must be set in subclasses.
     VARIABLES: List[ccd_helpers.ScraperVariable]
 
-    @classmethod
-    def transform_data(cls, data: pd.DataFrame) -> pd.DataFrame:
-        """Subclasses may override this to transform the data DataFrame."""
-        return data
-
     @staticmethod
     @lru_cache(None)
     def _get_covid_county_dataset() -> ccd_helpers.CanScraperLoader:
