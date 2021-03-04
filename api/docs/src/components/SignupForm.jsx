@@ -54,7 +54,7 @@ const SignupForm = () => {
       <p>There are just two fast and simple steps before using our API.</p>
 
       <div>
-        <h3>1. Request an API key</h3>
+        <h3>1. Get your API key</h3>
         <StyledNewsletter>
           <form>
             <InputHolder>
