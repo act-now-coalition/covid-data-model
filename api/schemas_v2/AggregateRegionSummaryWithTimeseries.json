@@ -476,7 +476,7 @@
         },
         "newCases": {
           "title": "Newcases",
-          "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. We remove any days with negative new cases.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported cases.\n",
+          "description": "\nNew confirmed or suspected cases.\n\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. We remove any days with negative new cases.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported cases.\n",
           "anyOf": [
             {
               "type": "integer"
@@ -762,6 +762,87 @@
               "$ref": "#/definitions/FieldAnnotations"
             }
           ]
+        },
+        "testPositivityRatio": {
+          "title": "Testpositivityratio",
+          "description": "Annotations for testPositivityRatio",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "caseDensity": {
+          "title": "Casedensity",
+          "description": "Annotations for caseDensity",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "contactTracerCapacityRatio": {
+          "title": "Contacttracercapacityratio",
+          "description": "Annotations for contactTracerCapacityRatio",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "infectionRate": {
+          "title": "Infectionrate",
+          "description": "Annotations for infectionRate",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "infectionRateCI90": {
+          "title": "Infectionrateci90",
+          "description": "Annotations for infectionRateCI90",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "icuHeadroomRatio": {
+          "title": "Icuheadroomratio",
+          "description": "Annotations for icuHeadroomRatio",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "icuCapacityRatio": {
+          "title": "Icucapacityratio",
+          "description": "Annotations for icuCapacityRatio",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinationsInitiatedRatio": {
+          "title": "Vaccinationsinitiatedratio",
+          "description": "Annotations for vaccinationsInitiatedRatio",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinationsCompletedRatio": {
+          "title": "Vaccinationscompletedratio",
+          "description": "Annotations for vaccinationsCompletedRatio",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
         }
       }
     },
@@ -1000,7 +1081,7 @@
         },
         "newCases": {
           "title": "Newcases",
-          "description": "\nNew confirmed or suspected cases.\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. We remove any days with negative new cases.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported cases.\n",
+          "description": "\nNew confirmed or suspected cases.\n\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. We remove any days with negative new cases.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported cases.\n",
           "anyOf": [
             {
               "type": "integer"
