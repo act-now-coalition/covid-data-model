@@ -145,9 +145,7 @@ def _make_error_message(message: str, status: int = 403) -> Dict:
         "body": json.dumps(error_message),
         "headers": {"content-type": [{"value": "application/json"}]},
         "bodyEncoding": "text",
-        "statusDescription": (
-            "Unauthorized. Please contact api@covidactnow.org to restore access."
-        ),
+        "statusDescription": message,
     }
 
 
@@ -170,18 +168,8 @@ def check_api_key_edge(event, context):
         return _make_error_message("Invalid API key.")
 
     if record["email"] in Config.Constants.EMAIL_BLOCKLIST:
-        error_message = {
-            "error": "Unauthorized. Please contact api@covidactnow.org to restore access."
-        }
-        return {
-            "status": 403,
-            "body": json.dumps(error_message),
-            "headers": {"content-type": [{"value": "application/json"}]},
-            "bodyEncoding": "text",
-            "statusDescription": (
-                "Unauthorized. Please contact api@covidactnow.org to restore access."
-            ),
-        }
+        error_message = "Unauthorized. Please contact api@covidactnow.org to restore access."
+        return _make_error_message(error_message)
 
     _record_successful_request(request, record)
 
