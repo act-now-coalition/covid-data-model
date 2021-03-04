@@ -320,6 +320,16 @@ def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame):
     assert numeric_columns.all()
 
 
+def _check_timeseries_long_structure(timeseries_long: pd.Series):
+    """Asserts that a DataFrame has the structure expected row per observation.
+    These are expected to have a demographic bucket column."""
+    assert timeseries_long.index.names == EMPTY_TIMESERIES_LONG_SERIES.index.names
+    assert timeseries_long.index.is_unique
+    assert timeseries_long.index.is_monotonic_increasing
+    assert timeseries_long.name == PdFields.VALUE
+    assert is_numeric_dtype(timeseries_long.dtype)
+
+
 def _timeseries_wide_vars_to_long(wide_vars_df: pd.DataFrame) -> pd.Series:
     if wide_vars_df.empty:
         return EMPTY_TIMESERIES_LONG_SERIES
@@ -349,7 +359,7 @@ class MultiRegionDataset:
     """
 
     # Timeseries metrics with float values.
-    timeseries_long: pd.DataFrame
+    timeseries_long: pd.Series
 
     # CommonFields variables in the dataset. Some places depend on a variable existing even if it
     # has no real values. This attribute is used to make sure all variables passed to the
@@ -709,6 +719,7 @@ class MultiRegionDataset:
         # These asserts provide runtime-checking and a single place for humans reading the code to
         # check what is expected of the attributes, beyond type.
         # timeseries.index order is important for _timeseries_latest_values correctness.
+        _check_timeseries_long_structure(self.timeseries_long)
         _check_timeseries_wide_vars_structure(self.timeseries)
         if self.timeseries_index is not None:
             _check_timeseries_wide_vars_index(self.timeseries_index)
@@ -1262,28 +1273,32 @@ def _to_datasets_wide_dates_map(
 
     The mapping depends on MultiRegionDataset being hashable by id.
     """
-    datasets_wide = {ds: ds.timeseries_wide_dates() for ds in datasets}
-    if not datasets_wide:
-        return {}
-    # Find the earliest and latest dates to make a range covering all timeseries.
-    dates = pd.DatetimeIndex(
-        np.hstack(
-            list(df.columns.get_level_values(CommonFields.DATE) for df in datasets_wide.values())
+    # The docs seem to suggest that `pivot` can read index but looks like reset_index is needed
+    # to avoid a KeyError.
+    # datasets_wide = {
+    #     ds: ds.timeseries_long.to_frame()
+    #     .reset_index()
+    #     .pivot(
+    #         index=[PdFields.VARIABLE, CommonFields.LOCATION_ID],
+    #         columns=[PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE],
+    #         values=PdFields.VALUE,
+    #     )
+    #     for ds in datasets
+    # }
+    datasets_wide = {
+        ds: ds.timeseries_long.reorder_levels(
+            [
+                PdFields.VARIABLE,
+                CommonFields.LOCATION_ID,
+                CommonFields.DATE,
+                PdFields.DEMOGRAPHIC_BUCKET,
+            ]
         )
-    )
-    if dates.empty:
-        input_date_range = pd.DatetimeIndex([], name=CommonFields.DATE)
-    else:
-        start_date = dates.min()
-        end_date = dates.max()
-        input_date_range = pd.date_range(start=start_date, end=end_date, name=CommonFields.DATE)
-    datasets_wide_reindexed = {
-        ds: df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID]).reindex(
-            columns=input_date_range
-        )
-        for ds, df in datasets_wide.items()
+        .unstack()
+        .unstack()
+        for ds in datasets
     }
-    return datasets_wide_reindexed
+    return datasets_wide
 
 
 def combined_datasets(
@@ -1351,18 +1366,25 @@ def combined_datasets(
             PdFields.VARIABLE,
             CommonFields.LOCATION_ID,
         ]
-        assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
+        assert output_timeseries_wide_dates.columns.names == [
+            PdFields.DEMOGRAPHIC_BUCKET,
+            CommonFields.DATE,
+        ]
         # Transform from a column for each date to a column for each variable (with rows for dates).
         # stack and unstack does the transform quickly but does not handle an empty DataFrame.
         if output_timeseries_wide_dates.empty:
-            output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+            output_timeseries_long = EMPTY_TIMESERIES_LONG_SERIES
         else:
-            output_timeseries_wide_variables = (
-                output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
+            output_timeseries_long = (
+                output_timeseries_wide_dates.stack()
+                .stack()
+                .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
+                .sort_index()
+                .rename(PdFields.VALUE)
             )
         output_tag = pd.concat(tag_series)
     else:
-        output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        output_timeseries_long = EMPTY_TIMESERIES_LONG_SERIES
         output_tag = _EMPTY_TAG_SERIES
     if static_series:
         output_static_df = pd.concat(
@@ -1372,7 +1394,8 @@ def combined_datasets(
         output_static_df = EMPTY_REGIONAL_ATTRIBUTES_DF
 
     return MultiRegionDataset(
-        timeseries=output_timeseries_wide_variables,
+        timeseries_long=output_timeseries_long,
+        timeseries_index=None,
         tag=output_tag.sort_index(),
         static=output_static_df,
     )

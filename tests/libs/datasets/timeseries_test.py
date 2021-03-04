@@ -9,6 +9,7 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
@@ -1578,5 +1579,46 @@ def test_make_source_url_tags_has_source_url():
         timeseries.make_source_url_tags(dataset_in)
 
 
-def test_check_timeseries_wide_vars_structure_empty():
+def test_check_timeseries_structure_empty():
     timeseries._check_timeseries_wide_vars_structure(timeseries.EMPTY_TIMESERIES_WIDE_VARIABLES_DF)
+    timeseries._check_timeseries_long_structure(timeseries.EMPTY_TIMESERIES_LONG_SERIES)
+
+
+def test_demographic_data():
+    ts_lit = TimeseriesLiteral([0, 2, 4],)
+    ds_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {
+                DemographicBucket("age:20-29"): ts_lit,
+                DemographicBucket("age:30-39"): [5, 6, 7],
+            }
+        }
+    )
+
+    ds_out = pickle.loads(pickle.dumps(ds_in))
+
+    test_helpers.assert_dataset_like(ds_in, ds_out)
+
+
+def test_combine_demographic_data():
+    m1 = FieldName("m1")
+    ds1 = test_helpers.build_default_region_dataset(
+        {
+            m1: {
+                DemographicBucket("age:20-29"): [1, 2, 3],
+                DemographicBucket("age:30-39"): [5, 6, 7],
+            }
+        }
+    )
+    ds2 = test_helpers.build_default_region_dataset(
+        {
+            m1: {
+                DemographicBucket("age:20-29"): [2, 3, 4],
+                DemographicBucket("age:30-39"): [6, 7, 8],
+            }
+        }
+    )
+
+    combined = timeseries.combined_datasets({FieldName("m1"): [ds1, ds2]}, {})
+
+    # XXX Check that combined is correct
