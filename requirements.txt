@@ -1,6 +1,6 @@
 boto3==1.15.6
-scipy==1.4.1
-numba==0.51.2
+scipy==1.6.1
+numba==0.52.0
 astroid==2.4.1
 chardet==3.0.4
 cycler==0.10.0
@@ -11,27 +11,27 @@ lazy-object-proxy==1.4.1
 gspread==3.6.0
 gspread-formatting==0.2.5
 GitPython==3.1.0
-numpy==1.18.2
+numpy==1.20.1
 matplotlib==3.2.1
 mccabe==0.6.1
-numpy==1.18.2
-pandas==1.0.3
+numpy==1.20.1
+pandas==1.2.3
 pyshp==2.1.0
 pymc3==3.8
 requests==2.23.0
 jupyter==1.0.0
-jupyterlab==2.1.4
-simplejson==3.17.0
+jupyterlab==3.0.9
+simplejson==3.17.2
 ujson==2.0.3
 seaborn==0.10.0
-click==7.1.1
+click==7.1.2
 sentry-sdk==0.14.3
-pandarallel==1.4.8
+pandarallel==1.5.2
 scikit-learn==0.22.2.post1
 pip
 openapi-schema-pydantic==1.1.0
 iminuit==1.3.10
-fastparquet==0.3.3
+fastparquet==0.5.0
 us==1.0.0
 adtk==0.6.0
 -e .
@@ -42,14 +42,14 @@ structlog==20.1.0
 structlog-sentry==1.2.2
 more_itertools==8.3.0
 typing-extensions==3.7.4.3
-xlrd==1.2.0  # For panda's read_excel method
+xlrd==1.2.0
 -e ../covid-data-public
 # By default, installs from local directory, but when copying this
 # to binder/requirements.txt, uncomment the following line.
 # -e git://github.com/covid-projections/covid-data-public.git#egg=covidactnow
 
 # Dependencies recommended by pandas for better performance
-numexpr==2.7.1
+numexpr==2.7.3
 
 backports.cached-property==1.0.0.post2
 
