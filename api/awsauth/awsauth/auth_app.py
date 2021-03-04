@@ -162,7 +162,7 @@ def check_api_key_edge(event, context):
 
     if not api_key:
         return _make_error_message(
-            "API key required. Visit https://apidocs.covidactnow.org/access to get an API key"
+            "API key required. Visit https://apidocs.covidactnow.org/#register to get an API key"
         )
 
     record = APIKeyRepo.get_record_for_api_key(api_key)
