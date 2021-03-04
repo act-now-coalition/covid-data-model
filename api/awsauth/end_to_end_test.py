@@ -41,5 +41,5 @@ def test_invalid_api_key():
     response = requests.get(f"{DEV_API_URL}/states.json", {"apiKey": "fake api key"})
     assert response.status_code == 403
     response = response.json()
-    print(response)
-    assert 0
+    expected_error = {"error": "Invalid API key."}
+    assert response == expected_error
