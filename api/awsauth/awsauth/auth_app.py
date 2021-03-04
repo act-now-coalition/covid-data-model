@@ -1,3 +1,4 @@
+from typing import Tuple
 import uuid
 import urllib.parse
 import datetime
@@ -89,7 +90,7 @@ def _create_api_key(email: str) -> str:
     return uuid.uuid4().hex
 
 
-def _get_or_create_api_key(email: str, is_crs_user: bool):
+def _get_or_create_api_key(email: str, is_crs_user: bool) -> Tuple[bool, str]:
     api_key = APIKeyRepo.get_api_key(email)
 
     if api_key:
@@ -99,7 +100,7 @@ def _get_or_create_api_key(email: str, is_crs_user: bool):
         if is_crs_user:
             APIKeyRepo.record_covid_response_simulator_user(email)
 
-        return api_key
+        return False, api_key
 
     _logger.info(f"No API Key found for email {email}, creating new key")
 
@@ -119,7 +120,7 @@ def _get_or_create_api_key(email: str, is_crs_user: bool):
         _logger.error("HubSpot call failed")
         sentry_sdk.capture_exception()
 
-    return api_key
+    return True, api_key
 
 
 def _record_successful_request(request: dict, record: dict):
@@ -134,6 +135,22 @@ def _record_successful_request(request: dict, record: dict):
     registry.firehose_client.put_data(Config.Constants.FIREHOSE_TABLE_NAME, data)
 
 
+def _make_error_message(message: str, status: int = 403) -> Dict:
+    error_message = {"error": message}
+
+    # Format follows Response Object from
+    # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-generating-http-responses-in-requests.html
+    return {
+        "status": status,
+        "body": json.dumps(error_message),
+        "headers": {"content-type": [{"value": "application/json"}]},
+        "bodyEncoding": "text",
+        "statusDescription": (
+            "Unauthorized. Please contact api@covidactnow.org to restore access."
+        ),
+    }
+
+
 def check_api_key_edge(event, context):
     request = event["Records"][0]["cf"]["request"]
 
@@ -144,11 +161,13 @@ def check_api_key_edge(event, context):
         break
 
     if not api_key:
-        return {"status": 403, "statusDescription": "Unauthorized"}
+        return _make_error_message(
+            "API key required. Visit https://apidocs.covidactnow.org/access to get an API key"
+        )
 
     record = APIKeyRepo.get_record_for_api_key(api_key)
     if not record:
-        return {"status": 403, "statusDescription": "Unauthorized"}
+        return _make_error_message("Invalid API key.")
 
     if record["email"] in Config.Constants.EMAIL_BLOCKLIST:
         error_message = {
@@ -202,8 +221,8 @@ def register_edge(event, context):
         return {"status": 400, "errorMessage": "Invalid email", "headers": headers}
 
     is_crs_user = data.get("is_crs_user", False)
-    api_key = _get_or_create_api_key(email, is_crs_user)
-    body = {"api_key": api_key, "email": email}
+    new_user, api_key = _get_or_create_api_key(email, is_crs_user)
+    body = {"api_key": api_key, "email": email, "new_user": new_user}
 
     headers["content-type"] = [{"key": "Content-Type", "value": "application/json"}]
     response = {"status": 200, "body": json.dumps(body), "headers": headers}
