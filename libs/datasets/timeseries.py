@@ -351,8 +351,14 @@ class MultiRegionDataset:
     # Timeseries metrics with float values.
     timeseries_long: pd.DataFrame
 
+    # CommonFields variables in the dataset. Some places depend on a variable existing even if it
+    # has no real values. This attribute is used to make sure all variables passed to the
+    # constructor are put in DataFrames with a column for each variable.
     variables: Optional[pd.Index]
 
+    # Copy of the [LOCATION, DATE] index copied from a wide-variables DataFrame.
+    # TODO(tom): This is a clunky hack to get tests passing that depend on keeping a time-series
+    #  that has no data. Remove the dependencies and this attribute.
     timeseries_index: Optional[pd.MultiIndex]
 
     # Static data, each identified by variable name and region. This includes county name,
