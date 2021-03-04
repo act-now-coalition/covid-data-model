@@ -32,7 +32,7 @@ module.exports = {
         {
           to: "/",
           activeBaseRegex: "/(?!(api))",
-          label: "General Info",
+          label: "Guide",
           position: "left",
         },
         {

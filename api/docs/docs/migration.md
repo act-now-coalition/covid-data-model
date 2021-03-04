@@ -49,7 +49,7 @@ See [data definitions](/data-definitions) for all included fields.
 
 ## **Getting Started**
 
-To get started, [register to get your API key](/access).
+To get started, [register to get your API key](/#register).
 
 All requests should be made to `https://api.covidactnow.org` and include an API key. So for example, to query a CSV for the current values for all states, the request would be of the form:
 

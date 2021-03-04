@@ -345,13 +345,13 @@ The Covid Act Now API provides historical covid projections updated daily.
     api_key_description = """
 An API key is required.
 
-Register for an API key [here](/access).
+Register for an API key [here](/#register).
     """
     spec = OpenAPI.parse_obj(
         {
             "info": {
                 "title": "Covid Act Now API",
-                "version": "v2.0.0-beta.1",
+                "version": "v2.0.0",
                 "description": api_description,
             },
             "tags": [

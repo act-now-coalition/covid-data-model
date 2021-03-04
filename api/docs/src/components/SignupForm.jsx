@@ -12,12 +12,12 @@ import {
 // Taken from https://ui.dev/validate-email-address-javascript/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const trackEmailSignupSuccess = () => {
+const trackEmailSignupSuccess = (isNewUser) => {
   ga('send', {
     hitType: 'event',
     eventCategory: 'API Register',
     eventAction: 'Submit',
-    eventLabel: 'Success'
+    eventLabel: isNewUser ? 'New User' : 'Existing User'
   });
 }
 
@@ -43,12 +43,8 @@ const SignupForm = () => {
       .then((data) => {
         setErrorMessage(undefined);
         // Older API returned data json encoded in "body" parameter.
-        if (data.body) {
-          setApiKey(JSON.parse(data.body).api_key);
-        } else {
-          setApiKey(data.api_key);
-        }
-        trackEmailSignupSuccess();
+        setApiKey(data.api_key);
+        trackEmailSignupSuccess(data.new_user);
       })
       .catch((err) => setErrorMessage("Must supply a valid email address"));
   };
@@ -58,7 +54,7 @@ const SignupForm = () => {
       <p>There are just two fast and simple steps before using our API.</p>
 
       <div>
-        <h3>1. Request an API key</h3>
+        <h3>1. Get your API key</h3>
         <StyledNewsletter>
           <form>
             <InputHolder>
