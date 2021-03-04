@@ -1,16 +1,28 @@
 ---
-id: access
-title: Accessing the API
-description: Register for the Covid Act Now API.
+id: about
+title: Covid Act Now API
+sidebar_label: Getting started
+description: Latest Covid-19 data and metrics. Power dashboards, websites, and apps.  Data tracking all US states, counties, and metros.  Register for an API key.
+slug: /
 ---
+
+The Covid Act Now API provides access to all of our COVID data tracking US states, counties, and metros.
+
+It includes data and metrics for [cases](/data-definitions#cases),
+[vaccinations](/data-definitions#vaccinations), [tests](/data-definitions#tests),
+[hospitalizations](/data-definitions#hospitalizations), and [deaths](/data-definitions#deaths).
+See [data definitions](/data-definitions) for all included data.
+
+The API provides the same data that powers [Covid Act Now](https://covidactnow.org)
+but in easily digestible CSV or JSON files, intended for consumption by other COVID websites, models, and tools.
+
+## Register
 
 import SignupForm from "@site/src/components/SignupForm";
 
-## Sign up
-
 <SignupForm />
 
-## Getting started
+## Data endpoints
 
 In the examples below, replace `YOUR_KEY_HERE` with the API key from Step 1 above.
 
@@ -18,13 +30,13 @@ The Covid Act Now API has coverage for states, counties, and metro areas (CBSAs)
 
 Learn how to query:
 
-- **[Current values for all states, counties, and metros](#current-values-for-all-states-counties-or-metros)**
-- **[Historic values for all states, counties, and metros](#historic-values-for-all-states-counties-or-metros)**
-- **[Current and historic values for an individual state, county, or metro area](#individual-locations)**
+- **[Current data for all states, counties, and metros](#current-data-for-all-states-counties-or-metros)**
+- **[Historic data for all states, counties, and metros](#historic-data-for-all-states-counties-or-metros)**
+- **[Data for an individual state, county, or metro area](#data-for-individual-locations)**
 
 Details on the contents of each endpoint are available in the [API Reference](/api)
 
-### Current values for all states, counties, or metros
+### Current data for all states, counties, or metros
 
 These endpoints contain the latest available data (a single, scalar value per field) for all states, counties, and CBSAs (metros).
 
@@ -49,7 +61,7 @@ https://api.covidactnow.org/v2/counties.json?apiKey=YOUR_KEY_HERE
 https://api.covidactnow.org/v2/cbsas.json?apiKey=YOUR_KEY_HERE
 ```
 
-### Historic values for all states, counties, or metros
+### Historic data for all states, counties, or metros
 
 These files contain the entire history (a timeseries for every field) for all states, counties, and cbsas (metros).
 
@@ -66,7 +78,7 @@ Read the API reference for [/v2/states.timeseries.csv](/api#tag/State-Data/paths
 
 #### JSON format
 
-```bash
+```
 https://api.covidactnow.org/v2/states.timeseries.json?apiKey=YOUR_KEY_HERE
 https://api.covidactnow.org/v2/counties.timeseries.json?apiKey=YOUR_KEY_HERE
 https://api.covidactnow.org/v2/cbsas.timeseries.json?apiKey=YOUR_KEY_HERE
@@ -74,17 +86,16 @@ https://api.covidactnow.org/v2/cbsas.timeseries.json?apiKey=YOUR_KEY_HERE
 
 :::note
 
-As ``/v2/counties.timeseries.json`` contains historic data for every county, it is very large. If you are looking for counties in a single state, consider
-downloading [counties for a single state](#all-counties-in-a-state).
+As `/v2/counties.timeseries.json` contains historic data for every county, it is very large. If you are looking for counties in a single state, consider
+downloading [counties for a single state](#data-for-all-counties-in-a-state).
 
 :::
 
-
-### Individual Locations
+### Data for individual locations
 
 It's easy to query a single state, county, or metro area.
 
-#### Current Values
+#### Current data
 
 ```
 https://api.covidactnow.org/v2/state/{state}.json?apiKey=YOUR_KEY_HERE
@@ -92,7 +103,7 @@ https://api.covidactnow.org/v2/county/{fips}.json?apiKey=YOUR_KEY_HERE
 https://api.covidactnow.org/v2/cbsa/{cbsa_code}.json?apiKey=YOUR_KEY_HERE
 ```
 
-#### Historic Values
+#### Historic data
 
 ```
 https://api.covidactnow.org/v2/state/{state}.timeseries.json?apiKey=YOUR_KEY_HERE
@@ -101,7 +112,7 @@ https://api.covidactnow.org/v2/county/{fips}.timeseries.json?apiKey=YOUR_KEY_HER
 https://api.covidactnow.org/v2/cbsa/{cbsa_code}.timeseries.json?apiKey=YOUR_KEY_HERE
 ```
 
-#### All counties in a state
+#### Data for all counties in a state
 
 You can also query all counties for a single state.
 
@@ -111,3 +122,22 @@ https://api.covidactnow.org/v2/county/{state}.csv?apiKey=YOUR_KEY_HERE
 https://api.covidactnow.org/v2/county/{state}.timeseries.json?apiKey=YOUR_KEY_HERE
 https://api.covidactnow.org/v2/county/{state}.timeseries.csv?apiKey=YOUR_KEY_HERE
 ```
+
+## License
+
+Data is licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+
+We are a volunteer-driven 501(c)3 non-profit whose mission is to provide reliable and trustworthy COVID data,
+with a focus on U.S. counties. Since we started on March 20th, we’ve made our model and data open-source
+and freely available to the public.
+
+This data requires a non-trivial amount of work to organize, sanitize, maintain, and develop,
+especially given the fast-changing nature of COVID and health data in the U.S. In order to
+ensure that we can continue to deliver best-in-class open-source COVID data, our tiny,
+volunteer-driven team appreciates donations here.
+
+We also ask that, as legally required by our license, all commercial entities wishing to
+access our API contact <api@covidactnow.org> to acquire a commercial license. We define
+commercial users as any individual or entity engaged in commercial activities, such as selling goods or services.
+
+Our non-commercial users can freely download, use, share, modify, or build upon our source code.

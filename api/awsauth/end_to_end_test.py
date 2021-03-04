@@ -12,6 +12,7 @@ def test_api_flow():
 
     data = response.json()
     api_key = data["api_key"]
+    assert data["new_user"]
 
     response = requests.get(f"{DEV_API_URL}/state/MA.json", {"apiKey": api_key})
     assert response.ok
@@ -39,3 +40,6 @@ def test_blocked_email():
 def test_invalid_api_key():
     response = requests.get(f"{DEV_API_URL}/states.json", {"apiKey": "fake api key"})
     assert response.status_code == 403
+    response = response.json()
+    expected_error = {"error": "Invalid API key."}
+    assert response == expected_error
