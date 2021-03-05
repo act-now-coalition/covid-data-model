@@ -22,6 +22,7 @@ from libs.datasets.combined_datasets import (
     ALL_FIELDS_FEATURE_DEFINITION,
 )
 from libs.datasets import timeseries
+from libs.datasets import outlier_detection
 from libs.datasets import region_aggregation
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
@@ -100,7 +101,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
         timeseries_field_datasets, static_field_datasets
     )
     _logger.info("Finished combining datasets")
-    multiregion_dataset = timeseries.drop_tail_positivity_outliers(multiregion_dataset)
+    multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
     _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
     multiregion_dataset = zeros_filter.drop_all_zero_timeseries(
@@ -117,7 +118,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
 
     multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
     multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
-    multiregion_dataset = timeseries.drop_new_case_outliers(multiregion_dataset)
+    multiregion_dataset = outlier_detection.drop_new_case_outliers(multiregion_dataset)
 
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
