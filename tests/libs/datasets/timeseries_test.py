@@ -1139,7 +1139,7 @@ def test_not_removing_short_series():
     dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
     result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
 
-    # Should not modify becasue not higher than threshold
+    # Should not modify because not higher than threshold
     test_helpers.assert_dataset_like(dataset, result)
 
 
@@ -1580,8 +1580,12 @@ def test_make_source_url_tags_has_source_url():
 
 
 def test_check_timeseries_structure_empty():
-    timeseries._check_timeseries_wide_vars_structure(timeseries.EMPTY_TIMESERIES_WIDE_VARIABLES_DF)
-    timeseries._check_timeseries_long_structure(timeseries.EMPTY_TIMESERIES_LONG_SERIES)
+    timeseries._check_timeseries_wide_vars_structure(
+        timeseries.EMPTY_TIMESERIES_WIDE_VARIABLES_DF, bucketed=False
+    )
+    timeseries._check_timeseries_wide_vars_structure(
+        timeseries.EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF, bucketed=True
+    )
 
 
 def test_demographic_data():
@@ -1600,25 +1604,16 @@ def test_demographic_data():
     test_helpers.assert_dataset_like(ds_in, ds_out)
 
 
-def test_combine_demographic_data():
+def test_make_demographic_data():
     m1 = FieldName("m1")
-    ds1 = test_helpers.build_default_region_dataset(
-        {
-            m1: {
-                DemographicBucket("age:20-29"): [1, 2, 3],
-                DemographicBucket("age:30-39"): [5, 6, 7],
-            }
-        }
-    )
-    ds2 = test_helpers.build_default_region_dataset(
-        {
-            m1: {
-                DemographicBucket("age:20-29"): [2, 3, 4],
-                DemographicBucket("age:30-39"): [6, 7, 8],
-            }
-        }
-    )
+    age20s = DemographicBucket("age:20-29")
+    age30s = DemographicBucket("age:30-39")
 
-    combined = timeseries.combined_datasets({FieldName("m1"): [ds1, ds2]}, {})
+    ds = test_helpers.build_default_region_dataset({m1: {age20s: [1, 2, 3], age30s: [5, 6, 7],}})
 
-    # XXX Check that combined is correct
+    assert (
+        ds.timeseries_bucketed.at[
+            (test_helpers.DEFAULT_REGION.location_id, age30s, test_helpers.DEFAULT_START_DATE), m1
+        ]
+        == 5
+    )

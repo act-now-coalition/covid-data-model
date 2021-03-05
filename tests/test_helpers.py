@@ -17,6 +17,7 @@ from typing import Union
 
 import more_itertools
 import pandas as pd
+import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
@@ -161,19 +162,21 @@ def build_dataset(
         names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
     )
 
+    # Similar to from_timeseries_wide_dates_df but with buckets
     df = (
         pd.DataFrame(list(region_var_bucket_seq.values()), index=index, columns=dates)
+        .fillna(np.nan)
         .stack(dropna=True)
-        .apply(pd.to_numeric)
+        .unstack(PdFields.VARIABLE)
+        .reorder_levels(timeseries.EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF.index.names)
         .sort_index()
-        .rename(PdFields.VALUE)
     )
 
-    dataset = timeseries.MultiRegionDataset(timeseries_long=df)
+    dataset = timeseries.MultiRegionDataset(timeseries_bucketed=df)
 
     if timeseries_columns:
         new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
-        dataset = dataclasses.replace(dataset, timeseries=new_timeseries, timeseries_long=None)
+        dataset = dataclasses.replace(dataset, timeseries=new_timeseries, timeseries_bucketed=None)
 
     tags_to_concat = []
     for (region, var, bucket), ts_literal in region_var_bucket_seq.items():

@@ -291,17 +291,33 @@ EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
     columns=pd.Index([], name=PdFields.VARIABLE),
 )
 
+EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF = pd.DataFrame(
+    [],
+    dtype="float",
+    index=pd.MultiIndex.from_tuples(
+        [], names=[CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE]
+    ),
+    columns=pd.Index([], name=PdFields.VARIABLE),
+)
 
-def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex):
-    assert timeseries_index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+
+def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex, *, bucketed: bool):
+    if bucketed:
+        assert timeseries_index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.DEMOGRAPHIC_BUCKET,
+            CommonFields.DATE,
+        ]
+    else:
+        # timeseries.index order is important for _timeseries_latest_values correctness.
+        assert timeseries_index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     assert timeseries_index.is_unique
     assert timeseries_index.is_monotonic_increasing
 
 
-def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame):
-    """Asserts that a DataFrame has the structure expected with wide-variable columns. For now
-    these are expected to not have a demographic bucket column."""
-    _check_timeseries_wide_vars_index(wide_vars_df.index)
+def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, bucketed: bool):
+    """Asserts that a DataFrame has the structure expected with wide-variable columns."""
+    _check_timeseries_wide_vars_index(wide_vars_df.index, bucketed=bucketed)
     assert wide_vars_df.columns.names == [PdFields.VARIABLE]
     numeric_columns = wide_vars_df.dtypes.apply(is_numeric_dtype)
     assert numeric_columns.all()
@@ -345,9 +361,10 @@ class MultiRegionDataset:
     ):
         if timeseries is not None:
             assert timeseries_bucketed is None
+            _check_timeseries_wide_vars_structure(timeseries, bucketed=False)
             timeseries_bucketed = pd.concat(
                 {DemographicBucket("all"): timeseries}, names=[PdFields.DEMOGRAPHIC_BUCKET]
-            )
+            ).reorder_levels(EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF.index.names)
 
         self.__default_init__(  # pylint: disable=E1101
             timeseries_bucketed=timeseries_bucketed, **kwargs,
@@ -646,8 +663,8 @@ class MultiRegionDataset:
         """Checks that attributes of this object meet certain expectations."""
         # These asserts provide runtime-checking and a single place for humans reading the code to
         # check what is expected of the attributes, beyond type.
-        # timeseries.index order is important for _timeseries_latest_values correctness.
-        _check_timeseries_wide_vars_structure(self.timeseries)
+        _check_timeseries_wide_vars_structure(self.timeseries_bucketed, bucketed=True)
+
         assert self.static.index.names == [CommonFields.LOCATION_ID]
         assert self.static.index.is_unique
         assert self.static.index.is_monotonic_increasing
