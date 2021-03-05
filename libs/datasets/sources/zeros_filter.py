@@ -49,5 +49,7 @@ def drop_all_zero_timeseries(
     # be cleaner to add a method 'MultiRegionDataset.drop_timeseries' similar to 'remove_regions' or
     # move this into 'MultiRegionDataset' similar to 'drop_stale_timeseries'.
     return dataclasses.replace(
-        ds_in, timeseries=ts_wide_out.stack().unstack(PdFields.VARIABLE).sort_index()
+        ds_in,
+        timeseries=ts_wide_out.stack().unstack(PdFields.VARIABLE).sort_index(),
+        timeseries_bucketed=None,
     )

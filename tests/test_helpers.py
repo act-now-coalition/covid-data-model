@@ -147,7 +147,7 @@ def build_dataset(
 
     if timeseries_columns:
         new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
-        dataset = dataclasses.replace(dataset, timeseries=new_timeseries)
+        dataset = dataclasses.replace(dataset, timeseries=new_timeseries, timeseries_bucketed=None)
 
     tags_to_concat = []
     for (region, var), ts_literal in region_var_seq.items():
