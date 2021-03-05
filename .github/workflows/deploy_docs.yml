@@ -1,8 +1,7 @@
 name: Build & Deploy API Docs
 
 on:
-  repository_dispatch:
-    types: deploy-docs
+  workflow_dispatch:
 
 jobs:
   build-deploy:
