@@ -7,16 +7,18 @@ from typing import List
 from collections import UserList
 from typing import Any
 from typing import Mapping
+from typing import NewType
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
 
 import more_itertools
 import pandas as pd
-import numpy as np
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
@@ -106,9 +108,19 @@ def make_tag(
     return taglib.TAG_TYPE_TO_CLASS[tag_type](**kwargs)
 
 
+SingleOrBucketedTimeseriesLiteral = NewType(
+    "SingleOrBucketedTimeseriesLiteral",
+    Union[
+        Sequence[float],
+        TimeseriesLiteral,
+        Mapping[DemographicBucket, Union[Sequence[float], TimeseriesLiteral]],
+    ],
+)
+
+
 def build_dataset(
     metrics_by_region_then_field_name: Mapping[
-        Region, Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]]
+        Region, Mapping[FieldName, SingleOrBucketedTimeseriesLiteral]
     ],
     *,
     start_date=DEFAULT_START_DATE,
@@ -124,33 +136,47 @@ def build_dataset(
     """
     # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
     # sequences in metrics.
-    region_var_seq = {
-        (region, variable): metrics_by_region_then_field_name[region][variable]
+    def iter_buckets(
+        buckets: SingleOrBucketedTimeseriesLiteral,
+    ) -> Tuple[DemographicBucket, Union[Sequence[float], TimeseriesLiteral]]:
+        if isinstance(buckets, Mapping):
+            yield from buckets.items()
+        else:
+            yield DemographicBucket("all"), buckets
+
+    region_var_bucket_seq = {
+        (region, var_name, bucket_name): bucket_ts
         for region in metrics_by_region_then_field_name.keys()
-        for variable in metrics_by_region_then_field_name[region].keys()
+        for var_name, var_buckets in metrics_by_region_then_field_name[region].items()
+        for bucket_name, bucket_ts in iter_buckets(var_buckets)
     }
 
-    # Make sure there is only one len among all of region_var_seq.values(). Make a DatetimeIndex
+    # Make sure there is only one len among all of region_var_bucket_seq.values(). Make a DatetimeIndex
     # with that many dates.
-    sequence_lengths = more_itertools.one(set(len(seq) for seq in region_var_seq.values()))
+    sequence_lengths = more_itertools.one(set(len(seq) for seq in region_var_bucket_seq.values()))
     dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
 
     index = pd.MultiIndex.from_tuples(
-        [(region.location_id, var) for region, var in region_var_seq.keys()],
-        names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
+        [(region.location_id, var, bucket) for region, var, bucket in region_var_bucket_seq.keys()],
+        names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
     )
 
-    df = pd.DataFrame(list(region_var_seq.values()), index=index, columns=dates)
-    df = df.fillna(np.nan).apply(pd.to_numeric)
+    df = (
+        pd.DataFrame(list(region_var_bucket_seq.values()), index=index, columns=dates)
+        .stack(dropna=True)
+        .apply(pd.to_numeric)
+        .sort_index()
+        .rename(PdFields.VALUE)
+    )
 
-    dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df)
+    dataset = timeseries.MultiRegionDataset(timeseries_long=df)
 
     if timeseries_columns:
         new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
-        dataset = dataclasses.replace(dataset, timeseries=new_timeseries, timeseries_bucketed=None)
+        dataset = dataclasses.replace(dataset, timeseries=new_timeseries, timeseries_long=None)
 
     tags_to_concat = []
-    for (region, var), ts_literal in region_var_seq.items():
+    for (region, var, bucket), ts_literal in region_var_bucket_seq.items():
         if not isinstance(ts_literal, TimeseriesLiteral):
             continue
 
@@ -181,7 +207,7 @@ def build_dataset(
 
 
 def build_default_region_dataset(
-    metrics: Mapping[FieldName, Union[Sequence[float], TimeseriesLiteral]],
+    metrics: Mapping[FieldName, SingleOrBucketedTimeseriesLiteral],
     *,
     region=DEFAULT_REGION,
     start_date=DEFAULT_START_DATE,
