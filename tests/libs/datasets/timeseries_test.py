@@ -1605,15 +1605,16 @@ def test_demographic_data():
 
 
 def test_make_demographic_data():
+    location_id = test_helpers.DEFAULT_REGION.location_id
+    date_0 = test_helpers.DEFAULT_START_DATE
     m1 = FieldName("m1")
     age20s = DemographicBucket("age:20-29")
     age30s = DemographicBucket("age:30-39")
+    all = DemographicBucket("all")
 
-    ds = test_helpers.build_default_region_dataset({m1: {age20s: [1, 2, 3], age30s: [5, 6, 7],}})
-
-    assert (
-        ds.timeseries_bucketed.at[
-            (test_helpers.DEFAULT_REGION.location_id, age30s, test_helpers.DEFAULT_START_DATE), m1
-        ]
-        == 5
+    ds = test_helpers.build_default_region_dataset(
+        {m1: {age20s: [1, 2, 3], age30s: [5, 6, 7], all: [8, 9, None]}}
     )
+
+    assert ds.timeseries_bucketed.at[(location_id, age30s, date_0), m1] == 5
+    assert ds.timeseries_bucketed.at[(location_id, all, date_0), m1] == 8
