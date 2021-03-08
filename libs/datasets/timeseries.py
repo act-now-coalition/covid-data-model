@@ -329,9 +329,9 @@ def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, buckete
 class MultiRegionDataset:
     """A set of timeseries and static values from any number of regions.
 
-    While the data may be accessed directly in the attributes `timeseries`, `static` and `provenance` for
-    easier future refactoring try to use (adding if not available) higher level methods that derive
-    the data you need from these attributes.
+    While the data may be accessed directly in the attributes `timeseries_bucketed`, `static` and
+    `provenance` for easier future refactoring try to use (adding if not available) higher level
+    methods that derive the data you need from these attributes.
 
     Methods named `append_...` return a new object with more regions of data. Methods named `add_...` and
     `join_...` return a new object with more data about the same regions, such as new metrics and provenance
@@ -359,6 +359,8 @@ class MultiRegionDataset:
         timeseries_bucketed: Optional[pd.DataFrame] = None,
         **kwargs,
     ):
+        # TODO(tom): Replace all use of `timeseries` (not bucketed) with timeseries_bucketed,
+        #  then remove this branch and the timeseries cached_property.
         if timeseries is not None:
             assert timeseries_bucketed is None
             _check_timeseries_wide_vars_structure(timeseries, bucketed=False)
