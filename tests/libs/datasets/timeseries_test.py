@@ -1623,3 +1623,45 @@ def test_combine_demographic_data_basic():
 
     combined = timeseries.combined_datasets({m1: [ds2, ds1]}, {})
     test_helpers.assert_dataset_like(combined, ds2)
+
+
+def test_combine_demographic_data_multiple_distributions():
+    """For now all time-series within a variable are treated as a unit when combining. It may be
+    worth treating distributions as a unit."""
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+    all = DemographicBucket("all")
+    age_20s = DemographicBucket("age:20-29")
+    age_30s = DemographicBucket("age:30-39")
+    region_ak = Region.from_state("AK")
+    region_ca = Region.from_state("CA")
+
+    ds1 = test_helpers.build_dataset(
+        {
+            region_ak: {m1: {all: TimeseriesLiteral([1, 2], provenance="ds1_ak_m1_all")}},
+            region_ca: {m1: {age_20s: TimeseriesLiteral([2, 3], provenance="ds1_ca_m1_20s")}},
+        }
+    )
+
+    ds2 = test_helpers.build_dataset(
+        {
+            region_ak: {m1: {all: TimeseriesLiteral([1, 2], provenance="ds2_ak_m1_all")}},
+            region_ca: {
+                m1: {age_30s: TimeseriesLiteral([3, 4], provenance="ds2_ca_m1_30s")},
+                m2: {age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")},
+            },
+        }
+    )
+
+    combined = timeseries.combined_datasets({m1: [ds1, ds2]}, {})
+
+    ds_expected = test_helpers.build_dataset(
+        {
+            region_ak: {m1: {all: TimeseriesLiteral([1, 2], provenance="ds1_ak_m1_all")}},
+            region_ca: {
+                m1: {age_20s: TimeseriesLiteral([2, 3], provenance="ds1_ca_m1_30s")},
+                m2: {age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")},
+            },
+        }
+    )
+    test_helpers.assert_dataset_like(combined, ds_expected)

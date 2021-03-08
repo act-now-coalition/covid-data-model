@@ -5,7 +5,6 @@ import enum
 import dataclasses
 from typing import Optional
 from typing import Tuple
-
 import more_itertools
 import structlog
 import pandas as pd
@@ -13,17 +12,14 @@ from backports.cached_property import cached_property
 from covidactnow.datapublic.common_fields import FieldNameAndCommonField
 from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import CommonFields
-
-
-# Airflow jobs output a single parquet file with all of the data - this is where
-# it is currently stored.
 from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import dataset_utils
 from libs.datasets import taglib
 
-DEMOGRAPHIC_BUCKET = PdFields.DEMOGRAPHIC_BUCKET
 
+# Airflow jobs output a single parquet file with all of the data - this is where
+# it is currently stored.
 PARQUET_PATH = "data/can-scrape/can_scrape_api_covid_us.parquet"
 
 
@@ -86,12 +82,13 @@ def _fips_from_int(param: pd.Series):
     return param.apply(lambda v: f"{v:0>{2 if v < 100 else 5}}")
 
 
-demo_columns = ["age", "race", "ethnicity", "sex"]
+DEMOGRAPHIC_FIELDS = [Fields.AGE, Fields.RACE, Fields.ETHNICITY, Fields.SEX]
 
 
 def make_short_name(row: pd.Series) -> str:
+    """Transform a Series of demographic values into a single string such as 'age:0-9;sex:female'"""
     non_all = []
-    for field in demo_columns:
+    for field in DEMOGRAPHIC_FIELDS:
         if row[field] != "all":
             non_all.append(f"{field}:{row[field]}")
     if non_all:
@@ -107,6 +104,8 @@ class CanScraperLoader:
 
     @cached_property
     def indexed_df(self) -> pd.DataFrame:
+        """The parquet file with many fields moved into a MultiIndex and demographic fields
+        transformed into a single string."""
         indexed_df = self.all_df.set_index(
             [
                 Fields.PROVIDER,
@@ -114,25 +113,22 @@ class CanScraperLoader:
                 Fields.MEASUREMENT,
                 Fields.UNIT,
                 Fields.LOCATION_ID,
-                Fields.AGE,
-                Fields.RACE,
-                Fields.ETHNICITY,
-                Fields.SEX,
-                Fields.DATE,
             ]
+            + DEMOGRAPHIC_FIELDS
+            + [Fields.DATE]
         ).sort_index()
         all_ares = (
-            self.all_df.loc[:, demo_columns]
+            self.all_df.loc[:, DEMOGRAPHIC_FIELDS]
             .drop_duplicates()
-            .set_index(demo_columns, drop=False)
+            .set_index(DEMOGRAPHIC_FIELDS, drop=False)
             .apply(make_short_name, axis=1)
-            .rename(DEMOGRAPHIC_BUCKET)
+            .rename(PdFields.DEMOGRAPHIC_BUCKET)
         )
         # Use `join(other, on=...)` because it preserves the indexed_df index
         rv = (
-            indexed_df.join(all_ares, on=demo_columns)
-            .set_index(DEMOGRAPHIC_BUCKET, append=True)
-            .droplevel(demo_columns)
+            indexed_df.join(all_ares, on=DEMOGRAPHIC_FIELDS)
+            .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)
+            .droplevel(DEMOGRAPHIC_FIELDS)
         )
         return rv
 
@@ -156,6 +152,7 @@ class CanScraperLoader:
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
 
+        # Split `variables` into lists of variables dropped and those returned.
         variables_drop, variables_return = [], []
         for v in variables:
             if v.common_field is None:
@@ -163,8 +160,8 @@ class CanScraperLoader:
             else:
                 variables_return.append(v)
 
-        # Check that `variable` agrees with stuff in the ScraperVariable docstring.
         for v in variables_drop:
+            # Verify agreement with ScraperVariable docstring.
             assert v.measurement == ""
             assert v.unit == ""
 
@@ -176,7 +173,6 @@ class CanScraperLoader:
             Fields.MEASUREMENT,
             Fields.UNIT,
         ]
-        #                                  Fields.LOCATION_ID, Fields.DATE, DEMOGRAPHIC_BUCKET]
         for v in variables_return:
             # Must be set when copying to the return value
             assert v.measurement
@@ -191,34 +187,40 @@ class CanScraperLoader:
 
         combined_rows = pd.concat(selected_data, axis=0, names=[PdFields.VARIABLE])
 
-        unknown_columns = set(combined_rows.columns) - set(Fields) - {DEMOGRAPHIC_BUCKET}
+        unknown_columns = set(combined_rows.columns) - set(Fields) - {PdFields.DEMOGRAPHIC_BUCKET}
         if unknown_columns:
             raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
 
-        indexed = (
+        indexed_rows = (
             combined_rows.rename_axis(
                 index={Fields.DATE: CommonFields.DATE, Fields.LOCATION_ID: CommonFields.LOCATION_ID}
             )
             .reorder_levels(
-                [CommonFields.LOCATION_ID, PdFields.VARIABLE, DEMOGRAPHIC_BUCKET, CommonFields.DATE]
+                [
+                    CommonFields.LOCATION_ID,
+                    PdFields.VARIABLE,
+                    PdFields.DEMOGRAPHIC_BUCKET,
+                    CommonFields.DATE,
+                ]
             )
             .sort_index()
         )
 
-        dups = indexed.index.duplicated(keep=False)
+        dups = indexed_rows.index.duplicated(keep=False)
         if dups.any():
             raise NotImplementedError(
                 f"No support for aggregating duplicate observations:\n"
-                f"{indexed.loc[dups].to_string(line_width=200, max_rows=200,max_colwidth=40)}"
+                f"{indexed_rows.loc[dups].to_string(line_width=200, max_rows=200, max_colwidth=40)}"
             )
 
+        # For now only making a source tag for observations with bucket "all".
         tag_df = taglib.Source.rename_and_make_tag_df(
-            indexed.xs("all", axis=0, level=DEMOGRAPHIC_BUCKET, drop_level=True),
+            indexed_rows.xs("all", axis=0, level=PdFields.DEMOGRAPHIC_BUCKET, drop_level=True),
             source_type=source_type,
             rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
         )
 
-        rows_df = indexed[PdFields.VALUE]
+        rows_df = indexed_rows[PdFields.VALUE]
         return rows_df, tag_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
