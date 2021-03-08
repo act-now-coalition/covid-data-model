@@ -421,12 +421,13 @@ class MultiRegionDataset:
 
         Returns: a Series with MultiIndex LOCATION_ID, DATE, VARIABLE
         """
-        return (
-            self.timeseries.rename_axis(columns=PdFields.VARIABLE)
-            .stack(dropna=True)
-            .rename(PdFields.VALUE)
-            .sort_index()
-        )
+        # TODO(tom): Replace calls to this with timeseries_bucketed_long.
+        return self.timeseries.stack(dropna=True).rename(PdFields.VALUE).sort_index()
+
+    @cached_property
+    def timeseries_bucketed_long(self) -> pd.Series:
+        """A Series with MultiIndex LOCATION_ID, DEMOGRAPHIC_BUCKET, DATE, VARIABLE"""
+        return self.timeseries_bucketed.stack(dropna=True).rename(PdFields.VALUE).sort_index()
 
     @lru_cache(maxsize=None)
     def timeseries_wide_dates(self) -> pd.DataFrame:
@@ -1216,27 +1217,24 @@ class DatasetName(str):
     pass
 
 
-def _to_datasets_wide_dates_map(
+def _to_datasets_wide_dates_buckets_map(
     datasets: Iterable[MultiRegionDataset],
 ) -> Mapping[MultiRegionDataset, pd.DataFrame]:
-    """Turns an iterable of datasets to a mapping of DataFrame with identical date columns.
+    """Turns an iterable of datasets to a mapping of DataFrame with identical date and bucket
+    columns.
 
     The mapping depends on MultiRegionDataset being hashable by id.
     """
     # The docs seem to suggest that `pivot` can read index but looks like reset_index is needed
-    # to avoid a KeyError.
-    # datasets_wide = {
-    #     ds: ds.timeseries_long.to_frame()
+    # to avoid a KeyError. TODO(tom): Try something like this again once we've upgraded Pandas.
     #     .reset_index()
     #     .pivot(
     #         index=[PdFields.VARIABLE, CommonFields.LOCATION_ID],
     #         columns=[PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE],
     #         values=PdFields.VALUE,
     #     )
-    #     for ds in datasets
-    # }
     datasets_wide = {
-        ds: ds.timeseries_long.reorder_levels(
+        ds: ds.timeseries_bucketed_long.reorder_levels(
             [
                 PdFields.VARIABLE,
                 CommonFields.LOCATION_ID,
@@ -1260,13 +1258,13 @@ def combined_datasets(
     For each region, the timeseries from the first dataset in the list with a real value is returned.
     """
     # MultiRegionDataset in `timeseries_field_datasets` will be looked up in `datasets_wide` by id.
-    datasets_wide = _to_datasets_wide_dates_map(
+    datasets_wide = _to_datasets_wide_dates_buckets_map(
         chain.from_iterable(timeseries_field_datasets.values())
     )
     # TODO(tom): Consider how to factor out the timeseries and static processing. For example,
     #  create rows with the entire timeseries and tags then use groupby(location_id).first().
     #  Or maybe do something with groupby(location_id).apply if it is fast enough.
-    # A list of "wide date" DataFrame (VARIABLE, LOCATION_ID index and DATE columns) that
+    # A list of "wide date" DataFrame (VARIABLE, LOCATION_ID index and BUCKET, DATE columns) that
     # will be concat-ed.
     timeseries_dfs = []
     # A list of Series that will be concat-ed
@@ -1316,18 +1314,24 @@ def combined_datasets(
             PdFields.VARIABLE,
             CommonFields.LOCATION_ID,
         ]
-        assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
+        assert output_timeseries_wide_dates.columns.names == [
+            PdFields.DEMOGRAPHIC_BUCKET,
+            CommonFields.DATE,
+        ]
         # Transform from a column for each date to a column for each variable (with rows for dates).
         # stack and unstack does the transform quickly but does not handle an empty DataFrame.
         if output_timeseries_wide_dates.empty:
-            output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+            output_timeseries_wide_variables = EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF
         else:
             output_timeseries_wide_variables = (
-                output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
+                output_timeseries_wide_dates.stack(PdFields.DEMOGRAPHIC_BUCKET)
+                .stack(CommonFields.DATE)
+                .unstack(PdFields.VARIABLE)
+                .sort_index()
             )
         output_tag = pd.concat(tag_series)
     else:
-        output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
+        output_timeseries_wide_variables = EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF
         output_tag = _EMPTY_TAG_SERIES
     if static_series:
         output_static_df = pd.concat(
@@ -1337,7 +1341,7 @@ def combined_datasets(
         output_static_df = EMPTY_REGIONAL_ATTRIBUTES_DF
 
     return MultiRegionDataset(
-        timeseries=output_timeseries_wide_variables,
+        timeseries_bucketed=output_timeseries_wide_variables,
         tag=output_tag.sort_index(),
         static=output_static_df,
     )

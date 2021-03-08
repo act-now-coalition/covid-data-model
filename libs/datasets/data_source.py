@@ -114,10 +114,9 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
             log_provider_coverage_warnings=True,
             source_type=cls.SOURCE_TYPE,
         )
-        # XXX(tom) --  Does this matter? -- XXX
-        # data = cls.transform_data(data)
-        # data = cls._check_data(data)
-        ds = MultiRegionDataset.from_timeseries_long(rows_df)
+        data = rows_df.unstack(PdFields.VARIABLE)
+        data = cls._check_data(data)
+        ds = MultiRegionDataset(timeseries_bucketed=data)
         if not source_df.empty:
             # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.
             source_tag_df = (

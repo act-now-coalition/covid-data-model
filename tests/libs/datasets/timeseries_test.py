@@ -1606,25 +1606,20 @@ def test_make_and_pickle_demographic_data():
     test_helpers.assert_dataset_like(ds, ds_unpickled)
 
 
-def test_combine_demographic_data():
+def test_combine_demographic_data_basic():
     m1 = FieldName("m1")
+    age20s = DemographicBucket("age:20-29")
+    age30s = DemographicBucket("age:30-39")
+    age40s = DemographicBucket("age:40-49")
     ds1 = test_helpers.build_default_region_dataset(
-        {
-            m1: {
-                DemographicBucket("age:20-29"): [1, 2, 3],
-                DemographicBucket("age:30-39"): [5, 6, 7],
-            }
-        }
+        {m1: {age20s: [21, 22, 23], age30s: [31, 32, 33],}}
     )
     ds2 = test_helpers.build_default_region_dataset(
-        {
-            m1: {
-                DemographicBucket("age:20-29"): [2, 3, 4],
-                DemographicBucket("age:30-39"): [6, 7, 8],
-            }
-        }
+        {m1: {age30s: [32, 33, 34], age40s: [42, 43, 44],}}
     )
 
-    combined = timeseries.combined_datasets({FieldName("m1"): [ds1, ds2]}, {})
+    combined = timeseries.combined_datasets({m1: [ds1, ds2]}, {})
+    test_helpers.assert_dataset_like(combined, ds1)
 
-    # XXX Check that combined is correct
+    combined = timeseries.combined_datasets({m1: [ds2, ds1]}, {})
+    test_helpers.assert_dataset_like(combined, ds2)
