@@ -3,7 +3,6 @@ import io
 from typing import List
 
 import pandas as pd
-import numpy as np
 import pytest
 from covidactnow.datapublic import common_df
 
