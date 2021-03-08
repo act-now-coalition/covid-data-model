@@ -1585,25 +1585,10 @@ def test_check_timeseries_structure_empty():
     )
 
 
-def test_demographic_data():
-    ts_lit = TimeseriesLiteral([0, 2, 4],)
-    ds_in = test_helpers.build_default_region_dataset(
-        {
-            CommonFields.CASES: {
-                DemographicBucket("age:20-29"): ts_lit,
-                DemographicBucket("age:30-39"): [5, 6, 7],
-            }
-        }
-    )
-
-    ds_out = pickle.loads(pickle.dumps(ds_in))
-
-    test_helpers.assert_dataset_like(ds_in, ds_out)
-
-
-def test_make_demographic_data():
+def test_make_and_pickle_demographic_data():
     location_id = test_helpers.DEFAULT_REGION.location_id
     date_0 = test_helpers.DEFAULT_START_DATE
+    date_1 = pd.to_datetime(test_helpers.DEFAULT_START_DATE) + pd.to_timedelta(1, unit="day")
     m1 = FieldName("m1")
     age20s = DemographicBucket("age:20-29")
     age30s = DemographicBucket("age:30-39")
@@ -1614,4 +1599,8 @@ def test_make_demographic_data():
     )
 
     assert ds.timeseries_bucketed.at[(location_id, age30s, date_0), m1] == 5
-    assert ds.timeseries_bucketed.at[(location_id, all, date_0), m1] == 8
+    assert ds.timeseries_bucketed.at[(location_id, all, date_1), m1] == 9
+
+    ds_unpickled = pickle.loads(pickle.dumps(ds))
+
+    test_helpers.assert_dataset_like(ds, ds_unpickled)
