@@ -18,6 +18,7 @@ from typing import Tuple
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
 
@@ -290,57 +291,36 @@ EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
     columns=pd.Index([], name=PdFields.VARIABLE),
 )
 
-EMPTY_TIMESERIES_LONG_SERIES = pd.Series(
+EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF = pd.DataFrame(
     [],
     dtype="float",
     index=pd.MultiIndex.from_tuples(
-        [],
-        names=[
-            CommonFields.LOCATION_ID,
-            PdFields.VARIABLE,
-            PdFields.DEMOGRAPHIC_BUCKET,
-            CommonFields.DATE,
-        ],
+        [], names=[CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE]
     ),
+    columns=pd.Index([], name=PdFields.VARIABLE),
 )
 
 
-def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex):
-    assert timeseries_index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex, *, bucketed: bool):
+    if bucketed:
+        assert timeseries_index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.DEMOGRAPHIC_BUCKET,
+            CommonFields.DATE,
+        ]
+    else:
+        # timeseries.index order is important for _timeseries_latest_values correctness.
+        assert timeseries_index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     assert timeseries_index.is_unique
     assert timeseries_index.is_monotonic_increasing
 
 
-def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame):
-    """Asserts that a DataFrame has the structure expected with wide-variable columns. For now
-    these are expected to not have a demographic bucket column."""
-    _check_timeseries_wide_vars_index(wide_vars_df.index)
+def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, bucketed: bool):
+    """Asserts that a DataFrame has the structure expected with wide-variable columns."""
+    _check_timeseries_wide_vars_index(wide_vars_df.index, bucketed=bucketed)
     assert wide_vars_df.columns.names == [PdFields.VARIABLE]
     numeric_columns = wide_vars_df.dtypes.apply(is_numeric_dtype)
     assert numeric_columns.all()
-
-
-def _check_timeseries_long_structure(timeseries_long: pd.Series):
-    """Asserts that a DataFrame has the structure expected row per observation.
-    These are expected to have a demographic bucket column."""
-    assert timeseries_long.index.names == EMPTY_TIMESERIES_LONG_SERIES.index.names
-    assert timeseries_long.index.is_unique
-    assert timeseries_long.index.is_monotonic_increasing
-    assert timeseries_long.name == PdFields.VALUE
-    assert is_numeric_dtype(timeseries_long.dtype)
-
-
-def _timeseries_wide_vars_to_long(wide_vars_df: pd.DataFrame) -> pd.Series:
-    if wide_vars_df.empty:
-        return EMPTY_TIMESERIES_LONG_SERIES
-    else:
-        _check_timeseries_wide_vars_structure(wide_vars_df)
-        return (
-            wide_vars_df.assign(**{PdFields.DEMOGRAPHIC_BUCKET: "all"})
-            .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)
-            .stack()
-            .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
-        )
 
 
 # eq=False because instances are large and we want to compare by id instead of value
@@ -349,27 +329,18 @@ def _timeseries_wide_vars_to_long(wide_vars_df: pd.DataFrame) -> pd.Series:
 class MultiRegionDataset:
     """A set of timeseries and static values from any number of regions.
 
-    While the data may be accessed directly in the attributes `timeseries`, `static` and `provenance` for
-    easier future refactoring try to use (adding if not available) higher level methods that derive
-    the data you need from these attributes.
+    While the data may be accessed directly in the attributes `timeseries_bucketed`, `static` and
+    `provenance` for easier future refactoring try to use (adding if not available) higher level
+    methods that derive the data you need from these attributes.
 
     Methods named `append_...` return a new object with more regions of data. Methods named `add_...` and
     `join_...` return a new object with more data about the same regions, such as new metrics and provenance
     information.
     """
 
-    # Timeseries metrics with float values.
-    timeseries_long: pd.Series
-
-    # CommonFields variables in the dataset. Some places depend on a variable existing even if it
-    # has no real values. This attribute is used to make sure all variables passed to the
-    # constructor are put in DataFrames with a column for each variable.
-    variables: Optional[pd.Index]
-
-    # Copy of the [LOCATION, DATE] index copied from a wide-variables DataFrame.
-    # TODO(tom): This is a clunky hack to get tests passing that depend on keeping a time-series
-    #  that has no data. Remove the dependencies and this attribute.
-    timeseries_index: Optional[pd.MultiIndex]
+    # Timeseries metrics with float values. Each timeseries is identified by a variable name,
+    # region and demographic bucket.
+    timeseries_bucketed: pd.DataFrame
 
     # Static data, each identified by variable name and region. This includes county name,
     # state etc (GEO_DATA_COLUMNS) and metrics that change so slowly they can be
@@ -385,23 +356,20 @@ class MultiRegionDataset:
         self,
         *,
         timeseries: Optional[pd.DataFrame] = None,
-        timeseries_long: Optional[pd.Series] = None,
-        variables: Optional[pd.Index] = None,
-        timeseries_index: Optional[pd.MultiIndex] = None,
+        timeseries_bucketed: Optional[pd.DataFrame] = None,
         **kwargs,
     ):
+        # TODO(tom): Replace all use of `timeseries` (not bucketed) with timeseries_bucketed,
+        #  then remove this branch and the timeseries cached_property.
         if timeseries is not None:
-            timeseries_long = _timeseries_wide_vars_to_long(timeseries)
-            if variables is None:
-                variables = timeseries.columns
-            if timeseries_index is None:
-                timeseries_index = timeseries.index
+            assert timeseries_bucketed is None
+            _check_timeseries_wide_vars_structure(timeseries, bucketed=False)
+            timeseries_bucketed = pd.concat(
+                {DemographicBucket("all"): timeseries}, names=[PdFields.DEMOGRAPHIC_BUCKET]
+            ).reorder_levels(EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF.index.names)
 
         self.__default_init__(  # pylint: disable=E1101
-            timeseries_long=timeseries_long,
-            variables=variables,
-            timeseries_index=timeseries_index,
-            **kwargs,
+            timeseries_bucketed=timeseries_bucketed, **kwargs,
         )
 
     @cached_property
@@ -409,24 +377,16 @@ class MultiRegionDataset:
         """Timeseries metrics with float values. Each timeseries is identified by a variable name
        and region"""
         try:
-            long_all_xs = self.timeseries_long.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0)
+            return self.timeseries_bucketed.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0)
         except KeyError:
-            wide_var_df = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
-        else:
-            wide_var_df = long_all_xs.unstack(PdFields.VARIABLE)
-        if self.variables is not None:
-            missing_variables = pd.Index(self.variables).difference(wide_var_df.columns)
-            missing_empty_columns = pd.DataFrame(
+            # Return a DataFrame that has an index with no rows (but expected level names) and
+            # columns copied from the input.
+            return pd.DataFrame(
                 [],
-                columns=missing_variables,
                 index=EMPTY_TIMESERIES_WIDE_VARIABLES_DF.index,
+                columns=self.timeseries_bucketed.columns,
                 dtype="float",
             )
-            wide_var_df = pd.concat([wide_var_df, missing_empty_columns], axis=1)
-        if self.timeseries_index is not None:
-            # TODO(tom): Update timeseries_index in places where regions are added and removed.
-            wide_var_df = wide_var_df.reindex(index=self.timeseries_index)
-        return wide_var_df
 
     @property
     def timeseries_regions(self) -> Set[Region]:
@@ -514,30 +474,32 @@ class MultiRegionDataset:
         return dataclasses.replace(self, static=static_copy)
 
     @staticmethod
-    def from_timeseries_wide_dates_df(timeseries_wide_dates: pd.DataFrame) -> "MultiRegionDataset":
+    def from_timeseries_wide_dates_df(
+        timeseries_wide_dates: pd.DataFrame, *, bucketed=False
+    ) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame as returned by timeseries_wide_dates."""
-        assert timeseries_wide_dates.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        if bucketed:
+            assert timeseries_wide_dates.index.names == [
+                CommonFields.LOCATION_ID,
+                PdFields.VARIABLE,
+                PdFields.DEMOGRAPHIC_BUCKET,
+            ]
+        else:
+            assert timeseries_wide_dates.index.names == [
+                CommonFields.LOCATION_ID,
+                PdFields.VARIABLE,
+            ]
         assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
-        timeseries_wide_dates.columns = pd.to_datetime(timeseries_wide_dates.columns)
-        return MultiRegionDataset.from_timeseries_long(
-            timeseries_wide_dates.stack().rename(PdFields.VALUE)
+        timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
+            timeseries_wide_dates.columns
         )
-
-    @staticmethod
-    def from_timeseries_long(timeseries_long: pd.Series) -> "MultiRegionDataset":
-        """Make a new dataset from a Series of values."""
-        if PdFields.DEMOGRAPHIC_BUCKET not in timeseries_long.index.names:
-            # There is similar logic in _timeseries_wide_vars_to_long but it starts with a DataFrame
-            timeseries_long = (
-                timeseries_long.to_frame()
-                .assign(**{PdFields.DEMOGRAPHIC_BUCKET: "all"})
-                .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)[PdFields.VALUE]
-                .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
-            )
-
-        assert timeseries_long.index.names == EMPTY_TIMESERIES_LONG_SERIES.index.names
-
-        return MultiRegionDataset(timeseries_long=timeseries_long)
+        timeseries_wide_variables = (
+            timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
+        )
+        if bucketed:
+            return MultiRegionDataset(timeseries_bucketed=timeseries_wide_variables)
+        else:
+            return MultiRegionDataset(timeseries=timeseries_wide_variables)
 
     @staticmethod
     def from_geodata_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -718,11 +680,7 @@ class MultiRegionDataset:
         """Checks that attributes of this object meet certain expectations."""
         # These asserts provide runtime-checking and a single place for humans reading the code to
         # check what is expected of the attributes, beyond type.
-        # timeseries.index order is important for _timeseries_latest_values correctness.
-        _check_timeseries_long_structure(self.timeseries_long)
-        _check_timeseries_wide_vars_structure(self.timeseries)
-        if self.timeseries_index is not None:
-            _check_timeseries_wide_vars_index(self.timeseries_index)
+        _check_timeseries_wide_vars_structure(self.timeseries_bucketed, bucketed=True)
 
         assert self.static.index.names == [CommonFields.LOCATION_ID]
         assert self.static.index.is_unique
@@ -890,10 +848,7 @@ class MultiRegionDataset:
         """Returns a new object containing only timeseries data after given date."""
         ts_rows_mask = self.timeseries.index.get_level_values(CommonFields.DATE) > after
         return dataclasses.replace(
-            self,
-            timeseries=self.timeseries.loc[ts_rows_mask, :],
-            timeseries_index=None,
-            timeseries_long=None,
+            self, timeseries=self.timeseries.loc[ts_rows_mask, :], timeseries_bucketed=None
         )
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
@@ -950,13 +905,8 @@ class MultiRegionDataset:
             timeseries_wide_dates.index
         )
         tag = self.tag.loc[tag_mask]
-        # Don't keep the old timeseries_index because the set of timeseries has changed.
         return dataclasses.replace(
-            self,
-            timeseries=timeseries_wide_variables,
-            timeseries_index=None,
-            tag=tag,
-            timeseries_long=None,
+            self, timeseries=timeseries_wide_variables, tag=tag, timeseries_bucketed=None
         )
 
     def to_csv(self, path: pathlib.Path, include_latest=True):
@@ -1080,7 +1030,7 @@ def _diff_preserving_first_value(series):
         new_cases[first_date] = cases[first_date]
 
     # Return a DataFrame so NEW_CASES is a column with DATE index.
-    return pd.DataFrame({CommonFields.NEW_CASES: new_cases}).rename_axis(columns=PdFields.VARIABLE)
+    return pd.DataFrame({CommonFields.NEW_CASES: new_cases})
 
 
 def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
@@ -1181,7 +1131,7 @@ def drop_new_case_outliers(
     df_copy.loc[to_exclude, CommonFields.NEW_CASES] = np.nan
 
     new_timeseries = dataclasses.replace(
-        timeseries, timeseries=df_copy, timeseries_long=None
+        timeseries, timeseries=df_copy, timeseries_bucketed=None
     ).append_tag_df(new_tags.as_dataframe())
 
     return new_timeseries
@@ -1237,7 +1187,7 @@ def drop_tail_positivity_outliers(
 
     df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
 
-    return dataclasses.replace(dataset, timeseries=df_copy, timeseries_long=None).append_tag_df(
+    return dataclasses.replace(dataset, timeseries=df_copy, timeseries_bucketed=None).append_tag_df(
         new_tags.as_dataframe()
     )
 
@@ -1366,25 +1316,18 @@ def combined_datasets(
             PdFields.VARIABLE,
             CommonFields.LOCATION_ID,
         ]
-        assert output_timeseries_wide_dates.columns.names == [
-            PdFields.DEMOGRAPHIC_BUCKET,
-            CommonFields.DATE,
-        ]
+        assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
         # Transform from a column for each date to a column for each variable (with rows for dates).
         # stack and unstack does the transform quickly but does not handle an empty DataFrame.
         if output_timeseries_wide_dates.empty:
-            output_timeseries_long = EMPTY_TIMESERIES_LONG_SERIES
+            output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         else:
-            output_timeseries_long = (
-                output_timeseries_wide_dates.stack()
-                .stack()
-                .reorder_levels(EMPTY_TIMESERIES_LONG_SERIES.index.names)
-                .sort_index()
-                .rename(PdFields.VALUE)
+            output_timeseries_wide_variables = (
+                output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
             )
         output_tag = pd.concat(tag_series)
     else:
-        output_timeseries_long = EMPTY_TIMESERIES_LONG_SERIES
+        output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
         output_tag = _EMPTY_TAG_SERIES
     if static_series:
         output_static_df = pd.concat(
@@ -1394,8 +1337,7 @@ def combined_datasets(
         output_static_df = EMPTY_REGIONAL_ATTRIBUTES_DF
 
     return MultiRegionDataset(
-        timeseries_long=output_timeseries_long,
-        timeseries_index=None,
+        timeseries=output_timeseries_wide_variables,
         tag=output_tag.sort_index(),
         static=output_static_df,
     )

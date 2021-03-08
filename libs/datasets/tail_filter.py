@@ -56,7 +56,7 @@ class TailFilter:
         return (
             tail_filter,
             dataclasses.replace(
-                dataset, timeseries=timeseries_wide_variables, timeseries_long=None
+                dataset, timeseries=timeseries_wide_variables, timeseries_bucketed=None
             ).append_tag_df(tail_filter._annotations.as_dataframe()),
         )
 

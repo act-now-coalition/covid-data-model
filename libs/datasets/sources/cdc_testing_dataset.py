@@ -56,32 +56,35 @@ class CDCTestingDataset(data_source.CanScraperBase):
     @classmethod
     @lru_cache(None)
     def make_dataset(cls) -> MultiRegionDataset:
-        # Test positivity should be a ratio
-        ds = super().make_dataset()
-        ts_copy = ds.timeseries.copy()
-        ts_copy.loc[:, CommonFields.TEST_POSITIVITY_7D] = (
-            ts_copy.loc[:, CommonFields.TEST_POSITIVITY_7D] / 100.0
-        )
+        return modify_dataset(super().make_dataset())
 
-        levels = set(
-            Region.from_location_id(l).level
-            for l in ds.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
-        )
-        # Should only be picking up county all_df for now.  May need additional logic if states
-        # are included as well
-        assert levels == {AggregationLevel.COUNTY}
 
-        # Duplicating DC County results as state results because of a downstream
-        # use of how dc state data is used to override DC county data.
-        dc_results = ts_copy.xs(
-            DC_COUNTY_LOCATION_ID, axis=0, level=CommonFields.LOCATION_ID, drop_level=False
-        )
-        dc_results = dc_results.rename(
-            index={DC_COUNTY_LOCATION_ID: DC_STATE_LOCATION_ID}, level=CommonFields.LOCATION_ID
-        )
+def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
+    ts_copy = ds.timeseries.copy()
+    # Test positivity should be a ratio
+    ts_copy.loc[:, CommonFields.TEST_POSITIVITY_7D] = (
+        ts_copy.loc[:, CommonFields.TEST_POSITIVITY_7D] / 100.0
+    )
 
-        ts_copy = ts_copy.append(dc_results, verify_integrity=True).sort_index()
+    levels = set(
+        Region.from_location_id(l).level
+        for l in ds.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
+    )
+    # Should only be picking up county all_df for now.  May need additional logic if states
+    # are included as well
+    assert levels == {AggregationLevel.COUNTY}
 
-        return dataclasses.replace(
-            ds, timeseries=remove_trailing_zeros(ts_copy), timeseries_long=None
-        )
+    # Duplicating DC County results as state results because of a downstream
+    # use of how dc state data is used to override DC county data.
+    dc_results = ts_copy.xs(
+        DC_COUNTY_LOCATION_ID, axis=0, level=CommonFields.LOCATION_ID, drop_level=False
+    )
+    dc_results = dc_results.rename(
+        index={DC_COUNTY_LOCATION_ID: DC_STATE_LOCATION_ID}, level=CommonFields.LOCATION_ID
+    )
+
+    ts_copy = ts_copy.append(dc_results, verify_integrity=True).sort_index()
+
+    return dataclasses.replace(
+        ds, timeseries=remove_trailing_zeros(ts_copy), timeseries_bucketed=None
+    )
