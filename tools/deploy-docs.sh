@@ -18,9 +18,10 @@ prepare () {
 
 execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
+       -H "Accept: application/vnd.github.v3+json" \
       --request POST \
-      --data "{\"event_type\": \"deploy-docs\" }" \
-      https://api.github.com/repos/covid-projections/covid-data-model/dispatches
+      --data "{ \"ref\": \"main\" }" \
+      https://api.github.com/repos/covid-projections/covid-data-model/actions/workflows/deploy_docs.yml/dispatches
 
   echo "Deploying API Documentation. Go to https://github.com/covid-projections/covid-data-model/actions to monitor progress."
 }
