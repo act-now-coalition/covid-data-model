@@ -77,24 +77,29 @@ def _calculate_modified_zscore(
     return z.abs()
 
 
-def drop_new_case_outliers(
-    timeseries: MultiRegionDataset, zscore_threshold: float = 8.0, case_threshold: int = 30,
-) -> MultiRegionDataset:
+def drop_new_case_outliers(timeseries: MultiRegionDataset) -> MultiRegionDataset:
     """Identifies and drops outliers from the new case series.
 
     Args:
         timeseries: Timeseries.
-        zscore_threshold: Z-score threshold.  All new cases with a zscore greater than the
-            threshold will be removed.
-        case_threshold: Min number of cases needed to count as an outlier.
 
     Returns: timeseries with outliers removed from new_cases.
     """
     return drop_series_outliers(
-        timeseries,
-        CommonFields.NEW_CASES,
-        zscore_threshold=zscore_threshold,
-        threshold=case_threshold,
+        timeseries, CommonFields.NEW_CASES, zscore_threshold=8.0, threshold=30,
+    )
+
+
+def drop_new_deaths_outliers(timeseries: MultiRegionDataset) -> MultiRegionDataset:
+    """Identifies and drops outliers from the new case series.
+
+    Args:
+        timeseries: Timeseries.
+
+    Returns: timeseries with outliers removed from new_cases.
+    """
+    return drop_series_outliers(
+        timeseries, CommonFields.NEW_DEATHS, zscore_threshold=8.0, threshold=30,
     )
 
 
