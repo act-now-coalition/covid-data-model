@@ -3,6 +3,7 @@ import io
 from typing import List
 
 import pandas as pd
+import numpy as np
 import pytest
 from covidactnow.datapublic import common_df
 
@@ -377,7 +378,7 @@ def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
         # positive_tests and negative_tests are used
         expected_metrics = {
             CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-                [pd.NA, 0.0909, pd.NA, pd.NA, pd.NA, pd.NA], provenance="pos"
+                [None, 0.0909, None, None, None, None], provenance="pos"
             )
         }
         expected = test_helpers.build_default_region_dataset(
