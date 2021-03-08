@@ -474,9 +474,21 @@ class MultiRegionDataset:
         return dataclasses.replace(self, static=static_copy)
 
     @staticmethod
-    def from_timeseries_wide_dates_df(timeseries_wide_dates: pd.DataFrame) -> "MultiRegionDataset":
+    def from_timeseries_wide_dates_df(
+        timeseries_wide_dates: pd.DataFrame, *, bucketed=False
+    ) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame as returned by timeseries_wide_dates."""
-        assert timeseries_wide_dates.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        if bucketed:
+            assert timeseries_wide_dates.index.names == [
+                CommonFields.LOCATION_ID,
+                PdFields.VARIABLE,
+                PdFields.DEMOGRAPHIC_BUCKET,
+            ]
+        else:
+            assert timeseries_wide_dates.index.names == [
+                CommonFields.LOCATION_ID,
+                PdFields.VARIABLE,
+            ]
         assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
         timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
             timeseries_wide_dates.columns
@@ -484,7 +496,10 @@ class MultiRegionDataset:
         timeseries_wide_variables = (
             timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
         )
-        return MultiRegionDataset(timeseries=timeseries_wide_variables)
+        if bucketed:
+            return MultiRegionDataset(timeseries_bucketed=timeseries_wide_variables)
+        else:
+            return MultiRegionDataset(timeseries=timeseries_wide_variables)
 
     @staticmethod
     def from_geodata_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":

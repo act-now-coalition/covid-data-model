@@ -162,17 +162,10 @@ def build_dataset(
         names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
     )
 
-    # Similar to from_timeseries_wide_dates_df but with buckets
-    df = (
-        pd.DataFrame(list(region_var_bucket_seq.values()), index=index, columns=dates)
-        .fillna(np.nan)
-        .stack(dropna=True)
-        .unstack(PdFields.VARIABLE)
-        .reorder_levels(timeseries.EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF.index.names)
-        .sort_index()
-    )
+    df = pd.DataFrame(list(region_var_bucket_seq.values()), index=index, columns=dates)
+    df = df.fillna(np.nan).apply(pd.to_numeric)
 
-    dataset = timeseries.MultiRegionDataset(timeseries_bucketed=df)
+    dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df, bucketed=True)
 
     if timeseries_columns:
         new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
