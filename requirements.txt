@@ -15,7 +15,7 @@ numpy==1.18.2
 matplotlib==3.2.1
 mccabe==0.6.1
 numpy==1.18.2
-pandas==1.2.2
+pandas==1.0.3
 pyshp==2.1.0
 pymc3==3.8
 requests==2.23.0
