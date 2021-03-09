@@ -99,9 +99,9 @@ def drop_series_outliers(
         new_tags.add(tag, location_id=location_id, variable=field)
     df_copy.loc[to_exclude, field] = np.nan
 
-    new_dataset = dataclasses.replace(dataset, timeseries=df_copy).append_tag_df(
-        new_tags.as_dataframe()
-    )
+    new_dataset = dataclasses.replace(
+        dataset, timeseries=df_copy, timeseries_bucketed=None
+    ).append_tag_df(new_tags.as_dataframe())
 
     return new_dataset
 
@@ -156,4 +156,6 @@ def drop_tail_positivity_outliers(
 
     df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
 
-    return dataclasses.replace(dataset, timeseries=df_copy).append_tag_df(new_tags.as_dataframe())
+    return dataclasses.replace(dataset, timeseries=df_copy, timeseries_bucketed=None).append_tag_df(
+        new_tags.as_dataframe()
+    )
