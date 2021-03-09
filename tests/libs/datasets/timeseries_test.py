@@ -1013,48 +1013,6 @@ def test_drop_column_with_tags():
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
 
 
-def test_remove_outliers():
-    values = [10.0] * 7 + [1000.0]
-    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    dataset = timeseries.drop_new_case_outliers(dataset)
-
-    # Expected result is the same series with the last value removed
-    expected_tag = test_helpers.make_tag(
-        TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=1000.0,
-    )
-    expected_ts = TimeseriesLiteral([10.0] * 7, annotation=[expected_tag])
-    expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})
-    test_helpers.assert_dataset_like(dataset, expected, drop_na_dates=True)
-
-
-def test_remove_outliers_threshold():
-    values = [1.0] * 7 + [30.0]
-    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
-
-    # Should not modify becasue not higher than threshold
-    test_helpers.assert_dataset_like(dataset, result)
-
-    result = timeseries.drop_new_case_outliers(dataset, case_threshold=29)
-
-    # Expected result is the same series with the last value removed
-    expected_tag = test_helpers.make_tag(
-        TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=30.0
-    )
-    expected_ts = TimeseriesLiteral([1.0] * 7, annotation=[expected_tag])
-    expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})
-    test_helpers.assert_dataset_like(result, expected, drop_na_dates=True)
-
-
-def test_not_removing_short_series():
-    values = [None] * 7 + [1, 1, 300]
-    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
-
-    # Should not modify because not higher than threshold
-    test_helpers.assert_dataset_like(dataset, result)
-
-
 def test_timeseries_empty_timeseries_and_static():
     # Check that empty dataset creates a MultiRegionDataset
     # and that get_one_region raises expected exception.
@@ -1354,30 +1312,6 @@ def test_write_read_dataset_pointer_with_source_url(tmpdir):
     assert set(source_url_read[CommonFields.CASES]) == {url_str2, url_str3}
 
 
-# TODO(chris): Make test stronger, doesn't cover all edge cases
-@pytest.mark.parametrize("last_value,is_outlier", [(0.02, False), (0.045, True)])
-def test_remove_test_positivity_outliers(last_value, is_outlier):
-    values = [0.015] * 7 + [last_value]
-    dataset_in = test_helpers.build_default_region_dataset(
-        {CommonFields.TEST_POSITIVITY_7D: values}
-    )
-    dataset_out = timeseries.drop_tail_positivity_outliers(dataset_in)
-
-    # Expected result is the same series with the last value removed
-    if is_outlier:
-        expected_tag = test_helpers.make_tag(
-            TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=last_value,
-        )
-        expected_ts = TimeseriesLiteral([0.015] * 7, annotation=[expected_tag])
-        expected = test_helpers.build_default_region_dataset(
-            {CommonFields.TEST_POSITIVITY_7D: expected_ts}
-        )
-        test_helpers.assert_dataset_like(dataset_out, expected, drop_na_dates=True)
-
-    else:
-        test_helpers.assert_dataset_like(dataset_in, dataset_out, drop_na_dates=True)
-
-
 def test_pickle():
     ts = TimeseriesLiteral(
         [0, 2, 4],
@@ -1489,33 +1423,3 @@ def test_make_source_url_tags_has_source_url():
     )
     with pytest.raises(AssertionError):
         timeseries.make_source_url_tags(dataset_in)
-
-
-def test_check_timeseries_structure_empty():
-    timeseries._check_timeseries_wide_vars_structure(
-        timeseries.EMPTY_TIMESERIES_WIDE_VARIABLES_DF, bucketed=False
-    )
-    timeseries._check_timeseries_wide_vars_structure(
-        timeseries.EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF, bucketed=True
-    )
-
-
-def test_make_and_pickle_demographic_data():
-    location_id = test_helpers.DEFAULT_REGION.location_id
-    date_0 = test_helpers.DEFAULT_START_DATE
-    date_1 = pd.to_datetime(test_helpers.DEFAULT_START_DATE) + pd.to_timedelta(1, unit="day")
-    m1 = FieldName("m1")
-    age20s = DemographicBucket("age:20-29")
-    age30s = DemographicBucket("age:30-39")
-    all = DemographicBucket("all")
-
-    ds = test_helpers.build_default_region_dataset(
-        {m1: {age20s: [1, 2, 3], age30s: [5, 6, 7], all: [8, 9, None]}}
-    )
-
-    assert ds.timeseries_bucketed.at[(location_id, age30s, date_0), m1] == 5
-    assert ds.timeseries_bucketed.at[(location_id, all, date_1), m1] == 9
-
-    ds_unpickled = pickle.loads(pickle.dumps(ds))
-
-    test_helpers.assert_dataset_like(ds, ds_unpickled)
