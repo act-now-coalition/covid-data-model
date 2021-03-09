@@ -62,6 +62,7 @@ def _build_actuals(actual_data: dict) -> Actuals:
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
         newCases=actual_data[CommonFields.NEW_CASES],
+        newDeaths=actual_data[CommonFields.NEW_DEATHS],
         vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
         vaccinationsInitiated=actual_data.get(CommonFields.VACCINATIONS_INITIATED),
         # Vaccinations completed currently optional as data is not yet flowing through.
@@ -108,6 +109,7 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
     "hospitalBeds": CommonFields.HOSPITAL_BEDS_IN_USE_ANY,
     "icuBeds": CommonFields.ICU_BEDS,
     "newCases": CommonFields.NEW_CASES,
+    "newDeaths": CommonFields.NEW_DEATHS,
     "vaccinesDistributed": CommonFields.VACCINES_DISTRIBUTED,
     "vaccinationsInitiated": CommonFields.VACCINATIONS_INITIATED,
     "vaccinationsCompleted": CommonFields.VACCINATIONS_COMPLETED,
