@@ -272,7 +272,7 @@
         },
         "newDeaths": {
           "title": "Newdeaths",
-          "description": "\nNew confirmed or suspected deaths.\n\nNew deaths are a processed timeseries of cases - summing new deaths may not equal\nthe cumulative death count.\n\nProcessing steps:\n 1. If a region does not report deaths for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of deaths and can be misleading to the overall series.\n 2. We remove any days with negative new deaths.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported deaths.\n",
+          "description": "\nNew confirmed or suspected COVID-19 deaths.\n\nNew deaths is an estimate of deaths per day; summing new deaths may not equal the\ncumulative death count.\n\nProcessing steps:\n 1. If a region does not report deaths for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of deaths and can be misleading to the overall series.\n 2. We remove any days with negative new deaths.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported deaths.\n",
           "anyOf": [
             {
               "type": "integer"

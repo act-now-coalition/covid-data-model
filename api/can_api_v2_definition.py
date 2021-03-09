@@ -155,10 +155,10 @@ Processing steps:
     newDeaths: Optional[int] = pydantic.Field(
         ...,
         description="""
-New confirmed or suspected deaths.
+New confirmed or suspected COVID-19 deaths.
 
-New deaths are a processed timeseries of cases - summing new deaths may not equal
-the cumulative death count.
+New deaths is an estimate of deaths per day; summing new deaths may not equal the
+cumulative death count.
 
 Processing steps:
  1. If a region does not report deaths for a period of time but then begins reporting again,
