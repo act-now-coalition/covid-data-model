@@ -513,8 +513,7 @@ class MultiRegionDataset:
 
     @staticmethod
     def from_geodata_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
-        """Make a new dataset from a DataFrame containing timeseries (real-valued metrics) and
-        static geo data (county name etc)."""
+        """Make a new dataset from a DataFrame containing timeseries (real-valued metrics)."""
         assert timeseries_and_geodata_df.index.names == [None]
         timeseries_and_geodata_df = timeseries_and_geodata_df.set_index(
             [CommonFields.LOCATION_ID, CommonFields.DATE]
@@ -534,12 +533,8 @@ class MultiRegionDataset:
             # NaN, which is a valid float. Apply to_numeric to columns so that int columns
             # are not modified.
             timeseries_df = timeseries_df.fillna(np.nan).apply(pd.to_numeric).sort_index()
-        geodata_df = timeseries_and_geodata_df.loc[:, geodata_column_mask]
-        static_df = _geodata_df_to_static_attribute_df(
-            geodata_df.reset_index().drop(columns=[CommonFields.DATE])
-        )
 
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df)
+        return MultiRegionDataset(timeseries=timeseries_df)
 
     def add_fips_static_df(self, latest_df: pd.DataFrame) -> "MultiRegionDataset":
         latest_df = _add_location_id(latest_df)
@@ -547,7 +542,10 @@ class MultiRegionDataset:
 
     def add_static_values(self, attributes_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new object with non-NA values in `latest_df` added to the static attribute."""
-        combined_attributes = _merge_attributes(self.static.reset_index(), attributes_df)
+        scalars_without_geodata = attributes_df.loc[
+            :, attributes_df.columns.difference(GEO_DATA_COLUMNS)
+        ]
+        combined_attributes = _merge_attributes(self.static.reset_index(), scalars_without_geodata)
         assert combined_attributes.index.names == [CommonFields.LOCATION_ID]
         return dataclasses.replace(self, static=combined_attributes)
 
