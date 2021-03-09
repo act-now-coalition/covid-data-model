@@ -7,6 +7,11 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### New deaths column
+Added `actuals.newDeaths` and `actualsTimeseries.*.newDeaths` to the API. 
+The processing is similar to `actuals.newCases`, representing new deaths
+since last report.
+
 ### Field level annotations
 _Added on 2021-01-19_
 
