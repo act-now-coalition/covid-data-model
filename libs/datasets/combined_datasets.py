@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Any
-from typing import Collection
 from typing import Dict, Type, List, NewType
 import functools
 import pathlib
 from typing import Optional
+from typing import TypeVar
 from typing import Union
 
 import pandas as pd
@@ -38,13 +38,12 @@ from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
 from libs.datasets.sources.cdc_vaccine_dataset import CDCVaccinesDataset
 from libs.pipeline import Region
-
+from libs.pipeline import RegionMask
+from libs.pipeline import RegionMaskOrRegion
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
 
 # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.
-from libs.pipeline import RegionMask
-
 _log = structlog.get_logger()
 
 
@@ -52,11 +51,6 @@ class RegionLatestNotFound(IndexError):
     """Requested region's latest values not found in combined data"""
 
     pass
-
-
-RegionMaskOrRegions = NewType(
-    "RegionMaskOrRegions", Union[RegionMask, Region, Collection[Union[Region, RegionMask]]]
-)
 
 
 @final
@@ -78,8 +72,8 @@ class DataSourceAndRegionMasks:
     """
 
     data_source_cls: Type[data_source.DataSource]
-    include: Optional[RegionMaskOrRegions] = None
-    exclude: Optional[RegionMaskOrRegions] = None
+    include: List[RegionMaskOrRegion]
+    exclude: List[RegionMaskOrRegion]
 
     @property
     def EXPECTED_FIELDS(self):
@@ -91,22 +85,6 @@ class DataSourceAndRegionMasks:
         """Implements the same interface as the wrapped DataSource class."""
         return self.data_source_cls.SOURCE_TYPE
 
-    @staticmethod
-    def _get_location_ids(region_mask_or_regions: RegionMaskOrRegions) -> Collection[str]:
-        if isinstance(region_mask_or_regions, RegionMask):
-            return region_mask_to_location_ids(region_mask_or_regions)
-        elif isinstance(region_mask_or_regions, Region):
-            return [region_mask_or_regions.location_id]
-        else:
-            location_ids = []
-            for mask_or_region in region_mask_or_regions:
-                if isinstance(mask_or_region, RegionMask):
-                    location_ids.extend(region_mask_to_location_ids(mask_or_region))
-                else:
-                    location_ids.append(mask_or_region.location_id)
-
-            return location_ids
-
     def make_dataset(self) -> MultiRegionDataset:
         """Returns the dataset of the wrapped DataSource class, with a subset of the regions.
 
@@ -115,24 +93,39 @@ class DataSourceAndRegionMasks:
         dataset = self.data_source_cls.make_dataset()
 
         if self.include:
-            dataset = dataset.get_locations_subset(self._get_location_ids(self.include))
+            dataset = dataset.get_regions_subset(self.include)
         if self.exclude:
-            dataset = dataset.remove_locations(self._get_location_ids(self.exclude))
+            dataset = dataset.remove_regions(self.exclude)
         return dataset
+
+
+T = TypeVar("T")
+
+
+def to_list(list_or_scalar: Union[None, T, List[T]]) -> List[T]:
+    """Returns a list which may be empty, contain the single non-list parameter or the parameter."""
+    if isinstance(list_or_scalar, List):
+        return list_or_scalar
+    elif list_or_scalar is None:
+        return []
+    else:
+        return [list_or_scalar]
 
 
 def datasource_regions(
     data_source_cls: Type[data_source.DataSource],
-    include: Optional[RegionMaskOrRegions] = None,
+    include: Union[None, RegionMaskOrRegion, List[RegionMaskOrRegion]] = None,
     *,
-    exclude: Optional[RegionMaskOrRegions] = None,
+    exclude: Union[None, RegionMaskOrRegion, List[RegionMaskOrRegion]] = None,
 ) -> DataSourceAndRegionMasks:
     """Creates an instance of the `DataSourceAndRegionMasks` class."""
     assert include or exclude, (
         "At least one of include or exclude must be set. If neither are "
         "needed use the DataSource class directly."
     )
-    return DataSourceAndRegionMasks(data_source_cls, include=include, exclude=exclude)
+    return DataSourceAndRegionMasks(
+        data_source_cls, include=to_list(include), exclude=to_list(exclude)
+    )
 
 
 FeatureDataSourceMap = NewType(
@@ -309,14 +302,3 @@ class RegionalData:
         if county:
             return f"{county}, {state}"
         return state
-
-
-def region_mask_to_location_ids(region_mask: RegionMask) -> Collection[str]:
-    """Uses the existing combined dataset to transform `region_mask` into a list of location_id."""
-    us_static = load_us_timeseries_dataset().static
-
-    rows_key = dataset_utils.make_rows_key(
-        us_static, aggregation_level=region_mask.level, states=region_mask.states,
-    )
-
-    return us_static.loc[rows_key, :].index

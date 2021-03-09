@@ -11,8 +11,10 @@ from dataclasses import dataclass
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Union
 
 import us
+from typing_extensions import NewType
 from typing_extensions import final
 
 from libs import us_state_abbrev
@@ -186,6 +188,9 @@ class Region:
 class RegionMask:
     level: Optional[AggregationLevel] = None
     states: Optional[List[str]] = None
+
+
+RegionMaskOrRegion = NewType("RegionMaskOrRegion", Union[RegionMask, Region])
 
 
 def us_states_to_country_map() -> Mapping[Region, Region]:

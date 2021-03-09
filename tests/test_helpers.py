@@ -12,7 +12,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Type
-from typing import TypeVar
 from typing import Union
 
 import more_itertools
@@ -26,6 +25,7 @@ from covidactnow.datapublic.common_fields import PdFields
 from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import taglib
 from libs.datasets import timeseries
+from libs.datasets.combined_datasets import to_list
 from libs.datasets.taglib import TagField
 from libs.datasets.taglib import TagType
 from libs.datasets.taglib import UrlStr
@@ -38,19 +38,6 @@ DEFAULT_FIPS = "97222"
 DEFAULT_REGION = Region.from_fips(DEFAULT_FIPS)
 
 DEFAULT_START_DATE = "2020-04-01"
-
-
-T = TypeVar("T")
-
-
-def _to_list(list_or_scalar: Union[None, T, List[T]]) -> List[T]:
-    """Returns a list which may be empty, contain the single non-list parameter or the parameter."""
-    if isinstance(list_or_scalar, List):
-        return list_or_scalar
-    elif list_or_scalar:
-        return [list_or_scalar]
-    else:
-        return []
 
 
 @dataclass_with_default_init(frozen=True)
@@ -77,9 +64,9 @@ class TimeseriesLiteral(UserList):
         # let the dataclasses code initialize `data`.
         self.__default_init__(  # pylint: disable=E1101
             *args,
-            provenance=_to_list(provenance),
-            source_url=_to_list(source_url),
-            source=_to_list(source),
+            provenance=to_list(provenance),
+            source_url=to_list(source_url),
+            source=to_list(source),
             **kwargs,
         )
 

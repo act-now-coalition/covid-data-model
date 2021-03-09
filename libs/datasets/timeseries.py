@@ -43,6 +43,7 @@ from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
 
+from libs.pipeline import RegionMaskOrRegion
 
 _log = structlog.get_logger()
 
@@ -398,9 +399,19 @@ class MultiRegionDataset:
                 dtype="float",
             )
 
+    def location_ids(self) -> pd.Index:
+        return self.static.index.unique(CommonFields.LOCATION_ID).union(
+            self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID)
+        )
+
     @cached_property
-    def static_and_geo_data(self) -> pd.DataFrame:
-        return self.static.join(dataset_utils.get_geo_data(), on=CommonFields.LOCATION_ID)
+    def geo_data(self) -> pd.DataFrame:
+        location_ids = self.location_ids()
+        geo_data = dataset_utils.get_geo_data()
+        missing_location_id = location_ids.difference(geo_data.index)
+        if not missing_location_id.empty:
+            raise KeyError(f"location_id not in data/geo-data.csv:\n{missing_location_id}")
+        return dataset_utils.get_geo_data().reindex(index=location_ids)
 
     @property
     def timeseries_regions(self) -> Set[Region]:
@@ -422,8 +433,9 @@ class MultiRegionDataset:
     @lru_cache(maxsize=None)
     def static_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
         """Static values merged with the latest timeseries values."""
+        static_and_geo_data = self.static.join(self.geo_data)
         return _merge_attributes(
-            self._timeseries_latest_values().reset_index(), self.static_and_geo_data.reset_index()
+            self._timeseries_latest_values().reset_index(), static_and_geo_data.reset_index()
         )
 
     def _timeseries_long(self) -> pd.Series:
@@ -603,11 +615,11 @@ class MultiRegionDataset:
         timeseries_df = combined_df.loc[rows_with_date, :]
 
         # Extract rows of combined_df which don't have a date.
-        latest_df = combined_df.loc[~rows_with_date, :]
+        latest_df = combined_df.loc[~rows_with_date, :].drop(columns=[CommonFields.DATE])
 
         dataset = MultiRegionDataset.from_geodata_timeseries_df(timeseries_df)
         if not latest_df.empty:
-            dataset = dataset.add_static_values(latest_df.drop(columns=[CommonFields.DATE]))
+            dataset = dataset.add_static_values(latest_df)
 
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
@@ -704,13 +716,13 @@ class MultiRegionDataset:
         assert self.tag.name == TagField.CONTENT
         # Check that all tag location_id are in timeseries location_id
         assert (
-            self.tag.index.get_level_values(TagField.LOCATION_ID)
-            .difference(self.timeseries.index.get_level_values(CommonFields.LOCATION_ID))
+            self.tag.index.unique(TagField.LOCATION_ID)
+            .difference(self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID))
             .empty
         )
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
-        common_location_id = self.static.index.intersection(other.static.index)
+        common_location_id = self.location_ids().intersection(other.location_ids())
         if not common_location_id.empty:
             raise ValueError("Do not use append_regions with duplicate location_id")
         # TODO(tom): check if rename_axis is needed once we have
@@ -787,8 +799,27 @@ class MultiRegionDataset:
             attributes_series = pd.Series([], dtype=object)
         return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
 
-    def get_regions_subset(self, regions: Collection[Region]) -> "MultiRegionDataset":
-        location_ids = pd.Index(sorted(r.location_id for r in regions))
+    def _location_ids_in_mask(self, region_mask: pipeline.RegionMask) -> pd.Index:
+        geo_data = self.geo_data
+        rows_key = dataset_utils.make_rows_key(
+            geo_data, aggregation_level=region_mask.level, states=region_mask.states,
+        )
+        return geo_data.loc[rows_key, :].index
+
+    def _regionmaskorregions_to_location_id(
+        self, regions_and_masks: Collection[RegionMaskOrRegion]
+    ):
+        location_ids = set()
+        for region_or_mask in regions_and_masks:
+            if isinstance(region_or_mask, Region):
+                location_ids.add(region_or_mask.location_id)
+            else:
+                assert isinstance(region_or_mask, pipeline.RegionMask)
+                location_ids.update(self._location_ids_in_mask(region_or_mask))
+        return pd.Index(sorted(location_ids), dtype=str)
+
+    def get_regions_subset(self, regions: Collection[RegionMaskOrRegion]) -> "MultiRegionDataset":
+        location_ids = self._regionmaskorregions_to_location_id(regions)
         return self.get_locations_subset(location_ids)
 
     def get_locations_subset(self, location_ids: Collection[str]) -> "MultiRegionDataset":
@@ -804,8 +835,8 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask, :]
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
-    def remove_regions(self, regions: Collection[Region]) -> "MultiRegionDataset":
-        location_ids = pd.Index(sorted(r.location_id for r in regions))
+    def remove_regions(self, regions: Collection[RegionMaskOrRegion]) -> "MultiRegionDataset":
+        location_ids = self._regionmaskorregions_to_location_id(regions)
         return self.remove_locations(location_ids)
 
     def remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
@@ -832,7 +863,7 @@ class MultiRegionDataset:
     ) -> "MultiRegionDataset":
         """Returns a new object containing data for a subset of the regions in `self`."""
         rows_key = dataset_utils.make_rows_key(
-            self.static_and_geo_data,
+            self.geo_data,
             aggregation_level=aggregation_level,
             fips=fips,
             state=state,
@@ -840,7 +871,7 @@ class MultiRegionDataset:
             location_id_matches=location_id_matches,
             exclude_county_999=exclude_county_999,
         )
-        location_ids = self.static.loc[rows_key, :].index
+        location_ids = self.geo_data.loc[rows_key, :].index
         return self.get_locations_subset(location_ids)
 
     def get_counties_and_places(

@@ -5,8 +5,9 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_dataset_utils
 from libs.datasets import combined_datasets
+from libs.datasets import data_source
+from libs.datasets import timeseries
 from libs.datasets.timeseries import MultiRegionDataset
-from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
 from libs.qa.common_df_diff import DatasetDiff
@@ -50,14 +51,34 @@ def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
 
 
 def test_include_exclude_regions():
+    # TODO(tom): move to combined_datasets_test.
+    ds_in = test_helpers.build_dataset(
+        {
+            Region.from_state("TX"): {CommonFields.CASES: [1, 2, 3]},
+            Region.from_state("DC"): {CommonFields.CASES: [1, 2, 3]},
+            Region.from_fips("36061"): {CommonFields.CASES: [1, 2, 3]},
+            Region.from_fips("36063"): {CommonFields.CASES: [1, 2, 3]},
+            Region.from_fips("11001"): {CommonFields.CASES: [1, 2, 3]},
+        }
+    )
+
+    class DataSourceForTest(data_source.DataSource):
+        @classmethod
+        def make_dataset(cls) -> timeseries.MultiRegionDataset:
+            return ds_in
 
     mask = combined_datasets.DataSourceAndRegionMasks(
-        NYTimesDataset,
+        DataSourceForTest,
+        include=[],
         exclude=[
             Region.from_fips("36061"),
             RegionMask(level=AggregationLevel.COUNTY, states=["DC"]),
         ],
     )
 
-    location_ids = mask._get_location_ids(mask.exclude)
-    assert location_ids == ["iso1:us#iso2:us-ny#fips:36061", "iso1:us#iso2:us-dc#fips:11001"]
+    location_ids = set(mask.make_dataset().location_ids())
+    assert location_ids == {
+        "iso1:us#iso2:us-tx",
+        "iso1:us#iso2:us-dc",
+        "iso1:us#iso2:us-ny#fips:36063",
+    }

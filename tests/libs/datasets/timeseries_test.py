@@ -268,7 +268,14 @@ def test_one_region_multiple_provenance():
 def test_add_aggregate_level():
     ts_df = read_csv_and_index_fips_date("fips,date,m1,m2\n" "36061,2020-04-02,2,\n").reset_index()
     multiregion = timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
-    assert multiregion.static.aggregate_level.to_list() == ["county"]
+    assert multiregion.geo_data.aggregate_level.to_list() == ["county"]
+
+
+def test_fips_not_in_geo_data_csv_raises():
+    ts_df = read_csv_and_index_fips_date("fips,date,m1,m2\n" "98789,2020-04-02,2,\n").reset_index()
+    ds = timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
+    with pytest.raises(KeyError):
+        ds.geo_data
 
 
 def test_append_regions():
@@ -289,12 +296,12 @@ def test_append_regions():
             "location_id,date,m2\n"
             "iso1:us#cbsa:10100,2020-04-02,2\n"
             "iso1:us#cbsa:10100,2020-04-03,3\n"
-            "iso1:us#cbsa:20200,2020-04-03,4\n"
+            "iso1:us#cbsa:20300,2020-04-03,4\n"
             "iso1:us#cbsa:10100,,3\n"
-            "iso1:us#cbsa:20200,,4\n"
+            "iso1:us#cbsa:20300,,4\n"
         )
     ).add_provenance_csv(
-        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:20200,m1,prov20200m2\n")
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:20300,m1,prov20200m2\n")
     )
     # Check that merge is symmetric
     ts_merged_1 = ts_fips.append_regions(ts_cbsa)
@@ -306,9 +313,9 @@ def test_append_regions():
             "location_id,date,county,aggregate_level,m1,m2\n"
             "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
             "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
-            "iso1:us#cbsa:20200,2020-04-03,,,,4\n"
+            "iso1:us#cbsa:20300,2020-04-03,,,,4\n"
             "iso1:us#cbsa:10100,,,,,3\n"
-            "iso1:us#cbsa:20200,,,,,4\n"
+            "iso1:us#cbsa:20300,,,,,4\n"
             "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
             "iso1:us#fips:97111,2020-04-03,Bar County,county,3,\n"
             "iso1:us#fips:97222,2020-04-04,Foo County,county,,11\n"
@@ -319,7 +326,7 @@ def test_append_regions():
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#fips:97111,m1,prov97111m1\n"
-            "iso1:us#cbsa:20200,m1,prov20200m2\n"
+            "iso1:us#cbsa:20300,m1,prov20200m2\n"
         )
     )
     test_helpers.assert_dataset_like(ts_merged_1, ts_expected)
@@ -713,8 +720,11 @@ def test_timeseries_latest_values():
     # Check access to timeseries latests values via get_one_region
     region_10100 = dataset.get_one_region(Region.from_cbsa_code("10100"))
     assert region_10100.latest == {
-        "aggregate_level": None,
+        "aggregate_level": "cbsa",
         "county": None,
+        "country": "USA",
+        "fips": "10100",
+        "state": None,
         "m1": 10,  # Derived from timeseries
         "m2": 4,  # Explicitly in recent values
     }
@@ -722,6 +732,9 @@ def test_timeseries_latest_values():
     assert region_97111.latest == {
         "aggregate_level": "county",
         "county": "Bar County",
+        "country": "USA",
+        "fips": "97111",
+        "state": "ZZ",
         "m1": 5,
         "m2": None,
     }
@@ -898,8 +911,8 @@ def test_drop_regions_without_population():
             "iso1:us#cbsa:10100,,,,80000,\n"
             "iso1:us#fips:97111,2020-04-02,Bar County,county,,2\n"
             "iso1:us#fips:97111,,Bar County,county,40000,4\n"
-            "iso1:us#cbsa:20200,2020-04-02,,,,\n"
-            "iso1:us#cbsa:20200,,,,,\n"
+            "iso1:us#cbsa:20300,2020-04-02,,,,\n"
+            "iso1:us#cbsa:20300,,,,,\n"
             "iso1:us#fips:97222,2020-04-02,Bar County,county,,2\n"
             "iso1:us#fips:97222,,Bar County,county,,4\n"
         )
@@ -920,7 +933,7 @@ def test_drop_regions_without_population():
     test_helpers.assert_dataset_like(ts_out, ts_expected)
 
     assert [l["event"] for l in logs] == ["Dropping unexpected regions without populaton"]
-    assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20200"]]
+    assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20300"]]
 
 
 def test_merge_provenance():

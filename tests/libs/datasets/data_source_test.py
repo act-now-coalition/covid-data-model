@@ -97,9 +97,7 @@ def test_data_source_make_dataset(tmpdir):
     # builds it from scratch instead of calling dataset_start.add_tag_all so this test can find
     # problems with add_tag_all.
     dataset_expected = test_helpers.build_default_region_dataset(
-        {CommonFields.CASES: cases_ts, CommonFields.DEATHS: deaths_ts},
-        region=region,
-        static=region_static,
+        {CommonFields.CASES: cases_ts, CommonFields.DEATHS: deaths_ts}, region=region,
     )
     test_helpers.assert_dataset_like(dataset_expected, dataset_read)
 
