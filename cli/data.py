@@ -118,6 +118,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
 
     multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
     multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
+
     multiregion_dataset = outlier_detection.drop_new_case_outliers(multiregion_dataset)
     multiregion_dataset = outlier_detection.drop_new_deaths_outliers(multiregion_dataset)
 

@@ -2,6 +2,8 @@ import io
 from libs.datasets import timeseries
 from libs.datasets import new_cases_and_deaths
 from tests import test_helpers
+from libs.pipeline import Region
+from covidactnow.datapublic.common_fields import CommonFields
 
 
 def test_calculate_new_cases():
@@ -44,42 +46,24 @@ def test_calculate_new_cases():
 
 
 def test_calculate_new_deaths():
-    mrts_before = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,deaths\n"
-            "iso1:us#fips:1,2020-01-01,0\n"
-            "iso1:us#fips:1,2020-01-02,1\n"
-            "iso1:us#fips:1,2020-01-03,1\n"
-            "iso1:us#fips:2,2020-01-01,5\n"
-            "iso1:us#fips:2,2020-01-02,7\n"
-            "iso1:us#fips:3,2020-01-01,9\n"
-            "iso1:us#fips:4,2020-01-01,\n"
-            "iso1:us#fips:1,,100\n"
-            "iso1:us#fips:2,,\n"
-            "iso1:us#fips:3,,\n"
-            "iso1:us#fips:4,,\n"
-        )
+    ma_region = Region.from_state("MA")
+    ny_region = Region.from_state("NY")
+
+    dataset_before = test_helpers.build_dataset(
+        {
+            ma_region: {CommonFields.DEATHS: [0, 1, 1]},
+            ny_region: {CommonFields.DEATHS: [None, 5, 7]},
+        }
     )
 
-    mrts_expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,deaths,new_deaths\n"
-            "iso1:us#fips:1,2020-01-01,0,0\n"
-            "iso1:us#fips:1,2020-01-02,1,1\n"
-            "iso1:us#fips:1,2020-01-03,1,0\n"
-            "iso1:us#fips:2,2020-01-01,5,5\n"
-            "iso1:us#fips:2,2020-01-02,7,2\n"
-            "iso1:us#fips:3,2020-01-01,9,9\n"
-            "iso1:us#fips:4,2020-01-01,,\n"
-            "iso1:us#fips:1,,100,0.0\n"
-            "iso1:us#fips:2,,,2.0\n"
-            "iso1:us#fips:3,,,9.0\n"
-            "iso1:us#fips:4,,,\n"
-        )
+    dataset_after = new_cases_and_deaths.add_new_deaths(dataset_before)
+    dataset_expected = test_helpers.build_dataset(
+        {
+            ma_region: {CommonFields.DEATHS: [0, 1, 1], CommonFields.NEW_DEATHS: [0, 1, 0]},
+            ny_region: {CommonFields.DEATHS: [None, 5, 7], CommonFields.NEW_DEATHS: [None, 5, 2]},
+        }
     )
-
-    timeseries_after = new_cases_and_deaths.add_new_deaths(mrts_before)
-    test_helpers.assert_dataset_like(mrts_expected, timeseries_after)
+    test_helpers.assert_dataset_like(dataset_after, dataset_expected)
 
 
 def test_new_cases_remove_negative():
