@@ -78,6 +78,7 @@ def test_build_summary_for_fips(
             },
             contactTracers=nyc_latest["contact_tracers_count"],
             newCases=nyc_latest["new_cases"],
+            newDeaths=nyc_latest["new_deaths"],
             vaccinesDistributed=nyc_latest["vaccines_distributed"],
             vaccinationsInitiated=nyc_latest["vaccinations_initiated"],
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
@@ -90,6 +91,7 @@ def test_build_summary_for_fips(
             hospitalBeds=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
             icuBeds=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
             contactTracers=None,
+            newDeaths=None,
             newCases=FieldAnnotations(
                 sources=[],
                 anomalies=[

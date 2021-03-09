@@ -239,6 +239,7 @@ def test_source(rt_dataset, icu_dataset):
             CommonFields.NEW_CASES: TimeseriesLiteral(
                 [100, 100, 100], source=taglib.Source("NYTimes", url=new_cases_url)
             ),
+            CommonFields.NEW_DEATHS: TimeseriesLiteral([100, 100, 100], source=deaths_source),
             CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
             CommonFields.ICU_BEDS: TimeseriesLiteral(
                 [20, 20, 20], source=taglib.Source("NotFound")

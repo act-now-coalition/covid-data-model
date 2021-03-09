@@ -46,7 +46,6 @@ def _build_actuals(actual_data: dict) -> Actuals:
     return Actuals(
         cases=actual_data[CommonFields.CASES],
         deaths=actual_data[CommonFields.DEATHS],
-        newDeaths=actual_data[CommonFields.NEW_DEATHS],
         positiveTests=actual_data.get(CommonFields.POSITIVE_TESTS),
         negativeTests=actual_data.get(CommonFields.NEGATIVE_TESTS),
         contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
@@ -63,6 +62,7 @@ def _build_actuals(actual_data: dict) -> Actuals:
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
         newCases=actual_data[CommonFields.NEW_CASES],
+        newDeaths=actual_data[CommonFields.NEW_DEATHS],
         vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
         vaccinationsInitiated=actual_data.get(CommonFields.VACCINATIONS_INITIATED),
         # Vaccinations completed currently optional as data is not yet flowing through.
