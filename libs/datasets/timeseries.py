@@ -195,6 +195,16 @@ def _add_state_if_missing(df: pd.DataFrame):
         )
 
 
+def _add_aggregate_level_if_missing(df: pd.DataFrame):
+    """Adds the aggregate level column if missing, in place."""
+    assert CommonFields.LOCATION_ID in df.columns
+
+    if CommonFields.AGGREGATE_LEVEL not in df.columns:
+        df[CommonFields.AGGREGATE_LEVEL] = df[CommonFields.LOCATION_ID].apply(
+            lambda x: Region.from_location_id(x).level.value
+        )
+
+
 def _geodata_df_to_static_attribute_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
     """Creates a DataFrame to use as static from geo data taken from timeseries CSV."""
     assert geodata_df.index.names == [None]  # [CommonFields.LOCATION_ID, CommonFields.DATE]
@@ -525,7 +535,6 @@ class MultiRegionDataset:
             # are not modified.
             timeseries_df = timeseries_df.fillna(np.nan).apply(pd.to_numeric).sort_index()
         geodata_df = timeseries_and_geodata_df.loc[:, geodata_column_mask]
-
         static_df = _geodata_df_to_static_attribute_df(
             geodata_df.reset_index().drop(columns=[CommonFields.DATE])
         )
@@ -656,6 +665,7 @@ class MultiRegionDataset:
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
         ts_df = _add_location_id(ts_df)
         _add_state_if_missing(ts_df)
+        _add_aggregate_level_if_missing(ts_df)
 
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
@@ -1018,51 +1028,6 @@ def _remove_padded_nans(df, columns):
     last_valid_index = max(df[column].last_valid_index() for column in columns)
     df = df.iloc[first_valid_index : last_valid_index + 1]
     return df.reset_index(drop=True)
-
-
-def _diff_preserving_first_value(series):
-    cases = series.reset_index(CommonFields.LOCATION_ID, drop=True).loc[CommonFields.CASES, :]
-    # cases is a pd.Series (a 1-D vector) with DATE index
-    assert cases.index.names == [CommonFields.DATE]
-    new_cases = cases.diff()
-    first_date = cases.notna().idxmax()
-    if pd.notna(first_date):
-        new_cases[first_date] = cases[first_date]
-
-    # Return a DataFrame so NEW_CASES is a column with DATE index.
-    return pd.DataFrame({CommonFields.NEW_CASES: new_cases})
-
-
-def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
-    """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
-    # Get timeseries data from timeseries_wide_dates because it creates a date range that includes
-    # every date, even those with NA cases. This keeps the output identical when empty rows are
-    # dropped or added.
-    cases_wide_dates = dataset_in.timeseries_wide_dates().loc[(slice(None), CommonFields.CASES), :]
-    # Calculating new cases using diff will remove the first detected value from the case series.
-    # We want to capture the first day a region reports a case. Since our data sources have
-    # been capturing cases in all states from the beginning of the pandemic, we are treating
-    # the first day as appropriate new case data.
-    # We want as_index=True so that the DataFrame returned by each _diff_preserving_first_value call
-    # has the location_id added as an index before being concat-ed.
-    new_cases = (
-        cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False)
-        .apply(_diff_preserving_first_value)
-        .rename_axis(columns=PdFields.VARIABLE)
-    )
-
-    # Replacing days with single back tracking adjustments to be 0, reduces
-    # number of na days in timeseries
-    new_cases[new_cases == -1] = 0
-
-    # Remove the occasional negative case adjustments.
-    new_cases[new_cases < 0] = pd.NA
-    new_cases = new_cases.dropna()
-
-    new_cases_dataset = MultiRegionDataset(timeseries=new_cases)
-
-    dataset_out = dataset_in.join_columns(new_cases_dataset)
-    return dataset_out
 
 
 def _calculate_modified_zscore(
