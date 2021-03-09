@@ -75,6 +75,15 @@
         }
       ]
     },
+    "newDeaths": {
+      "title": "Newdeaths",
+      "description": "Annotations for newDeaths",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
     "vaccinesDistributed": {
       "title": "Vaccinesdistributed",
       "description": "Annotations for vaccinesDistributed",

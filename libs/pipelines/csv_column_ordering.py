@@ -56,6 +56,7 @@ SUMMARY_ORDER = [
     "url",
     "metrics.vaccinationsInitiatedRatio",
     "metrics.vaccinationsCompletedRatio",
+    "actuals.newDeaths",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -109,6 +110,7 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "url",
     "metrics.vaccinationsInitiatedRatio",
     "metrics.vaccinationsCompletedRatio",
+    "actuals.newDeaths",
 ]
 
 
@@ -150,4 +152,5 @@ TIMESERIES_ORDER = [
     "riskLevels.overall",
     "metrics.vaccinationsInitiatedRatio",
     "metrics.vaccinationsCompletedRatio",
+    "actuals.newDeaths",
 ]

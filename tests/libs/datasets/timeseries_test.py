@@ -268,6 +268,12 @@ def test_one_region_multiple_provenance():
     assert sorted(one_region.provenance[CommonFields.ICU_BEDS]) == ["prov1", "prov2"]
 
 
+def test_add_aggregate_level():
+    ts_df = read_csv_and_index_fips_date("fips,date,m1,m2\n" "36061,2020-04-02,2,\n").reset_index()
+    multiregion = timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
+    assert multiregion.static.aggregate_level.to_list() == ["county"]
+
+
 def test_append_regions():
     ts_fips = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -337,97 +343,6 @@ def test_append_regions_duplicate_region_raises():
     )
     with pytest.raises(ValueError):
         ts1.append_regions(ts2)
-
-
-def test_calculate_new_cases():
-    mrts_before = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,cases\n"
-            "iso1:us#fips:1,2020-01-01,0\n"
-            "iso1:us#fips:1,2020-01-02,1\n"
-            "iso1:us#fips:1,2020-01-03,1\n"
-            "iso1:us#fips:2,2020-01-01,5\n"
-            "iso1:us#fips:2,2020-01-02,7\n"
-            "iso1:us#fips:3,2020-01-01,9\n"
-            "iso1:us#fips:4,2020-01-01,\n"
-            "iso1:us#fips:1,,100\n"
-            "iso1:us#fips:2,,\n"
-            "iso1:us#fips:3,,\n"
-            "iso1:us#fips:4,,\n"
-        )
-    )
-
-    mrts_expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,cases,new_cases\n"
-            "iso1:us#fips:1,2020-01-01,0,0\n"
-            "iso1:us#fips:1,2020-01-02,1,1\n"
-            "iso1:us#fips:1,2020-01-03,1,0\n"
-            "iso1:us#fips:2,2020-01-01,5,5\n"
-            "iso1:us#fips:2,2020-01-02,7,2\n"
-            "iso1:us#fips:3,2020-01-01,9,9\n"
-            "iso1:us#fips:4,2020-01-01,,\n"
-            "iso1:us#fips:1,,100,0.0\n"
-            "iso1:us#fips:2,,,2.0\n"
-            "iso1:us#fips:3,,,9.0\n"
-            "iso1:us#fips:4,,,\n"
-        )
-    )
-
-    timeseries_after = timeseries.add_new_cases(mrts_before)
-    test_helpers.assert_dataset_like(mrts_expected, timeseries_after)
-
-
-def test_new_cases_remove_negative():
-    mrts_before = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,cases\n"
-            "iso1:us#fips:1,2020-01-01,100\n"
-            "iso1:us#fips:1,2020-01-02,50\n"
-            "iso1:us#fips:1,2020-01-03,75\n"
-            "iso1:us#fips:1,2020-01-04,74\n"
-            "iso1:us#fips:1,,75\n"
-        )
-    )
-
-    mrts_expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,cases,new_cases\n"
-            "iso1:us#fips:1,2020-01-01,100,100\n"
-            "iso1:us#fips:1,2020-01-02,50,\n"
-            "iso1:us#fips:1,2020-01-03,75,25\n"
-            "iso1:us#fips:1,2020-01-04,74,0\n"
-            "iso1:us#fips:1,,75,0.0\n"
-        )
-    )
-
-    timeseries_after = timeseries.add_new_cases(mrts_before)
-    test_helpers.assert_dataset_like(mrts_expected, timeseries_after)
-
-
-def test_new_cases_gap_in_date():
-    mrts_before = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,cases\n"
-            "iso1:us#fips:1,2020-01-01,100\n"
-            "iso1:us#fips:1,2020-01-02,\n"
-            "iso1:us#fips:1,2020-01-03,110\n"
-            "iso1:us#fips:1,2020-01-04,130\n"
-        )
-    )
-
-    mrts_expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,cases,new_cases\n"
-            "iso1:us#fips:1,2020-01-01,100,100\n"
-            "iso1:us#fips:1,2020-01-02,,\n"
-            "iso1:us#fips:1,2020-01-03,110,\n"
-            "iso1:us#fips:1,2020-01-04,130,20\n"
-        )
-    )
-
-    timeseries_after = timeseries.add_new_cases(mrts_before)
-    test_helpers.assert_dataset_like(mrts_expected, timeseries_after)
 
 
 def test_timeseries_long():
@@ -1100,48 +1015,6 @@ def test_drop_column_with_tags():
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
 
 
-def test_remove_outliers():
-    values = [10.0] * 7 + [1000.0]
-    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    dataset = timeseries.drop_new_case_outliers(dataset)
-
-    # Expected result is the same series with the last value removed
-    expected_tag = test_helpers.make_tag(
-        TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=1000.0,
-    )
-    expected_ts = TimeseriesLiteral([10.0] * 7, annotation=[expected_tag])
-    expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})
-    test_helpers.assert_dataset_like(dataset, expected, drop_na_dates=True)
-
-
-def test_remove_outliers_threshold():
-    values = [1.0] * 7 + [30.0]
-    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
-
-    # Should not modify becasue not higher than threshold
-    test_helpers.assert_dataset_like(dataset, result)
-
-    result = timeseries.drop_new_case_outliers(dataset, case_threshold=29)
-
-    # Expected result is the same series with the last value removed
-    expected_tag = test_helpers.make_tag(
-        TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=30.0
-    )
-    expected_ts = TimeseriesLiteral([1.0] * 7, annotation=[expected_tag])
-    expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})
-    test_helpers.assert_dataset_like(result, expected, drop_na_dates=True)
-
-
-def test_not_removing_short_series():
-    values = [None] * 7 + [1, 1, 300]
-    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    result = timeseries.drop_new_case_outliers(dataset, case_threshold=30)
-
-    # Should not modify becasue not higher than threshold
-    test_helpers.assert_dataset_like(dataset, result)
-
-
 def test_timeseries_empty_timeseries_and_static():
     # Check that empty dataset creates a MultiRegionDataset
     # and that get_one_region raises expected exception.
@@ -1439,30 +1312,6 @@ def test_write_read_dataset_pointer_with_source_url(tmpdir):
     assert source_url_read[CommonFields.ICU_BEDS] == [url_str1]
     # Copy to a set because the order of the URLs in the source_url may change.
     assert set(source_url_read[CommonFields.CASES]) == {url_str2, url_str3}
-
-
-# TODO(chris): Make test stronger, doesn't cover all edge cases
-@pytest.mark.parametrize("last_value,is_outlier", [(0.02, False), (0.045, True)])
-def test_remove_test_positivity_outliers(last_value, is_outlier):
-    values = [0.015] * 7 + [last_value]
-    dataset_in = test_helpers.build_default_region_dataset(
-        {CommonFields.TEST_POSITIVITY_7D: values}
-    )
-    dataset_out = timeseries.drop_tail_positivity_outliers(dataset_in)
-
-    # Expected result is the same series with the last value removed
-    if is_outlier:
-        expected_tag = test_helpers.make_tag(
-            TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=last_value,
-        )
-        expected_ts = TimeseriesLiteral([0.015] * 7, annotation=[expected_tag])
-        expected = test_helpers.build_default_region_dataset(
-            {CommonFields.TEST_POSITIVITY_7D: expected_ts}
-        )
-        test_helpers.assert_dataset_like(dataset_out, expected, drop_na_dates=True)
-
-    else:
-        test_helpers.assert_dataset_like(dataset_in, dataset_out, drop_na_dates=True)
 
 
 def test_pickle():

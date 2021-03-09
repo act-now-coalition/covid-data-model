@@ -16,6 +16,7 @@ from typing import Sequence
 from typing import Tuple
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from pandas.core.dtypes.common import is_numeric_dtype
@@ -26,6 +27,7 @@ import numpy as np
 import structlog
 from covidactnow.datapublic import common_df
 from libs import pipeline
+from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import dataset_pointer
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
@@ -193,6 +195,16 @@ def _add_state_if_missing(df: pd.DataFrame):
         )
 
 
+def _add_aggregate_level_if_missing(df: pd.DataFrame):
+    """Adds the aggregate level column if missing, in place."""
+    assert CommonFields.LOCATION_ID in df.columns
+
+    if CommonFields.AGGREGATE_LEVEL not in df.columns:
+        df[CommonFields.AGGREGATE_LEVEL] = df[CommonFields.LOCATION_ID].apply(
+            lambda x: Region.from_location_id(x).level.value
+        )
+
+
 def _geodata_df_to_static_attribute_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
     """Creates a DataFrame to use as static from geo data taken from timeseries CSV."""
     assert geodata_df.index.names == [None]  # [CommonFields.LOCATION_ID, CommonFields.DATE]
@@ -289,23 +301,56 @@ EMPTY_TIMESERIES_WIDE_VARIABLES_DF = pd.DataFrame(
     columns=pd.Index([], name=PdFields.VARIABLE),
 )
 
+EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF = pd.DataFrame(
+    [],
+    dtype="float",
+    index=pd.MultiIndex.from_tuples(
+        [], names=[CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE]
+    ),
+    columns=pd.Index([], name=PdFields.VARIABLE),
+)
 
+
+def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex, *, bucketed: bool):
+    if bucketed:
+        assert timeseries_index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.DEMOGRAPHIC_BUCKET,
+            CommonFields.DATE,
+        ]
+    else:
+        # timeseries.index order is important for _timeseries_latest_values correctness.
+        assert timeseries_index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
+    assert timeseries_index.is_unique
+    assert timeseries_index.is_monotonic_increasing
+
+
+def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, bucketed: bool):
+    """Asserts that a DataFrame has the structure expected with wide-variable columns."""
+    _check_timeseries_wide_vars_index(wide_vars_df.index, bucketed=bucketed)
+    assert wide_vars_df.columns.names == [PdFields.VARIABLE]
+    numeric_columns = wide_vars_df.dtypes.apply(is_numeric_dtype)
+    assert numeric_columns.all()
+
+
+# eq=False because instances are large and we want to compare by id instead of value
 @final
-@dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
+@dataclass_with_default_init(frozen=True, eq=False)
 class MultiRegionDataset:
     """A set of timeseries and static values from any number of regions.
 
-    While the data may be accessed directly in the attributes `timeseries`, `static` and `provenance` for
-    easier future refactoring try to use (adding if not available) higher level methods that derive
-    the data you need from these attributes.
+    While the data may be accessed directly in the attributes `timeseries_bucketed`, `static` and
+    `provenance` for easier future refactoring try to use (adding if not available) higher level
+    methods that derive the data you need from these attributes.
 
     Methods named `append_...` return a new object with more regions of data. Methods named `add_...` and
     `join_...` return a new object with more data about the same regions, such as new metrics and provenance
     information.
     """
 
-    # Timeseries metrics with float values. Each timeseries is identified by a variable name and region
-    timeseries: pd.DataFrame
+    # Timeseries metrics with float values. Each timeseries is identified by a variable name,
+    # region and demographic bucket.
+    timeseries_bucketed: pd.DataFrame
 
     # Static data, each identified by variable name and region. This includes county name,
     # state etc (GEO_DATA_COLUMNS) and metrics that change so slowly they can be
@@ -315,6 +360,43 @@ class MultiRegionDataset:
     # A Series of tag CONTENT values having index with levels TAG_INDEX_FIELDS (LOCATION_ID,
     # VARIABLE, TYPE). Rows with identical index values may exist.
     tag: pd.Series = _EMPTY_TAG_SERIES
+
+    # noinspection PyMissingConstructor
+    def __init__(
+        self,
+        *,
+        timeseries: Optional[pd.DataFrame] = None,
+        timeseries_bucketed: Optional[pd.DataFrame] = None,
+        **kwargs,
+    ):
+        # TODO(tom): Replace all use of `timeseries` (not bucketed) with timeseries_bucketed,
+        #  then remove this branch and the timeseries cached_property.
+        if timeseries is not None:
+            assert timeseries_bucketed is None
+            _check_timeseries_wide_vars_structure(timeseries, bucketed=False)
+            timeseries_bucketed = pd.concat(
+                {DemographicBucket("all"): timeseries}, names=[PdFields.DEMOGRAPHIC_BUCKET]
+            ).reorder_levels(EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF.index.names)
+
+        self.__default_init__(  # pylint: disable=E1101
+            timeseries_bucketed=timeseries_bucketed, **kwargs,
+        )
+
+    @cached_property
+    def timeseries(self) -> pd.DataFrame:
+        """Timeseries metrics with float values. Each timeseries is identified by a variable name
+       and region"""
+        try:
+            return self.timeseries_bucketed.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0)
+        except KeyError:
+            # Return a DataFrame that has an index with no rows (but expected level names) and
+            # columns copied from the input.
+            return pd.DataFrame(
+                [],
+                index=EMPTY_TIMESERIES_WIDE_VARIABLES_DF.index,
+                columns=self.timeseries_bucketed.columns,
+                dtype="float",
+            )
 
     @property
     def timeseries_regions(self) -> Set[Region]:
@@ -402,9 +484,21 @@ class MultiRegionDataset:
         return dataclasses.replace(self, static=static_copy)
 
     @staticmethod
-    def from_timeseries_wide_dates_df(timeseries_wide_dates: pd.DataFrame) -> "MultiRegionDataset":
+    def from_timeseries_wide_dates_df(
+        timeseries_wide_dates: pd.DataFrame, *, bucketed=False
+    ) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame as returned by timeseries_wide_dates."""
-        assert timeseries_wide_dates.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        if bucketed:
+            assert timeseries_wide_dates.index.names == [
+                CommonFields.LOCATION_ID,
+                PdFields.VARIABLE,
+                PdFields.DEMOGRAPHIC_BUCKET,
+            ]
+        else:
+            assert timeseries_wide_dates.index.names == [
+                CommonFields.LOCATION_ID,
+                PdFields.VARIABLE,
+            ]
         assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
         timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
             timeseries_wide_dates.columns
@@ -412,7 +506,10 @@ class MultiRegionDataset:
         timeseries_wide_variables = (
             timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
         )
-        return MultiRegionDataset(timeseries=timeseries_wide_variables)
+        if bucketed:
+            return MultiRegionDataset(timeseries_bucketed=timeseries_wide_variables)
+        else:
+            return MultiRegionDataset(timeseries=timeseries_wide_variables)
 
     @staticmethod
     def from_geodata_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -438,7 +535,6 @@ class MultiRegionDataset:
             # are not modified.
             timeseries_df = timeseries_df.fillna(np.nan).apply(pd.to_numeric).sort_index()
         geodata_df = timeseries_and_geodata_df.loc[:, geodata_column_mask]
-
         static_df = _geodata_df_to_static_attribute_df(
             geodata_df.reset_index().drop(columns=[CommonFields.DATE])
         )
@@ -497,7 +593,9 @@ class MultiRegionDataset:
 
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
-        combined_df = common_df.read_csv(path_or_buf, set_index=False)
+        combined_df = common_df.read_csv(path_or_buf, set_index=False).rename_axis(
+            columns=PdFields.VARIABLE
+        )
         if CommonFields.LOCATION_ID not in combined_df.columns:
             raise ValueError("MultiRegionDataset.from_csv requires location_id column")
 
@@ -567,6 +665,7 @@ class MultiRegionDataset:
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
         ts_df = _add_location_id(ts_df)
         _add_state_if_missing(ts_df)
+        _add_aggregate_level_if_missing(ts_df)
 
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
@@ -580,13 +679,8 @@ class MultiRegionDataset:
         """Checks that attributes of this object meet certain expectations."""
         # These asserts provide runtime-checking and a single place for humans reading the code to
         # check what is expected of the attributes, beyond type.
-        # timeseries.index order is important for _timeseries_latest_values correctness.
-        assert self.timeseries.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-        assert self.timeseries.index.is_unique
-        assert self.timeseries.index.is_monotonic_increasing
-        assert self.timeseries.columns.names == [PdFields.VARIABLE]
-        numeric_columns = self.timeseries.dtypes.apply(is_numeric_dtype)
-        assert numeric_columns.all()
+        _check_timeseries_wide_vars_structure(self.timeseries_bucketed, bucketed=True)
+
         assert self.static.index.names == [CommonFields.LOCATION_ID]
         assert self.static.index.is_unique
         assert self.static.index.is_monotonic_increasing
@@ -747,7 +841,9 @@ class MultiRegionDataset:
     def _trim_timeseries(self, *, after: datetime.datetime) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries data after given date."""
         ts_rows_mask = self.timeseries.index.get_level_values(CommonFields.DATE) > after
-        return dataclasses.replace(self, timeseries=self.timeseries.loc[ts_rows_mask, :])
+        return dataclasses.replace(
+            self, timeseries=self.timeseries.loc[ts_rows_mask, :], timeseries_bucketed=None
+        )
 
     def groupby_region(self) -> pandas.core.groupby.generic.DataFrameGroupBy:
         return self.timeseries.groupby(CommonFields.LOCATION_ID)
@@ -803,7 +899,9 @@ class MultiRegionDataset:
             timeseries_wide_dates.index
         )
         tag = self.tag.loc[tag_mask]
-        return dataclasses.replace(self, timeseries=timeseries_wide_variables, tag=tag)
+        return dataclasses.replace(
+            self, timeseries=timeseries_wide_variables, tag=tag, timeseries_bucketed=None
+        )
 
     def to_csv(self, path: pathlib.Path, include_latest=True):
         """Persists timeseries to CSV.
@@ -914,176 +1012,6 @@ def _remove_padded_nans(df, columns):
     last_valid_index = max(df[column].last_valid_index() for column in columns)
     df = df.iloc[first_valid_index : last_valid_index + 1]
     return df.reset_index(drop=True)
-
-
-def _diff_preserving_first_value(series):
-    cases = series.reset_index(CommonFields.LOCATION_ID, drop=True).loc[CommonFields.CASES, :]
-    # cases is a pd.Series (a 1-D vector) with DATE index
-    assert cases.index.names == [CommonFields.DATE]
-    new_cases = cases.diff()
-    first_date = cases.notna().idxmax()
-    if pd.notna(first_date):
-        new_cases[first_date] = cases[first_date]
-
-    # Return a DataFrame so NEW_CASES is a column with DATE index.
-    return pd.DataFrame({CommonFields.NEW_CASES: new_cases})
-
-
-def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
-    """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
-    # Get timeseries data from timeseries_wide_dates because it creates a date range that includes
-    # every date, even those with NA cases. This keeps the output identical when empty rows are
-    # dropped or added.
-    cases_wide_dates = dataset_in.timeseries_wide_dates().loc[(slice(None), CommonFields.CASES), :]
-    # Calculating new cases using diff will remove the first detected value from the case series.
-    # We want to capture the first day a region reports a case. Since our data sources have
-    # been capturing cases in all states from the beginning of the pandemic, we are treating
-    # the first day as appropriate new case data.
-    # We want as_index=True so that the DataFrame returned by each _diff_preserving_first_value call
-    # has the location_id added as an index before being concat-ed.
-    new_cases = (
-        cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False)
-        .apply(_diff_preserving_first_value)
-        .rename_axis(columns=PdFields.VARIABLE)
-    )
-
-    # Replacing days with single back tracking adjustments to be 0, reduces
-    # number of na days in timeseries
-    new_cases[new_cases == -1] = 0
-
-    # Remove the occasional negative case adjustments.
-    new_cases[new_cases < 0] = pd.NA
-    new_cases = new_cases.dropna()
-
-    new_cases_dataset = MultiRegionDataset(timeseries=new_cases)
-
-    dataset_out = dataset_in.join_columns(new_cases_dataset)
-    return dataset_out
-
-
-def _calculate_modified_zscore(
-    series: pd.Series, window: int = 10, min_periods=3, ignore_zeros=True
-) -> pd.Series:
-    """Calculates zscore for each point in series comparing current point to past `window` days.
-
-    Each datapoint is compared to the distribution of the past `window` days as long as there are
-    `min_periods` number of non-nan values in the window.
-
-    In the calculation of z-score, zeros are thrown out. This is done to produce better results
-    for regions that regularly report zeros (for instance, RI reports zero new cases on
-    each weekend day).
-
-    Args:
-        series: Series to compute statistics for.
-        window: Size of window to calculate mean and std.
-        min_periods: Number of periods necessary to compute a score - will return nan otherwise.
-        ignore_zeros: If true, zeros are not included in zscore calculation.
-
-    Returns: Array of scores for each datapoint in series.
-    """
-    series = series.copy()
-    if ignore_zeros:
-        series[series == 0] = None
-
-    rolling_series = series.rolling(window=window, min_periods=min_periods)
-    # Shifting one to exclude current datapoint
-    mean = rolling_series.mean().shift(1)
-    std = rolling_series.std(ddof=0).shift(1)
-    z = (series - mean) / std
-    return z.abs()
-
-
-def drop_new_case_outliers(
-    timeseries: MultiRegionDataset, zscore_threshold: float = 8.0, case_threshold: int = 30,
-) -> MultiRegionDataset:
-    """Identifies and drops outliers from the new case series.
-
-    Args:
-        timeseries: Timeseries.
-        zscore_threshold: Z-score threshold.  All new cases with a zscore greater than the
-            threshold will be removed.
-        case_threshold: Min number of cases needed to count as an outlier.
-
-    Returns: timeseries with outliers removed from new_cases.
-    """
-    df_copy = timeseries.timeseries.copy()
-    grouped_df = timeseries.groupby_region()
-
-    zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
-    to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
-
-    new_tags = taglib.TagCollection()
-    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
-    # rows where to_exclude is True.
-    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    for idx, _ in to_exclude[to_exclude].iteritems():
-        new_tags.add(
-            taglib.ZScoreOutlier(
-                date=idx[1], original_observation=df_copy.at[idx, CommonFields.NEW_CASES],
-            ),
-            location_id=idx[0],
-            variable=CommonFields.NEW_CASES,
-        )
-    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = np.nan
-
-    new_timeseries = dataclasses.replace(timeseries, timeseries=df_copy).append_tag_df(
-        new_tags.as_dataframe()
-    )
-
-    return new_timeseries
-
-
-def drop_tail_positivity_outliers(
-    dataset: MultiRegionDataset,
-    zscore_threshold: float = 10.0,
-    diff_threshold_ratio: float = 0.015,
-) -> MultiRegionDataset:
-    """Drops outliers from the test_positivity_7d series, adding tags for removed values.
-
-    Args:
-        dataset:
-        zscore_threshold: Z-score threshold.  All test_positivity_7d values with a zscore greater
-            than the threshold will be removed.
-        diff_threshold_ratio: Minimum difference required for value to be outlier.
-
-    Returns: Dataset with outliers removed from test_positivity_7d.
-    """
-    # TODO(https://trello.com/c/7J2SmDnr): Be more consistent about accessing this data
-    # through wide dates rather than duplicating timeseries.
-    df_copy = dataset.timeseries.copy()
-    grouped_df = dataset.groupby_region()
-
-    def process_series(series):
-        recent_series = series.tail(10)
-        # window of 5 days seems to capture about the right amount of variance.
-        # If window is too large, there may have been a large enough natural shift
-        # in test positivity that recent extreme value looks more noraml.
-        series = _calculate_modified_zscore(recent_series, window=5, ignore_zeros=False)
-        series.index = series.index.get_level_values(CommonFields.DATE)
-        series = series.dropna().last("1D")
-        return series
-
-    zscores = grouped_df[CommonFields.TEST_POSITIVITY_7D].apply(process_series)
-    test_positivity_diffs = df_copy[CommonFields.TEST_POSITIVITY_7D].diff().abs()
-
-    to_exclude = (zscores > zscore_threshold) & (test_positivity_diffs > diff_threshold_ratio)
-
-    new_tags = taglib.TagCollection()
-    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
-    # rows where to_exclude is True.
-    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    for idx, _ in to_exclude[to_exclude].iteritems():
-        new_tags.add(
-            taglib.ZScoreOutlier(
-                date=idx[1], original_observation=df_copy.at[idx, CommonFields.TEST_POSITIVITY_7D],
-            ),
-            location_id=idx[0],
-            variable=CommonFields.TEST_POSITIVITY_7D,
-        )
-
-    df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
-
-    return dataclasses.replace(dataset, timeseries=df_copy).append_tag_df(new_tags.as_dataframe())
 
 
 def drop_regions_without_population(
