@@ -3,7 +3,7 @@
   "info": {
     "title": "Covid Act Now API",
     "description": "\nThe Covid Act Now API provides historical covid projections updated daily.\n",
-    "version": "v2.0.0-beta.1"
+    "version": "v2.0.0"
   },
   "servers": [
     {
@@ -1057,7 +1057,8 @@
           "contactTracers",
           "hospitalBeds",
           "icuBeds",
-          "newCases"
+          "newCases",
+          "newDeaths"
         ],
         "type": "object",
         "properties": {
@@ -1150,6 +1151,18 @@
               }
             ],
             "description": "\nNew confirmed or suspected cases.\n\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. We remove any days with negative new cases.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported cases.\n"
+          },
+          "newDeaths": {
+            "title": "Newdeaths",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\nNew confirmed or suspected deaths.\n\nNew deaths are a processed timeseries of cases - summing new deaths may not equal\nthe cumulative death count.\n\nProcessing steps:\n 1. If a region does not report deaths for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of deaths and can be misleading to the overall series.\n 2. We remove any days with negative new deaths.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported deaths.\n"
           },
           "vaccinesDistributed": {
             "title": "Vaccinesdistributed",
@@ -1857,6 +1870,15 @@
             ],
             "description": "Annotations for newCases"
           },
+          "newDeaths": {
+            "title": "Newdeaths",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for newDeaths"
+          },
           "vaccinesDistributed": {
             "title": "Vaccinesdistributed",
             "allOf": [
@@ -2274,6 +2296,7 @@
           "hospitalBeds",
           "icuBeds",
           "newCases",
+          "newDeaths",
           "date"
         ],
         "type": "object",
@@ -2367,6 +2390,18 @@
               }
             ],
             "description": "\nNew confirmed or suspected cases.\n\n\nNew cases are a processed timeseries of cases - summing new cases may not equal\nthe cumulative case count.\n\nProcessing steps:\n 1. If a region does not report cases for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of cases and can be misleading to the overall series.\n 2. We remove any days with negative new cases.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported cases.\n"
+          },
+          "newDeaths": {
+            "title": "Newdeaths",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\nNew confirmed or suspected deaths.\n\nNew deaths are a processed timeseries of cases - summing new deaths may not equal\nthe cumulative death count.\n\nProcessing steps:\n 1. If a region does not report deaths for a period of time but then begins reporting again,\n    we will exclude the first day that reporting recommences. This first day likely includes\n    multiple days worth of deaths and can be misleading to the overall series.\n 2. We remove any days with negative new deaths.\n 3. We apply an outlier detection filter to the timeseries, which removes any data\n    points that seem improbable given recent numbers. Many times this is due to\n    backfill of previously unreported deaths.\n"
           },
           "vaccinesDistributed": {
             "title": "Vaccinesdistributed",
@@ -2611,7 +2646,7 @@
     "securitySchemes": {
       "API Key": {
         "type": "apiKey",
-        "description": "\nAn API key is required.\n\nRegister for an API key [here](/access).\n    ",
+        "description": "\nAn API key is required.\n\nRegister for an API key [here](/#register).\n    ",
         "name": "apiKey",
         "in": "query"
       }
