@@ -398,6 +398,10 @@ class MultiRegionDataset:
                 dtype="float",
             )
 
+    @cached_property
+    def static_and_geo_data(self) -> pd.DataFrame:
+        return self.static.join(dataset_utils.get_geo_data(), on=CommonFields.LOCATION_ID)
+
     @property
     def timeseries_regions(self) -> Set[Region]:
         """Returns a set of all regions in the timeseries dataset."""
@@ -412,10 +416,6 @@ class MultiRegionDataset:
         return provenance_tags.droplevel([TagField.TYPE]).rename(PdFields.PROVENANCE)
 
     @cached_property
-    def _geo_data(self) -> pd.DataFrame:
-        return self.static.loc[:, self.static.columns.isin(GEO_DATA_COLUMNS)]
-
-    @cached_property
     def dataset_type(self) -> DatasetType:
         return DatasetType.MULTI_REGION
 
@@ -423,7 +423,7 @@ class MultiRegionDataset:
     def static_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
         """Static values merged with the latest timeseries values."""
         return _merge_attributes(
-            self._timeseries_latest_values().reset_index(), self.static.reset_index()
+            self._timeseries_latest_values().reset_index(), self.static_and_geo_data.reset_index()
         )
 
     def _timeseries_long(self) -> pd.Series:
@@ -695,6 +695,7 @@ class MultiRegionDataset:
         assert self.static.index.names == [CommonFields.LOCATION_ID]
         assert self.static.index.is_unique
         assert self.static.index.is_monotonic_increasing
+        assert self.static.columns.intersection(GEO_DATA_COLUMNS).empty
 
         assert isinstance(self.tag, pd.Series)
         assert self.tag.index.names == TAG_INDEX_FIELDS
@@ -833,7 +834,7 @@ class MultiRegionDataset:
     ) -> "MultiRegionDataset":
         """Returns a new object containing data for a subset of the regions in `self`."""
         rows_key = dataset_utils.make_rows_key(
-            self.static,
+            self.static_and_geo_data,
             aggregation_level=aggregation_level,
             fips=fips,
             state=state,
@@ -925,7 +926,7 @@ class MultiRegionDataset:
         Args:
             path: Path to write to.
         """
-        timeseries_data = self._geo_data.join(self.timeseries).reset_index()
+        timeseries_data = self.timeseries.reset_index()
         _add_fips_if_missing(timeseries_data)
 
         if include_latest:
@@ -1008,9 +1009,6 @@ class MultiRegionDataset:
             yield region, OneRegionTimeseriesDataset(
                 region, timeseries_group.reset_index(), latest_dict, tag=tag
             )
-
-    def get_county_name(self, *, region: pipeline.Region) -> str:
-        return self.static.at[region.location_id, CommonFields.COUNTY]
 
     def provenance_map(self) -> Mapping[CommonFields, Set[str]]:
         """Returns a mapping from field name to set of provenances."""

@@ -243,7 +243,7 @@ def load_us_timeseries_dataset(
 
 
 def get_county_name(region: Region) -> Optional[str]:
-    return load_us_timeseries_dataset().get_county_name(region=region)
+    return dataset_utils.get_geo_data().at[region.location_id, CommonFields.COUNTY]
 
 
 def provenance_wide_metrics_to_series(wide: pd.DataFrame, log) -> pd.Series:

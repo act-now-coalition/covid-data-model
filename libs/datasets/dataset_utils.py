@@ -343,3 +343,9 @@ def build_latest_for_column(timeseries_df: pd.DataFrame, column: CommonFields) -
 
     data = timeseries_df.sort_index()
     return data[column].groupby([CommonFields.LOCATION_ID], sort=False).last()
+
+
+def get_geo_data() -> pd.DataFrame:
+    return pd.read_csv(DATA_DIRECTORY / "geo-data.csv", dtype={CommonFields.FIPS: str}).set_index(
+        CommonFields.LOCATION_ID
+    )
