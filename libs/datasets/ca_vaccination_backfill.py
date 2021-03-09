@@ -74,5 +74,7 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
     combined = pd.concat([vaccines_completed_pct, vaccines_initiated_pct, all_wide])
 
     return dataclasses.replace(
-        ds_in, timeseries=MultiRegionDataset.from_timeseries_wide_dates_df(combined).timeseries
+        ds_in,
+        timeseries=MultiRegionDataset.from_timeseries_wide_dates_df(combined).timeseries,
+        timeseries_bucketed=None,
     )

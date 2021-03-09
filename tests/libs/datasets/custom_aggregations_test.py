@@ -35,7 +35,7 @@ def test_replace_dc_county(nyc_region):
     )
     # Modify DC state cases so that they're not equal to county values.
     timeseries_modified.loc[dc_state_rows, CommonFields.CASES] = 10
-    dataset = dataclasses.replace(dataset, timeseries=timeseries_modified)
+    dataset = dataclasses.replace(dataset, timeseries=timeseries_modified, timeseries_bucketed=None)
 
     # Verify that county and state DC numbers are different to better
     # assert after that the replace worked.

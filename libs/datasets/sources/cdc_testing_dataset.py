@@ -85,4 +85,6 @@ def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
 
     ts_copy = ts_copy.append(dc_results, verify_integrity=True).sort_index()
 
-    return dataclasses.replace(ds, timeseries=remove_trailing_zeros(ts_copy))
+    return dataclasses.replace(
+        ds, timeseries=remove_trailing_zeros(ts_copy), timeseries_bucketed=None
+    )

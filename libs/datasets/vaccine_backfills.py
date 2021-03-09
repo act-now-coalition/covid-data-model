@@ -107,4 +107,4 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
         :, CommonFields.VACCINATIONS_INITIATED
     ]
 
-    return dataclasses.replace(dataset, timeseries=timeseries_copy)
+    return dataclasses.replace(dataset, timeseries=timeseries_copy, timeseries_bucketed=None)
