@@ -152,6 +152,24 @@ Processing steps:
     backfill of previously unreported cases.
 """,
     )
+    newDeaths: Optional[int] = pydantic.Field(
+        ...,
+        description="""
+New confirmed or suspected deaths.
+
+New deaths are a processed timeseries of cases - summing new deaths may not equal
+the cumulative death count.
+
+Processing steps:
+ 1. If a region does not report deaths for a period of time but then begins reporting again,
+    we will exclude the first day that reporting recommences. This first day likely includes
+    multiple days worth of deaths and can be misleading to the overall series.
+ 2. We remove any days with negative new deaths.
+ 3. We apply an outlier detection filter to the timeseries, which removes any data
+    points that seem improbable given recent numbers. Many times this is due to
+    backfill of previously unreported deaths.
+""",
+    )
     vaccinesDistributed: Optional[int] = pydantic.Field(
         None, description="Number of vaccine doses distributed."
     )
@@ -230,6 +248,9 @@ class Annotations(base_model.APIBaseModel):
     )
     newCases: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for newCases"
+    )
+    newDeaths: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for newDeaths"
     )
     vaccinesDistributed: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinesDistributed"

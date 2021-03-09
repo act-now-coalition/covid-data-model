@@ -46,6 +46,7 @@ def _build_actuals(actual_data: dict) -> Actuals:
     return Actuals(
         cases=actual_data[CommonFields.CASES],
         deaths=actual_data[CommonFields.DEATHS],
+        newDeaths=actual_data[CommonFields.NEW_DEATHS],
         positiveTests=actual_data.get(CommonFields.POSITIVE_TESTS),
         negativeTests=actual_data.get(CommonFields.NEGATIVE_TESTS),
         contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
@@ -108,6 +109,7 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
     "hospitalBeds": CommonFields.HOSPITAL_BEDS_IN_USE_ANY,
     "icuBeds": CommonFields.ICU_BEDS,
     "newCases": CommonFields.NEW_CASES,
+    "newDeaths": CommonFields.NEW_DEATHS,
     "vaccinesDistributed": CommonFields.VACCINES_DISTRIBUTED,
     "vaccinationsInitiated": CommonFields.VACCINATIONS_INITIATED,
     "vaccinationsCompleted": CommonFields.VACCINATIONS_COMPLETED,
