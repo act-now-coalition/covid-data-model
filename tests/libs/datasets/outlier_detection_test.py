@@ -24,12 +24,12 @@ def test_remove_outliers():
 def test_remove_outliers_threshold():
     values = [1.0] * 7 + [30.0]
     dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    result = outlier_detection.drop_new_case_outliers(dataset, case_threshold=30)
+    result = outlier_detection.drop_series_outliers(dataset, CommonFields.NEW_CASES, threshold=30)
 
     # Should not modify becasue not higher than threshold
     test_helpers.assert_dataset_like(dataset, result)
 
-    result = outlier_detection.drop_new_case_outliers(dataset, case_threshold=29)
+    result = outlier_detection.drop_series_outliers(dataset, CommonFields.NEW_CASES, threshold=29)
 
     # Expected result is the same series with the last value removed
     expected_tag = test_helpers.make_tag(
@@ -43,7 +43,7 @@ def test_remove_outliers_threshold():
 def test_not_removing_short_series():
     values = [None] * 7 + [1, 1, 300]
     dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
-    result = outlier_detection.drop_new_case_outliers(dataset, case_threshold=30)
+    result = outlier_detection.drop_series_outliers(dataset, CommonFields.NEW_CASES, threshold=30)
 
     # Should not modify becasue not higher than threshold
     test_helpers.assert_dataset_like(dataset, result)
