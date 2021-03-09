@@ -9,7 +9,6 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
