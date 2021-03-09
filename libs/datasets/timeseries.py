@@ -16,9 +16,9 @@ from typing import Sequence
 from typing import Tuple
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
-from covidactnow.datapublic.common_fields import DemographicBucket
 from pandas.core.dtypes.common import is_numeric_dtype
 from typing_extensions import final
 
@@ -192,6 +192,16 @@ def _add_state_if_missing(df: pd.DataFrame):
     if CommonFields.STATE not in df.columns:
         df[CommonFields.STATE] = df[CommonFields.LOCATION_ID].apply(
             lambda x: Region.from_location_id(x).state
+        )
+
+
+def _add_aggregate_level_if_missing(df: pd.DataFrame):
+    """Adds the aggregate level column if missing, in place."""
+    assert CommonFields.LOCATION_ID in df.columns
+
+    if CommonFields.AGGREGATE_LEVEL not in df.columns:
+        df[CommonFields.AGGREGATE_LEVEL] = df[CommonFields.LOCATION_ID].apply(
+            lambda x: Region.from_location_id(x).level.value
         )
 
 
@@ -526,7 +536,6 @@ class MultiRegionDataset:
             # are not modified.
             timeseries_df = timeseries_df.fillna(np.nan).apply(pd.to_numeric).sort_index()
         geodata_df = timeseries_and_geodata_df.loc[:, geodata_column_mask]
-
         static_df = _geodata_df_to_static_attribute_df(
             geodata_df.reset_index().drop(columns=[CommonFields.DATE])
         )
@@ -657,6 +666,7 @@ class MultiRegionDataset:
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
         ts_df = _add_location_id(ts_df)
         _add_state_if_missing(ts_df)
+        _add_aggregate_level_if_missing(ts_df)
 
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
@@ -697,7 +707,7 @@ class MultiRegionDataset:
         # Check that all tag location_id are in timeseries location_id
         assert (
             self.tag.index.get_level_values(TagField.LOCATION_ID)
-            .difference(self.timeseries.index.get_level_values(CommonFields.LOCATION_ID))
+            .difference(self.timeseries_bucketed.index.get_level_values(CommonFields.LOCATION_ID))
             .empty
         )
 
@@ -1019,178 +1029,6 @@ def _remove_padded_nans(df, columns):
     last_valid_index = max(df[column].last_valid_index() for column in columns)
     df = df.iloc[first_valid_index : last_valid_index + 1]
     return df.reset_index(drop=True)
-
-
-def _diff_preserving_first_value(series):
-    cases = series.reset_index(CommonFields.LOCATION_ID, drop=True).loc[CommonFields.CASES, :]
-    # cases is a pd.Series (a 1-D vector) with DATE index
-    assert cases.index.names == [CommonFields.DATE]
-    new_cases = cases.diff()
-    first_date = cases.notna().idxmax()
-    if pd.notna(first_date):
-        new_cases[first_date] = cases[first_date]
-
-    # Return a DataFrame so NEW_CASES is a column with DATE index.
-    return pd.DataFrame({CommonFields.NEW_CASES: new_cases})
-
-
-def add_new_cases(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
-    """Adds a new_cases column to this dataset by calculating the daily diff in cases."""
-    # Get timeseries data from timeseries_wide_dates because it creates a date range that includes
-    # every date, even those with NA cases. This keeps the output identical when empty rows are
-    # dropped or added.
-    cases_wide_dates = dataset_in.timeseries_wide_dates().loc[(slice(None), CommonFields.CASES), :]
-    # Calculating new cases using diff will remove the first detected value from the case series.
-    # We want to capture the first day a region reports a case. Since our data sources have
-    # been capturing cases in all states from the beginning of the pandemic, we are treating
-    # the first day as appropriate new case data.
-    # We want as_index=True so that the DataFrame returned by each _diff_preserving_first_value call
-    # has the location_id added as an index before being concat-ed.
-    new_cases = (
-        cases_wide_dates.groupby(CommonFields.LOCATION_ID, as_index=True, sort=False)
-        .apply(_diff_preserving_first_value)
-        .rename_axis(columns=PdFields.VARIABLE)
-    )
-
-    # Replacing days with single back tracking adjustments to be 0, reduces
-    # number of na days in timeseries
-    new_cases[new_cases == -1] = 0
-
-    # Remove the occasional negative case adjustments.
-    new_cases[new_cases < 0] = pd.NA
-    new_cases = new_cases.dropna()
-
-    new_cases_dataset = MultiRegionDataset(timeseries=new_cases)
-
-    dataset_out = dataset_in.join_columns(new_cases_dataset)
-    return dataset_out
-
-
-def _calculate_modified_zscore(
-    series: pd.Series, window: int = 10, min_periods=3, ignore_zeros=True
-) -> pd.Series:
-    """Calculates zscore for each point in series comparing current point to past `window` days.
-
-    Each datapoint is compared to the distribution of the past `window` days as long as there are
-    `min_periods` number of non-nan values in the window.
-
-    In the calculation of z-score, zeros are thrown out. This is done to produce better results
-    for regions that regularly report zeros (for instance, RI reports zero new cases on
-    each weekend day).
-
-    Args:
-        series: Series to compute statistics for.
-        window: Size of window to calculate mean and std.
-        min_periods: Number of periods necessary to compute a score - will return nan otherwise.
-        ignore_zeros: If true, zeros are not included in zscore calculation.
-
-    Returns: Array of scores for each datapoint in series.
-    """
-    series = series.copy()
-    if ignore_zeros:
-        series[series == 0] = None
-
-    rolling_series = series.rolling(window=window, min_periods=min_periods)
-    # Shifting one to exclude current datapoint
-    mean = rolling_series.mean().shift(1)
-    std = rolling_series.std(ddof=0).shift(1)
-    z = (series - mean) / std
-    return z.abs()
-
-
-def drop_new_case_outliers(
-    timeseries: MultiRegionDataset, zscore_threshold: float = 8.0, case_threshold: int = 30,
-) -> MultiRegionDataset:
-    """Identifies and drops outliers from the new case series.
-
-    Args:
-        timeseries: Timeseries.
-        zscore_threshold: Z-score threshold.  All new cases with a zscore greater than the
-            threshold will be removed.
-        case_threshold: Min number of cases needed to count as an outlier.
-
-    Returns: timeseries with outliers removed from new_cases.
-    """
-    df_copy = timeseries.timeseries.copy()
-    grouped_df = timeseries.groupby_region()
-
-    zscores = grouped_df[CommonFields.NEW_CASES].apply(_calculate_modified_zscore)
-    to_exclude = (zscores > zscore_threshold) & (df_copy[CommonFields.NEW_CASES] > case_threshold)
-
-    new_tags = taglib.TagCollection()
-    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
-    # rows where to_exclude is True.
-    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    for idx, _ in to_exclude[to_exclude].iteritems():
-        new_tags.add(
-            taglib.ZScoreOutlier(
-                date=idx[1], original_observation=df_copy.at[idx, CommonFields.NEW_CASES],
-            ),
-            location_id=idx[0],
-            variable=CommonFields.NEW_CASES,
-        )
-    df_copy.loc[to_exclude, CommonFields.NEW_CASES] = np.nan
-
-    new_timeseries = dataclasses.replace(
-        timeseries, timeseries=df_copy, timeseries_bucketed=None
-    ).append_tag_df(new_tags.as_dataframe())
-
-    return new_timeseries
-
-
-def drop_tail_positivity_outliers(
-    dataset: MultiRegionDataset,
-    zscore_threshold: float = 10.0,
-    diff_threshold_ratio: float = 0.015,
-) -> MultiRegionDataset:
-    """Drops outliers from the test_positivity_7d series, adding tags for removed values.
-
-    Args:
-        dataset:
-        zscore_threshold: Z-score threshold.  All test_positivity_7d values with a zscore greater
-            than the threshold will be removed.
-        diff_threshold_ratio: Minimum difference required for value to be outlier.
-
-    Returns: Dataset with outliers removed from test_positivity_7d.
-    """
-    # TODO(https://trello.com/c/7J2SmDnr): Be more consistent about accessing this data
-    # through wide dates rather than duplicating timeseries.
-    df_copy = dataset.timeseries.copy()
-    grouped_df = dataset.groupby_region()
-
-    def process_series(series):
-        recent_series = series.tail(10)
-        # window of 5 days seems to capture about the right amount of variance.
-        # If window is too large, there may have been a large enough natural shift
-        # in test positivity that recent extreme value looks more noraml.
-        series = _calculate_modified_zscore(recent_series, window=5, ignore_zeros=False)
-        series.index = series.index.get_level_values(CommonFields.DATE)
-        series = series.dropna().last("1D")
-        return series
-
-    zscores = grouped_df[CommonFields.TEST_POSITIVITY_7D].apply(process_series)
-    test_positivity_diffs = df_copy[CommonFields.TEST_POSITIVITY_7D].diff().abs()
-
-    to_exclude = (zscores > zscore_threshold) & (test_positivity_diffs > diff_threshold_ratio)
-
-    new_tags = taglib.TagCollection()
-    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
-    # rows where to_exclude is True.
-    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    for idx, _ in to_exclude[to_exclude].iteritems():
-        new_tags.add(
-            taglib.ZScoreOutlier(
-                date=idx[1], original_observation=df_copy.at[idx, CommonFields.TEST_POSITIVITY_7D],
-            ),
-            location_id=idx[0],
-            variable=CommonFields.TEST_POSITIVITY_7D,
-        )
-
-    df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
-
-    return dataclasses.replace(dataset, timeseries=df_copy, timeseries_bucketed=None).append_tag_df(
-        new_tags.as_dataframe()
-    )
 
 
 def drop_regions_without_population(
