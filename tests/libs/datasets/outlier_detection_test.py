@@ -45,7 +45,6 @@ def test_not_removing_short_series():
     dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
     result = outlier_detection.drop_series_outliers(dataset, CommonFields.NEW_CASES, threshold=30)
 
-    # Should not modify becasue not higher than threshold
     test_helpers.assert_dataset_like(dataset, result)
 
 
