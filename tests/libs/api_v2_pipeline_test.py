@@ -161,6 +161,7 @@ def test_annotation(rt_dataset, icu_dataset):
             ),
             # NEW_CASES has only source_url set, to make sure that an annotation is still output.
             CommonFields.NEW_CASES: TimeseriesLiteral([100, 100, 100], source_url=new_cases_urls),
+            CommonFields.NEW_DEATHS: TimeseriesLiteral([100, 100, 100], source_url=death_url),
             CommonFields.CONTACT_TRACERS_COUNT: [10] * 3,
             CommonFields.ICU_BEDS: TimeseriesLiteral([20, 20, 20], provenance="NotFound"),
             CommonFields.CURRENT_ICU: [5, 5, 5],
