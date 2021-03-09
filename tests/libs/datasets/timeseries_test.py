@@ -265,6 +265,12 @@ def test_one_region_multiple_provenance():
     assert sorted(one_region.provenance[CommonFields.ICU_BEDS]) == ["prov1", "prov2"]
 
 
+def test_add_aggregate_level():
+    ts_df = read_csv_and_index_fips_date("fips,date,m1,m2\n" "36061,2020-04-02,2,\n").reset_index()
+    multiregion = timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
+    assert multiregion.static.aggregate_level.to_list() == ["county"]
+
+
 def test_append_regions():
     ts_fips = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
