@@ -108,22 +108,25 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         """Default implementation of make_dataset that loads data from the parquet file."""
         ccd_dataset = cls._get_covid_county_dataset()
-        data, source_df = ccd_dataset.query_multiple_variables(
+        rows, source_df = ccd_dataset.query_multiple_variables(
             # pylint: disable=E1101
             cls.VARIABLES,
             log_provider_coverage_warnings=True,
             source_type=cls.SOURCE_TYPE,
         )
+        # TODO(tom): Once downstream can handle it return all buckets, not just 'all'.
+        rows = rows.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, drop_level=False)
+        data = rows.unstack(PdFields.VARIABLE)
         data = cls._check_data(data)
-        ds = MultiRegionDataset.from_fips_timeseries_df(data)
+        ds = MultiRegionDataset(timeseries_bucketed=data)
         if not source_df.empty:
             # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.
             source_tag_df = (
                 source_df.sort_values(CommonFields.DATE)
-                .groupby([CommonFields.FIPS, PdFields.VARIABLE], sort=False)
+                .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE], sort=False)
                 .last()
                 .reset_index()
                 .drop(columns=[CommonFields.DATE])
             )
-            ds = ds.append_fips_tag_df(source_tag_df)
+            ds = ds.append_tag_df(source_tag_df)
         return ds

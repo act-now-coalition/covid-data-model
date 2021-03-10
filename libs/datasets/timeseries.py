@@ -431,12 +431,13 @@ class MultiRegionDataset:
 
         Returns: a Series with MultiIndex LOCATION_ID, DATE, VARIABLE
         """
-        return (
-            self.timeseries.rename_axis(columns=PdFields.VARIABLE)
-            .stack(dropna=True)
-            .rename(PdFields.VALUE)
-            .sort_index()
-        )
+        # TODO(tom): Replace calls to this with timeseries_bucketed_long.
+        return self.timeseries.stack(dropna=True).rename(PdFields.VALUE).sort_index()
+
+    @cached_property
+    def timeseries_bucketed_long(self) -> pd.Series:
+        """A Series with MultiIndex LOCATION_ID, DEMOGRAPHIC_BUCKET, DATE, VARIABLE"""
+        return self.timeseries_bucketed.stack(dropna=True).rename(PdFields.VALUE).sort_index()
 
     @lru_cache(maxsize=None)
     def timeseries_wide_dates(self) -> pd.DataFrame:
@@ -695,7 +696,7 @@ class MultiRegionDataset:
         # Check that all tag location_id are in timeseries location_id
         assert (
             self.tag.index.get_level_values(TagField.LOCATION_ID)
-            .difference(self.timeseries.index.get_level_values(CommonFields.LOCATION_ID))
+            .difference(self.timeseries_bucketed.index.get_level_values(CommonFields.LOCATION_ID))
             .empty
         )
 

@@ -1,26 +1,27 @@
 """Helpers to access and query data loaded from the CAN Scraper parquet file.
 """
+import warnings
 from typing import List
 import enum
 import dataclasses
 from typing import Optional
 from typing import Tuple
-
 import more_itertools
 import structlog
 import pandas as pd
 from covidactnow.datapublic.common_fields import FieldNameAndCommonField
 from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import PdFields
+
+from libs import pipeline
+from libs.dataclass_utils import dataclass_with_default_init
+from libs.datasets import dataset_utils
+from libs.datasets import taglib
 
 
 # Airflow jobs output a single parquet file with all of the data - this is where
 # it is currently stored.
-from covidactnow.datapublic.common_fields import PdFields
-
-from libs.datasets import dataset_utils
-from libs.datasets import taglib
-
 PARQUET_PATH = "data/can-scrape/can_scrape_api_covid_us.parquet"
 
 
@@ -83,24 +84,105 @@ def _fips_from_int(param: pd.Series):
     return param.apply(lambda v: f"{v:0>{2 if v < 100 else 5}}")
 
 
-@dataclasses.dataclass(frozen=True)
+DEMOGRAPHIC_FIELDS = [Fields.AGE, Fields.RACE, Fields.ETHNICITY, Fields.SEX]
+
+
+def make_short_name(row: pd.Series) -> str:
+    """Transform a Series of demographic values into a single string such as 'age:0-9;sex:female'"""
+    non_all = []
+    for field in DEMOGRAPHIC_FIELDS:
+        if row[field] != "all":
+            non_all.append(f"{field}:{row[field]}")
+    if non_all:
+        return ";".join(non_all)
+    else:
+        return "all"
+
+
+class BadLocationId(UserWarning):
+    pass
+
+
+@dataclass_with_default_init(frozen=True)
 class CanScraperLoader:
 
     all_df: pd.DataFrame
+    indexed_df: pd.DataFrame
 
-    def _get_rows(self, variable: ScraperVariable) -> pd.DataFrame:
-        # Similar to dataset_utils.make_rows_key this builds a Pandas.eval query string by making a
-        # list of query parts, then joining them with `and`. For our current data this takes 23s
-        # while the previous method of making a binary mask for each variable took 54s. This is run
-        # during tests so the speed up is nice to have.
-        required_fields = ["provider", "variable_name", "age", "race", "ethnicity", "sex"]
-        assert all([getattr(variable, field) for field in required_fields])
-        query_parts = [f"{field} == @variable.{field}" for field in required_fields]
-        for optional_field in ["measurement", "unit"]:
-            if getattr(variable, optional_field):
-                query_parts.append(f"{optional_field} == @variable.{optional_field}")
+    # noinspection PyMissingConstructor
+    def __init__(self, all_df: pd.DataFrame):
+        # Always pre-populate indexed_df property. When it was a cached_property there were
+        # mysterious consistent occurrences of
+        #   worker 'gw1' crashed while running
+        #   'tests/libs/datasets/data_source_test.py::test_state_providers_smoke_test'
+        self.__default_init__(  # pylint: disable=E1101
+            all_df=all_df, indexed_df=CanScraperLoader._make_indexed_df(all_df)
+        )
 
-        return self.all_df.loc[self.all_df.eval(" and ".join(query_parts))].copy()
+    @staticmethod
+    def _make_indexed_df(all_df: pd.DataFrame) -> pd.DataFrame:
+        """The parquet file with many fields moved into a MultiIndex and demographic fields
+        transformed into a single string."""
+        # Make a Series of bucket short names with a MultiIndex of the unique DEMOGRAPHIC_FIELDS.
+        # There are only a few (~50) unique fields among the millions of rows. `apply`ing
+        # make_short_name to every row takes much longer than using a join to copy from this series.
+        # This pattern of finding unique values and copying with a join is also used in
+        # taglib.Series.attribute_df_to_json_series.
+        bucket_short_names = (
+            all_df.loc[:, DEMOGRAPHIC_FIELDS]
+            .drop_duplicates()
+            .set_index(DEMOGRAPHIC_FIELDS, drop=False)
+            .apply(make_short_name, axis=1, result_type="reduce")
+            .rename(PdFields.DEMOGRAPHIC_BUCKET)
+        )
+        CanScraperLoader._check_location_id(all_df)
+        # Hack fix for bad location_ids.
+        all_df[Fields.LOCATION_ID] = _fips_from_int(all_df[Fields.LOCATION]).apply(
+            pipeline.fips_to_location_id
+        )
+        # Use `join(other, on=...)` because it preserves the indexed_df index
+        rv = (
+            all_df.join(bucket_short_names, on=DEMOGRAPHIC_FIELDS)
+            .drop(columns=DEMOGRAPHIC_FIELDS)
+            .set_index(
+                [
+                    Fields.PROVIDER,
+                    Fields.VARIABLE_NAME,
+                    Fields.MEASUREMENT,
+                    Fields.UNIT,
+                    Fields.LOCATION_ID,
+                    PdFields.DEMOGRAPHIC_BUCKET,
+                    Fields.DATE,
+                ]
+            )
+        )
+        return rv
+
+    @staticmethod
+    def _check_location_id(all_df: pd.DataFrame):
+        # Get unique location_id and fips pairs from input data
+        location_id_fips_df = all_df.loc[:, [Fields.LOCATION_ID, Fields.LOCATION]].drop_duplicates()
+
+        COMPUTED_LOCATION_ID = "computed_location_id"
+        location_id_fips_df[COMPUTED_LOCATION_ID] = _fips_from_int(
+            location_id_fips_df[Fields.LOCATION]
+        ).apply(pipeline.fips_to_location_id)
+
+        bad_location_id_mask = (
+            location_id_fips_df[Fields.LOCATION_ID] != location_id_fips_df[COMPUTED_LOCATION_ID]
+        )
+        if bad_location_id_mask.any():
+            bad_location_ids = location_id_fips_df.loc[
+                bad_location_id_mask, [Fields.LOCATION_ID, COMPUTED_LOCATION_ID]
+            ]
+            bad_rows = bad_location_ids.merge(all_df, how="left", on=Fields.LOCATION_ID)
+            # TODO(tom): Have this raise when location_id are fixed
+            warnings.warn(
+                BadLocationId(
+                    f"Bad location_id. Examples:\n"
+                    f"{bad_rows.to_string(line_width=200, max_rows=20)}"
+                )
+            )
 
     def query_multiple_variables(
         self,
@@ -108,80 +190,87 @@ class CanScraperLoader:
         *,
         log_provider_coverage_warnings: bool = False,
         source_type: str,
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Queries multiple variables returning wide df with variable names as columns.
+    ) -> Tuple[pd.Series, pd.DataFrame]:
+        """Queries multiple variables
 
         Args:
             variables: Variables to query
             log_provider_coverage_warnings: Log warnings when upstream data has variables not in
               `variables` and hints when a variable has no data.
+            source_type: String for the `taglib.Source.type` property
 
         Returns:
-            The observations in a DataFrame with variable columns and the source_urls
+            The observations in a Series and the sources in a tag DataFrame
         """
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
 
-        selected_data = []
-        for variable in variables:
-            # Check that `variable` agrees with stuff in the ScraperVariable docstring.
-            if variable.common_field is None:
-                assert variable.measurement == ""
-                assert variable.unit == ""
-                continue
-            else:
-                # Must be set when copying to the return value
-                assert variable.measurement
-                assert variable.unit
+        # Split `variables` into lists of variables dropped and those returned.
+        variables_to_drop = [variable for variable in variables if not variable.common_field]
+        variables_to_return = [variable for variable in variables if variable.common_field]
 
-            data = self._get_rows(variable)
-            if data.empty and log_provider_coverage_warnings:
-                _logger.info("No data rows found for variable", variable=variable)
-                more_data = self._get_rows(dataclasses.replace(variable, measurement="", unit=""))
-                _logger.info(
-                    "Try these parameters",
-                    variable_name=variable.variable_name,
-                    measurement_counts=str(more_data[Fields.MEASUREMENT].value_counts().to_dict()),
-                    unit_counts=str(more_data[Fields.UNIT].value_counts().to_dict()),
-                )
-            # Copy CommonField name to data. The loop is continued above when common_field is None.
-            data.loc[:, Fields.VARIABLE_NAME] = variable.common_field
-            selected_data.append(data)
+        for v in variables_to_drop:
+            # Verify agreement with ScraperVariable docstring.
+            assert v.measurement == ""
+            assert v.unit == ""
 
-        # TODO(tom): check LOCATION_TYPE matches LOCATION
+        selected_data = {}
+        indexed_df = self.indexed_df
+        assert indexed_df.index.names[0:4] == [
+            Fields.PROVIDER,
+            Fields.VARIABLE_NAME,
+            Fields.MEASUREMENT,
+            Fields.UNIT,
+        ]
+        for v in variables_to_return:
+            # Must be set when copying to the return value
+            assert v.measurement
+            assert v.unit
 
-        combined_data = pd.concat(selected_data)
-        unknown_columns = set(combined_data.columns) - set(Fields)
+            try:
+                selected_data[v.common_field] = indexed_df.loc(axis=0)[
+                    v.provider, v.variable_name, v.measurement, v.unit
+                ]
+            except KeyError:
+                pass
+
+        combined_rows = pd.concat(selected_data, axis=0, names=[PdFields.VARIABLE])
+
+        unknown_columns = set(combined_rows.columns) - set(Fields) - {PdFields.DEMOGRAPHIC_BUCKET}
         if unknown_columns:
             raise ValueError(f"Unknown column. Add {unknown_columns} to Fields.")
 
-        rename_columns = {f: f.common_field for f in Fields if f.common_field}
-        indexed = (
-            combined_data.rename(columns=rename_columns)
-            .set_index([CommonFields.FIPS, PdFields.VARIABLE, CommonFields.DATE])
+        indexed_rows = (
+            combined_rows.rename_axis(
+                index={Fields.DATE: CommonFields.DATE, Fields.LOCATION_ID: CommonFields.LOCATION_ID}
+            )
+            .reorder_levels(
+                [
+                    CommonFields.LOCATION_ID,
+                    PdFields.VARIABLE,
+                    PdFields.DEMOGRAPHIC_BUCKET,
+                    CommonFields.DATE,
+                ]
+            )
             .sort_index()
         )
 
+        dups = indexed_rows.index.duplicated(keep=False)
+        if dups.any():
+            raise NotImplementedError(
+                f"No support for aggregating duplicate observations:\n"
+                f"{indexed_rows.loc[dups].to_string(line_width=200, max_rows=200, max_colwidth=40)}"
+            )
+
+        # For now only making a source tag for observations with bucket "all".
         tag_df = taglib.Source.rename_and_make_tag_df(
-            indexed,
+            indexed_rows.xs("all", axis=0, level=PdFields.DEMOGRAPHIC_BUCKET, drop_level=True),
             source_type=source_type,
             rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
         )
 
-        dups = indexed.index.duplicated(keep=False)
-        if dups.any():
-            raise NotImplementedError(
-                f"No support for aggregating duplicate observations:\n"
-                f"{indexed.loc[dups].to_string(line_width=200, max_rows=200,max_colwidth=40)}"
-            )
-
-        # Make a DataFrame with index=[FIPS,DATE], column=VARIABLE and value=VALUE. This used to
-        # use pivot_table but we don't want to aggregate observations. I tried using
-        # `DataFrame.pivot` but couldn't work around a mysterious
-        # "NotImplementedError: > 1 ndim Categorical are not supported at this time".
-        wide_vars_df = indexed[PdFields.VALUE].unstack(level=PdFields.VARIABLE).reset_index()
-        assert wide_vars_df.columns.names == [PdFields.VARIABLE]
-        return wide_vars_df, tag_df
+        rows = indexed_rows[PdFields.VALUE]
+        return rows, tag_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))
@@ -204,6 +293,5 @@ class CanScraperLoader:
         input_path = data_root / PARQUET_PATH
 
         all_df = pd.read_parquet(input_path)
-        all_df[Fields.LOCATION] = _fips_from_int(all_df[Fields.LOCATION])
 
         return CanScraperLoader(all_df)
