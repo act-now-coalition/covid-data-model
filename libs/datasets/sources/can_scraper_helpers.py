@@ -117,17 +117,6 @@ class CanScraperLoader:
     def _make_indexed_df(all_df: pd.DataFrame) -> pd.DataFrame:
         """The parquet file with many fields moved into a MultiIndex and demographic fields
         transformed into a single string."""
-        indexed_df = all_df.set_index(
-            [
-                Fields.PROVIDER,
-                Fields.VARIABLE_NAME,
-                Fields.MEASUREMENT,
-                Fields.UNIT,
-                Fields.LOCATION_ID,
-            ]
-            + DEMOGRAPHIC_FIELDS
-            + [Fields.DATE]
-        ).sort_index()
         # Make a Series of bucket short names with a MultiIndex of the unique DEMOGRAPHIC_FIELDS.
         # There are only a few (~50) unique fields among the millions of rows. `apply`ing
         # make_short_name to every row takes much longer than using a join to copy from this series.
@@ -142,9 +131,19 @@ class CanScraperLoader:
         )
         # Use `join(other, on=...)` because it preserves the indexed_df index
         rv = (
-            indexed_df.join(bucket_short_names, on=DEMOGRAPHIC_FIELDS)
-            .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)
-            .droplevel(DEMOGRAPHIC_FIELDS)
+            all_df.join(bucket_short_names, on=DEMOGRAPHIC_FIELDS)
+            .drop(columns=DEMOGRAPHIC_FIELDS)
+            .set_index(
+                [
+                    Fields.PROVIDER,
+                    Fields.VARIABLE_NAME,
+                    Fields.MEASUREMENT,
+                    Fields.UNIT,
+                    Fields.LOCATION_ID,
+                    PdFields.DEMOGRAPHIC_BUCKET,
+                    Fields.DATE,
+                ]
+            )
         )
         return rv
 
@@ -257,6 +256,5 @@ class CanScraperLoader:
         input_path = data_root / PARQUET_PATH
 
         all_df = pd.read_parquet(input_path)
-        all_df[Fields.LOCATION] = _fips_from_int(all_df[Fields.LOCATION])
 
         return CanScraperLoader(all_df)
