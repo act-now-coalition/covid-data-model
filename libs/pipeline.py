@@ -6,6 +6,7 @@ represents a geographical area (state, county, metro area, etc).
 # Many other modules import this module. Importing pyseir or dataset code here is likely to create
 # in import cycle.
 import re
+import warnings
 from dataclasses import dataclass
 from typing import List
 from typing import Mapping
@@ -28,7 +29,14 @@ class BadFipsWarning(UserWarning):
 
 def fips_to_location_id(fips: str) -> str:
     """Converts a FIPS code to a location_id"""
-    return dataset_utils.get_fips_to_location().at[fips]
+    try:
+        return dataset_utils.get_fips_to_location().at[fips]
+    except KeyError:
+        # This happens mostly (entirely?) in unittest data where the first two digits
+        # are not a valid state FIPS. See
+        # https://trello.com/c/QEbSwjSQ/631-remove-support-for-county-locationid-without-state
+        warnings.warn(BadFipsWarning(f"Fallback location_id for fips {fips}"), stacklevel=2)
+        return f"iso1:us#fips:{fips}"
 
 
 def location_id_to_fips(location_id: str) -> Optional[str]:

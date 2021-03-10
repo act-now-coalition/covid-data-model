@@ -179,7 +179,7 @@ def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
     if df[CommonFields.LOCATION_ID].isna().any():
         raise KeyError(
             f"No location_id found for "
-            f"{df.loc[df[CommonFields.LOCATION_ID].isna(), CommonFields.FIPS]}"
+            f"{df.loc[df[CommonFields.LOCATION_ID].isna(), CommonFields.FIPS].value_counts()}"
         )
     return df
 

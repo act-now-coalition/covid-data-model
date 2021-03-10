@@ -1,3 +1,4 @@
+import functools
 from typing import Optional, Type
 import os
 import enum
@@ -345,11 +346,13 @@ def build_latest_for_column(timeseries_df: pd.DataFrame, column: CommonFields) -
     return data[column].groupby([CommonFields.LOCATION_ID], sort=False).last()
 
 
+@functools.lru_cache(None)
 def get_geo_data() -> pd.DataFrame:
     return pd.read_csv(DATA_DIRECTORY / "geo-data.csv", dtype={CommonFields.FIPS: str}).set_index(
         CommonFields.LOCATION_ID
     )
 
 
+@functools.lru_cache(None)
 def get_fips_to_location() -> pd.DataFrame:
     return get_geo_data().reset_index().set_index(CommonFields.FIPS)[CommonFields.LOCATION_ID]
