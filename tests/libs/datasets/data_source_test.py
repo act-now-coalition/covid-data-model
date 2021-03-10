@@ -55,7 +55,7 @@ def test_can_scraper_returns_source_url(reverse_observation_order):
 
     # Check that the URL gets all the way to the OneRegionTimeseriesDataset.
     one_region = ds.get_one_region(
-        pipeline.Region.from_fips(can_scraper_helpers_test.DEFAULT_LOCATION)
+        pipeline.Region.from_location_id(can_scraper_helpers_test.DEFAULT_LOCATION_ID)
     )
     assert one_region.sources(CommonFields.CASES) == [
         taglib.Source(type="USAFacts", url=UrlStr(more_itertools.last(test_url)))
