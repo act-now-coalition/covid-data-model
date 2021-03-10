@@ -101,12 +101,13 @@ def make_short_name(row: pd.Series) -> str:
 class CanScraperLoader:
 
     all_df: pd.DataFrame
+    indexed_df: pd.DataFrame
 
-    @cached_property
-    def indexed_df(self) -> pd.DataFrame:
+    @staticmethod
+    def _make_indexed_df(all_df: pd.DataFrame) -> pd.DataFrame:
         """The parquet file with many fields moved into a MultiIndex and demographic fields
         transformed into a single string."""
-        indexed_df = self.all_df.set_index(
+        indexed_df = all_df.set_index(
             [
                 Fields.PROVIDER,
                 Fields.VARIABLE_NAME,
@@ -123,7 +124,7 @@ class CanScraperLoader:
         # This pattern of finding unique values and copying with a join is also used in
         # taglib.Series.attribute_df_to_json_series.
         bucket_short_names = (
-            self.all_df.loc[:, DEMOGRAPHIC_FIELDS]
+            all_df.loc[:, DEMOGRAPHIC_FIELDS]
             .drop_duplicates()
             .set_index(DEMOGRAPHIC_FIELDS, drop=False)
             .apply(make_short_name, axis=1, result_type="reduce")
@@ -248,4 +249,4 @@ class CanScraperLoader:
         all_df = pd.read_parquet(input_path)
         all_df[Fields.LOCATION] = _fips_from_int(all_df[Fields.LOCATION])
 
-        return CanScraperLoader(all_df)
+        return CanScraperLoader(all_df, indexed_df=CanScraperLoader._make_indexed_df(all_df))
