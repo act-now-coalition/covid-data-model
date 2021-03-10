@@ -78,7 +78,7 @@ def test_include_exclude_regions():
         ],
     )
 
-    location_ids = set(mask.make_dataset().location_ids())
+    location_ids = set(mask.make_dataset().location_ids)
     assert location_ids == {
         "iso1:us#iso2:us-tx",
         "iso1:us#iso2:us-dc",

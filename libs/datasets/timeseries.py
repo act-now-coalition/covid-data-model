@@ -403,6 +403,7 @@ class MultiRegionDataset:
                 dtype="float",
             )
 
+    @cached_property
     def location_ids(self) -> pd.Index:
         return self.static.index.unique(CommonFields.LOCATION_ID).union(
             self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID)
@@ -410,7 +411,7 @@ class MultiRegionDataset:
 
     @cached_property
     def geo_data(self) -> pd.DataFrame:
-        location_ids = self.location_ids()
+        location_ids = self.location_ids
         geo_data = dataset_utils.get_geo_data()
         missing_location_id = location_ids.difference(geo_data.index)
         if not missing_location_id.empty:
@@ -731,12 +732,12 @@ class MultiRegionDataset:
             .empty
         )
 
-        extra_location_ids = self.location_ids().difference(dataset_utils.get_geo_data().index)
+        extra_location_ids = self.location_ids.difference(dataset_utils.get_geo_data().index)
         if not extra_location_ids.empty:
             raise AssertionError(f"Unknown locations:\n{extra_location_ids}")
 
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
-        common_location_id = self.location_ids().intersection(other.location_ids())
+        common_location_id = self.location_ids.intersection(other.location_ids)
         if not common_location_id.empty:
             raise ValueError("Do not use append_regions with duplicate location_id")
         # TODO(tom): check if rename_axis is needed once we have
