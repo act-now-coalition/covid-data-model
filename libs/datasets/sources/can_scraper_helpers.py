@@ -8,12 +8,12 @@ from typing import Tuple
 import more_itertools
 import structlog
 import pandas as pd
-from backports.cached_property import cached_property
 from covidactnow.datapublic.common_fields import FieldNameAndCommonField
 from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import dataset_utils
 from libs.datasets import taglib
 
@@ -97,11 +97,21 @@ def make_short_name(row: pd.Series) -> str:
         return "all"
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclass_with_default_init(frozen=True)
 class CanScraperLoader:
 
     all_df: pd.DataFrame
     indexed_df: pd.DataFrame
+
+    # noinspection PyMissingConstructor
+    def __init__(self, all_df: pd.DataFrame):
+        # Always pre-populate indexed_df property. When it was a cached_property there were
+        # mysterious consistent occurrences of
+        #   worker 'gw1' crashed while running
+        #   'tests/libs/datasets/data_source_test.py::test_state_providers_smoke_test'
+        self.__default_init__(  # pylint: disable=E1101
+            all_df=all_df, indexed_df=CanScraperLoader._make_indexed_df(all_df)
+        )
 
     @staticmethod
     def _make_indexed_df(all_df: pd.DataFrame) -> pd.DataFrame:
@@ -249,4 +259,4 @@ class CanScraperLoader:
         all_df = pd.read_parquet(input_path)
         all_df[Fields.LOCATION] = _fips_from_int(all_df[Fields.LOCATION])
 
-        return CanScraperLoader(all_df, indexed_df=CanScraperLoader._make_indexed_df(all_df))
+        return CanScraperLoader(all_df)
