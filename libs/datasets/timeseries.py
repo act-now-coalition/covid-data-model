@@ -714,6 +714,11 @@ class MultiRegionDataset:
         tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
+    def append_fips_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Returns a new dataset with additional_tag_df, containing a fips column, appended."""
+        additional_tag_df = _add_location_id(additional_tag_df).drop(columns=CommonFields.FIPS)
+        return self.append_tag_df(additional_tag_df)
+
     def append_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df appended."""
         if additional_tag_df.empty:
