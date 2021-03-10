@@ -16,7 +16,6 @@ from covidactnow.datapublic.common_test_helpers import to_dict
 
 from libs import github_utils
 from libs.datasets import AggregationLevel
-from libs.datasets import combined_datasets
 from libs.datasets import dataset_pointer
 from libs.datasets import taglib
 
