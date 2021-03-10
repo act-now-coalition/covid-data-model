@@ -255,10 +255,13 @@ def load_datasets_by_field(
     feature_definition_config: combined_datasets.FeatureDataSourceMap, *, state, fips
 ) -> Mapping[FieldName, List[timeseries.MultiRegionDataset]]:
     def _load_dataset(data_source_cls) -> timeseries.MultiRegionDataset:
-        dataset = data_source_cls.make_dataset()
-        if state or fips:
-            dataset = dataset.get_subset(state=state, fips=fips)
-        return dataset
+        try:
+            dataset = data_source_cls.make_dataset()
+            if state or fips:
+                dataset = dataset.get_subset(state=state, fips=fips)
+            return dataset
+        except Exception:
+            raise ValueError(f"Problem with {data_source_cls}")
 
     feature_definition = {
         # Put the highest priority first, as expected by timeseries.combined_datasets.

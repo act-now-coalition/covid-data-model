@@ -721,6 +721,10 @@ class MultiRegionDataset:
             .empty
         )
 
+        extra_location_ids = self.location_ids().difference(dataset_utils.get_geo_data().index)
+        if not extra_location_ids.empty:
+            raise AssertionError(f"Unknown locations:\n{extra_location_ids}")
+
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         common_location_id = self.location_ids().intersection(other.location_ids())
         if not common_location_id.empty:
