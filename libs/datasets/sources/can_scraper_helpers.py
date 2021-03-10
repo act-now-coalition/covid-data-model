@@ -1,5 +1,6 @@
 """Helpers to access and query data loaded from the CAN Scraper parquet file.
 """
+import warnings
 from typing import List
 import enum
 import dataclasses
@@ -98,6 +99,10 @@ def make_short_name(row: pd.Series) -> str:
         return "all"
 
 
+class BadLocationId(UserWarning):
+    pass
+
+
 @dataclass_with_default_init(frozen=True)
 class CanScraperLoader:
 
@@ -172,8 +177,11 @@ class CanScraperLoader:
             ]
             bad_rows = bad_location_ids.merge(all_df, how="left", on=Fields.LOCATION_ID)
             # TODO(tom): Have this raise when location_id are fixed
-            _logger.warning(
-                f"Bad location_id. Examples:\n" f"{bad_rows.to_string(line_width=200, max_rows=20)}"
+            warnings.warn(
+                BadLocationId(
+                    f"Bad location_id. Examples:\n"
+                    f"{bad_rows.to_string(line_width=200, max_rows=20)}"
+                )
             )
 
     def query_multiple_variables(
