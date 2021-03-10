@@ -116,7 +116,6 @@ class CanScraperLoader:
 
     @staticmethod
     def _make_indexed_df(all_df: pd.DataFrame) -> pd.DataFrame:
-        CanScraperLoader._check_location_id(all_df)
         """The parquet file with many fields moved into a MultiIndex and demographic fields
         transformed into a single string."""
         # Make a Series of bucket short names with a MultiIndex of the unique DEMOGRAPHIC_FIELDS.
@@ -130,6 +129,11 @@ class CanScraperLoader:
             .set_index(DEMOGRAPHIC_FIELDS, drop=False)
             .apply(make_short_name, axis=1, result_type="reduce")
             .rename(PdFields.DEMOGRAPHIC_BUCKET)
+        )
+        CanScraperLoader._check_location_id(all_df)
+        # Hack fix for bad location_ids.
+        all_df[Fields.LOCATION_ID] = _fips_from_int(all_df[Fields.LOCATION]).apply(
+            pipeline.fips_to_location_id
         )
         # Use `join(other, on=...)` because it preserves the indexed_df index
         rv = (
@@ -155,9 +159,9 @@ class CanScraperLoader:
         location_id_fips_df = all_df.loc[:, [Fields.LOCATION_ID, Fields.LOCATION]].drop_duplicates()
 
         COMPUTED_LOCATION_ID = "computed_location_id"
-        location_id_fips_df[COMPUTED_LOCATION_ID] = location_id_fips_df[Fields.LOCATION].apply(
-            pipeline.fips_to_location_id
-        )
+        location_id_fips_df[COMPUTED_LOCATION_ID] = _fips_from_int(
+            location_id_fips_df[Fields.LOCATION]
+        ).apply(pipeline.fips_to_location_id)
 
         bad_location_id_mask = (
             location_id_fips_df[Fields.LOCATION_ID] != location_id_fips_df[COMPUTED_LOCATION_ID]
@@ -167,7 +171,10 @@ class CanScraperLoader:
                 bad_location_id_mask, [Fields.LOCATION_ID, COMPUTED_LOCATION_ID]
             ]
             bad_rows = bad_location_ids.merge(all_df, how="left", on=Fields.LOCATION_ID)
-            raise ValueError(f"Bad location_id. Examples:\n{bad_rows.to_string(line_width=200)}")
+            # TODO(tom): Have this raise when location_id are fixed
+            _logger.warning(
+                f"Bad location_id. Examples:\n" f"{bad_rows.to_string(line_width=200, max_rows=20)}"
+            )
 
     def query_multiple_variables(
         self,

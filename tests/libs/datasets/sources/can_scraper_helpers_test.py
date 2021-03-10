@@ -22,9 +22,9 @@ from tests.test_helpers import TimeseriesLiteral
 
 
 # Match fields in the CAN Scraper DB
-DEFAULT_LOCATION = "36"
+DEFAULT_LOCATION = 36  # FIPS is an int in the parquet file, not a str
 DEFAULT_LOCATION_TYPE = "state"
-DEFAULT_LOCATION_ID = Region.from_fips(DEFAULT_LOCATION).location_id
+DEFAULT_LOCATION_ID = Region.from_fips(str(DEFAULT_LOCATION)).location_id
 DEFAULT_START_DATE = test_helpers.DEFAULT_START_DATE
 
 
