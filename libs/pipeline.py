@@ -6,7 +6,6 @@ represents a geographical area (state, county, metro area, etc).
 # Many other modules import this module. Importing pyseir or dataset code here is likely to create
 # in import cycle.
 import re
-import warnings
 from dataclasses import dataclass
 from typing import List
 from typing import Mapping
@@ -14,11 +13,13 @@ from typing import Optional
 from typing import Union
 
 import us
+from covidactnow.datapublic.common_fields import CommonFields
 from typing_extensions import NewType
 from typing_extensions import final
 
 from libs import us_state_abbrev
 from libs.datasets.dataset_utils import AggregationLevel
+from libs.datasets import dataset_utils
 
 
 class BadFipsWarning(UserWarning):
@@ -27,35 +28,12 @@ class BadFipsWarning(UserWarning):
 
 def fips_to_location_id(fips: str) -> str:
     """Converts a FIPS code to a location_id"""
-    state_obj = us.states.lookup(fips[0:2], field="fips")
-    if state_obj:
-        if len(fips) == 2:
-            return f"iso1:us#iso2:us-{state_obj.abbr.lower()}"
-        elif len(fips) == 5 or len(fips) == 7:
-            return f"iso1:us#iso2:us-{state_obj.abbr.lower()}#fips:{fips}"
-
-    # This happens mostly (entirely?) in unittest data where the first two digits
-    # are not a valid state FIPS. See
-    # https://trello.com/c/QEbSwjSQ/631-remove-support-for-county-locationid-without-state
-    warnings.warn(BadFipsWarning(f"Fallback location_id for fips {fips}"), stacklevel=2)
-    return f"iso1:us#fips:{fips}"
+    return dataset_utils.get_fips_to_location().at[fips]
 
 
 def location_id_to_fips(location_id: str) -> Optional[str]:
     """Converts a location_id to a FIPS code"""
-    match = re.fullmatch(r"iso1:us#.*fips:(\d+)", location_id)
-    if match:
-        return match.group(1)
-
-    match = re.fullmatch(r"iso1:us#iso2:us-(..)", location_id)
-    if match:
-        return us.states.lookup(match.group(1).upper(), field="abbr").fips
-
-    match = re.fullmatch(r"iso1:us#cbsa:(\d+)", location_id)
-    if match:
-        return match.group(1)
-
-    return None
+    return dataset_utils.get_geo_data().at[location_id, CommonFields.FIPS]
 
 
 def location_id_to_level(location_id: str) -> Optional[AggregationLevel]:

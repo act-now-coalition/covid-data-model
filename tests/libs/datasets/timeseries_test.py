@@ -204,7 +204,7 @@ def test_one_region_dataset():
 
     with structlog.testing.capture_logs() as logs:
         ts = timeseries.OneRegionTimeseriesDataset(
-            Region.from_fips("99999"),
+            Region.from_fips("97111"),
             pd.DataFrame([], columns="location_id county aggregate_level date m1 m2".split()),
             {},
         )
@@ -272,10 +272,11 @@ def test_add_aggregate_level():
 
 
 def test_fips_not_in_geo_data_csv_raises():
-    ts_df = read_csv_and_index_fips_date("fips,date,m1,m2\n" "98789,2020-04-02,2,\n").reset_index()
-    ds = timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
     with pytest.raises(KeyError):
-        ds.geo_data
+        ts_df = read_csv_and_index_fips_date(
+            "fips,date,m1,m2\n" "98789,2020-04-02,2,\n"
+        ).reset_index()
+        timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
 
 
 def test_append_regions():

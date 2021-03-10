@@ -245,6 +245,7 @@ def test_dataclass_include_exclude():
 
     # Make a new subclass to keep this test separate from others in the make_dataset lru_cache.
     class DataSourceForTest(data_source.DataSource):
+        EXPECTED_FIELDS = [CommonFields.CASES, CommonFields.DEATHS]
         SOURCE_TYPE = "DataSourceForTest"
 
         @classmethod

@@ -4,13 +4,12 @@ from libs.datasets import AggregationLevel
 
 def test_location_id_to_level():
     param_result_map = {
-        "iso1:us#fips:99111": AggregationLevel.COUNTY,
+        "iso1:us#fips:97111": AggregationLevel.COUNTY,
         "iso1:us#iso2:us-wy#fips:56039": AggregationLevel.COUNTY,
         "iso1:us#iso2:us-tx": AggregationLevel.STATE,
         "iso1:us": AggregationLevel.COUNTRY,
         "iso1:us#cbsa:10100": AggregationLevel.CBSA,
         "iso1:us#iso2:us-ny#fips:3651000": AggregationLevel.PLACE,
-        "iso1:us#fips:3651000": AggregationLevel.PLACE,
     }
     assert set(param_result_map.values()) == set(AggregationLevel)
 

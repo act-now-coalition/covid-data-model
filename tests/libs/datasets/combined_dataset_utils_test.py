@@ -63,6 +63,8 @@ def test_include_exclude_regions():
     )
 
     class DataSourceForTest(data_source.DataSource):
+        EXPECTED_FIELDS = [CommonFields.CASES]
+
         @classmethod
         def make_dataset(cls) -> timeseries.MultiRegionDataset:
             return ds_in

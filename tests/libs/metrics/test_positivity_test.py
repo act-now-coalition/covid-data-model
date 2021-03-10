@@ -218,9 +218,9 @@ def test_all_columns_na():
     ts_df = common_df.read_csv(
         io.StringIO(
             "location_id,date,positive_tests,total_tests\n"
-            "iso1:us#iso2:tx,2020-04-01,,\n"
-            "iso1:us#iso2:tx,2020-04-02,,\n"
-            "iso1:us#iso2:tx,2020-04-04,,\n"
+            "iso1:us#iso2:us-tx,2020-04-01,,\n"
+            "iso1:us#iso2:us-tx,2020-04-02,,\n"
+            "iso1:us#iso2:us-tx,2020-04-04,,\n"
         ),
         set_index=False,
     )

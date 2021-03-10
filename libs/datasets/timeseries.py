@@ -175,8 +175,12 @@ def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("location_id already in DataFrame")
 
     df = df.copy()
-
-    df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
+    df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].map(dataset_utils.get_fips_to_location())
+    if df[CommonFields.LOCATION_ID].isna().any():
+        raise KeyError(
+            f"No location_id found for "
+            f"{df.loc[df[CommonFields.LOCATION_ID].isna(), CommonFields.FIPS]}"
+        )
     return df
 
 
@@ -411,7 +415,7 @@ class MultiRegionDataset:
         missing_location_id = location_ids.difference(geo_data.index)
         if not missing_location_id.empty:
             raise KeyError(f"location_id not in data/geo-data.csv:\n{missing_location_id}")
-        return dataset_utils.get_geo_data().reindex(index=location_ids)
+        return geo_data.reindex(index=location_ids)
 
     @property
     def timeseries_regions(self) -> Set[Region]:
@@ -683,10 +687,15 @@ class MultiRegionDataset:
         # Check that current index is as expected. Names will be fixed after remapping, below.
         assert provenance.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
         provenance = provenance.copy()
-        provenance.index = provenance.index.map(
-            lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
+        provenance.index = pd.MultiIndex.from_arrays(
+            [
+                provenance.index.get_level_values(CommonFields.FIPS).map(
+                    dataset_utils.get_fips_to_location()
+                ),
+                provenance.index.get_level_values(PdFields.VARIABLE),
+            ],
+            names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
         )
-        provenance.index.rename([CommonFields.LOCATION_ID, PdFields.VARIABLE], inplace=True)
         provenance.rename(PdFields.PROVENANCE, inplace=True)
         return self.add_provenance_series(provenance)
 
