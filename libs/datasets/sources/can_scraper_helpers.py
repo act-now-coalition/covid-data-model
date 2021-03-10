@@ -136,10 +136,6 @@ class CanScraperLoader:
             .rename(PdFields.DEMOGRAPHIC_BUCKET)
         )
         CanScraperLoader._check_location_id(all_df)
-        # Hack fix for bad location_ids.
-        all_df[Fields.LOCATION_ID] = _fips_from_int(all_df[Fields.LOCATION]).apply(
-            pipeline.fips_to_location_id
-        )
         # Use `join(other, on=...)` because it preserves the indexed_df index
         rv = (
             all_df.join(bucket_short_names, on=DEMOGRAPHIC_FIELDS)
@@ -176,12 +172,8 @@ class CanScraperLoader:
                 bad_location_id_mask, [Fields.LOCATION_ID, COMPUTED_LOCATION_ID]
             ]
             bad_rows = bad_location_ids.merge(all_df, how="left", on=Fields.LOCATION_ID)
-            # TODO(tom): Have this raise when location_id are fixed
-            warnings.warn(
-                BadLocationId(
-                    f"Bad location_id. Examples:\n"
-                    f"{bad_rows.to_string(line_width=200, max_rows=20)}"
-                )
+            raise BadLocationId(
+                f"Bad location_id. Examples:\n" f"{bad_rows.to_string(line_width=200, max_rows=20)}"
             )
 
     def query_multiple_variables(
