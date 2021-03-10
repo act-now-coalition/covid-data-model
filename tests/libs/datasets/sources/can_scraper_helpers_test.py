@@ -218,3 +218,17 @@ def test_query_multiple_variables_duplicate_observation():
     data = ccd_helpers.CanScraperLoader(pd.concat([input_data, input_data]))
     with pytest.raises(NotImplementedError):
         data.query_multiple_variables([variable], source_type="MySource")
+
+
+def test_bad_location_id():
+    variable = ccd_helpers.ScraperVariable(
+        variable_name="cases",
+        measurement="cumulative",
+        unit="people",
+        provider="cdc",
+        common_field=CommonFields.CASES,
+    )
+    input_data = build_can_scraper_dataframe({variable: [10, 20, 30]})
+    input_data.iat[0, input_data.columns.get_loc(ccd_helpers.Fields.LOCATION_ID)] = "iso1:us#nope"
+    with pytest.raises(ValueError, match=r"\#nope"):
+        ccd_helpers.CanScraperLoader(input_data)

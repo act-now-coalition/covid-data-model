@@ -13,6 +13,7 @@ from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs import pipeline
 from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import dataset_utils
 from libs.datasets import taglib
@@ -115,6 +116,7 @@ class CanScraperLoader:
 
     @staticmethod
     def _make_indexed_df(all_df: pd.DataFrame) -> pd.DataFrame:
+        CanScraperLoader._check_location_id(all_df)
         """The parquet file with many fields moved into a MultiIndex and demographic fields
         transformed into a single string."""
         # Make a Series of bucket short names with a MultiIndex of the unique DEMOGRAPHIC_FIELDS.
@@ -146,6 +148,26 @@ class CanScraperLoader:
             )
         )
         return rv
+
+    @staticmethod
+    def _check_location_id(all_df: pd.DataFrame):
+        # Get unique location_id and fips pairs from input data
+        location_id_fips_df = all_df.loc[:, [Fields.LOCATION_ID, Fields.LOCATION]].drop_duplicates()
+
+        COMPUTED_LOCATION_ID = "computed_location_id"
+        location_id_fips_df[COMPUTED_LOCATION_ID] = location_id_fips_df[Fields.LOCATION].apply(
+            pipeline.fips_to_location_id
+        )
+
+        bad_location_id_mask = (
+            location_id_fips_df[Fields.LOCATION_ID] != location_id_fips_df[COMPUTED_LOCATION_ID]
+        )
+        if bad_location_id_mask.any():
+            bad_location_ids = location_id_fips_df.loc[
+                bad_location_id_mask, [Fields.LOCATION_ID, COMPUTED_LOCATION_ID]
+            ]
+            bad_rows = bad_location_ids.merge(all_df, how="left", on=Fields.LOCATION_ID)
+            raise ValueError(f"Bad location_id. Examples:\n{bad_rows.to_string(line_width=200)}")
 
     def query_multiple_variables(
         self,
