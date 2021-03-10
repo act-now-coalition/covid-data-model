@@ -22,8 +22,9 @@ from tests.test_helpers import TimeseriesLiteral
 
 
 # Match fields in the CAN Scraper DB
-DEFAULT_LOCATION = "36"
+DEFAULT_LOCATION = 36  # FIPS is an int in the parquet file, not a str
 DEFAULT_LOCATION_TYPE = "state"
+DEFAULT_LOCATION_ID = Region.from_fips(str(DEFAULT_LOCATION)).location_id
 DEFAULT_START_DATE = test_helpers.DEFAULT_START_DATE
 
 
@@ -40,6 +41,7 @@ def build_can_scraper_dataframe(
     data_by_variable: Dict[ccd_helpers.ScraperVariable, List[float]],
     location=DEFAULT_LOCATION,
     location_type=DEFAULT_LOCATION_TYPE,
+    location_id=DEFAULT_LOCATION_ID,
     start_date=DEFAULT_START_DATE,
     source_url: Union[None, str, Iterable[str]] = None,
     source_name: Union[None, str, Iterable[str]] = None,
@@ -62,6 +64,7 @@ def build_can_scraper_dataframe(
                 "provider": variable.provider,
                 "dt": date,
                 "location_type": location_type,
+                "location_id": location_id,
                 "location": location,
                 "variable_name": variable.variable_name,
                 "measurement": variable.measurement,
@@ -215,3 +218,17 @@ def test_query_multiple_variables_duplicate_observation():
     data = ccd_helpers.CanScraperLoader(pd.concat([input_data, input_data]))
     with pytest.raises(NotImplementedError):
         data.query_multiple_variables([variable], source_type="MySource")
+
+
+def test_bad_location_id():
+    variable = ccd_helpers.ScraperVariable(
+        variable_name="cases",
+        measurement="cumulative",
+        unit="people",
+        provider="cdc",
+        common_field=CommonFields.CASES,
+    )
+    input_data = build_can_scraper_dataframe({variable: [10, 20, 30]})
+    input_data.iat[0, input_data.columns.get_loc(ccd_helpers.Fields.LOCATION_ID)] = "iso1:us#nope"
+    with pytest.warns(ccd_helpers.BadLocationId, match=r"\#nope"):
+        ccd_helpers.CanScraperLoader(input_data)

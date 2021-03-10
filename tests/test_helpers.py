@@ -237,14 +237,15 @@ def _add_missing_columns(df: pd.DataFrame, timeseries_columns: Sequence[str]):
 def _timeseries_sorted_by_location_date(
     dataset: timeseries.MultiRegionDataset, *, drop_na: bool, drop_na_dates: bool
 ) -> pd.DataFrame:
-    """Returns the timeseries data, sorted by LOCATION_ID and DATE."""
-    df = dataset.timeseries
+    """Returns the timeseries data, sorted by LOCATION_ID, DEMOGRAPHIC_BUCKET, DATE."""
+    df = dataset.timeseries_bucketed
     if drop_na:
         df = df.dropna("columns", "all")
     if drop_na_dates:
         df = df.dropna("rows", "all")
     df = df.reset_index().sort_values(
-        [CommonFields.LOCATION_ID, CommonFields.DATE], ignore_index=True
+        [CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE],
+        ignore_index=True,
     )
     return df
 

@@ -9,6 +9,7 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
@@ -16,7 +17,6 @@ from covidactnow.datapublic.common_test_helpers import to_dict
 
 from libs import github_utils
 from libs.datasets import AggregationLevel
-from libs.datasets import combined_datasets
 from libs.datasets import dataset_pointer
 from libs.datasets import taglib
 
@@ -213,40 +213,43 @@ def test_one_region_dataset():
 
 
 def test_multiregion_provenance():
-    input_df = read_csv_and_index_fips_date(
-        "fips,county,aggregate_level,date,m1,m2\n"
-        "97111,Bar County,county,2020-04-01,1,\n"
-        "97111,Bar County,county,2020-04-02,2,\n"
-        "97222,Foo County,county,2020-04-01,,10\n"
-        "97222,Foo County,county,2020-04-03,3,30\n"
-        "03,,state,2020-04-03,4,40\n"
-    ).reset_index()
-    provenance = combined_datasets.provenance_wide_metrics_to_series(
-        read_csv_and_index_fips_date(
-            "fips,date,m1,m2\n"
-            "97111,2020-04-01,src11,\n"
-            "97111,2020-04-02,src11,\n"
-            "97222,2020-04-01,,src22\n"
-            "97222,2020-04-03,src21,src22\n"
-            "03,2020-04-03,src31,src32\n"
-        ),
-        structlog.get_logger(),
-    )
-    out = timeseries.MultiRegionDataset.from_fips_timeseries_df(input_df).add_fips_provenance(
-        provenance
-    )
-    # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
-    assert out.provenance.loc["iso1:us#fips:97111"].at["m1"] == "src11"
-    assert out.get_one_region(Region.from_fips("97111")).provenance["m1"] == ["src11"]
-    assert out.provenance.loc["iso1:us#fips:97222"].at["m2"] == "src22"
-    assert out.get_one_region(Region.from_fips("97222")).provenance["m2"] == ["src22"]
-    assert out.provenance.loc["iso1:us#fips:03"].at["m2"] == "src32"
-    assert out.get_one_region(Region.from_fips("03")).provenance["m2"] == ["src32"]
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
 
-    counties = out.get_counties_and_places(after=pd.to_datetime("2020-04-01"))
-    assert "iso1:us#fips:03" not in counties.provenance.index
-    assert counties.provenance.loc["iso1:us#fips:97222"].at["m1"] == "src21"
-    assert counties.get_one_region(Region.from_fips("97222")).provenance["m1"] == ["src21"]
+    region_97111 = Region.from_fips("97111")
+    region_97222 = Region.from_fips("97222")
+    region_03 = Region.from_fips("03")
+    ds = test_helpers.build_dataset(
+        {
+            region_97111: {m1: TimeseriesLiteral([1, 2, None], provenance="src11"),},
+            region_97222: {
+                m1: TimeseriesLiteral([None, None, 3], provenance="src21"),
+                m2: TimeseriesLiteral([10, None, 30], provenance="src22"),
+            },
+            region_03: {
+                m1: TimeseriesLiteral([None, None, 4], provenance="src31"),
+                m2: TimeseriesLiteral([None, None, 40], provenance="src32"),
+            },
+        },
+        static_by_region_then_field_name={
+            region_97111: {CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value},
+            region_97222: {CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value},
+            region_03: {CommonFields.AGGREGATE_LEVEL: AggregationLevel.STATE.value},
+        },
+    )
+
+    # Use loc[...].at[...] as work-around for https://github.com/pandas-dev/pandas/issues/26989
+    assert ds.provenance.loc[region_97111.location_id].at["m1"] == "src11"
+    assert ds.get_one_region(region_97111).provenance["m1"] == ["src11"]
+    assert ds.provenance.loc[region_97222.location_id].at["m2"] == "src22"
+    assert ds.get_one_region(region_97222).provenance["m2"] == ["src22"]
+    assert ds.provenance.loc[region_03.location_id].at["m2"] == "src32"
+    assert ds.get_one_region(region_03).provenance["m2"] == ["src32"]
+
+    counties = ds.get_counties_and_places(after=pd.to_datetime("2020-04-01"))
+    assert region_03.location_id not in counties.provenance.index
+    assert counties.provenance.loc[region_97222.location_id].at["m1"] == "src21"
+    assert counties.get_one_region(region_97222).provenance["m1"] == ["src21"]
 
 
 def test_one_region_multiple_provenance():
@@ -1436,3 +1439,33 @@ def test_make_source_url_tags_has_source_url():
     )
     with pytest.raises(AssertionError):
         timeseries.make_source_url_tags(dataset_in)
+
+
+def test_check_timeseries_structure_empty():
+    timeseries._check_timeseries_wide_vars_structure(
+        timeseries.EMPTY_TIMESERIES_WIDE_VARIABLES_DF, bucketed=False
+    )
+    timeseries._check_timeseries_wide_vars_structure(
+        timeseries.EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF, bucketed=True
+    )
+
+
+def test_make_and_pickle_demographic_data():
+    location_id = test_helpers.DEFAULT_REGION.location_id
+    date_0 = test_helpers.DEFAULT_START_DATE
+    date_1 = pd.to_datetime(test_helpers.DEFAULT_START_DATE) + pd.to_timedelta(1, unit="day")
+    m1 = FieldName("m1")
+    age20s = DemographicBucket("age:20-29")
+    age30s = DemographicBucket("age:30-39")
+    all = DemographicBucket("all")
+
+    ds = test_helpers.build_default_region_dataset(
+        {m1: {age20s: [1, 2, 3], age30s: [5, 6, 7], all: [8, 9, None]}}
+    )
+
+    assert ds.timeseries_bucketed.at[(location_id, age30s, date_0), m1] == 5
+    assert ds.timeseries_bucketed.at[(location_id, all, date_1), m1] == 9
+
+    ds_unpickled = pickle.loads(pickle.dumps(ds))
+
+    test_helpers.assert_dataset_like(ds, ds_unpickled)
