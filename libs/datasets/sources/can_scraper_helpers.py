@@ -1,6 +1,5 @@
 """Helpers to access and query data loaded from the CAN Scraper parquet file.
 """
-import warnings
 from typing import List
 import enum
 import dataclasses
