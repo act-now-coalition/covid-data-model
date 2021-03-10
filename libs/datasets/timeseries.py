@@ -669,17 +669,6 @@ class MultiRegionDataset:
 
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
-    def add_fips_provenance(self, provenance):
-        # Check that current index is as expected. Names will be fixed after remapping, below.
-        assert provenance.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
-        provenance = provenance.copy()
-        provenance.index = provenance.index.map(
-            lambda i: (pipeline.fips_to_location_id(i[0]), i[1])
-        )
-        provenance.index.rename([CommonFields.LOCATION_ID, PdFields.VARIABLE], inplace=True)
-        provenance.rename(PdFields.PROVENANCE, inplace=True)
-        return self.add_provenance_series(provenance)
-
     @staticmethod
     def new_without_timeseries() -> "MultiRegionDataset":
         return MultiRegionDataset.from_fips_timeseries_df(
