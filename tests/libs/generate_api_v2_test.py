@@ -91,7 +91,21 @@ def test_build_summary_for_fips(
             hospitalBeds=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
             icuBeds=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
             contactTracers=None,
-            newDeaths=None,
+            newDeaths=FieldAnnotations(
+                anomalies=[
+                    {
+                        "date": datetime.date(2020, 4, 14),
+                        "original_observation": 345.0,
+                        "type": "zscore_outlier",
+                    },
+                    {
+                        "date": datetime.date(2020, 12, 28),
+                        "original_observation": 49.0,
+                        "type": "zscore_outlier",
+                    },
+                ],
+                sources=[],
+            ),
             newCases=FieldAnnotations(
                 sources=[],
                 anomalies=[
