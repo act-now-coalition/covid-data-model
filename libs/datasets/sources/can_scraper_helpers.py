@@ -138,16 +138,17 @@ class CanScraperLoader:
         *,
         log_provider_coverage_warnings: bool = False,
         source_type: str,
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Queries multiple variables returning wide df with variable names as columns.
+    ) -> Tuple[pd.Series, pd.DataFrame]:
+        """Queries multiple variables
 
         Args:
             variables: Variables to query
             log_provider_coverage_warnings: Log warnings when upstream data has variables not in
               `variables` and hints when a variable has no data.
+            source_type: String for the `taglib.Source.type` property
 
         Returns:
-            The observations in a DataFrame with variable columns and the source_urls
+            The observations in a Series and the sources in a tag DataFrame
         """
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)
@@ -220,8 +221,8 @@ class CanScraperLoader:
             rename={Fields.SOURCE_URL: "url", Fields.SOURCE_NAME: "name"},
         )
 
-        rows_df = indexed_rows[PdFields.VALUE]
-        return rows_df, tag_df
+        rows = indexed_rows[PdFields.VALUE]
+        return rows, tag_df
 
     def check_variable_coverage(self, variables: List[ScraperVariable]):
         provider_name = more_itertools.one(set(v.provider for v in variables))

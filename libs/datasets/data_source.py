@@ -108,13 +108,15 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         """Default implementation of make_dataset that loads data from the parquet file."""
         ccd_dataset = cls._get_covid_county_dataset()
-        rows_df, source_df = ccd_dataset.query_multiple_variables(
+        rows, source_df = ccd_dataset.query_multiple_variables(
             # pylint: disable=E1101
             cls.VARIABLES,
             log_provider_coverage_warnings=True,
             source_type=cls.SOURCE_TYPE,
         )
-        data = rows_df.unstack(PdFields.VARIABLE)
+        # TODO(tom): Once downstream can handle it return all buckets, not just 'all'.
+        rows = rows.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, drop_level=False)
+        data = rows.unstack(PdFields.VARIABLE)
         data = cls._check_data(data)
         ds = MultiRegionDataset(timeseries_bucketed=data)
         if not source_df.empty:
