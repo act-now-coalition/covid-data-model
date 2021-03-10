@@ -23,9 +23,9 @@ from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
 from libs.dataclass_utils import dataclass_with_default_init
+from libs.datasets import combined_datasets
 from libs.datasets import taglib
 from libs.datasets import timeseries
-from libs.datasets.combined_datasets import to_list
 from libs.datasets.taglib import TagField
 from libs.datasets.taglib import TagType
 from libs.datasets.taglib import UrlStr
@@ -64,9 +64,9 @@ class TimeseriesLiteral(UserList):
         # let the dataclasses code initialize `data`.
         self.__default_init__(  # pylint: disable=E1101
             *args,
-            provenance=to_list(provenance),
-            source_url=to_list(source_url),
-            source=to_list(source),
+            provenance=combined_datasets.to_list(provenance),
+            source_url=combined_datasets.to_list(source_url),
+            source=combined_datasets.to_list(source),
             **kwargs,
         )
 
