@@ -176,6 +176,8 @@ def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.copy()
     df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].map(dataset_utils.get_fips_to_location())
+    # Missing values are mapped to NaN but we want it to raise. There doesn't seem to be a better
+    # work-around at https://github.com/pandas-dev/pandas/issues/14210
     if df[CommonFields.LOCATION_ID].isna().any():
         raise KeyError(
             f"No location_id found for "
@@ -685,22 +687,6 @@ class MultiRegionDataset:
 
         return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
 
-    def add_fips_provenance(self, provenance):
-        # Check that current index is as expected. Names will be fixed after remapping, below.
-        assert provenance.index.names == [CommonFields.FIPS, PdFields.VARIABLE]
-        provenance = provenance.copy()
-        provenance.index = pd.MultiIndex.from_arrays(
-            [
-                provenance.index.get_level_values(CommonFields.FIPS).map(
-                    dataset_utils.get_fips_to_location()
-                ),
-                provenance.index.get_level_values(PdFields.VARIABLE),
-            ],
-            names=[CommonFields.LOCATION_ID, PdFields.VARIABLE],
-        )
-        provenance.rename(PdFields.PROVENANCE, inplace=True)
-        return self.add_provenance_series(provenance)
-
     @staticmethod
     def new_without_timeseries() -> "MultiRegionDataset":
         return MultiRegionDataset.from_fips_timeseries_df(
@@ -750,11 +736,6 @@ class MultiRegionDataset:
         static_df = pd.concat([self.static, other.static]).sort_index()
         tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
-
-    def append_fips_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
-        """Returns a new dataset with additional_tag_df, containing a fips column, appended."""
-        additional_tag_df = _add_location_id(additional_tag_df).drop(columns=CommonFields.FIPS)
-        return self.append_tag_df(additional_tag_df)
 
     def append_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df appended."""
