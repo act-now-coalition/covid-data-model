@@ -117,16 +117,21 @@ class CanScraperLoader:
             + DEMOGRAPHIC_FIELDS
             + [Fields.DATE]
         ).sort_index()
-        all_ares = (
+        # Make a Series of bucket short names with a MultiIndex of the unique DEMOGRAPHIC_FIELDS.
+        # There are only a few (~50) unique fields among the millions of rows. `apply`ing
+        # make_short_name to every row takes much longer than using a join to copy from this series.
+        # This pattern of finding unique values and copying with a join is also used in
+        # taglib.Series.attribute_df_to_json_series.
+        bucket_short_names = (
             self.all_df.loc[:, DEMOGRAPHIC_FIELDS]
             .drop_duplicates()
             .set_index(DEMOGRAPHIC_FIELDS, drop=False)
-            .apply(make_short_name, axis=1)
+            .apply(make_short_name, axis=1, result_type="reduce")
             .rename(PdFields.DEMOGRAPHIC_BUCKET)
         )
         # Use `join(other, on=...)` because it preserves the indexed_df index
         rv = (
-            indexed_df.join(all_ares, on=DEMOGRAPHIC_FIELDS)
+            indexed_df.join(bucket_short_names, on=DEMOGRAPHIC_FIELDS)
             .set_index(PdFields.DEMOGRAPHIC_BUCKET, append=True)
             .droplevel(DEMOGRAPHIC_FIELDS)
         )
@@ -154,14 +159,10 @@ class CanScraperLoader:
             self.check_variable_coverage(variables)
 
         # Split `variables` into lists of variables dropped and those returned.
-        variables_drop, variables_return = [], []
-        for v in variables:
-            if v.common_field is None:
-                variables_drop.append(v)
-            else:
-                variables_return.append(v)
+        variables_to_drop = [variable for variable in variables if not variable.common_field]
+        variables_to_return = [variable for variable in variables if variable.common_field]
 
-        for v in variables_drop:
+        for v in variables_to_drop:
             # Verify agreement with ScraperVariable docstring.
             assert v.measurement == ""
             assert v.unit == ""
@@ -174,7 +175,7 @@ class CanScraperLoader:
             Fields.MEASUREMENT,
             Fields.UNIT,
         ]
-        for v in variables_return:
+        for v in variables_to_return:
             # Must be set when copying to the return value
             assert v.measurement
             assert v.unit
