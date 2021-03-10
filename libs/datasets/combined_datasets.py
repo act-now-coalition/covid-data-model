@@ -47,12 +47,6 @@ from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 _log = structlog.get_logger()
 
 
-class RegionLatestNotFound(IndexError):
-    """Requested region's latest values not found in combined data"""
-
-    pass
-
-
 @final
 @dataclass(frozen=True)
 class DataSourceAndRegionMasks:
