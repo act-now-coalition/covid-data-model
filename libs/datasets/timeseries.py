@@ -15,6 +15,7 @@ from typing import Set
 from typing import Sequence
 from typing import Tuple
 
+import more_itertools
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
@@ -279,6 +280,7 @@ _EMPTY_TAG_SERIES = pd.Series(
 # An empty pd.DataFrame with the structure expected for the static attribute. Use this when
 # a dataset does not have any static values.
 EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
+
 
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
 # variable, bucket> and column labels <date>.
@@ -1054,37 +1056,6 @@ class DatasetName(str):
     pass
 
 
-def _to_datasets_wide_dates_map(
-    datasets: Iterable[MultiRegionDataset],
-) -> Mapping[MultiRegionDataset, pd.DataFrame]:
-    """Turns an iterable of datasets to a mapping of DataFrame with identical date columns.
-
-    The mapping depends on MultiRegionDataset being hashable by id.
-    """
-    datasets_wide = {ds: ds.timeseries_not_bucketed_wide_dates for ds in datasets}
-    if not datasets_wide:
-        return {}
-    # Find the earliest and latest dates to make a range covering all timeseries.
-    dates = pd.DatetimeIndex(
-        np.hstack(
-            list(df.columns.get_level_values(CommonFields.DATE) for df in datasets_wide.values())
-        )
-    )
-    if dates.empty:
-        input_date_range = pd.DatetimeIndex([], name=CommonFields.DATE)
-    else:
-        start_date = dates.min()
-        end_date = dates.max()
-        input_date_range = pd.date_range(start=start_date, end=end_date, name=CommonFields.DATE)
-    datasets_wide_reindexed = {
-        ds: df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID]).reindex(
-            columns=input_date_range
-        )
-        for ds, df in datasets_wide.items()
-    }
-    return datasets_wide_reindexed
-
-
 def combined_datasets(
     timeseries_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
     static_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
@@ -1093,32 +1064,77 @@ def combined_datasets(
 
     For each region, the timeseries from the first dataset in the list with a real value is returned.
     """
-    # MultiRegionDataset in `timeseries_field_datasets` will be looked up in `datasets_wide` by id.
-    datasets_wide = _to_datasets_wide_dates_map(
-        chain.from_iterable(timeseries_field_datasets.values())
-    )
-    # TODO(tom): Consider how to factor out the timeseries and static processing. For example,
-    #  create rows with the entire timeseries and tags then use groupby(location_id).first().
-    #  Or maybe do something with groupby(location_id).apply if it is fast enough.
-    # A list of "wide date" DataFrame (VARIABLE, LOCATION_ID index and DATE columns) that
-    # will be concat-ed.
-    timeseries_dfs = []
-    # A list of Series that will be concat-ed
-    tag_series = []
-    for field, datasets in timeseries_field_datasets.items():
-        # Iterate through the datasets for this field. For each dataset add location_id with data
-        # in field to location_id_so_far iff the location_id is not already there.
-        location_id_so_far = pd.Index([])
-        for dataset in datasets:
-            field_wide_df = datasets_wide[dataset].loc[[field], :]
-            assert field_wide_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-            location_ids = field_wide_df.index.get_level_values(CommonFields.LOCATION_ID)
-            # Select the locations in `dataset_name` that have a timeseries for `field` and are
-            # not in `location_id_so_far`.
-            selected_location_id = location_ids.difference(location_id_so_far)
-            timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
-            location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-            tag_series.append(dataset.tag.loc[selected_location_id, [field]])
+    if timeseries_field_datasets:
+        datasets_wide = {
+            ds: ds.wide_var_has_timeseries
+            for ds in chain.from_iterable(timeseries_field_datasets.values())
+        }
+        dataset_wide_first = more_itertools.first(datasets_wide.values())
+        assert dataset_wide_first.index.names == [CommonFields.LOCATION_ID]
+        assert dataset_wide_first.columns.names == [PdFields.VARIABLE]
+        common_index = pd.Index(
+            np.unique(np.concatenate([ds_w.index for ds_w in datasets_wide.values()])),
+            name=dataset_wide_first.index.name,
+        )
+        datasets_wide = {
+            ds: ds_w.reindex(index=common_index, fill_value=False)
+            for ds, ds_w in datasets_wide.items()
+        }
+
+        datasets_output = {
+            ds: pd.DataFrame([], index=common_index, dtype=bool).rename_axis(
+                columns=PdFields.VARIABLE
+            )
+            for ds in datasets_wide.keys()
+        }
+        for field, datasets in timeseries_field_datasets.items():
+            location_id_so_far = pd.Series([], dtype=bool).reindex(
+                index=common_index, fill_value=False
+            )
+            for dataset in datasets:
+                try:
+                    this_dataset = datasets_wide[dataset].loc[:, field]
+                except KeyError:
+                    continue
+                datasets_output[dataset].loc[:, field] = this_dataset & ~location_id_so_far
+                location_id_so_far = location_id_so_far | this_dataset
+
+        ts_bucketed_long_to_concat = []
+        tags_to_concat = []
+        for ds, outputs in datasets_output.items():
+            if outputs.empty:
+                continue
+            output_labels = outputs.replace({False: np.nan}).stack().index
+            if output_labels.empty:
+                continue
+            assert output_labels.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+            ts_bucketed_long_to_concat.append(
+                ds.timeseries_bucketed_long.reset_index()
+                .set_index(output_labels.names)
+                .loc[output_labels]
+                .set_index([PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE], append=True)[
+                    PdFields.VALUE
+                ]
+            )
+            # ts_bucketed_long_to_concat.append(ds.timeseries_bucketed_long.xs([
+            #    output_labels.get_level_values(i) for i in (0,1)],
+            #    level=output_labels.names,
+            #    drop_level=False))
+            # tags_to_concat.append(ds.tag.xs(output_labels, level=output_labels.names,
+            # drop_level=False))
+
+            tags_reindex = ds.tag.reset_index().set_index(output_labels.names)
+
+            tags_to_concat.append(
+                tags_reindex.loc[tags_reindex.index.isin(output_labels)].set_index(
+                    [TagField.TYPE], append=True
+                )[TagField.CONTENT]
+            )
+        ts_bucketed = pd.concat(ts_bucketed_long_to_concat).unstack(PdFields.VARIABLE).sort_index()
+        tags = pd.concat(tags_to_concat).sort_index()
+    else:
+        ts_bucketed = EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF
+        tags = _EMPTY_TAG_SERIES
 
     static_series = []
     for field, dataset_list in static_field_datasets.items():
@@ -1144,25 +1160,6 @@ def combined_datasets(
                     verify_integrity=True,
                 )
         static_series.append(static_column_so_far)
-    if timeseries_dfs:
-        output_timeseries_wide_dates = pd.concat(timeseries_dfs, verify_integrity=True)
-        assert output_timeseries_wide_dates.index.names == [
-            PdFields.VARIABLE,
-            CommonFields.LOCATION_ID,
-        ]
-        assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
-        # Transform from a column for each date to a column for each variable (with rows for dates).
-        # stack and unstack does the transform quickly but does not handle an empty DataFrame.
-        if output_timeseries_wide_dates.empty:
-            output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
-        else:
-            output_timeseries_wide_variables = (
-                output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
-            )
-        output_tag = pd.concat(tag_series)
-    else:
-        output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
-        output_tag = _EMPTY_TAG_SERIES
     if static_series:
         output_static_df = pd.concat(
             static_series, axis=1, sort=True, verify_integrity=True
@@ -1170,11 +1167,7 @@ def combined_datasets(
     else:
         output_static_df = EMPTY_REGIONAL_ATTRIBUTES_DF
 
-    return MultiRegionDataset(
-        timeseries=output_timeseries_wide_variables,
-        tag=output_tag.sort_index(),
-        static=output_static_df,
-    )
+    return MultiRegionDataset(timeseries_bucketed=ts_bucketed, tag=tags, static=output_static_df,)
 
 
 def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
