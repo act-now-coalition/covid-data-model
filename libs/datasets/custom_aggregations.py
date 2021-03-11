@@ -78,17 +78,19 @@ def aggregate_puerto_rico_from_counties(
     dataset: timeseries.MultiRegionDataset,
 ) -> timeseries.MultiRegionDataset:
     """Returns a dataset with NA static values for the state PR aggregated from counties."""
-    pr_county_mask = (dataset.static[CommonFields.STATE] == "PR") & (
-        dataset.static[CommonFields.AGGREGATE_LEVEL] == AggregationLevel.COUNTY.value
-    )
-    if not pr_county_mask.any():
+
+    pr_county_dataset = dataset.get_subset(aggregation_level=AggregationLevel.COUNTY, state="PR")
+    if not len(pr_county_dataset.timeseries):
         return dataset
-    pr_counties = dataset.static.loc[pr_county_mask]
-    aggregated = _aggregate_ignoring_nas(pr_counties.select_dtypes(include="number"))
+
+    static_pr_county_data = pr_county_dataset.static
+    county_aggregated = _aggregate_ignoring_nas(
+        static_pr_county_data.select_dtypes(include="number")
+    )
     pr_location_id = pipeline.Region.from_state("PR").location_id
 
     patched_static = dataset.static.copy()
-    for field, aggregated_value in aggregated.items():
+    for field, aggregated_value in county_aggregated.items():
         if pd.isna(patched_static.at[pr_location_id, field]):
             patched_static.at[pr_location_id, field] = aggregated_value
 

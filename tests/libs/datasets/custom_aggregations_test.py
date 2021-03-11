@@ -78,3 +78,28 @@ def test_calculate_puerto_rico_bed_occupancy_rate():
         )
     )
     test_helpers.assert_dataset_like(actual, expected)
+
+
+def test_pr_aggregation():
+    dataset = combined_datasets.load_us_timeseries_dataset()
+    dataset = dataset.get_subset(state="PR")
+    pr_location_id = pipeline.Region.from_state("PR").location_id
+
+    # Blanking these values to ensure they change on update.
+    for column in dataset.static.columns:
+        dataset.static.at[pr_location_id, column] = None
+
+    pr_static_before = dataset.static.loc[pr_location_id].copy()
+    output_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(dataset)
+    pr_static_after = output_dataset.static.loc[pr_location_id].copy()
+
+    # Verify that the values in the PR static values changed
+    assert not pr_static_before.equals(pr_static_after)
+
+
+def test_pr_aggregation_no_pr_data():
+    dataset = combined_datasets.load_us_timeseries_dataset()
+    dataset = dataset.get_subset(state="MO")
+    output_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(dataset)
+
+    test_helpers.assert_dataset_like(dataset, output_dataset)
