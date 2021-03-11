@@ -17,8 +17,11 @@ from api.can_api_v2_definition import (
     RegionTimeseriesRowWithHeader,
     MetricsTimeseriesRow,
     RiskLevelTimeseriesRow,
+    VaccineEligibility,
+    PhaseGroup,
 )
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic import common_fields
 
 from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
@@ -71,6 +74,25 @@ def _build_actuals(actual_data: dict) -> Actuals:
     )
 
 
+def _build_vaccine_eligibility(vaccine_eligibility_data: str):
+    eligibility = common_fields.VaccineEligibility.parse_raw(vaccine_eligibility_data)
+    phase_groups = []
+    for group in eligibility.phase_groups:
+        phase_group = PhaseGroup(
+            phase=group.phase,
+            tier=group.tier,
+            description=group.description,
+            isEligible=group.is_eligible,
+            updatedAt=group.updated_at,
+            expectedStartDate=group.expected_start_date,
+        )
+        phase_groups.append(phase_group)
+
+    return VaccineEligibility(
+        infoUrl=eligibility.info_url, signupUrl=eligibility.signup_url, phaseGroups=phase_groups
+    )
+
+
 def build_region_summary(
     one_region: timeseries.OneRegionTimeseriesDataset,
     latest_metrics: Optional[Metrics],
@@ -81,6 +103,12 @@ def build_region_summary(
     region = one_region.region
 
     actuals = _build_actuals(latest_values)
+    vaccine_eligibility = None
+    if CommonFields.VACCINE_ELIGIBILITY_DATA in latest_values:
+        vaccine_eligibiliity = _build_vaccine_eligibility(
+            latest_values[CommonFields.VACCINE_ELIGIBILITY_DATA]
+        )
+
     return RegionSummary(
         fips=region.fips,
         country=region.country,
@@ -97,6 +125,7 @@ def build_region_summary(
         locationId=region.location_id,
         url=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
         annotations=build_annotations(one_region, log),
+        vaccineEligibility=vaccine_eligibility,
     )
 
 

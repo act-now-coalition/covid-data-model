@@ -408,6 +408,21 @@ class MetricsTimeseriesRow(Metrics):
     date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
 
 
+class PhaseGroup(base_model.APIBaseModel):
+    phase: str
+    tier: Optional[str]
+    description: str
+    isEligible: str
+    updatedAt: datetime.datetime
+    expectedStartDate: Optional[str]
+
+
+class VaccineEligibility(base_model.APIBaseModel):
+    infoUrl: str
+    signupUrl: str
+    phaseGroups: List[PhaseGroup]
+
+
 class RegionSummary(base_model.APIBaseModel):
     """Summary of actual and prediction data for a single region."""
 
@@ -447,6 +462,9 @@ class RegionSummary(base_model.APIBaseModel):
 
     url: Optional[str] = pydantic.Field(
         ..., description="URL linking to Covid Act Now location page."
+    )
+    vaccineEligibility: Optional[VaccineEligibility] = pydantic.Field(
+        ..., description="Latest Vaccine Eligibility data"
     )
 
 
