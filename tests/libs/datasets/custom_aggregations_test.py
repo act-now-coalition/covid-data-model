@@ -80,6 +80,7 @@ def test_calculate_puerto_rico_bed_occupancy_rate():
     test_helpers.assert_dataset_like(actual, expected)
 
 
+@pytest.mark.slow
 def test_pr_aggregation():
     dataset = combined_datasets.load_us_timeseries_dataset()
     dataset = dataset.get_subset(state="PR")
@@ -97,6 +98,7 @@ def test_pr_aggregation():
     assert not pr_static_before.equals(pr_static_after)
 
 
+@pytest.mark.slow
 def test_pr_aggregation_no_pr_data():
     dataset = combined_datasets.load_us_timeseries_dataset()
     dataset = dataset.get_subset(state="MO")
