@@ -201,11 +201,6 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.AGGREGATE_LEVEL: [FIPSPopulation],
-    CommonFields.COUNTRY: [FIPSPopulation],
-    CommonFields.COUNTY: [FIPSPopulation],
-    CommonFields.FIPS: [FIPSPopulation],
-    CommonFields.STATE: [FIPSPopulation],
     CommonFields.POPULATION: [FIPSPopulation],
     # TODO(michael): We don't really trust the CCM bed numbers and would ideally remove them entirely.
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
