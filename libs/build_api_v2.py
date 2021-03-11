@@ -104,7 +104,7 @@ def build_region_summary(
 
     actuals = _build_actuals(latest_values)
     vaccine_eligibility = None
-    if CommonFields.VACCINE_ELIGIBILITY_DATA in latest_values:
+    if latest_values[CommonFields.VACCINE_ELIGIBILITY_DATA] is not None:
         vaccine_eligibility = _build_vaccine_eligibility(
             latest_values[CommonFields.VACCINE_ELIGIBILITY_DATA]
         )
