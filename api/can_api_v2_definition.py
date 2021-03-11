@@ -412,7 +412,7 @@ class PhaseGroup(base_model.APIBaseModel):
     phase: str
     tier: Optional[str]
     description: str
-    isEligible: str
+    isEligible: bool
     updatedAt: datetime.datetime
     expectedStartDate: Optional[str]
 
