@@ -66,41 +66,10 @@ def main():
     pass
 
 
-@main.command()
-@click.option("--filename", default="external_forecasts.csv")
-def update_forecasts(filename):
-    """Updates external forecasts to the current checked out covid data public commit"""
-    path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
-    data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-    data_path = forecast_hub.ForecastHubDataset.COMMON_DF_CSV_PATH
-    shutil.copy(data_root / data_path, path_prefix / filename)
-    _logger.info(f"Updating External Forecasts at {path_prefix / filename}")
+def _run_dataset_filters(
+    multiregion_dataset: timeseries.MultiRegionDataset,
+) -> timeseries.MultiRegionDataset:
 
-
-@main.command()
-@click.option(
-    "--aggregate-to-country/--no-aggregate-to-country",
-    is_flag=True,
-    help="Aggregate states to one USA country region",
-    default=False,
-)
-@click.option("--state", type=str, help="For testing, a two letter state abbr")
-@click.option("--fips", type=str, help="For testing, a 5 digit county fips")
-def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]):
-    """Updates latest and timeseries datasets to the current checked out covid data public commit"""
-    path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
-
-    timeseries_field_datasets = load_datasets_by_field(
-        ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
-    )
-    static_field_datasets = load_datasets_by_field(
-        ALL_FIELDS_FEATURE_DEFINITION, state=state, fips=fips
-    )
-
-    multiregion_dataset = timeseries.combined_datasets(
-        timeseries_field_datasets, static_field_datasets
-    )
-    _logger.info("Finished combining datasets")
     multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
     _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
@@ -125,6 +94,50 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
+    return multiregion_dataset
+
+
+@main.command()
+@click.option("--filename", default="external_forecasts.csv")
+def update_forecasts(filename):
+    """Updates external forecasts to the current checked out covid data public commit"""
+    path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
+    data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+    data_path = forecast_hub.ForecastHubDataset.COMMON_DF_CSV_PATH
+    shutil.copy(data_root / data_path, path_prefix / filename)
+    _logger.info(f"Updating External Forecasts at {path_prefix / filename}")
+
+
+@main.command()
+@click.option(
+    "--aggregate-to-country/--no-aggregate-to-country",
+    is_flag=True,
+    help="Aggregate states to one USA country region",
+    default=False,
+)
+@click.option("--state", type=str, help="For testing, a two letter state abbr")
+@click.option("--fips", type=str, help="For testing, a 5 digit county fips")
+@click.option("--skip-filters", is_flag=True, help="Skip applying data filters to combined data")
+def update(
+    aggregate_to_country: bool, state: Optional[str], fips: Optional[str], skip_filters: bool
+):
+    """Updates latest and timeseries datasets to the current checked out covid data public commit"""
+    path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
+
+    timeseries_field_datasets = load_datasets_by_field(
+        ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
+    )
+    static_field_datasets = load_datasets_by_field(
+        ALL_FIELDS_FEATURE_DEFINITION, state=state, fips=fips
+    )
+
+    multiregion_dataset = timeseries.combined_datasets(
+        timeseries_field_datasets, static_field_datasets
+    )
+    _logger.info("Finished combining datasets")
+
+    if not skip_filters:
+        multiregion_dataset = _run_dataset_filters(multiregion_dataset)
 
     multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
         multiregion_dataset
