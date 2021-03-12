@@ -1056,6 +1056,56 @@ class DatasetName(str):
     pass
 
 
+def _slice_with_labels(series: pd.Series, labels: pd.MultiIndex) -> pd.Series:
+    """Emulates what I'd like `series.xs(labels, level=labels.names, drop=False)` to do
+    and also doesn't raise a KeyError."""
+
+    # Change the input series to have index labels in same order as labels
+    reindexed = series.reset_index().set_index(labels.names)
+    # Select the rows (avoiding KeyError of reindexed.loc[labels]) then restore the index to match
+    # the input Series
+    return (
+        reindexed.loc[reindexed.index.isin(labels)]
+        .reset_index()
+        .set_index(series.index.names)[series.name]
+    )
+
+
+def _combine_timeseries(
+    datasets_output: Mapping[MultiRegionDataset, pd.DataFrame]
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """Combine timeseries selected from each dataset into one structure.
+
+    Args:
+        datasets_output: Map from dataset to a DataFrame of which timeseries to output
+    Returns:
+        Tuple of timeseries_bucketed and tag, suitable for MultiRegionDataset.__init__
+    """
+    ts_bucketed_long_to_concat = []
+    tags_to_concat = []
+    for ds, outputs in datasets_output.items():
+        if outputs.empty:
+            continue
+        # Change False to nan so they are dropped when stacking.
+        output_labels = outputs.replace({False: np.nan}).stack().index
+        if output_labels.empty:
+            continue
+        assert output_labels.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        ts_bucketed_long_to_concat.append(
+            _slice_with_labels(ds.timeseries_bucketed_long, output_labels)
+        )
+        tags_to_concat.append(_slice_with_labels(ds.tag, output_labels))
+
+    if ts_bucketed_long_to_concat:
+        ts_bucketed = pd.concat(ts_bucketed_long_to_concat).unstack(PdFields.VARIABLE).sort_index()
+        tags = pd.concat(tags_to_concat).sort_index()
+    else:
+        ts_bucketed = EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF
+        tags = _EMPTY_TAG_SERIES
+
+    return ts_bucketed, tags
+
+
 def combined_datasets(
     timeseries_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
     static_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
@@ -1065,76 +1115,22 @@ def combined_datasets(
     For each region, the timeseries from the first dataset in the list with a real value is returned.
     """
     if timeseries_field_datasets:
-        datasets_wide = {
-            ds: ds.wide_var_has_timeseries
-            for ds in chain.from_iterable(timeseries_field_datasets.values())
-        }
-        dataset_wide_first = more_itertools.first(datasets_wide.values())
-        assert dataset_wide_first.index.names == [CommonFields.LOCATION_ID]
-        assert dataset_wide_first.columns.names == [PdFields.VARIABLE]
-        common_index = pd.Index(
-            np.unique(np.concatenate([ds_w.index for ds_w in datasets_wide.values()])),
-            name=dataset_wide_first.index.name,
+        # First make a map from dataset to table with bool values that represent what timeseries
+        # (or distribution) has any real value in that dataset.
+        # In the table the index labels are currently just location_id (but could be expanded to
+        # include the distribution such as 'all', 'age', 'race', ... if these are combined
+        # separately) and columns are fields.
+        datasets_wide = _datasets_wide_var_has_timeseries(
+            set(chain.from_iterable(timeseries_field_datasets.values()))
         )
-        datasets_wide = {
-            ds: ds_w.reindex(index=common_index, fill_value=False)
-            for ds, ds_w in datasets_wide.items()
-        }
-
-        datasets_output = {
-            ds: pd.DataFrame([], index=common_index, dtype=bool).rename_axis(
-                columns=PdFields.VARIABLE
-            )
-            for ds in datasets_wide.keys()
-        }
-        for field, datasets in timeseries_field_datasets.items():
-            location_id_so_far = pd.Series([], dtype=bool).reindex(
-                index=common_index, fill_value=False
-            )
-            for dataset in datasets:
-                try:
-                    this_dataset = datasets_wide[dataset].loc[:, field]
-                except KeyError:
-                    continue
-                datasets_output[dataset].loc[:, field] = this_dataset & ~location_id_so_far
-                location_id_so_far = location_id_so_far | this_dataset
-
-        ts_bucketed_long_to_concat = []
-        tags_to_concat = []
-        for ds, outputs in datasets_output.items():
-            if outputs.empty:
-                continue
-            output_labels = outputs.replace({False: np.nan}).stack().index
-            if output_labels.empty:
-                continue
-            assert output_labels.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-            ts_bucketed_long_to_concat.append(
-                ds.timeseries_bucketed_long.reset_index()
-                .set_index(output_labels.names)
-                .loc[output_labels]
-                .set_index([PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE], append=True)[
-                    PdFields.VALUE
-                ]
-            )
-            # ts_bucketed_long_to_concat.append(ds.timeseries_bucketed_long.xs([
-            #    output_labels.get_level_values(i) for i in (0,1)],
-            #    level=output_labels.names,
-            #    drop_level=False))
-            # tags_to_concat.append(ds.tag.xs(output_labels, level=output_labels.names,
-            # drop_level=False))
-
-            tags_reindex = ds.tag.reset_index().set_index(output_labels.names)
-
-            tags_to_concat.append(
-                tags_reindex.loc[tags_reindex.index.isin(output_labels)].set_index(
-                    [TagField.TYPE], append=True
-                )[TagField.CONTENT]
-            )
-        ts_bucketed = pd.concat(ts_bucketed_long_to_concat).unstack(PdFields.VARIABLE).sort_index()
-        tags = pd.concat(tags_to_concat).sort_index()
+        # Then make a map from dataset to table with the same index and columns but only True
+        # where that particular data will be copied to the output. These tables will have a
+        # subset of the True values in `datasets_wide`.
+        datasets_output = _select_timeseries(datasets_wide, timeseries_field_datasets)
+        # Finally copy the timeseries and tags that were selected from each dataset.
+        ts_bucketed, tags = _combine_timeseries(datasets_output)
     else:
-        ts_bucketed = EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF
-        tags = _EMPTY_TAG_SERIES
+        ts_bucketed, tags = _combine_timeseries({})
 
     static_series = []
     for field, dataset_list in static_field_datasets.items():
@@ -1168,6 +1164,52 @@ def combined_datasets(
         output_static_df = EMPTY_REGIONAL_ATTRIBUTES_DF
 
     return MultiRegionDataset(timeseries_bucketed=ts_bucketed, tag=tags, static=output_static_df,)
+
+
+def _select_timeseries(
+    datasets_wide: Mapping[MultiRegionDataset, pd.DataFrame],
+    timeseries_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
+) -> Mapping[MultiRegionDataset, pd.DataFrame]:
+    """Creates a DataFrame for each dataset that has True for the subset of datasets_wide that is
+    selected according to timeseries_field_datasets"""
+    common_index = more_itertools.first(datasets_wide.values()).index
+    for df in datasets_wide.values():
+        assert df.columns.names == [PdFields.VARIABLE]
+        assert df.index.equals(common_index)
+    assert common_index.names == [CommonFields.LOCATION_ID]
+    datasets_output = {
+        ds: pd.DataFrame([], index=common_index, dtype="bool").rename_axis(
+            columns=PdFields.VARIABLE
+        )
+        for ds in datasets_wide.keys()
+    }
+    for field, datasets in timeseries_field_datasets.items():
+        location_id_so_far = pd.Series([], dtype=bool).reindex(index=common_index, fill_value=False)
+        for dataset in datasets:
+            try:
+                this_dataset = datasets_wide[dataset].loc[:, field]
+            except KeyError:
+                continue
+            datasets_output[dataset].loc[:, field] = this_dataset & ~location_id_so_far
+            location_id_so_far = location_id_so_far | this_dataset
+    return datasets_output
+
+
+def _datasets_wide_var_has_timeseries(datasets: Collection[MultiRegionDataset]):
+    """Makes a map from dataset to a DataFrame with a True where the timeseries has a real value."""
+    datasets_wide = {ds: ds.wide_var_has_timeseries for ds in datasets}
+    dataset_wide_first = more_itertools.first(datasets_wide.values())
+    assert dataset_wide_first.index.names == [CommonFields.LOCATION_ID]
+    assert dataset_wide_first.columns.names == [PdFields.VARIABLE]
+
+    common_index = pd.Index(
+        np.unique(np.concatenate([ds_w.index for ds_w in datasets_wide.values()])),
+        name=dataset_wide_first.index.name,
+    )
+    datasets_wide = {
+        ds: ds_w.reindex(index=common_index, fill_value=False) for ds, ds_w in datasets_wide.items()
+    }
+    return datasets_wide
 
 
 def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
