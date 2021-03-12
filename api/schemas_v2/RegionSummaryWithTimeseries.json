@@ -686,6 +686,18 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinesAdministered": {
+          "title": "Vaccinesadministered",
+          "description": "Total number of vaccine doses administered.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -905,6 +917,15 @@
         "newDeaths": {
           "title": "Newdeaths",
           "description": "Annotations for newDeaths",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinesAdministered": {
+          "title": "Vaccinesadministered",
+          "description": "Annotations for vaccinesAdministered",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"
@@ -1305,6 +1326,18 @@
         "vaccinationsCompleted": {
           "title": "Vaccinationscompleted",
           "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer this indicates\nnumber of people vaccinated with both the first and second dose.\n",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vaccinesAdministered": {
+          "title": "Vaccinesadministered",
+          "description": "Total number of vaccine doses administered.",
           "anyOf": [
             {
               "type": "integer"

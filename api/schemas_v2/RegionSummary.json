@@ -662,6 +662,18 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinesAdministered": {
+          "title": "Vaccinesadministered",
+          "description": "Total number of vaccine doses administered.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -881,6 +893,15 @@
         "newDeaths": {
           "title": "Newdeaths",
           "description": "Annotations for newDeaths",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinesAdministered": {
+          "title": "Vaccinesadministered",
+          "description": "Annotations for vaccinesAdministered",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"
