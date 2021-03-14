@@ -440,6 +440,16 @@ class MultiRegionDataset:
         return self.timeseries_bucketed.stack(dropna=True).rename(PdFields.VALUE).sort_index()
 
     @cached_property
+    def wide_var_has_timeseries(self) -> pd.DataFrame:
+        return (
+            self.timeseries_not_bucketed_wide_dates
+            .notnull()
+            .any(1)
+            .unstack(PdFields.VARIABLE, fill_value=False)
+            .astype(bool)
+        )
+
+    @cached_property
     def timeseries_bucketed_wide_dates(self) -> pd.DataFrame:
         """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE, BUCKET index and DATE
         columns."""
