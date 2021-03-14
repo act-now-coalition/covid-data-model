@@ -39,7 +39,7 @@ class TailFilter:
         dataset: timeseries.MultiRegionDataset, fields: List[FieldName]
     ) -> Tuple["TailFilter", timeseries.MultiRegionDataset]:
         """Returns a dataset with recent data that looks bad removed from cumulative fields."""
-        timeseries_wide_dates = dataset.timeseries_wide_dates_no_buckets()
+        timeseries_wide_dates = dataset.timeseries_wide_dates_no_buckets
 
         fields_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(fields)
         to_filter = timeseries_wide_dates.loc[pd.IndexSlice[:, fields_mask], :]

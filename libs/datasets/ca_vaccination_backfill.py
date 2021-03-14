@@ -12,7 +12,7 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
     """Derives vaccination metrics for CA counties based on State 1st vs 2nd dose reporting."""
 
     ca_county_dataset = ds_in.get_subset(aggregation_level=AggregationLevel.COUNTY, state="CA")
-    ca_county_wide = ca_county_dataset.timeseries_wide_dates_no_buckets()
+    ca_county_wide = ca_county_dataset.timeseries_wide_dates_no_buckets
     fields_to_check = [
         CommonFields.VACCINATIONS_INITIATED,
         CommonFields.VACCINATIONS_COMPLETED,
@@ -25,7 +25,7 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
 
     ca_state_wide = ds_in.get_regions_subset(
         [Region.from_state("CA")]
-    ).timeseries_wide_dates_no_buckets()
+    ).timeseries_wide_dates_no_buckets
 
     # Drop location index because not used to apply to county level data
     ca_state_wide = ca_state_wide.reset_index(CommonFields.LOCATION_ID, drop=True)
@@ -70,7 +70,7 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
         level=PdFields.VARIABLE,
     )
 
-    all_wide = ds_in.timeseries_wide_dates_no_buckets()
+    all_wide = ds_in.timeseries_wide_dates_no_buckets
     # Because we assert that existing dataset does not have CA county VACCINATIONS_COMPLETED_PCT
     # or VACCINATIONS_INITIATED_PCT we can safely combine the existing rows with new derived rows
     combined = pd.concat([vaccines_completed_pct, vaccines_initiated_pct, all_wide])
