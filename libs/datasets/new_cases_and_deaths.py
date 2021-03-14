@@ -30,7 +30,7 @@ def add_incident_column(
     # Get timeseries data from timeseries_wide_dates because it creates a date range that includes
     # every date, even those with NA cases. This keeps the output identical when empty rows are
     # dropped or added.
-    wide_dates_var = dataset_in.timeseries_wide_dates().loc[(slice(None), field_in), :]
+    wide_dates_var = dataset_in.timeseries_wide_dates_no_buckets().loc[(slice(None), field_in), :]
     # Calculating new cases using diff will remove the first detected value from the case series.
     # We want to capture the first day a region reports a case. Since our data sources have
     # been capturing cases in all states from the beginning of the pandemic, we are treating

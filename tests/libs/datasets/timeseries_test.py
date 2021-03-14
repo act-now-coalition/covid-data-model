@@ -393,7 +393,7 @@ def test_timeseries_wide_dates():
         )
     )
 
-    ds_wide = ds.timeseries_wide_dates()
+    ds_wide = ds.timeseries_wide_dates_no_buckets()
     assert ds_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
     assert ds_wide.columns.names == [CommonFields.DATE]
 
@@ -429,7 +429,7 @@ def test_timeseries_wide_dates_empty():
         )
     )
 
-    timeseries_wide = ts.timeseries_wide_dates()
+    timeseries_wide = ts.timeseries_wide_dates_no_buckets()
     assert timeseries_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
     assert timeseries_wide.columns.names == [CommonFields.DATE]
     assert timeseries_wide.empty

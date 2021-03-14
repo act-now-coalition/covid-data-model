@@ -117,7 +117,7 @@ class PerRegionStats(AggregatedStats):
     @staticmethod
     def make(ds: timeseries.MultiRegionDataset) -> "PerRegionStats":
         wide_var_has_timeseries = (
-            ds.timeseries_wide_dates()
+            ds.timeseries_wide_dates_no_buckets()
             .notnull()
             .any(1)
             .unstack(PdFields.VARIABLE, fill_value=False)
