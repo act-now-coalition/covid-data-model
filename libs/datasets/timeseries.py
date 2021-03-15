@@ -1091,41 +1091,6 @@ def _slice_with_labels(series: pd.Series, labels: pd.MultiIndex) -> pd.Series:
     )
 
 
-def _combine_timeseries(
-    datasets_output: Mapping[MultiRegionDataset, pd.DataFrame]
-) -> Tuple[pd.DataFrame, pd.Series]:
-    """Combine timeseries selected from each dataset into one structure.
-
-    Args:
-        datasets_output: Map from dataset to a DataFrame of which timeseries to output
-    Returns:
-        Tuple of timeseries_bucketed and tag, suitable for MultiRegionDataset.__init__
-    """
-    ts_bucketed_long_to_concat = []
-    tags_to_concat = []
-    for ds, outputs in datasets_output.items():
-        if outputs.empty:
-            continue
-        # Change False to nan so they are dropped when stacking.
-        output_labels = outputs.replace({False: np.nan}).stack().index
-        if output_labels.empty:
-            continue
-        assert output_labels.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-        ts_bucketed_long_to_concat.append(
-            _slice_with_labels(ds.timeseries_bucketed_long, output_labels)
-        )
-        tags_to_concat.append(_slice_with_labels(ds.tag, output_labels))
-
-    if ts_bucketed_long_to_concat:
-        ts_bucketed = pd.concat(ts_bucketed_long_to_concat).unstack(PdFields.VARIABLE).sort_index()
-        tags = pd.concat(tags_to_concat).sort_index()
-    else:
-        ts_bucketed = EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF
-        tags = _EMPTY_TAG_SERIES
-
-    return ts_bucketed, tags
-
-
 def combined_datasets(
     timeseries_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
     static_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
@@ -1230,6 +1195,41 @@ def _datasets_wide_var_not_null(datasets: Collection[MultiRegionDataset]):
         ds: ds_w.reindex(index=common_index, fill_value=False) for ds, ds_w in datasets_wide.items()
     }
     return datasets_wide
+
+
+def _combine_timeseries(
+    datasets_output: Mapping[MultiRegionDataset, pd.DataFrame]
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """Combine timeseries selected from each dataset into one structure.
+
+    Args:
+        datasets_output: Map from dataset to a DataFrame of which timeseries to output
+    Returns:
+        Tuple of timeseries_bucketed and tag, suitable for MultiRegionDataset.__init__
+    """
+    ts_bucketed_long_to_concat = []
+    tags_to_concat = []
+    for ds, outputs in datasets_output.items():
+        if outputs.empty:
+            continue
+        # Change False to nan so they are dropped when stacking.
+        output_labels = outputs.replace({False: np.nan}).stack().index
+        if output_labels.empty:
+            continue
+        assert output_labels.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        ts_bucketed_long_to_concat.append(
+            _slice_with_labels(ds.timeseries_bucketed_long, output_labels)
+        )
+        tags_to_concat.append(_slice_with_labels(ds.tag, output_labels))
+
+    if ts_bucketed_long_to_concat:
+        ts_bucketed = pd.concat(ts_bucketed_long_to_concat).unstack(PdFields.VARIABLE).sort_index()
+        tags = pd.concat(tags_to_concat).sort_index()
+    else:
+        ts_bucketed = EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF
+        tags = _EMPTY_TAG_SERIES
+
+    return ts_bucketed, tags
 
 
 def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
