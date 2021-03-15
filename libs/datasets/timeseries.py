@@ -441,19 +441,6 @@ class MultiRegionDataset:
         return self.timeseries_bucketed.stack(dropna=True).rename(PdFields.VALUE).sort_index()
 
     @cached_property
-    def wide_var_has_timeseries(self) -> pd.DataFrame:
-        """True iff there is at least one real value in the timeseries"""
-        has_timeseries = (
-            self.timeseries_not_bucketed_wide_dates.notnull()
-            .any(1)
-            .unstack(PdFields.VARIABLE, fill_value=False)
-        )
-        assert has_timeseries.index.names == [CommonFields.LOCATION_ID]
-        assert has_timeseries.columns.names == [PdFields.VARIABLE]
-        assert has_timeseries.dtypes.apply(is_bool_dtype).all()
-        return has_timeseries
-
-    @cached_property
     def wide_var_not_null(self) -> pd.DataFrame:
         """True iff there is at least one real value in any bucket with given location and
         variable"""

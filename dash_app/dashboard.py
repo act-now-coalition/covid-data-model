@@ -116,6 +116,13 @@ class PerRegionStats(AggregatedStats):
 
     @staticmethod
     def make(ds: timeseries.MultiRegionDataset) -> "PerRegionStats":
+        wide_var_has_timeseries = (
+            ds.timeseries_wide_dates()
+            .notnull()
+            .any(1)
+            .unstack(PdFields.VARIABLE, fill_value=False)
+            .astype(bool)
+        )
         wide_var_has_url = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
         # Need to use pivot_table instead of unstack to aggregate using sum.
         wide_var_annotation_count = pd.pivot_table(
@@ -128,7 +135,7 @@ class PerRegionStats(AggregatedStats):
         )
 
         return PerRegionStats(
-            has_timeseries=ds.wide_var_has_timeseries,
+            has_timeseries=wide_var_has_timeseries,
             has_url=wide_var_has_url,
             annotation_count=wide_var_annotation_count,
         )
