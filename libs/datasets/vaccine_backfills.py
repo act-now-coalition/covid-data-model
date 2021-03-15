@@ -17,7 +17,7 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
         CommonFields.VACCINATIONS_INITIATED: CommonFields.VACCINATIONS_INITIATED_PCT,
         CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_COMPLETED_PCT,
     }
-    ds_in_wide_dates = ds_in.timeseries_wide_dates_no_buckets
+    ds_in_wide_dates = ds_in.timeseries_not_bucketed_wide_dates
     ds_in_wide_dates = ds_in_wide_dates.loc[
         ds_in_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(field_map.keys())
     ]
@@ -62,7 +62,7 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
         CommonFields.VACCINATIONS_INITIATED,
         CommonFields.VACCINATIONS_COMPLETED,
     ]
-    df = dataset.timeseries_wide_dates_no_buckets.loc[(slice(None), fields), :]
+    df = dataset.timeseries_not_bucketed_wide_dates.loc[(slice(None), fields), :]
     df_var_first = df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
 
     administered = df_var_first.loc[CommonFields.VACCINES_ADMINISTERED]

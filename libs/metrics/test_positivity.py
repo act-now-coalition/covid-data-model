@@ -168,7 +168,7 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
     def calculate(
         self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
-        delta_df = dataset.timeseries_wide_dates_no_buckets.reorder_levels(
+        delta_df = dataset.timeseries_not_bucketed_wide_dates.reorder_levels(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         ).diff(periods=diff_days, axis=1)
         assert delta_df.columns.names == [CommonFields.DATE]
@@ -211,7 +211,7 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
     def calculate(
         self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
-        df = dataset.timeseries_wide_dates_no_buckets.reorder_levels(
+        df = dataset.timeseries_not_bucketed_wide_dates.reorder_levels(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         )
         assert df.columns.names == [CommonFields.DATE]
@@ -338,7 +338,7 @@ class AllMethods:
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()
 
-        input_wide = dataset_in.timeseries_wide_dates_no_buckets
+        input_wide = dataset_in.timeseries_not_bucketed_wide_dates
         if input_wide.empty:
             raise NoRealTimeseriesValuesException()
         dates = input_wide.columns.get_level_values(CommonFields.DATE)

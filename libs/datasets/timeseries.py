@@ -283,10 +283,21 @@ EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFi
 
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
 # variable> and column labels <date>.
-EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
+EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF = pd.DataFrame(
     [],
     dtype="float",
     index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
+    columns=pd.DatetimeIndex([], name=CommonFields.DATE),
+)
+
+# An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
+# variable, bucket> and column labels <date>.
+EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF = pd.DataFrame(
+    [],
+    dtype="float",
+    index=pd.MultiIndex.from_tuples(
+        [], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET]
+    ),
     columns=pd.DatetimeIndex([], name=CommonFields.DATE),
 )
 
@@ -440,14 +451,15 @@ class MultiRegionDataset:
         return self.timeseries_bucketed.stack(dropna=True).rename(PdFields.VALUE).sort_index()
 
     @cached_property
-    def timeseries_wide_dates_no_buckets(self) -> pd.DataFrame:
-        """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
-        if self.timeseries.empty:
-            return EMPTY_TIMESERIES_WIDE_DATES_DF
-        timeseries_long = self._timeseries_long()
-        dates = timeseries_long.index.get_level_values(CommonFields.DATE)
+    def timeseries_bucketed_wide_dates(self) -> pd.DataFrame:
+        """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE, BUCKET index and DATE
+        columns."""
+        if self.timeseries_bucketed.empty:
+            return EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF
+        timeseries_long = self.timeseries_bucketed_long
+        dates = timeseries_long.index.unique(CommonFields.DATE)
         if dates.empty:
-            return EMPTY_TIMESERIES_WIDE_DATES_DF
+            return EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF
         start_date = dates.min()
         end_date = dates.max()
         date_range = pd.date_range(start=start_date, end=end_date)
@@ -459,6 +471,16 @@ class MultiRegionDataset:
         if not timeseries_wide.columns.is_all_dates:
             raise ValueError(f"Problem with {start_date} to {end_date}... {str(self.timeseries)}")
         return timeseries_wide
+
+    @cached_property
+    def timeseries_not_bucketed_wide_dates(self) -> pd.DataFrame:
+        """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
+        try:
+            return self.timeseries_bucketed_wide_dates.xs(
+                "all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0
+            )
+        except KeyError:
+            return EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
@@ -564,7 +586,7 @@ class MultiRegionDataset:
         """Returns a new object with given provenance string for every timeseries."""
         return self.add_provenance_series(
             pd.Series([], dtype=str, name=PdFields.PROVENANCE).reindex(
-                self.timeseries_wide_dates_no_buckets.index, fill_value=provenance
+                self.timeseries_not_bucketed_wide_dates.index, fill_value=provenance
             )
         )
 
@@ -572,7 +594,7 @@ class MultiRegionDataset:
         """Returns a new object with given tag copied for every timeseries."""
         tag_df = pd.DataFrame(
             {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
-            index=self.timeseries_wide_dates_no_buckets.index,
+            index=self.timeseries_not_bucketed_wide_dates.index,
         ).reset_index()
         return self.append_tag_df(tag_df)
 
@@ -858,7 +880,7 @@ class MultiRegionDataset:
         """Returns a DataFrame containing timeseries values and tag, suitable for writing
         to a CSV."""
         # Make a copy to avoid modifying the cached DataFrame
-        wide_dates = self.timeseries_wide_dates_no_buckets.copy()
+        wide_dates = self.timeseries_not_bucketed_wide_dates.copy()
         # Format as a string here because to_csv includes a full timestamp.
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
         # When I look at the CSV I'm usually looking for the most recent values so reverse the
@@ -887,7 +909,7 @@ class MultiRegionDataset:
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
-        ts = self.timeseries_wide_dates_no_buckets
+        ts = self.timeseries_not_bucketed_wide_dates
         recent_columns_mask = ts.columns >= cutoff_date
         recent_rows_mask = ts.loc[:, recent_columns_mask].notna().any(axis=1)
         timeseries_wide_dates = ts.loc[recent_rows_mask, :]
@@ -1051,7 +1073,7 @@ def _to_datasets_wide_dates_map(
 
     The mapping depends on MultiRegionDataset being hashable by id.
     """
-    datasets_wide = {ds: ds.timeseries_wide_dates_no_buckets for ds in datasets}
+    datasets_wide = {ds: ds.timeseries_not_bucketed_wide_dates for ds in datasets}
     if not datasets_wide:
         return {}
     # Find the earliest and latest dates to make a range covering all timeseries.

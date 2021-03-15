@@ -346,16 +346,14 @@ def test_append_regions_duplicate_region_raises():
 
 
 def test_timeseries_long():
-    ts = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,county,aggregate_level,m1,m2\n"
-            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
-            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
-            "iso1:us#cbsa:10100,,,,,3\n"
-            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
-            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
-            "iso1:us#fips:97111,,Bar County,county,4,\n"
-        )
+    region_cbsa = Region.from_cbsa_code("10100")
+    region_county = Region.from_fips("97111")
+    ds = test_helpers.build_dataset(
+        {
+            region_county: {FieldName("m1"): [2, None, 4]},
+            region_cbsa: {FieldName("m2"): [2, 3, None]},
+        },
+        start_date="2020-04-02",
     )
 
     expected = pd.read_csv(
@@ -369,7 +367,7 @@ def test_timeseries_long():
         parse_dates=[CommonFields.DATE],
         dtype={"value": float},
     )
-    long_series = ts._timeseries_long()
+    long_series = ds._timeseries_long()
     assert long_series.index.names == [
         CommonFields.LOCATION_ID,
         CommonFields.DATE,
@@ -393,7 +391,7 @@ def test_timeseries_wide_dates():
         )
     )
 
-    ds_wide = ds.timeseries_wide_dates_no_buckets
+    ds_wide = ds.timeseries_not_bucketed_wide_dates
     assert ds_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
     assert ds_wide.columns.names == [CommonFields.DATE]
 
@@ -429,7 +427,7 @@ def test_timeseries_wide_dates_empty():
         )
     )
 
-    timeseries_wide = ts.timeseries_wide_dates_no_buckets
+    timeseries_wide = ts.timeseries_not_bucketed_wide_dates
     assert timeseries_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
     assert timeseries_wide.columns.names == [CommonFields.DATE]
     assert timeseries_wide.empty
