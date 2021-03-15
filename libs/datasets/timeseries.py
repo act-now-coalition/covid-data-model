@@ -280,7 +280,11 @@ _EMPTY_TAG_SERIES = pd.Series(
 
 # An empty pd.DataFrame with the structure expected for the static attribute. Use this when
 # a dataset does not have any static values.
-EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
+EMPTY_STATIC_DF = pd.DataFrame(
+    [],
+    index=pd.Index([], name=CommonFields.LOCATION_ID),
+    columns=pd.Index([], name=PdFields.VARIABLE),
+)
 
 
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
@@ -364,7 +368,7 @@ class MultiRegionDataset:
     # Static data, each identified by variable name and region. This includes county name,
     # state etc (GEO_DATA_COLUMNS) and metrics that change so slowly they can be
     # considered constant, such as population and hospital beds.
-    static: pd.DataFrame = EMPTY_REGIONAL_ATTRIBUTES_DF
+    static: pd.DataFrame = EMPTY_STATIC_DF
 
     # A Series of tag CONTENT values having index with levels TAG_INDEX_FIELDS (LOCATION_ID,
     # VARIABLE, TYPE). Rows with identical index values may exist.
@@ -1080,6 +1084,8 @@ def _slice_with_labels(series: pd.Series, labels: pd.MultiIndex) -> pd.Series:
     """Emulates what I'd like `series.xs(labels, level=labels.names, drop=False)` to do
     and also doesn't raise a KeyError."""
 
+    # Somewhat inspired by https://stackoverflow.com/questions/42733118/how-to-select-a-subset-from
+
     # Change the input series to have index labels in same order as labels
     reindexed = series.reset_index().set_index(labels.names)
     # Select the rows (avoiding KeyError of reindexed.loc[labels]) then restore the index to match
@@ -1105,13 +1111,12 @@ def combined_datasets(
         # In the table the index labels are currently just location_id (but could be expanded to
         # include the distribution such as 'all', 'age', 'race', ... if these are combined
         # separately) and columns are fields.
-        datasets_wide = _datasets_wide_var_not_null(
-            set(chain.from_iterable(timeseries_field_datasets.values()))
-        )
+        all_timeseries_datasets = set(chain.from_iterable(timeseries_field_datasets.values()))
+        datasets_wide = _datasets_wide_var_not_null(all_timeseries_datasets)
         # Then make a map from dataset to table with the same index and columns but only True
         # where that particular data will be copied to the output. These tables will have a
         # subset of the True values in `datasets_wide`.
-        datasets_output = _select_timeseries(datasets_wide, timeseries_field_datasets)
+        datasets_output = _pick_first_with_field(datasets_wide, timeseries_field_datasets)
         # Finally copy the timeseries and tags that were selected from each dataset.
         ts_bucketed, tags = _combine_timeseries(datasets_output)
     else:
@@ -1146,12 +1151,12 @@ def combined_datasets(
             static_series, axis=1, sort=True, verify_integrity=True
         ).rename_axis(index=CommonFields.LOCATION_ID)
     else:
-        output_static_df = EMPTY_REGIONAL_ATTRIBUTES_DF
+        output_static_df = EMPTY_STATIC_DF
 
     return MultiRegionDataset(timeseries_bucketed=ts_bucketed, tag=tags, static=output_static_df,)
 
 
-def _select_timeseries(
+def _pick_first_with_field(
     datasets_wide: Mapping[MultiRegionDataset, pd.DataFrame],
     timeseries_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
 ) -> Mapping[MultiRegionDataset, pd.DataFrame]:
@@ -1180,13 +1185,20 @@ def _select_timeseries(
     return datasets_output
 
 
-def _datasets_wide_var_not_null(datasets: Collection[MultiRegionDataset]):
+def _datasets_wide_var_not_null(
+    datasets: Collection[MultiRegionDataset],
+) -> Mapping[MultiRegionDataset, pd.DataFrame]:
     """Makes a map from dataset to a DataFrame with a True where the timeseries has a real value."""
     datasets_wide = {ds: ds.wide_var_not_null for ds in datasets}
+    return _with_common_index(datasets_wide)
+
+
+def _with_common_index(
+    datasets_wide: Mapping[MultiRegionDataset, pd.DataFrame]
+) -> Mapping[MultiRegionDataset, pd.DataFrame]:
     dataset_wide_first = more_itertools.first(datasets_wide.values())
     assert dataset_wide_first.index.names == [CommonFields.LOCATION_ID]
     assert dataset_wide_first.columns.names == [PdFields.VARIABLE]
-
     common_index = pd.Index(
         np.unique(np.concatenate([ds_w.index for ds_w in datasets_wide.values()])),
         name=dataset_wide_first.index.name,
