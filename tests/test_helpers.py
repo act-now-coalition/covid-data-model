@@ -309,8 +309,8 @@ def assert_dataset_like(
         )
 
     if compare_tags:
-        tag1 = ds1.tag.astype("string")
-        tag2 = ds2.tag.astype("string")
+        tag1 = ds1.tag_not_bucketed.astype("string")
+        tag2 = ds2.tag_not_bucketed.astype("string")
         # Don't check the index types because they don't matter and some tests end up with different
         # types that otherwise compare as equal.
         pd.testing.assert_series_equal(tag1, tag2, check_index_type=False)

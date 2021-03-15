@@ -31,6 +31,7 @@ class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     LOCATION_ID = CommonFields.LOCATION_ID
     # VARIABLE values should be a metric name, typically one in CommonFields.
     VARIABLE = PdFields.VARIABLE
+    DEMOGRAPHIC_BUCKET = PdFields.DEMOGRAPHIC_BUCKET
     # TYPE values must be a string from TagType
     TYPE = "tag_type"
     # CONTENT values vary depending on TYPE, either a JSON string or bare string.

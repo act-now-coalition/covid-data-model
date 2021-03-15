@@ -634,7 +634,7 @@ def test_timeseries_drop_stale_timeseries_with_tag():
 
     dataset_out = dataset_in.drop_stale_timeseries(pd.to_datetime("2020-04-03"))
 
-    assert len(dataset_out.tag) == 1
+    assert len(dataset_out.tag_not_bucketed) == 1
     # drop_stale_timeseries preserves the empty DEATHS column so add it to dataset_expected
     dataset_expected = test_helpers.build_dataset(
         {region: {CommonFields.CASES: ts_recent}}, timeseries_columns=[CommonFields.DEATHS]
@@ -653,14 +653,14 @@ def test_append_region_and_get_regions_subset_with_tag():
 
     dataset_appended = dataset_tx.append_regions(dataset_sf)
 
-    assert len(dataset_appended.tag) == 2
+    assert len(dataset_appended.tag_not_bucketed) == 2
     dataset_tx_and_sf = test_helpers.build_dataset(
         {region_tx: {CommonFields.CASES: ts_with_tag}, region_sf: {CommonFields.CASES: ts_with_tag}}
     )
     test_helpers.assert_dataset_like(dataset_appended, dataset_tx_and_sf)
 
     dataset_out = dataset_tx_and_sf.get_regions_subset([region_tx])
-    assert len(dataset_out.tag) == 1
+    assert len(dataset_out.tag_not_bucketed) == 1
     test_helpers.assert_dataset_like(dataset_out, dataset_tx)
 
 
@@ -687,7 +687,7 @@ def test_one_region_annotations():
         tag2a,
         tag2b,
     ]
-    assert set(one_region_sf.sources(CommonFields.CASES)) == set()
+    assert set(one_region_sf.sources_all_bucket(CommonFields.CASES)) == set()
 
     assert {
         region: one_region_dataset.annotations(CommonFields.CASES)
@@ -701,8 +701,8 @@ def test_one_region_empty_annotations():
     assert one_region.annotations(CommonFields.CASES) == []
     assert one_region.source_url == {}
     assert one_region.provenance == {}
-    assert set(one_region.sources(CommonFields.ICU_BEDS)) == set()
-    assert set(one_region.sources(CommonFields.CASES)) == set()
+    assert set(one_region.sources_all_bucket(CommonFields.ICU_BEDS)) == set()
+    assert set(one_region.sources_all_bucket(CommonFields.CASES)) == set()
 
 
 def test_one_region_tag_objects_series():
@@ -1035,7 +1035,7 @@ def test_join_columns_with_tags():
 
     dataset_out = dataset_cases.join_columns(dataset_deaths)
 
-    assert len(dataset_out.tag) == 2
+    assert len(dataset_out.tag_not_bucketed) == 2
     # The following checks that the tags in `ts_lit` have been preserved.
     dataset_expected = test_helpers.build_dataset(
         {region: {CommonFields.CASES: ts_lit, CommonFields.DEATHS: ts_lit}}
@@ -1056,7 +1056,7 @@ def test_drop_column_with_tags():
 
     dataset_out = dataset_in.drop_column_if_present(CommonFields.DEATHS)
 
-    assert len(dataset_out.tag) == 1
+    assert len(dataset_out.tag_not_bucketed) == 1
     dataset_expected = test_helpers.build_dataset({region: {CommonFields.CASES: ts_lit}})
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
 
@@ -1403,8 +1403,8 @@ def test_make_source_tags():
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
 
     one_region = dataset_out.get_one_region(test_helpers.DEFAULT_REGION)
-    assert one_region.sources(CommonFields.ICU_BEDS) == [source_tag_prov_only]
-    assert one_region.sources(CommonFields.CASES) == [source_tag_prov_with_url]
+    assert one_region.sources_all_bucket(CommonFields.ICU_BEDS) == [source_tag_prov_only]
+    assert one_region.sources_all_bucket(CommonFields.CASES) == [source_tag_prov_with_url]
 
 
 def test_make_source_tags_no_urls():
@@ -1429,7 +1429,7 @@ def test_make_source_tags_no_urls():
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
 
     one_region = dataset_out.get_one_region(test_helpers.DEFAULT_REGION)
-    assert one_region.sources(CommonFields.ICU_BEDS) == [source_tag_prov_only]
+    assert one_region.sources_all_bucket(CommonFields.ICU_BEDS) == [source_tag_prov_only]
 
 
 def test_make_source_url_tags():

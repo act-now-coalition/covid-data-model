@@ -148,7 +148,7 @@ def _build_metric_annotations(
 
     sources = [
         FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url, name=tag.name)
-        for tag in tag_series.sources(field_name)
+        for tag in tag_series.sources_all_bucket(field_name)
     ]
 
     if not sources:

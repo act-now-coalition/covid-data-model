@@ -123,14 +123,14 @@ def _make_output_dataset(
     locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
     _append_variable_index_level(wide_date_df, output_metric)
 
-    assert dataset_in.tag.index.names == [
+    assert dataset_in.tag_not_bucketed.index.names == [
         TagField.LOCATION_ID,
         TagField.VARIABLE,
         TagField.TYPE,
     ]
     dataset_out = MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df)
     if source_columns:
-        source_tags = dataset_in.tag.loc[locations, list(source_columns)].reset_index()
+        source_tags = dataset_in.tag_not_bucketed.loc[locations, list(source_columns)].reset_index()
         source_tags[TagField.VARIABLE] = output_metric
         # When there are two source_columns they usually contain the same provenance content.
         # Only keep one copy of it.

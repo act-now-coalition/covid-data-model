@@ -218,7 +218,7 @@ def test_annotation(rt_dataset, icu_dataset):
 
 
 def test_source(rt_dataset, icu_dataset):
-    """Test the `source` tag can produce data similar to that in `test_annotation`."""
+    """Test the `source` tag_not_bucketed can produce data similar to that in `test_annotation`."""
     region = Region.from_state("IL")
     tag = test_helpers.make_tag(date="2020-04-01", original_observation=10.0)
     deaths_url = UrlStr("http://can.com/death_source")
