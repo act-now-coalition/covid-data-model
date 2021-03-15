@@ -311,7 +311,9 @@ def assert_dataset_like(
     if compare_tags:
         tag1 = ds1.tag.astype("string")
         tag2 = ds2.tag.astype("string")
-        pd.testing.assert_series_equal(tag1, tag2)
+        # Don't check the index types because they don't matter and some tests end up with different
+        # types that otherwise compare as equal.
+        pd.testing.assert_series_equal(tag1, tag2, check_index_type=False)
 
 
 def get_subclasses(cls) -> Iterable[Type]:
