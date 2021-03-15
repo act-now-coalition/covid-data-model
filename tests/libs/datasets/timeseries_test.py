@@ -346,6 +346,7 @@ def test_append_regions_duplicate_region_raises():
 
 
 def test_timeseries_long():
+    """Test timeseries_long where all data has bucket `all`"""
     region_cbsa = Region.from_cbsa_code("10100")
     region_county = Region.from_fips("97111")
     ds = test_helpers.build_dataset(
@@ -358,24 +359,71 @@ def test_timeseries_long():
 
     expected = pd.read_csv(
         io.StringIO(
-            "location_id,date,variable,value\n"
-            "iso1:us#cbsa:10100,2020-04-02,m2,2\n"
-            "iso1:us#cbsa:10100,2020-04-03,m2,3\n"
-            "iso1:us#fips:97111,2020-04-02,m1,2\n"
-            "iso1:us#fips:97111,2020-04-04,m1,4\n"
+            "       location_id,      date,variable,value\n"
+            "iso1:us#cbsa:10100,2020-04-02,      m2,    2\n"
+            "iso1:us#cbsa:10100,2020-04-03,      m2,    3\n"
+            "iso1:us#fips:97111,2020-04-02,      m1,    2\n"
+            "iso1:us#fips:97111,2020-04-04,      m1,    4\n".replace(" ", "")
         ),
         parse_dates=[CommonFields.DATE],
         dtype={"value": float},
     )
-    long_series = ds._timeseries_long()
+    long_series = ds.timeseries_bucketed_long
     assert long_series.index.names == [
         CommonFields.LOCATION_ID,
+        PdFields.DEMOGRAPHIC_BUCKET,
         CommonFields.DATE,
         PdFields.VARIABLE,
     ]
     assert long_series.name == PdFields.VALUE
-    long_df = long_series.reset_index()
+    long_df = long_series.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET).reset_index()
     pd.testing.assert_frame_equal(long_df, expected, check_like=True)
+
+
+def test_timeseries_bucketed_long():
+    region_cbsa = Region.from_cbsa_code("10100")
+    region_county = Region.from_fips("97111")
+    bucket_age_0 = DemographicBucket("age:0-9")
+    bucket_age_10 = DemographicBucket("age:10-19")
+    bucket_all = DemographicBucket("all")
+    ds = test_helpers.build_dataset(
+        {
+            region_county: {
+                FieldName("m1"): {
+                    bucket_age_0: [4, 5, 6],
+                    bucket_age_10: [None, None, 7],
+                    bucket_all: [2, None, 4],
+                }
+            },
+            region_cbsa: {FieldName("m2"): [2, 3, None]},
+        },
+        start_date="2020-04-02",
+    )
+
+    expected = pd.read_csv(
+        io.StringIO(
+            "       location_id,demographic_bucket,      date,variable,value\n"
+            "iso1:us#cbsa:10100,               all,2020-04-02,      m2,    2\n"
+            "iso1:us#cbsa:10100,               all,2020-04-03,      m2,    3\n"
+            "iso1:us#fips:97111,           age:0-9,2020-04-02,      m1,    4\n"
+            "iso1:us#fips:97111,           age:0-9,2020-04-03,      m1,    5\n"
+            "iso1:us#fips:97111,           age:0-9,2020-04-04,      m1,    6\n"
+            "iso1:us#fips:97111,         age:10-19,2020-04-04,      m1,    7\n"
+            "iso1:us#fips:97111,               all,2020-04-02,      m1,    2\n"
+            "iso1:us#fips:97111,               all,2020-04-04,      m1,    4\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"value": float},
+    )
+    long_series = ds.timeseries_bucketed_long
+    assert long_series.index.names == [
+        CommonFields.LOCATION_ID,
+        PdFields.DEMOGRAPHIC_BUCKET,
+        CommonFields.DATE,
+        PdFields.VARIABLE,
+    ]
+    assert long_series.name == PdFields.VALUE
+    pd.testing.assert_frame_equal(long_series.reset_index(), expected, check_like=True)
 
 
 def test_timeseries_wide_dates():
