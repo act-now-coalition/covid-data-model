@@ -21,6 +21,7 @@ from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from pandas.core.dtypes.common import is_numeric_dtype
+from pandas.core.dtypes.common import is_bool_dtype
 from typing_extensions import final
 
 import pandas as pd
@@ -441,13 +442,35 @@ class MultiRegionDataset:
 
     @cached_property
     def wide_var_has_timeseries(self) -> pd.DataFrame:
-        return (
-            self.timeseries_not_bucketed_wide_dates
-            .notnull()
+        """True iff there is at least one real value in the timeseries"""
+        has_timeseries = (
+            self.timeseries_not_bucketed_wide_dates.notnull()
             .any(1)
             .unstack(PdFields.VARIABLE, fill_value=False)
+        )
+        assert has_timeseries.index.names == [CommonFields.LOCATION_ID]
+        assert has_timeseries.columns.names == [PdFields.VARIABLE]
+        assert has_timeseries.dtypes.apply(is_bool_dtype).all()
+        return has_timeseries
+
+    @cached_property
+    def wide_var_not_null(self) -> pd.DataFrame:
+        """True iff there is at least one real value in any bucket with given location and
+        variable"""
+        wide_var_not_null = (
+            self.timeseries_bucketed_long.notnull()
+            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE], sort=False)
+            .any()
+            # TODO(tom) unstack sometimes return dtype Object, sometimes bool. Work out why and
+            #  remove astype.
+            .unstack(PdFields.VARIABLE, fill_value=False)
+            .sort_index()
             .astype(bool)
         )
+        assert wide_var_not_null.index.names == [CommonFields.LOCATION_ID]
+        assert wide_var_not_null.columns.names == [PdFields.VARIABLE]
+        assert wide_var_not_null.dtypes.apply(is_bool_dtype).all()
+        return wide_var_not_null
 
     @cached_property
     def timeseries_bucketed_wide_dates(self) -> pd.DataFrame:
@@ -1130,7 +1153,7 @@ def combined_datasets(
         # In the table the index labels are currently just location_id (but could be expanded to
         # include the distribution such as 'all', 'age', 'race', ... if these are combined
         # separately) and columns are fields.
-        datasets_wide = _datasets_wide_var_has_timeseries(
+        datasets_wide = _datasets_wide_var_not_null(
             set(chain.from_iterable(timeseries_field_datasets.values()))
         )
         # Then make a map from dataset to table with the same index and columns but only True
@@ -1205,9 +1228,9 @@ def _select_timeseries(
     return datasets_output
 
 
-def _datasets_wide_var_has_timeseries(datasets: Collection[MultiRegionDataset]):
+def _datasets_wide_var_not_null(datasets: Collection[MultiRegionDataset]):
     """Makes a map from dataset to a DataFrame with a True where the timeseries has a real value."""
-    datasets_wide = {ds: ds.wide_var_has_timeseries for ds in datasets}
+    datasets_wide = {ds: ds.wide_var_not_null for ds in datasets}
     dataset_wide_first = more_itertools.first(datasets_wide.values())
     assert dataset_wide_first.index.names == [CommonFields.LOCATION_ID]
     assert dataset_wide_first.columns.names == [PdFields.VARIABLE]

@@ -1523,8 +1523,7 @@ def test_combine_demographic_data_basic():
 
 
 def test_combine_demographic_data_multiple_distributions():
-    """For now all time-series within a variable are treated as a unit when combining. It may be
-    worth treating distributions as a unit."""
+    """All time-series within a variable are treated as a unit when combining"""
     m1 = FieldName("m1")
     m2 = FieldName("m2")
     all = DemographicBucket("all")
