@@ -280,16 +280,6 @@ _EMPTY_TAG_SERIES = pd.Series(
 # a dataset does not have any static values.
 EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
 
-
-# An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
-# variable> and column labels <date>.
-EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF = pd.DataFrame(
-    [],
-    dtype="float",
-    index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
-    columns=pd.DatetimeIndex([], name=CommonFields.DATE),
-)
-
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
 # variable, bucket> and column labels <date>.
 EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF = pd.DataFrame(
@@ -299,6 +289,11 @@ EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF = pd.DataFrame(
         [], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET]
     ),
     columns=pd.DatetimeIndex([], name=CommonFields.DATE),
+)
+
+
+EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF = EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.droplevel(
+    PdFields.DEMOGRAPHIC_BUCKET
 )
 
 
@@ -437,14 +432,6 @@ class MultiRegionDataset:
             self._timeseries_latest_values().reset_index(), self.static.reset_index()
         )
 
-    def _timeseries_long(self) -> pd.Series:
-        """Returns the timeseries data in long format Series, where all values are in a single column.
-
-        Returns: a Series with MultiIndex LOCATION_ID, DATE, VARIABLE
-        """
-        # TODO(tom): Replace calls to this with timeseries_bucketed_long.
-        return self.timeseries.stack(dropna=True).rename(PdFields.VALUE).sort_index()
-
     @cached_property
     def timeseries_bucketed_long(self) -> pd.Series:
         """A Series with MultiIndex LOCATION_ID, DEMOGRAPHIC_BUCKET, DATE, VARIABLE"""
@@ -475,6 +462,7 @@ class MultiRegionDataset:
     @cached_property
     def timeseries_not_bucketed_wide_dates(self) -> pd.DataFrame:
         """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
+        # TODO(tom): Replace all calls to this function with calls to timeseries_bucketed_wide_dates
         try:
             return self.timeseries_bucketed_wide_dates.xs(
                 "all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0
