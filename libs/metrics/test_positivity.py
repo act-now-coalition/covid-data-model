@@ -135,7 +135,7 @@ def _make_output_dataset(
         # When there are two source_columns they usually contain the same provenance content.
         # Only keep one copy of it.
         output_tags = source_tags.drop_duplicates(ignore_index=True).copy()
-        timeseries._tag_df_add_all_bucket_in_place(output_tags)
+        timeseries.tag_df_add_all_bucket_in_place(output_tags)
         dataset_out = dataset_out.append_tag_df(output_tags)
 
     return dataset_out

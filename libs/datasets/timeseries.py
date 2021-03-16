@@ -367,12 +367,12 @@ def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, buckete
 
 def _tag_add_all_bucket(tag: pd.Series) -> pd.Series:
     tag_bucketed = pd.concat(
-        {DemographicBucket("all"): tag}, names=[PdFields.DEMOGRAPHIC_BUCKET]
+        {DemographicBucket.ALL: tag}, names=[PdFields.DEMOGRAPHIC_BUCKET]
     ).reorder_levels(_TAG_INDEX_FIELDS)
     return tag_bucketed
 
 
-def _tag_df_add_all_bucket_in_place(tag_df: pd.DataFrame):
+def tag_df_add_all_bucket_in_place(tag_df: pd.DataFrame):
     tag_df[TagField.DEMOGRAPHIC_BUCKET] = "all"
 
 
@@ -648,7 +648,7 @@ class MultiRegionDataset:
             {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
             index=self.timeseries_not_bucketed_wide_dates.index,
         ).reset_index()
-        _tag_df_add_all_bucket_in_place(tag_df)
+        tag_df_add_all_bucket_in_place(tag_df)
         return self.append_tag_df(tag_df)
 
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
@@ -737,7 +737,7 @@ class MultiRegionDataset:
         )
         if tag_df_to_concat:
             tag_df = pd.concat(tag_df_to_concat)
-            _tag_df_add_all_bucket_in_place(tag_df)
+            tag_df_add_all_bucket_in_place(tag_df)
             dataset = dataset.append_tag_df(tag_df)
 
         return dataset

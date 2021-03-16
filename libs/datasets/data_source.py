@@ -127,8 +127,9 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
                 .last()
                 .reset_index()
                 .drop(columns=[CommonFields.DATE])
+                # copy before calling tag_df_add_all_bucket_in_place, just to be safe.
                 .copy()
             )
-            timeseries._tag_df_add_all_bucket_in_place(source_tag_df)
+            timeseries.tag_df_add_all_bucket_in_place(source_tag_df)
             ds = ds.append_tag_df(source_tag_df)
         return ds
