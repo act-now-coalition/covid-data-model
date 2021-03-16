@@ -80,7 +80,7 @@ class DataSource(object):
         input_path = data_root / cls.COMMON_DF_CSV_PATH
         data = common_df.read_csv(input_path, set_index=False)
         data = cls._check_data(data)
-        return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all(cls.source_tag())
+        return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all_bucket(cls.source_tag())
 
 
 # TODO(tom): Once using Python 3.9 replace all this metaclass stuff with @classmethod and
