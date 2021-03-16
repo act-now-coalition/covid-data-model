@@ -3,6 +3,8 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 import pandas as pd
 import numpy as np
+from covidactnow.datapublic.common_fields import DemographicBucket
+
 from libs.datasets import taglib
 from libs.datasets import timeseries
 
@@ -83,7 +85,9 @@ def drop_series_outliers(
 
     Returns: timeseries with outliers removed from new_cases.
     """
+    # TODO(tom): Change this to read dataset.timeseries_bucketed and copy the bucket to the tag
     df_copy = dataset.timeseries.copy()
+    bucket_all = DemographicBucket.ALL
     grouped_df = dataset.groupby_region()
 
     zscores = grouped_df[field].apply(_calculate_modified_zscore)
@@ -96,7 +100,7 @@ def drop_series_outliers(
     values = [(idx, df_copy.at[idx, field]) for idx in to_exclude[to_exclude].keys()]
     for (location_id, date), original_value in values:
         tag = taglib.ZScoreOutlier(date=date, original_observation=original_value,)
-        new_tags.add(tag, location_id=location_id, variable=field)
+        new_tags.add(tag, location_id=location_id, variable=field, bucket=bucket_all)
     df_copy.loc[to_exclude, field] = np.nan
 
     new_dataset = dataclasses.replace(
@@ -124,6 +128,8 @@ def drop_tail_positivity_outliers(
     # TODO(https://trello.com/c/7J2SmDnr): Be more consistent about accessing this data
     # through wide dates rather than duplicating timeseries.
     df_copy = dataset.timeseries.copy()
+    # TODO(tom): Change this to read dataset.timeseries_bucketed and copy the bucket to the tag
+    bucket_all = DemographicBucket.ALL
     grouped_df = dataset.groupby_region()
 
     def process_series(series):
@@ -152,6 +158,7 @@ def drop_tail_positivity_outliers(
             ),
             location_id=idx[0],
             variable=CommonFields.TEST_POSITIVITY_7D,
+            bucket=bucket_all,
         )
 
     df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
