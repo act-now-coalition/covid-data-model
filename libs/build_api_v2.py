@@ -130,7 +130,7 @@ METRICS_NAME_TO_COMMON_FIELD = {
 
 
 def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotations:
-    assert one_region.tag.index.names == [TagField.VARIABLE, TagField.TYPE]
+    assert one_region.tag_all_bucket.index.names == [TagField.VARIABLE, TagField.TYPE]
     name_and_common_field = [
         *ACTUALS_NAME_TO_COMMON_FIELD.items(),
         *METRICS_NAME_TO_COMMON_FIELD.items(),
