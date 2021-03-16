@@ -670,6 +670,7 @@ class MultiRegionDataset:
             {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
             index=self.timeseries_not_bucketed_wide_dates.index,
         ).reset_index()
+        _tag_df_add_all_bucket_in_place(tag_df)
         return self.append_tag_df(tag_df)
 
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
