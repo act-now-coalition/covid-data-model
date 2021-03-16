@@ -264,7 +264,7 @@ def test_one_region_multiple_provenance():
         }
     )
 
-    assert set(one_region.annotations(CommonFields.ICU_BEDS)) == {tag1, tag2}
+    assert set(one_region.annotations_all_bucket(CommonFields.ICU_BEDS)) == {tag1, tag2}
     assert sorted(one_region.provenance[CommonFields.ICU_BEDS]) == ["prov1", "prov2"]
 
 
@@ -681,16 +681,16 @@ def test_one_region_annotations():
 
     # get_one_region and iter_one_regions use separate code to split up the tags. Test both of them.
     one_region_tx = dataset_tx_and_sf.get_one_region(region_tx)
-    assert one_region_tx.annotations(CommonFields.CASES) == [tag1]
+    assert one_region_tx.annotations_all_bucket(CommonFields.CASES) == [tag1]
     one_region_sf = dataset_tx_and_sf.get_one_region(region_sf)
-    assert one_region_sf.annotations(CommonFields.CASES) == [
+    assert one_region_sf.annotations_all_bucket(CommonFields.CASES) == [
         tag2a,
         tag2b,
     ]
     assert set(one_region_sf.sources_all_bucket(CommonFields.CASES)) == set()
 
     assert {
-        region: one_region_dataset.annotations(CommonFields.CASES)
+        region: one_region_dataset.annotations_all_bucket(CommonFields.CASES)
         for region, one_region_dataset in dataset_tx_and_sf.iter_one_regions()
     } == {region_sf: [tag2a, tag2b], region_tx: [tag1],}
 
@@ -698,7 +698,7 @@ def test_one_region_annotations():
 def test_one_region_empty_annotations():
     one_region = test_helpers.build_one_region_dataset({CommonFields.CASES: [100, 200, 300]})
 
-    assert one_region.annotations(CommonFields.CASES) == []
+    assert one_region.annotations_all_bucket(CommonFields.CASES) == []
     assert one_region.source_url == {}
     assert one_region.provenance == {}
     assert set(one_region.sources_all_bucket(CommonFields.ICU_BEDS)) == set()
@@ -722,10 +722,15 @@ def test_one_region_tag_objects_series():
     assert isinstance(one_region.tag_objects_series, pd.Series)
     assert one_region.tag.index.equals(one_region.tag_objects_series.index)
     assert set(one_region.tag_objects_series.reset_index().itertuples(index=False)) == {
-        (CommonFields.CASES, tag1.tag_type, tag1),
-        (CommonFields.ICU_BEDS, "provenance", taglib.ProvenanceTag(source="prov1")),
-        (CommonFields.DEATHS, tag2a.tag_type, tag2a),
-        (CommonFields.DEATHS, tag2b.tag_type, tag2b),
+        (CommonFields.CASES, DemographicBucket.ALL, tag1.tag_type, tag1),
+        (
+            CommonFields.ICU_BEDS,
+            DemographicBucket.ALL,
+            "provenance",
+            taglib.ProvenanceTag(source="prov1"),
+        ),
+        (CommonFields.DEATHS, DemographicBucket.ALL, tag2a.tag_type, tag2a),
+        (CommonFields.DEATHS, DemographicBucket.ALL, tag2b.tag_type, tag2b),
     }
 
 
@@ -1002,7 +1007,9 @@ def test_append_tags():
     }
     dataset_in = test_helpers.build_dataset({region_sf: metrics_sf})
     tag_sf_cases = test_helpers.make_tag(TagType.CUMULATIVE_TAIL_TRUNCATED, date="2020-04-02")
-    tag_df = test_helpers.make_tag_df(region_sf, CommonFields.CASES, [tag_sf_cases])
+    tag_df = test_helpers.make_tag_df(
+        region_sf, CommonFields.CASES, DemographicBucket.ALL, [tag_sf_cases]
+    )
     dataset_out = dataset_in.append_tag_df(tag_df)
     metrics_sf[CommonFields.CASES] = TimeseriesLiteral(cases_values, annotation=[tag_sf_cases])
     dataset_expected = test_helpers.build_dataset({region_sf: metrics_sf})

@@ -157,7 +157,7 @@ def _build_metric_annotations(
         #  we need.
         sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
 
-    anomalies = tag_series.annotations(field_name)
+    anomalies = tag_series.annotations_all_bucket(field_name)
     anomalies = [
         AnomalyAnnotation(
             date=tag.date, original_observation=tag.original_observation, type=tag.tag_type

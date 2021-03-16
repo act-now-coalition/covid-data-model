@@ -84,14 +84,16 @@ class OneRegionTimeseriesDataset:
 
     latest: Dict[str, Any]
 
-    # A default exists for convenience in tests. Non-test code is expected to explicitly set tag_not_bucketed.
-    tag: pd.Series = dataclasses.field(
-        default_factory=lambda: _EMPTY_TAG_SERIES.droplevel(CommonFields.LOCATION_ID)
-    )
+    # A default (in __init__) for convenience in tests. Non-test code is expected to explicitly set
+    # tag.
+    tag: pd.Series
 
     # noinspection PyMissingConstructor
     def __init__(
         self,
+        region: Region,
+        data: pd.DataFrame,
+        latest: Dict[str, Any],
         *,
         tag: Optional[pd.Series] = None,
         tag_not_bucketed: Optional[pd.Series] = None,
@@ -99,15 +101,24 @@ class OneRegionTimeseriesDataset:
     ):
         if tag_not_bucketed is not None:
             assert tag is None
-            tag = _tag_to_tag_bucketed_series(tag_not_bucketed)
+            tag = _tag_add_all_bucket(tag_not_bucketed)
+        elif tag is None:
+            tag = _EMPTY_ONE_REGION_TAG_SERIES
 
         self.__default_init__(  # pylint: disable=E1101
-            tag=tag, **kwargs,
+            region, data, latest, tag=tag, **kwargs,
         )
+
+    @cached_property
+    def tag_all_bucket(self) -> pd.Series:
+        try:
+            return self.tag.xs(DemographicBucket.ALL, level=TagField.DEMOGRAPHIC_BUCKET)
+        except KeyError:
+            return _EMPTY_ONE_REGION_TAG_SERIES.droplevel([TagField.DEMOGRAPHIC_BUCKET])
 
     @property
     def provenance(self) -> Mapping[CommonFields, List[str]]:
-        provenance_series = self.tag.loc[:, DemographicBucket.ALL, [TagType.PROVENANCE]].droplevel(
+        provenance_series = self.tag_all_bucket.loc[:, [TagType.PROVENANCE]].droplevel(
             [TagField.TYPE]
         )
         # https://stackoverflow.com/a/56065318
@@ -115,13 +126,17 @@ class OneRegionTimeseriesDataset:
 
     @property
     def source_url(self) -> Mapping[CommonFields, List[UrlStr]]:
-        source_url_series = self.tag.loc[:, [TagType.SOURCE_URL]].droplevel([TagField.TYPE])
+        source_url_series = self.tag_all_bucket.loc[:, [TagType.SOURCE_URL]].droplevel(
+            [TagField.TYPE]
+        )
         # https://stackoverflow.com/a/56065318
         return source_url_series.groupby(level=0).agg(list).to_dict()
 
-    def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
+    def annotations_all_bucket(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
         try:
-            return self.tag_objects_series.loc[[metric], ANNOTATION_TAG_TYPES].to_list()
+            return self.tag_objects_series.loc[
+                [metric], DemographicBucket.ALL, ANNOTATION_TAG_TYPES
+            ].to_list()
         except KeyError:
             # Not very elegant but I can't find
             # anything better in https://github.com/pandas-dev/pandas/issues/10695
@@ -293,7 +308,7 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     return wide
 
 
-# An empty pd.Series with the structure expected for the tag_not_bucketed attribute. Use this when a
+# An empty pd.Series with the structure expected for the tag attribute. Use this when a
 # dataset does not have any tags.
 _EMPTY_TAG_SERIES = pd.Series(
     [],
@@ -301,6 +316,8 @@ _EMPTY_TAG_SERIES = pd.Series(
     dtype="str",
     index=pd.MultiIndex.from_tuples([], names=_TAG_INDEX_FIELDS),
 )
+
+_EMPTY_ONE_REGION_TAG_SERIES = _EMPTY_TAG_SERIES.droplevel(TagField.LOCATION_ID)
 
 
 # An empty pd.DataFrame with the structure expected for the static attribute. Use this when
@@ -371,11 +388,15 @@ def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, buckete
     assert numeric_columns.all()
 
 
-def _tag_to_tag_bucketed_series(tag: pd.Series) -> pd.Series:
+def _tag_add_all_bucket(tag: pd.Series) -> pd.Series:
     tag_bucketed = pd.concat(
         {DemographicBucket("all"): tag}, names=[PdFields.DEMOGRAPHIC_BUCKET]
     ).reorder_levels(_TAG_INDEX_FIELDS)
     return tag_bucketed
+
+
+def _tag_df_add_all_bucket_in_place(tag_df: pd.DataFrame):
+    tag_df[TagField.DEMOGRAPHIC_BUCKET] = "all"
 
 
 # eq=False because instances are large and we want to compare by id instead of value
@@ -404,7 +425,7 @@ class MultiRegionDataset:
 
     # A Series of tag_not_bucketed CONTENT values having index with levels TAG_INDEX_FIELDS (LOCATION_ID,
     # VARIABLE, TYPE). Rows with identical index values may exist.
-    tag_not_bucketed: pd.Series = _EMPTY_TAG_SERIES
+    tag: pd.Series = _EMPTY_TAG_SERIES
 
     # noinspection PyMissingConstructor
     def __init__(
@@ -443,6 +464,13 @@ class MultiRegionDataset:
                 dtype="float",
             )
 
+    @cached_property
+    def tag_all_bucket(self) -> pd.Series:
+        try:
+            return self.tag.xs("all", level=TagField.DEMOGRAPHIC_BUCKET)
+        except KeyError:
+            return _EMPTY_TAG_SERIES.droplevel(TagField.DEMOGRAPHIC_BUCKET)
+
     @property
     def timeseries_regions(self) -> Set[Region]:
         """Returns a set of all regions in the timeseries dataset."""
@@ -453,7 +481,8 @@ class MultiRegionDataset:
     @cached_property
     def provenance(self) -> pd.DataFrame:
         """A Series of str with a MultiIndex with names LOCATION_ID and VARIABLE"""
-        provenance_tags = self.tag_not_bucketed.loc[:, :, [TagType.PROVENANCE]]
+        # TODO(tom): Remove this function. It is only used in tests.
+        provenance_tags = self.tag_all_bucket.loc[:, :, [TagType.PROVENANCE]]
         return provenance_tags.droplevel([TagField.TYPE]).rename(PdFields.PROVENANCE)
 
     @cached_property
@@ -653,14 +682,15 @@ class MultiRegionDataset:
 
         new_index_df = provenance.index.to_frame()
         new_index_df[TagField.TYPE] = TagType.PROVENANCE
+        new_index_df[TagField.DEMOGRAPHIC_BUCKET] = DemographicBucket.ALL
         tag_additions = provenance.copy()
-        tag_additions.index = pd.MultiIndex.from_frame(new_index_df)
+        tag_additions.index = pd.MultiIndex.from_frame(new_index_df).reorder_levels(
+            _TAG_INDEX_FIELDS
+        )
         # Make a sorted series. The order doesn't matter and sorting makes the order depend only on
         # what is represented, not the order it appears in the input.
-        tag = (
-            pd.concat([self.tag_not_bucketed, tag_additions]).sort_index().rename(TagField.CONTENT)
-        )
-        return dataclasses.replace(self, tag_not_bucketed=tag)
+        tag = pd.concat([self.tag, tag_additions]).sort_index().rename(TagField.CONTENT)
+        return dataclasses.replace(self, tag=tag)
 
     @staticmethod
     def from_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
@@ -728,7 +758,9 @@ class MultiRegionDataset:
             static_df
         )
         if tag_df_to_concat:
-            dataset = dataset.append_tag_df(pd.concat(tag_df_to_concat))
+            tag_df = pd.concat(tag_df_to_concat)
+            _tag_df_add_all_bucket_in_place(tag_df)
+            dataset = dataset.append_tag_df(tag_df)
 
         return dataset
 
@@ -756,17 +788,17 @@ class MultiRegionDataset:
         assert self.static.index.is_unique
         assert self.static.index.is_monotonic_increasing
 
-        assert isinstance(self.tag_not_bucketed, pd.Series)
-        assert self.tag_not_bucketed.index.names == _TAG_INDEX_FIELDS
+        assert isinstance(self.tag, pd.Series)
+        assert self.tag.index.names == _TAG_INDEX_FIELDS
         # TODO(tom): Work out why is_monotonic_increasing is false (just for index with NaT
         #  and real date values?) after calling sort_index(). It may be related to
         #  https://github.com/pandas-dev/pandas/issues/35992 which is fixed in pandas 1.2.0
         # assert self.tag_not_bucketed.index.is_monotonic_increasing
-        assert self.tag_not_bucketed.name == TagField.CONTENT
+        assert self.tag.name == TagField.CONTENT
         # Check that all tag_not_bucketed location_id are in timeseries location_id
         assert (
-            self.tag_not_bucketed.index.get_level_values(TagField.LOCATION_ID)
-            .difference(self.timeseries_bucketed.index.get_level_values(CommonFields.LOCATION_ID))
+            self.tag.index.unique(TagField.LOCATION_ID)
+            .difference(self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID))
             .empty
         )
 
@@ -782,8 +814,8 @@ class MultiRegionDataset:
             .rename_axis(columns=PdFields.VARIABLE)
         )
         static_df = pd.concat([self.static, other.static]).sort_index()
-        tag = pd.concat([self.tag_not_bucketed, other.tag_not_bucketed]).sort_index()
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag_not_bucketed=tag)
+        tag = pd.concat([self.tag, other.tag]).sort_index()
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def append_fips_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df, containing a fips column, appended."""
@@ -799,16 +831,16 @@ class MultiRegionDataset:
         # makes the order of values in combined_series identical, independent of the order they
         # were appended.
         combined_df = (
-            self.tag_not_bucketed.reset_index()
+            self.tag.reset_index()
             .append(additional_tag_df)
             .sort_values(_TAG_INDEX_FIELDS + [TagField.CONTENT])
         )
         combined_series = combined_df.set_index(_TAG_INDEX_FIELDS)[TagField.CONTENT]
-        return dataclasses.replace(self, tag_not_bucketed=combined_series)
+        return dataclasses.replace(self, tag=combined_series)
 
     def replace_tag_df(self, tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with all tags replaced by those in tag_df"""
-        return dataclasses.replace(self, tag_not_bucketed=_EMPTY_TAG_SERIES).append_tag_df(tag_df)
+        return dataclasses.replace(self, tag=_EMPTY_TAG_SERIES).append_tag_df(tag_df)
 
     @cached_property
     def tag_objects_series(self) -> pd.Series:
@@ -836,13 +868,9 @@ class MultiRegionDataset:
         if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
 
-        tag = self.tag_not_bucketed.loc[[region.location_id]].reset_index(
-            TagField.LOCATION_ID, drop=True
-        )
+        tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
 
-        return OneRegionTimeseriesDataset(
-            region=region, data=ts_df, latest=latest_dict, tag_not_bucketed=tag
-        )
+        return OneRegionTimeseriesDataset(region=region, data=ts_df, latest=latest_dict, tag=tag)
 
     def _location_id_latest_dict(self, location_id: str) -> dict:
         """Returns the latest values dict of a location_id."""
@@ -857,6 +885,7 @@ class MultiRegionDataset:
         return self.get_locations_subset(location_ids)
 
     def get_locations_subset(self, location_ids: Collection[str]) -> "MultiRegionDataset":
+        # If these mask+loc operations show up as a performance issue try changing to xs.
         timeseries_mask = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID).isin(
             location_ids
         )
@@ -865,11 +894,9 @@ class MultiRegionDataset:
             location_ids
         )
         static_df = self.static.loc[static_mask, :]
-        tag_mask = self.tag_not_bucketed.index.get_level_values(CommonFields.LOCATION_ID).isin(
-            location_ids
-        )
-        tag = self.tag_not_bucketed.loc[tag_mask, :]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag_not_bucketed=tag)
+        tag_mask = self.tag.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
+        tag = self.tag.loc[tag_mask, :]
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def remove_regions(self, regions: Collection[Region]) -> "MultiRegionDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
@@ -948,7 +975,7 @@ class MultiRegionDataset:
         # least one column for each tag type in self.tag. If a timeseries has multiple tags with
         # the same type additional columns are added.
         output_series = []
-        for tag_type, tag_series in self.tag_not_bucketed.groupby(TagField.TYPE, sort=False):
+        for tag_type, tag_series in self.tag_all_bucket.groupby(TagField.TYPE, sort=False):
             tag_series = tag_series.droplevel(TagField.TYPE)
             duplicates = tag_series.index.duplicated()
             output_series.append(tag_series.loc[~duplicates].rename(tag_type))
@@ -1045,10 +1072,8 @@ class MultiRegionDataset:
         """Drops the specified columns from the timeseries if they exist"""
         timeseries_df = self.timeseries.drop(columns, axis="columns", errors="ignore")
         static_df = self.static.drop(columns, axis="columns", errors="ignore")
-        tag = self.tag_not_bucketed[
-            ~self.tag_not_bucketed.index.get_level_values(PdFields.VARIABLE).isin(columns)
-        ]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag_not_bucketed=tag)
+        tag = self.tag[~self.tag.index.get_level_values(PdFields.VARIABLE).isin(columns)]
+        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         """Joins the timeseries columns in `other` with those in `self`.
@@ -1067,10 +1092,8 @@ class MultiRegionDataset:
             # columns to be joined need to be disjoint
             raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
         combined_df = pd.concat([self.timeseries, other.timeseries], axis=1)
-        combined_tag = pd.concat([self.tag_not_bucketed, other.tag_not_bucketed]).sort_index()
-        return MultiRegionDataset(
-            timeseries=combined_df, static=self.static, tag_not_bucketed=combined_tag
-        )
+        combined_tag = pd.concat([self.tag, other.tag]).sort_index()
+        return MultiRegionDataset(timeseries=combined_df, static=self.static, tag=combined_tag)
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
@@ -1079,11 +1102,9 @@ class MultiRegionDataset:
         ):
             latest_dict = self._location_id_latest_dict(location_id)
             region = Region.from_location_id(location_id)
-            tag = self.tag_not_bucketed.loc[[region.location_id]].reset_index(
-                TagField.LOCATION_ID, drop=True
-            )
+            tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
             yield region, OneRegionTimeseriesDataset(
-                region, timeseries_group.reset_index(), latest_dict, tag_not_bucketed=tag
+                region=region, data=timeseries_group.reset_index(), latest=latest_dict, tag=tag
             )
 
     def get_county_name(self, *, region: pipeline.Region) -> str:
@@ -1093,7 +1114,7 @@ class MultiRegionDataset:
         """Returns a mapping from field name to set of provenances."""
         assert _TAG_INDEX_FIELDS[2] == TagField.TYPE
         return (
-            self.tag_not_bucketed.loc[:, :, [TagType.PROVENANCE]]
+            self.tag_all_bucket.loc[:, :, [TagType.PROVENANCE]]
             .groupby(TagField.VARIABLE)
             .apply(set)
             .to_dict()
@@ -1305,14 +1326,14 @@ def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     # TODO(tom): Make sure taglib.Source.rename_and_make_tag_df is tested well without tests that
     #  call this function, then delete this function.
     # Separate ds_in.tag_not_bucketed into tags to transform into `source` tags and tags to copy unmodified.
-    ds_in_tag_extract_mask = ds_in.tag_not_bucketed.index.get_level_values(TagField.TYPE).isin(
+    ds_in_tag_extract_mask = ds_in.tag.index.get_level_values(TagField.TYPE).isin(
         [TagType.PROVENANCE, TagType.SOURCE_URL]
     )
-    other_tags_df = ds_in.tag_not_bucketed.loc[~ds_in_tag_extract_mask].reset_index()
+    other_tags_df = ds_in.tag.loc[~ds_in_tag_extract_mask].reset_index()
     # Fill in missing elements of the DataFrame with None in two steps because it can't be done
     # by `unstack`.
     extracted_tags_df = (
-        ds_in.tag_not_bucketed.loc[ds_in_tag_extract_mask]
+        ds_in.tag.loc[ds_in_tag_extract_mask]
         .unstack(TagField.TYPE, fill_value=pd.NA)
         .replace(
             {pd.NA: None}
