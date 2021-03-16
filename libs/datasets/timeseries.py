@@ -1327,11 +1327,14 @@ def make_source_url_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     #  replace use of this function.
     assert TagType.SOURCE_URL not in ds_in.tag_all_bucket.index.unique(TagField.TYPE)
     try:
-        source_tags = ds_in.tag_all_bucket.xs(TagType.SOURCE, level=TagField.TYPE)
+        source_tags = ds_in.tag.xs(TagType.SOURCE, level=TagField.TYPE)
     except KeyError:
         return ds_in
     source_url = (
-        source_tags.apply(lambda tag: tag.url).dropna().rename(TagField.CONTENT).reset_index()
+        source_tags.apply(lambda content: taglib.Source.make_instance(content=content).url)
+        .dropna()
+        .rename(TagField.CONTENT)
+        .reset_index()
     )
     source_url[TagField.TYPE] = TagType.SOURCE_URL
     return ds_in.append_tag_df(source_url)
