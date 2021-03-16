@@ -1087,16 +1087,6 @@ class MultiRegionDataset:
     def get_county_name(self, *, region: pipeline.Region) -> str:
         return self.static.at[region.location_id, CommonFields.COUNTY]
 
-    def provenance_map(self) -> Mapping[CommonFields, Set[str]]:
-        """Returns a mapping from field name to set of provenances."""
-        assert _TAG_INDEX_FIELDS[2] == TagField.TYPE
-        return (
-            self.tag_all_bucket.loc[:, :, [TagType.PROVENANCE]]
-            .groupby(TagField.VARIABLE)
-            .apply(set)
-            .to_dict()
-        )
-
 
 def _remove_padded_nans(df, columns):
     if df[columns].isna().all(axis=None):
