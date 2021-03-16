@@ -191,7 +191,7 @@ class CanScraperLoader:
             source_type: String for the `taglib.Source.type` property
 
         Returns:
-            The observations in a Series and the sources in a tag_not_bucketed DataFrame
+            The observations in a Series and the sources in a tag DataFrame
         """
         if log_provider_coverage_warnings:
             self.check_variable_coverage(variables)

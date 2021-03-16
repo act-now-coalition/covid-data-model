@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import pathlib
 import re
+from dataclasses import dataclass
 from functools import lru_cache
 from itertools import chain
 from typing import Any
@@ -65,6 +66,17 @@ ANNOTATION_TAG_TYPES = [
 ]
 
 
+# An empty pd.Series with the structure expected for the tag attribute. Use this when a
+# dataset does not have any tags.
+_EMPTY_TAG_SERIES = pd.Series(
+    [],
+    name=TagField.CONTENT,
+    dtype="str",
+    index=pd.MultiIndex.from_tuples([], names=_TAG_INDEX_FIELDS),
+)
+_EMPTY_ONE_REGION_TAG_SERIES = _EMPTY_TAG_SERIES.droplevel(TagField.LOCATION_ID)
+
+
 class RegionLatestNotFound(IndexError):
     """Requested region's latest values not found in combined data"""
 
@@ -72,7 +84,7 @@ class RegionLatestNotFound(IndexError):
 
 
 @final
-@dataclass_with_default_init(frozen=True)
+@dataclass(frozen=True)
 class OneRegionTimeseriesDataset:
     """A set of timeseries with values from one region."""
 
@@ -83,30 +95,8 @@ class OneRegionTimeseriesDataset:
 
     latest: Dict[str, Any]
 
-    # A default (in __init__) for convenience in tests. Non-test code is expected to explicitly set
-    # tag.
-    tag: pd.Series
-
-    # noinspection PyMissingConstructor
-    def __init__(
-        self,
-        region: Region,
-        data: pd.DataFrame,
-        latest: Dict[str, Any],
-        *,
-        tag: Optional[pd.Series] = None,
-        tag_not_bucketed: Optional[pd.Series] = None,
-        **kwargs,
-    ):
-        if tag_not_bucketed is not None:
-            assert tag is None
-            tag = _tag_add_all_bucket(tag_not_bucketed)
-        elif tag is None:
-            tag = _EMPTY_ONE_REGION_TAG_SERIES
-
-        self.__default_init__(  # pylint: disable=E1101
-            region, data, latest, tag=tag, **kwargs,
-        )
+    # A default exists for convenience in tests. Non-test code is expected to explicitly set tag.
+    tag: pd.Series = _EMPTY_ONE_REGION_TAG_SERIES
 
     @cached_property
     def tag_all_bucket(self) -> pd.Series:
@@ -305,18 +295,6 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     assert wide.index.names == [CommonFields.LOCATION_ID]
 
     return wide
-
-
-# An empty pd.Series with the structure expected for the tag attribute. Use this when a
-# dataset does not have any tags.
-_EMPTY_TAG_SERIES = pd.Series(
-    [],
-    name=TagField.CONTENT,
-    dtype="str",
-    index=pd.MultiIndex.from_tuples([], names=_TAG_INDEX_FIELDS),
-)
-
-_EMPTY_ONE_REGION_TAG_SERIES = _EMPTY_TAG_SERIES.droplevel(TagField.LOCATION_ID)
 
 
 # An empty pd.DataFrame with the structure expected for the static attribute. Use this when

@@ -29,7 +29,7 @@ from libs.datasets.tail_filter import TagType
 
 EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
-# These columns match the OneRegion tag_not_bucketed attribute. Unlike timeseries.TAG_INDEX_FIELDS it does
+# These columns match the OneRegion tag attribute. Unlike timeseries.TAG_INDEX_FIELDS it does
 # not contain LOCATION_ID.
 TAG_TABLE_COLUMNS = [TagField.VARIABLE, TagField.TYPE, TagField.CONTENT]
 
@@ -123,11 +123,11 @@ class PerRegionStats(AggregatedStats):
             .astype(bool)
         )
         wide_var_has_url = (
-            ds.tag_not_bucketed.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+            ds.tag_all_bucket.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
         )
         # Need to use pivot_table instead of unstack to aggregate using sum.
         wide_var_annotation_count = pd.pivot_table(
-            ds.tag_not_bucketed.loc[:, :, timeseries.ANNOTATION_TAG_TYPES].notnull().reset_index(),
+            ds.tag_all_bucket.loc[:, :, timeseries.ANNOTATION_TAG_TYPES].notnull().reset_index(),
             values=TagField.CONTENT,
             index=CommonFields.LOCATION_ID,
             columns=PdFields.VARIABLE,
@@ -226,7 +226,7 @@ def init(server):
     )
 
     source_url_value_counts = (
-        ds.tag_not_bucketed.loc[:, :, TagType.SOURCE_URL]
+        ds.tag_all_bucket.loc[:, :, TagType.SOURCE_URL]
         .value_counts()
         .rename_axis(index="URL")
         .rename("count")
