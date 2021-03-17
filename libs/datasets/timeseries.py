@@ -882,7 +882,6 @@ class MultiRegionDataset:
         return data
         # except KeyError:
         #     data = pd.Series([], dtype=object)
-        return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
 
     def get_regions_subset(self, regions: Collection[Region]) -> "MultiRegionDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))

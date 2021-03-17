@@ -233,4 +233,4 @@ def test_multiple_distributions():
         one_region, Metrics.empty(), RiskLevels.empty(), log
     )
     print(summary)
-    assert 0
+    assert summary.actuals.casesByAge == {"30-39": 4}
