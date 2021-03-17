@@ -16,6 +16,7 @@ from typing import Sequence
 from typing import Tuple
 
 import more_itertools
+from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
@@ -525,6 +526,20 @@ class MultiRegionDataset:
         if not timeseries_wide.columns.is_all_dates:
             raise ValueError(f"Problem with {start_date} to {end_date}... {str(self.timeseries)}")
         return timeseries_wide
+
+    def print_stats(self, name: str):
+        """Print stats about buckets by CommonFields group; quick and ugly"""
+        buckets = self.timeseries_bucketed_long.index.get_level_values(PdFields.DEMOGRAPHIC_BUCKET)
+        bucket_all = buckets == DemographicBucket.ALL
+        count = (
+            pd.DataFrame(
+                {"all": bucket_all, "not_all": ~bucket_all},
+                index=self.timeseries_bucketed_long.index.get_level_values(PdFields.VARIABLE),
+            )
+            .groupby(common_fields.COMMON_FIELD_TO_GROUP, sort=False)
+            .sum()
+        )
+        print(f"Dataset {name}:\n{count}")
 
     @cached_property
     def timeseries_not_bucketed_wide_dates(self) -> pd.DataFrame:

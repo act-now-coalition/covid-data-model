@@ -1570,3 +1570,28 @@ def test_combine_demographic_data_multiple_distributions():
         }
     )
     test_helpers.assert_dataset_like(combined, ds_expected)
+
+
+def test_print_stats():
+    all_bucket = DemographicBucket("all")
+    age_20s = DemographicBucket("age:20-29")
+    age_30s = DemographicBucket("age:30-39")
+
+    test_helpers.build_default_region_dataset(
+        {
+            CommonFields.ICU_BEDS: TimeseriesLiteral(
+                [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),],
+            ),
+            CommonFields.CASES: [100, 200, 300],
+        }
+    ).print_stats("DS1")
+
+    test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {
+                age_20s: TimeseriesLiteral([3, 4, 5], source=taglib.Source(type="MySource")),
+                age_30s: [4, 5, 6],
+                all_bucket: [1, 2, 3],
+            }
+        }
+    ).print_stats("DS2")

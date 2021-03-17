@@ -114,8 +114,6 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
             log_provider_coverage_warnings=True,
             source_type=cls.SOURCE_TYPE,
         )
-        # TODO(tom): Once downstream can handle it return all buckets, not just 'all'.
-        rows = rows.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, drop_level=False)
         data = rows.unstack(PdFields.VARIABLE)
         data = cls._check_data(data)
         ds = MultiRegionDataset(timeseries_bucketed=data)
