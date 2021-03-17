@@ -42,8 +42,8 @@ def test_basic():
     assert log["event"] == zeros_filter.DROPPING_TIMESERIES_WITH_ONLY_ZEROS
     assert pd.MultiIndex.from_tuples(
         [
-            (region_hi.location_id, CommonFields.VACCINES_DISTRIBUTED),
-            (region_tx.location_id, CommonFields.VACCINES_DISTRIBUTED),
+            (region_hi.location_id, CommonFields.VACCINES_DISTRIBUTED, DemographicBucket.ALL),
+            (region_tx.location_id, CommonFields.VACCINES_DISTRIBUTED, DemographicBucket.ALL),
         ]
     ).equals(log["dropped"])
     test_helpers.assert_dataset_like(ds_expected, ds_out)
