@@ -511,6 +511,8 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
     dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
     test_helpers.assert_dataset_like(dataset_read, dataset_in)
 
+    # Check that a file without the demographic_bucket column (as written before
+    # https://github.com/covid-projections/covid-data-model/pull/1021) can be read.
     pointer.path_wide_dates().write_text(
         "                  location_id,variable,provenance,2020-04-03,2020-04-02,2020-04-01\n"
         "           iso1:us#iso2:us-as,   cases,          ,       300,       200,       100\n"
@@ -562,6 +564,39 @@ def test_write_read_dataset_pointer_with_provenance_list(tmpdir):
             CommonFields.CASES: [100, 200, 300],
         }
     )
+
+    dataset_in.write_to_dataset_pointer(pointer)
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+
+    test_helpers.assert_dataset_like(dataset_read, dataset_in)
+
+
+def test_write_read_wide_with_buckets(tmpdir):
+    pointer = _make_dataset_pointer(tmpdir)
+
+    all_bucket = DemographicBucket("all")
+    age_20s = DemographicBucket("age:20-29")
+    age_30s = DemographicBucket("age:30-39")
+    region_as = Region.from_state("AS")
+    region_sf = Region.from_fips("06075")
+    metrics_as = {
+        CommonFields.ICU_BEDS: TimeseriesLiteral(
+            [0, 2, 4],
+            annotation=[
+                test_helpers.make_tag(date="2020-04-01"),
+                test_helpers.make_tag(TagType.ZSCORE_OUTLIER, date="2020-04-02"),
+            ],
+        ),
+        CommonFields.CASES: [100, 200, 300],
+    }
+    metrics_sf = {
+        CommonFields.CASES: {
+            age_20s: TimeseriesLiteral([3, 4, 5], source=taglib.Source(type="MySource")),
+            age_30s: [4, 5, 6],
+            all_bucket: [1, 2, 3],
+        }
+    }
+    dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_sf: metrics_sf})
 
     dataset_in.write_to_dataset_pointer(pointer)
     dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
