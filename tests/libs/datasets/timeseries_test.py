@@ -501,16 +501,27 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
     # Compare written file with a string literal so a test fails if something changes in how the
     # file is written. The literal contains spaces to align the columns in the source.
     assert pointer.path_wide_dates().read_text() == (
+        "     location_id,variable,demographic_bucket,provenance,2020-04-03,2020-04-02,2020-04-01\n"
+        "iso1:us#iso2:us-as, cases,               all,          ,       300,       200,       100\n"
+        "iso1:us#iso2:us-as,icu_beds,             all,   pt_src1,         4,         2,         0\n"
+        "iso1:us#iso2:us-ca#fips:06075,cases,     all,          ,       310,       210\n"
+        "iso1:us#iso2:us-ca#fips:06075,deaths,    all,   pt_src2,          ,         2,         1\n"
+    ).replace(" ", "")
+
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+    test_helpers.assert_dataset_like(dataset_read, dataset_in)
+
+    pointer.path_wide_dates().write_text(
         "                  location_id,variable,provenance,2020-04-03,2020-04-02,2020-04-01\n"
         "           iso1:us#iso2:us-as,   cases,          ,       300,       200,       100\n"
         "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         4,         2,         0\n"
         "iso1:us#iso2:us-ca#fips:06075,   cases,          ,       310,       210\n"
-        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,          ,         2,         1\n"
-    ).replace(" ", "")
-
-    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
-
-    test_helpers.assert_dataset_like(dataset_read, dataset_in)
+        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,          ,         2,         1\n".replace(
+            " ", ""
+        )
+    )
+    dataset_without_bucket_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+    test_helpers.assert_dataset_like(dataset_without_bucket_read, dataset_in)
 
 
 def test_write_read_wide_dates_csv_with_annotation(tmpdir):
@@ -1239,13 +1250,15 @@ def test_timeseries_rows():
     rows = ts.timeseries_rows()
     expected = pd.read_csv(
         io.StringIO(
-            "       location_id,variable,2020-04-02,2020-04-01\n"
-            "iso1:us#iso2:us-az,      m1,        12,         8\n"
-            "iso1:us#iso2:us-az,      m2,        40,        20\n"
-            "iso1:us#iso2:us-tx,      m1,         4,         4\n"
-            "iso1:us#iso2:us-tx,      m2,         4,         2\n".replace(" ", "")
+            "       location_id,variable,demographic_bucket,2020-04-02,2020-04-01\n"
+            "iso1:us#iso2:us-az,      m1,               all,        12,         8\n"
+            "iso1:us#iso2:us-az,      m2,               all,        40,        20\n"
+            "iso1:us#iso2:us-tx,      m1,               all,         4,         4\n"
+            "iso1:us#iso2:us-tx,      m2,               all,         4,         2\n".replace(
+                " ", ""
+            )
         )
-    ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+    ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)
 
 
