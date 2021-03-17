@@ -526,6 +526,14 @@ class MultiRegionDataset:
             raise ValueError(f"Problem with {start_date} to {end_date}... {str(self.timeseries)}")
         return timeseries_wide
 
+    def print_stats(self, name: str):
+        buckets = self.timeseries_bucketed_long.index.get_level_values(PdFields.DEMOGRAPHIC_BUCKET)
+        all_bucket_count = (buckets == DemographicBucket.ALL).sum()
+        print(
+            f"Dataset {name}:\nBucket count 'all':{all_bucket_count}\nOthers:"
+            f"{len(buckets) - all_bucket_count}"
+        )
+
     @cached_property
     def timeseries_not_bucketed_wide_dates(self) -> pd.DataFrame:
         """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
