@@ -1,7 +1,9 @@
 import more_itertools
 import structlog
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 
+from libs.datasets import taglib
 from libs.datasets.sources import zeros_filter
 from libs.pipeline import Region
 from tests import test_helpers
@@ -44,4 +46,33 @@ def test_basic():
             (region_tx.location_id, CommonFields.VACCINES_DISTRIBUTED),
         ]
     ).equals(log["dropped"])
+    test_helpers.assert_dataset_like(ds_expected, ds_out)
+
+
+def test_preserve_buckets():
+    age_20s = DemographicBucket("age:20-29")
+    age_30s = DemographicBucket("age:30-39")
+    ts_with_source = TimeseriesLiteral([3, 4, 5], source=taglib.Source(type="MySource"))
+
+    ds_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {
+                age_20s: ts_with_source,
+                age_30s: [0, 0, 0],
+                DemographicBucket.ALL: [1, 2, 3],
+            },
+            CommonFields.DEATHS: [0, 1, 2],
+            CommonFields.VACCINATIONS_COMPLETED: {age_20s: [3, 4, 5]},
+        }
+    )
+
+    ds_out = zeros_filter.drop_all_zero_timeseries(ds_in, [CommonFields.CASES])
+
+    ds_expected = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {age_20s: ts_with_source, DemographicBucket.ALL: [1, 2, 3],},
+            CommonFields.DEATHS: [0, 1, 2],
+            CommonFields.VACCINATIONS_COMPLETED: {age_20s: [3, 4, 5]},
+        }
+    )
     test_helpers.assert_dataset_like(ds_expected, ds_out)
