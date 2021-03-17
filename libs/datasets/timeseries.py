@@ -518,6 +518,9 @@ class MultiRegionDataset:
             timeseries_long.unstack(CommonFields.DATE)
             .reindex(columns=date_range)
             .rename_axis(columns=CommonFields.DATE)
+            .reorder_levels(
+                [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET]
+            )
         )
         if not timeseries_wide.columns.is_all_dates:
             raise ValueError(f"Problem with {start_date} to {end_date}... {str(self.timeseries)}")
@@ -700,7 +703,13 @@ class MultiRegionDataset:
     @staticmethod
     def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
-        wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+        bucketed = PdFields.DEMOGRAPHIC_BUCKET in wide_dates_df.columns
+        if bucketed:
+            wide_dates_df = wide_dates_df.set_index(
+                [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET]
+            )
+        else:
+            wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
 
         # Iterate through all known tag types. The following are populated while iterating.
         tag_columns_mask = pd.Series(False, index=wide_dates_df.columns)
@@ -732,12 +741,13 @@ class MultiRegionDataset:
             annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
             tag_df_to_concat.append(annotations)
 
-        dataset = MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df).add_static_values(
-            static_df
-        )
+        dataset = MultiRegionDataset.from_timeseries_wide_dates_df(
+            wide_dates_df, bucketed=bucketed
+        ).add_static_values(static_df)
         if tag_df_to_concat:
             tag_df = pd.concat(tag_df_to_concat)
-            tag_df_add_all_bucket_in_place(tag_df)
+            if not bucketed:
+                tag_df_add_all_bucket_in_place(tag_df)
             dataset = dataset.append_tag_df(tag_df)
 
         return dataset
@@ -924,7 +934,7 @@ class MultiRegionDataset:
         """Returns a DataFrame containing timeseries values and tag_all_bucket, suitable for writing
         to a CSV."""
         # Make a copy to avoid modifying the cached DataFrame
-        wide_dates = self.timeseries_not_bucketed_wide_dates.copy()
+        wide_dates = self.timeseries_bucketed_wide_dates.copy()
         # Format as a string here because to_csv includes a full timestamp.
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
         # When I look at the CSV I'm usually looking for the most recent values so reverse the
@@ -936,7 +946,7 @@ class MultiRegionDataset:
         # least one column for each tag type in self.tag. If a timeseries has multiple tags with
         # the same type additional columns are added.
         output_series = []
-        for tag_type, tag_series in self.tag_all_bucket.groupby(TagField.TYPE, sort=False):
+        for tag_type, tag_series in self.tag.groupby(TagField.TYPE, sort=False):
             tag_series = tag_series.droplevel(TagField.TYPE)
             duplicates = tag_series.index.duplicated()
             output_series.append(tag_series.loc[~duplicates].rename(tag_type))

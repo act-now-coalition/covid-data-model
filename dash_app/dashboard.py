@@ -31,7 +31,12 @@ EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
 # These columns match the OneRegion tag attribute. Unlike timeseries.TAG_INDEX_FIELDS it does
 # not contain LOCATION_ID.
-TAG_TABLE_COLUMNS = [TagField.VARIABLE, TagField.TYPE, TagField.CONTENT]
+TAG_TABLE_COLUMNS = [
+    TagField.VARIABLE,
+    TagField.DEMOGRAPHIC_BUCKET,
+    TagField.TYPE,
+    TagField.CONTENT,
+]
 
 
 # TODO(tom): Move all the aggregation and statistics stuff to a different module and test it.

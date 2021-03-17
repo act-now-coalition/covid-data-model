@@ -19,7 +19,7 @@ TagField = taglib.TagField
 # The Series.name in apply is a tuple copied from the index. Make an assert fail when the index
 # names change so we know to update access to the tuple elements.
 # https://stackoverflow.com/questions/26658240/getting-the-index-of-a-row-in-a-pandas-apply-function
-_EXPECTED_INDEX_NAMES = [CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET, PdFields.VARIABLE]
+_EXPECTED_INDEX_NAMES = [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET]
 
 
 @dataclasses.dataclass
@@ -132,8 +132,8 @@ class TailFilter:
                 ),
                 # `name` is a tuple with elements _EXPECTED_INDEX_NAMES
                 location_id=series_in.name[0],
-                variable=series_in.name[2],
-                bucket=series_in.name[1],
+                variable=series_in.name[1],
+                bucket=series_in.name[2],
             )
             # TODO(tom): add count of removed observations or list of all removed or one
             #  annotation per removed observations
