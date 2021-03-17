@@ -1,6 +1,7 @@
 import pytest
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 
 from libs.pipeline import Region
 from tests import test_helpers
@@ -25,7 +26,8 @@ def test_backfill_vaccine_initiated(initiated_values, initiated_expected):
     az_metrics = {
         CommonFields.VACCINES_ADMINISTERED: [100, 200],
         CommonFields.VACCINATIONS_COMPLETED: [30, 40],
-        CommonFields.VACCINATIONS_INITIATED: [70, 160],
+        # These are intentionally incorrect to make sure the computed initiated is dropped.
+        CommonFields.VACCINATIONS_INITIATED: [71, 161],
     }
     metrics = {ny_region: ny_metrics, az_region: az_metrics}
     dataset = test_helpers.build_dataset(metrics)
@@ -39,6 +41,30 @@ def test_backfill_vaccine_initiated(initiated_values, initiated_expected):
     expected_dataset = test_helpers.build_dataset(expected_metrics)
 
     test_helpers.assert_dataset_like(result, expected_dataset)
+
+
+def test_backfill_vaccine_initiated_by_bucket():
+    bucket_all = DemographicBucket.ALL
+    bucket_40s = DemographicBucket("age:40-49")
+
+    ds_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.VACCINES_ADMINISTERED: {bucket_all: [100, 200], bucket_40s: [40, 60]},
+            CommonFields.VACCINATIONS_INITIATED: [None, None],
+            CommonFields.VACCINATIONS_COMPLETED: {bucket_all: [50, 50], bucket_40s: [10, 20]},
+        }
+    )
+
+    ds_result = vaccine_backfills.backfill_vaccination_initiated(ds_in)
+    ds_expected = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.VACCINES_ADMINISTERED: {bucket_all: [100, 200], bucket_40s: [40, 60]},
+            CommonFields.VACCINATIONS_INITIATED: {bucket_all: [50, 150], bucket_40s: [30, 40]},
+            CommonFields.VACCINATIONS_COMPLETED: {bucket_all: [50, 50], bucket_40s: [10, 20]},
+        }
+    )
+
+    test_helpers.assert_dataset_like(ds_result, ds_expected)
 
 
 def test_derive_vaccine_pct():
