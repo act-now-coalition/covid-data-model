@@ -16,6 +16,7 @@ from typing import Tuple
 
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import PdFields
@@ -31,6 +32,7 @@ class TagField(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     LOCATION_ID = CommonFields.LOCATION_ID
     # VARIABLE values should be a metric name, typically one in CommonFields.
     VARIABLE = PdFields.VARIABLE
+    DEMOGRAPHIC_BUCKET = PdFields.DEMOGRAPHIC_BUCKET
     # TYPE values must be a string from TagType
     TYPE = "tag_type"
     # CONTENT values vary depending on TYPE, either a JSON string or bare string.
@@ -86,11 +88,14 @@ class TagInTimeseries(ABC):
         """Deserializes the content and returns an instance of the TagInTimeseries subclass."""
         pass
 
-    def as_record(self, location_id: str, variable: CommonFields) -> Mapping[str, Any]:
+    def as_record(
+        self, location_id: str, variable: CommonFields, bucket: DemographicBucket
+    ) -> Mapping[str, Any]:
         """Returns this tag in a record with the content serialized."""
         return {
             TagField.LOCATION_ID: location_id,
             TagField.VARIABLE: variable,
+            TagField.DEMOGRAPHIC_BUCKET: bucket,
             TagField.TYPE: self.tag_type,
             TagField.CONTENT: self.content,
         }
@@ -276,21 +281,28 @@ TAG_TYPE_TO_CLASS = {
 
 @dataclass(frozen=True)
 class TagCollection:
-    """A collection of TagInTimeseries, organized by location and field name. The collection
+    """A collection of TagInTimeseries, organized by location, bucket and field name. The collection
     object itself is frozen but the dict within it may be modified."""
 
     _location_var_map: MutableMapping[Tuple, List[TagInTimeseries]] = dataclasses.field(
         default_factory=lambda: collections.defaultdict(list)
     )
 
-    def add(self, tag: TagInTimeseries, *, location_id: str, variable: CommonFields) -> None:
+    def add(
+        self,
+        tag: TagInTimeseries,
+        *,
+        location_id: str,
+        variable: CommonFields,
+        bucket: DemographicBucket
+    ) -> None:
         """Adds a tag to this collection."""
-        self._location_var_map[(location_id, variable)].append(tag)
+        self._location_var_map[(location_id, variable, bucket)].append(tag)
 
     def _as_records(self) -> Iterable[Mapping]:
-        for (location_id, variable), tags in self._location_var_map.items():
+        for (location_id, variable, bucket), tags in self._location_var_map.items():
             for tag in tags:
-                yield tag.as_record(location_id, variable)
+                yield tag.as_record(location_id, variable, bucket)
 
     def as_dataframe(self) -> pd.DataFrame:
         """Returns all tags in this collection in a DataFrame."""

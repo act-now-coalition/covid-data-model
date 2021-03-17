@@ -1,8 +1,11 @@
 from typing import ClassVar, List, Tuple
+from typing import Type
+
 import math
 import dataclasses
 
 import pandas as pd
+from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 
@@ -11,6 +14,12 @@ from libs.datasets import timeseries
 
 TagType = taglib.TagType
 TagField = taglib.TagField
+
+
+# The Series.name in apply is a tuple copied from the index. Make an assert fail when the index
+# names change so we know to update access to the tuple elements.
+# https://stackoverflow.com/questions/26658240/getting-the-index-of-a-row-in-a-pandas-apply-function
+_EXPECTED_INDEX_NAMES = [CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET, PdFields.VARIABLE]
 
 
 @dataclasses.dataclass
@@ -39,13 +48,14 @@ class TailFilter:
         dataset: timeseries.MultiRegionDataset, fields: List[FieldName]
     ) -> Tuple["TailFilter", timeseries.MultiRegionDataset]:
         """Returns a dataset with recent data that looks bad removed from cumulative fields."""
-        timeseries_wide_dates = dataset.timeseries_not_bucketed_wide_dates
+        timeseries_wide_dates = dataset.timeseries_bucketed_wide_dates
 
         fields_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(fields)
         to_filter = timeseries_wide_dates.loc[pd.IndexSlice[:, fields_mask], :]
         not_filtered = timeseries_wide_dates.loc[pd.IndexSlice[:, ~fields_mask], :]
 
         tail_filter = TailFilter()
+        assert to_filter.index.names == _EXPECTED_INDEX_NAMES
         filtered = to_filter.apply(tail_filter._filter_one_series, axis=1)
 
         merged = pd.concat([not_filtered, filtered])
@@ -56,7 +66,7 @@ class TailFilter:
         return (
             tail_filter,
             dataclasses.replace(
-                dataset, timeseries=timeseries_wide_variables, timeseries_bucketed=None
+                dataset, timeseries_bucketed=timeseries_wide_variables
             ).append_tag_df(tail_filter._annotations.as_dataframe()),
         )
 
@@ -105,6 +115,7 @@ class TailFilter:
         else:
             # series_in.iat[truncate_at] is the first value *not* returned
             assert TailFilter.FILTER_DATES_OLDEST <= truncate_at <= -1
+            annotation_type: Type[taglib.AnnotationWithDate]
             if count_observation_diff_under_threshold < TailFilter.COUNT_OBSERVATION_LONG:
                 annotation_type = taglib.CumulativeTailTruncated
                 self.truncated += 1
@@ -119,8 +130,10 @@ class TailFilter:
                     date=series_in.index[truncate_at - 1],
                     original_observation=float(series_in.iat[truncate_at]),
                 ),
+                # `name` is a tuple with elements _EXPECTED_INDEX_NAMES
                 location_id=series_in.name[0],
-                variable=series_in.name[1],
+                variable=series_in.name[2],
+                bucket=series_in.name[1],
             )
             # TODO(tom): add count of removed observations or list of all removed or one
             #  annotation per removed observations

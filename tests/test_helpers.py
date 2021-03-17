@@ -85,7 +85,10 @@ class TimeseriesLiteral(UserList):
 
 
 def make_tag_df(
-    region: Region, metric: CommonFields, records: List[taglib.TagInTimeseries]
+    region: Region,
+    metric: CommonFields,
+    bucket: DemographicBucket,
+    records: List[taglib.TagInTimeseries],
 ) -> pd.DataFrame:
     df = pd.DataFrame(
         {
@@ -95,6 +98,7 @@ def make_tag_df(
     )
     df[TagField.LOCATION_ID] = region.location_id
     df[TagField.VARIABLE] = metric
+    df[TagField.DEMOGRAPHIC_BUCKET] = bucket
     return df
 
 
@@ -182,7 +186,7 @@ def build_dataset(
             make_tag(TagType.PROVENANCE, source=provenance) for provenance in ts_literal.provenance
         )
         records.extend(make_tag(TagType.SOURCE_URL, source=url) for url in ts_literal.source_url)
-        tags_to_concat.append(make_tag_df(region, var, records))
+        tags_to_concat.append(make_tag_df(region, var, bucket, records))
 
     if tags_to_concat:
         dataset = dataset.append_tag_df(pd.concat(tags_to_concat))
