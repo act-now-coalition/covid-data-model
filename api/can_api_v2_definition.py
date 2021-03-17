@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 import enum
 
 from libs.datasets.dataset_utils import AggregationLevel
@@ -191,6 +191,8 @@ This value may vary by type of vaccine, but for Moderna and Pfizer this indicate
 number of people vaccinated with both the first and second dose.
 """,
     )
+    casesByAge: Optional[Dict[str, int]] = pydantic.Field(None)
+
     # When adding a new "actual" field here remember to add a `FieldAnnotations` in `Annotations`.
 
 
@@ -345,6 +347,7 @@ class Metrics(base_model.APIBaseModel):
             infectionRate=None,
             infectionRateCI90=None,
             icuHeadroomRatio=None,
+            icuCapacityRatio=None,
         )
 
 
@@ -388,6 +391,18 @@ class RiskLevels(base_model.APIBaseModel):
     infectionRate: RiskLevel = pydantic.Field(..., description="Infection rate risk level.")
     icuHeadroomRatio: RiskLevel = pydantic.Field(..., description="ICU headroom ratio risk level.")
     icuCapacityRatio: RiskLevel = pydantic.Field(..., description="ICU capacity ratio risk level.")
+
+    @classmethod
+    def empty(cls) -> "RiskLevels":
+        return RiskLevels(
+            overall=RiskLevel.LOW,
+            testPositivityRatio=RiskLevel.LOW,
+            caseDensity=RiskLevel.LOW,
+            contactTracerCapacityRatio=RiskLevel.LOW,
+            infectionRate=RiskLevel.LOW,
+            icuHeadroomRatio=RiskLevel.LOW,
+            icuCapacityRatio=RiskLevel.LOW,
+        )
 
 
 # Additional class used for bulk timeseries where we are not including all risk levels

@@ -2,6 +2,9 @@ import datetime
 
 import pytest
 import structlog
+from covidactnow.datapublic.common_fields import DemographicBucket
+from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldName
 
 from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import Annotations
@@ -9,10 +12,15 @@ from api.can_api_v2_definition import FieldAnnotations
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 from api.can_api_v2_definition import RegionSummary
+from api.can_api_v2_definition import RiskLevels
+from api.can_api_v2_definition import Metrics
 from libs.metrics import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
 from libs import build_api_v2
 from libs.pipelines import api_v2_pipeline
+from tests import test_helpers
+from tests.test_helpers import TimeseriesLiteral
+from libs.pipeline import Region
 
 
 @pytest.mark.parametrize(
@@ -194,3 +202,35 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_datase
     # Double checking that serialized json does not contain NaNs, all values should
     # be serialized using the simplejson wrapper.
     assert "NaN" not in region_timeseries.json()
+
+
+def test_multiple_distributions():
+    """All time-series within a variable are treated as a unit when combining"""
+    m1 = FieldName("cases")
+    m2 = FieldName("deaths")
+    all_bucket = DemographicBucket("all")
+    age_20s = DemographicBucket("age:20-29")
+    age_30s = DemographicBucket("age:30-39")
+    region_ak = Region.from_state("AK")
+    region_ca = Region.from_state("CA")
+    log = structlog.get_logger()
+
+    ds2 = test_helpers.build_dataset(
+        {
+            region_ca: {
+                m1: {
+                    all_bucket: TimeseriesLiteral([3, 4], provenance="ds2_ca_m1_30s"),
+                    age_30s: TimeseriesLiteral([3, 4], provenance="ds2_ca_m1_30s"),
+                },
+                m2: {age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")},
+            },
+        },
+        static_by_region_then_field_name={region_ca: {CommonFields.POPULATION: 10000}},
+    )
+
+    one_region = ds2.get_one_region(region_ca)
+    summary = build_api_v2.build_region_summary(
+        one_region, Metrics.empty(), RiskLevels.empty(), log
+    )
+    print(summary)
+    assert 0

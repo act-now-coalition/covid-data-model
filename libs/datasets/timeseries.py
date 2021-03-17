@@ -95,6 +95,8 @@ class OneRegionTimeseriesDataset:
 
     latest: Dict[str, Any]
 
+    bucketed_latest: pd.DataFrame
+
     # A default exists for convenience in tests. Non-test code is expected to explicitly set tag.
     tag: pd.Series = _EMPTY_ONE_REGION_TAG_SERIES
 
@@ -138,6 +140,15 @@ class OneRegionTimeseriesDataset:
             ].to_list()
         except KeyError:
             return []
+
+    @cached_property
+    def bucketed_latest_by_field(
+        self,
+    ) -> Dict[CommonFields, Dict[DemographicBucket, Optional[float]]]:
+        return {
+            field: self.bucketed_latest.loc[:, field].to_dict()
+            for field in self.bucketed_latest.columns
+        }
 
     @cached_property
     def tag_objects_series(self) -> pd.Series:
@@ -539,6 +550,7 @@ class MultiRegionDataset:
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
+
         if self.timeseries.columns.empty:
             return pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
         # timeseries is already sorted by DATE with the latest at the bottom.
@@ -546,7 +558,14 @@ class MultiRegionDataset:
         # `long` has MultiIndex with LOCATION_ID and VARIABLE (added by stack). Keep only the last
         # row with each index to get the last value for each date.
         unduplicated_and_last_mask = ~long.index.duplicated(keep="last")
+
         return long.loc[unduplicated_and_last_mask, :].unstack()
+
+    @cached_property
+    def _timeseries_bucketed_latest_values(self) -> pd.DataFrame:
+        long_bucketed = self.timeseries_bucketed.stack().droplevel(CommonFields.DATE)
+        unduplicated_bucketed_and_last_mask = ~long_bucketed.index.duplicated(keep="last")
+        return long_bucketed.loc[unduplicated_bucketed_and_last_mask, :].unstack()
 
     def latest_in_static(self, field: FieldName) -> "MultiRegionDataset":
         """Returns a new object with the latest values from timeseries 'field' copied to static."""
@@ -838,12 +857,15 @@ class MultiRegionDataset:
         except KeyError:
             ts_df = pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
         latest_dict = self._location_id_latest_dict(region.location_id)
+        bucketed_latest = self._bucketed_latest_for_location_id(region.location_id)
         if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
 
         tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
 
-        return OneRegionTimeseriesDataset(region=region, data=ts_df, latest=latest_dict, tag=tag)
+        return OneRegionTimeseriesDataset(
+            region=region, data=ts_df, latest=latest_dict, tag=tag, bucketed_latest=bucketed_latest
+        )
 
     def _location_id_latest_dict(self, location_id: str) -> dict:
         """Returns the latest values dict of a location_id."""
@@ -851,6 +873,15 @@ class MultiRegionDataset:
             attributes_series = self.static_and_timeseries_latest_with_fips().loc[location_id, :]
         except KeyError:
             attributes_series = pd.Series([], dtype=object)
+        return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
+
+    def _bucketed_latest_for_location_id(self, location_id: str) -> pd.DataFrame:
+        """Returns the latest values dict of a location_id."""
+        # try:
+        data = self._timeseries_bucketed_latest_values.loc[location_id, :]
+        return data
+        # except KeyError:
+        #     data = pd.Series([], dtype=object)
         return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
 
     def get_regions_subset(self, regions: Collection[Region]) -> "MultiRegionDataset":
@@ -1068,8 +1099,14 @@ class MultiRegionDataset:
             latest_dict = self._location_id_latest_dict(location_id)
             region = Region.from_location_id(location_id)
             tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
+            bucketed_latest = self._bucketed_latest_for_location_id(location_id)
+
             yield region, OneRegionTimeseriesDataset(
-                region=region, data=timeseries_group.reset_index(), latest=latest_dict, tag=tag
+                region=region,
+                data=timeseries_group.reset_index(),
+                latest=latest_dict,
+                tag=tag,
+                bucketed_latest=bucketed_latest,
             )
 
     def get_county_name(self, *, region: pipeline.Region) -> str:

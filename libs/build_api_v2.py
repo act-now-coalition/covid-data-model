@@ -35,7 +35,15 @@ METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE = "More than one provenance for a field"
 USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 
 
-def _build_actuals(actual_data: dict) -> Actuals:
+def _select_category(category: str, data: dict):
+    return {
+        key.replace(category + ":", ""): value
+        for key, value in data.items()
+        if key.startswith(category)
+    }
+
+
+def _build_actuals(actual_data: dict, bucketed_data: dict = None) -> Actuals:
     """Generate actuals entry.
 
     Args:
@@ -43,9 +51,12 @@ def _build_actuals(actual_data: dict) -> Actuals:
         intervention: Current state level intervention.
 
     """
+    cases_by_age = None
+    if bucketed_data:
+        cases_by_age = _select_category("age", bucketed_data[CommonFields.CASES])
     return Actuals(
-        cases=actual_data[CommonFields.CASES],
-        deaths=actual_data[CommonFields.DEATHS],
+        cases=actual_data.get(CommonFields.CASES),
+        deaths=actual_data.get(CommonFields.DEATHS),
         positiveTests=actual_data.get(CommonFields.POSITIVE_TESTS),
         negativeTests=actual_data.get(CommonFields.NEGATIVE_TESTS),
         contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
@@ -61,13 +72,14 @@ def _build_actuals(actual_data: dict) -> Actuals:
             "currentUsageTotal": actual_data.get(CommonFields.CURRENT_ICU_TOTAL),
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
-        newCases=actual_data[CommonFields.NEW_CASES],
-        newDeaths=actual_data[CommonFields.NEW_DEATHS],
+        newCases=actual_data.get(CommonFields.NEW_CASES),
+        newDeaths=actual_data.get(CommonFields.NEW_DEATHS),
         vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
         vaccinationsInitiated=actual_data.get(CommonFields.VACCINATIONS_INITIATED),
         # Vaccinations completed currently optional as data is not yet flowing through.
         # This will allow us to include vaccines completed data as soon as its scraped.
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
+        casesByAge=cases_by_age,
     )
 
 
@@ -78,9 +90,10 @@ def build_region_summary(
     log,
 ) -> RegionSummary:
     latest_values = one_region.latest
+    print(latest_values)
     region = one_region.region
 
-    actuals = _build_actuals(latest_values)
+    actuals = _build_actuals(latest_values, bucketed_data=one_region.bucketed_latest_by_field)
     return RegionSummary(
         fips=region.fips,
         country=region.country,
@@ -95,7 +108,7 @@ def build_region_summary(
         riskLevels=risk_levels,
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
-        url=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
+        url=latest_values.get(CommonFields.CAN_LOCATION_PAGE_URL),
         annotations=build_annotations(one_region, log),
     )
 
