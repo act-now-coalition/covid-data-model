@@ -1050,10 +1050,10 @@ class MultiRegionDataset:
 
     def drop_columns_if_present(self, columns: List[CommonFields]) -> "MultiRegionDataset":
         """Drops the specified columns from the timeseries if they exist"""
-        timeseries_df = self.timeseries.drop(columns, axis="columns", errors="ignore")
+        timeseries_df = self.timeseries_bucketed.drop(columns, axis="columns", errors="ignore")
         static_df = self.static.drop(columns, axis="columns", errors="ignore")
         tag = self.tag[~self.tag.index.get_level_values(PdFields.VARIABLE).isin(columns)]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         """Joins the timeseries columns in `other` with those in `self`.

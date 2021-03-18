@@ -1146,7 +1146,6 @@ def test_join_columns_with_tags():
 
 
 def test_drop_column_with_tags():
-    """Checks that join_columns preserves tags."""
     region = Region.from_state("TX")
     cases_values = [100, 200, 300, 400]
     ts_lit = TimeseriesLiteral(cases_values, annotation=[test_helpers.make_tag()])
@@ -1159,6 +1158,22 @@ def test_drop_column_with_tags():
 
     assert len(dataset_out.tag) == 1
     dataset_expected = test_helpers.build_dataset({region: {CommonFields.CASES: ts_lit}})
+    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+
+
+def test_drop_column_with_tags_and_bucket():
+    age_40s = DemographicBucket("age:40-49")
+    ts_lit = TimeseriesLiteral([10, 20, 30], annotation=[test_helpers.make_tag()])
+    data_cases = {CommonFields.CASES: {age_40s: ts_lit, DemographicBucket.ALL: ts_lit}}
+    data_deaths = {CommonFields.DEATHS: {age_40s: ts_lit}}
+
+    dataset_in = test_helpers.build_default_region_dataset({**data_cases, **data_deaths})
+    assert len(dataset_in.tag) == 3
+
+    dataset_out = dataset_in.drop_column_if_present(CommonFields.DEATHS)
+
+    assert len(dataset_out.tag) == 2
+    dataset_expected = test_helpers.build_default_region_dataset({**data_cases})
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
 
 
