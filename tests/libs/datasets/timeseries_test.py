@@ -328,6 +328,35 @@ def test_append_regions():
     test_helpers.assert_dataset_like(ts_merged_1, ts_expected)
 
 
+def test_append_regions_with_buckets():
+    region_cbsa = Region.from_cbsa_code("10100")
+    region_la = Region.from_fips("06037")
+    region_sf = Region.from_fips("06075")
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+    age_40s = DemographicBucket("age:40-49")
+    data_county = {
+        region_la: {
+            m1: {
+                age_40s: TimeseriesLiteral([1, 2], annotation=[test_helpers.make_tag()]),
+                DemographicBucket.ALL: [2, 3],
+            }
+        },
+        region_sf: {m1: [3, 4]},
+    }
+    data_cbsa = {region_cbsa: {m2: [5, 6]}}
+    ds_county = test_helpers.build_dataset(data_county)
+    ds_cbsa = test_helpers.build_dataset(data_cbsa)
+
+    ds_out_1 = ds_county.append_regions(ds_cbsa)
+    ds_out_2 = ds_cbsa.append_regions(ds_county)
+
+    ds_expected = test_helpers.build_dataset({**data_cbsa, **data_county})
+
+    test_helpers.assert_dataset_like(ds_out_1, ds_expected)
+    test_helpers.assert_dataset_like(ds_out_2, ds_expected)
+
+
 def test_append_regions_duplicate_region_raises():
     ts1 = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(

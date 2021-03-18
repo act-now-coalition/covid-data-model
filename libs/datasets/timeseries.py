@@ -812,13 +812,13 @@ class MultiRegionDataset:
         # TODO(tom): check if rename_axis is needed once we have
         #  https://pandas.pydata.org/docs/whatsnew/v1.2.0.html#index-column-name-preservation-when-aggregating
         timeseries_df = (
-            pd.concat([self.timeseries, other.timeseries])
+            pd.concat([self.timeseries_bucketed, other.timeseries_bucketed])
             .sort_index()
             .rename_axis(columns=PdFields.VARIABLE)
         )
         static_df = pd.concat([self.static, other.static]).sort_index()
         tag = pd.concat([self.tag, other.tag]).sort_index()
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def append_fips_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df, containing a fips column, appended."""
