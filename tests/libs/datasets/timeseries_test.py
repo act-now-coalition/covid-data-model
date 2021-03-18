@@ -960,6 +960,25 @@ def test_join_columns_missing_regions():
     test_helpers.assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
 
 
+def test_join_columns_with_buckets():
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+    age20s = DemographicBucket("age:20-29")
+
+    m1_data = {m1: {age20s: [1, 2, 3]}}
+    ds_1 = test_helpers.build_default_region_dataset(m1_data)
+    m2_data = {m2: {age20s: [4, 5, 6], DemographicBucket.ALL: [7, 8, 9]}}
+    ds_2 = test_helpers.build_default_region_dataset(m2_data)
+
+    with pytest.raises(ValueError):
+        ds_1.join_columns(ds_1)
+
+    ds_expected = test_helpers.build_default_region_dataset({**m1_data, **m2_data})
+
+    ds_joined = ds_1.join_columns(ds_2)
+    test_helpers.assert_dataset_like(ds_joined, ds_expected)
+
+
 def test_iter_one_region():
     ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(

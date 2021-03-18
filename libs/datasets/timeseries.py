@@ -1067,13 +1067,17 @@ class MultiRegionDataset:
             raise NotImplementedError(
                 f"join with other with attributes {other_non_geo_attributes} not supported"
             )
-        common_ts_columns = set(other.timeseries.columns) & set(self.timeseries.columns)
+        common_ts_columns = set(other.timeseries_bucketed.columns) & set(
+            self.timeseries_bucketed.columns
+        )
         if common_ts_columns:
             # columns to be joined need to be disjoint
             raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
-        combined_df = pd.concat([self.timeseries, other.timeseries], axis=1)
+        combined_df = pd.concat([self.timeseries_bucketed, other.timeseries_bucketed], axis=1)
         combined_tag = pd.concat([self.tag, other.tag]).sort_index()
-        return MultiRegionDataset(timeseries=combined_df, static=self.static, tag=combined_tag)
+        return MultiRegionDataset(
+            timeseries_bucketed=combined_df, static=self.static, tag=combined_tag
+        )
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
