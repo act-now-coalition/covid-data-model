@@ -3,7 +3,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 import pandas as pd
 import numpy as np
-from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import taglib
@@ -86,29 +85,13 @@ def drop_series_outliers(
 
     Returns: timeseries with outliers removed from new_cases.
     """
-    # TODO(tom): Change this to read dataset.timeseries_bucketed and copy the bucket to the tag
-    df_copy = dataset.timeseries.copy()
-    bucket_all = DemographicBucket.ALL
-    grouped_df = dataset.groupby_region()
+    ts_to_filter = dataset.timeseries_bucketed_wide_dates.xs(
+        field, level=PdFields.VARIABLE, drop_level=False
+    )
+    zscores = ts_to_filter.apply(_calculate_modified_zscore, axis=1, result_type="reduce")
+    to_exclude = (zscores > zscore_threshold) & (ts_to_filter > threshold)
 
-    zscores = grouped_df[field].apply(_calculate_modified_zscore)
-    to_exclude = (zscores > zscore_threshold) & (df_copy[field] > threshold)
-
-    new_tags = taglib.TagCollection()
-    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
-    # rows where to_exclude is True.
-    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    values = [(idx, df_copy.at[idx, field]) for idx in to_exclude[to_exclude].keys()]
-    for (location_id, date), original_value in values:
-        tag = taglib.ZScoreOutlier(date=date, original_observation=original_value,)
-        new_tags.add(tag, location_id=location_id, variable=field, bucket=bucket_all)
-    df_copy.loc[to_exclude, field] = np.nan
-
-    new_dataset = dataclasses.replace(
-        dataset, timeseries=df_copy, timeseries_bucketed=None
-    ).append_tag_df(new_tags.as_dataframe())
-
-    return new_dataset
+    return exclude_observations(dataset, to_exclude)
 
 
 def drop_tail_positivity_outliers(
@@ -145,9 +128,12 @@ def drop_tail_positivity_outliers(
     test_positivity_diffs = ts_to_filter.diff(axis=1).abs()
 
     to_exclude_wide = (zscores > zscore_threshold) & (test_positivity_diffs > diff_threshold_ratio)
+    return exclude_observations(dataset, to_exclude_wide)
+
+
+def exclude_observations(dataset, to_exclude_wide) -> MultiRegionDataset:
     to_exclude_long = to_exclude_wide.stack()
     to_exclude_index = to_exclude_long.loc[to_exclude_long].index
-
     new_tags = taglib.TagCollection()
     timeseries_copy = dataset.timeseries_bucketed.copy()
     # Iterate through the MultiIndex to_exclude_index, accessing elements of timeseries_copy.
@@ -179,7 +165,6 @@ def drop_tail_positivity_outliers(
             bucket=bucket,
         )
         timeseries_copy.at[(location_id, bucket, date), variable] = np.nan
-
     return dataclasses.replace(dataset, timeseries_bucketed=timeseries_copy).append_tag_df(
         new_tags.as_dataframe()
     )
