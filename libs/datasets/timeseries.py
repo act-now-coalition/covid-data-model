@@ -978,7 +978,7 @@ class MultiRegionDataset:
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
-        ts = self.timeseries_not_bucketed_wide_dates
+        ts = self.timeseries_bucketed_wide_dates
         recent_columns_mask = ts.columns >= cutoff_date
         recent_rows_mask = ts.loc[:, recent_columns_mask].notna().any(axis=1)
         timeseries_wide_dates = ts.loc[recent_rows_mask, :]
@@ -988,14 +988,12 @@ class MultiRegionDataset:
         timeseries_wide_variables = (
             timeseries_wide_dates.stack()
             .unstack(PdFields.VARIABLE)
-            .reindex(columns=self.timeseries.columns)
+            .reindex(columns=self.timeseries_bucketed.columns)
             .sort_index()
         )
         # Only keep tag information for timeseries in the new timeseries_wide_dates.
         tag = _slice_with_labels(self.tag, timeseries_wide_dates.index)
-        return dataclasses.replace(
-            self, timeseries=timeseries_wide_variables, tag=tag, timeseries_bucketed=None,
-        )
+        return dataclasses.replace(self, timeseries_bucketed=timeseries_wide_variables, tag=tag,)
 
     def to_csv(self, path: pathlib.Path, include_latest=True):
         """Persists timeseries to CSV.
