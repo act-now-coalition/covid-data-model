@@ -1,4 +1,7 @@
 import io
+
+from covidactnow.datapublic.common_fields import DemographicBucket
+
 from libs.datasets import timeseries
 from libs.datasets import new_cases_and_deaths
 from tests import test_helpers
@@ -61,6 +64,23 @@ def test_calculate_new_deaths():
         {
             ma_region: {CommonFields.DEATHS: [0, 1, 1], CommonFields.NEW_DEATHS: [0, 1, 0]},
             ny_region: {CommonFields.DEATHS: [None, 5, 7], CommonFields.NEW_DEATHS: [None, 5, 2]},
+        }
+    )
+    test_helpers.assert_dataset_like(dataset_after, dataset_expected)
+
+
+def test_calculate_new_deaths_preserve_buckets():
+    age_40s = DemographicBucket("age:40-49")
+    metrics_before = {
+        CommonFields.DEATHS: {DemographicBucket.ALL: [0, 1, 1], age_40s: [None, 5, 7]}
+    }
+    dataset_before = test_helpers.build_default_region_dataset(metrics_before)
+
+    dataset_after = new_cases_and_deaths.add_new_deaths(dataset_before)
+    dataset_expected = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.NEW_DEATHS: {DemographicBucket.ALL: [0, 1, 0], age_40s: [None, 5, 2]},
+            **metrics_before,
         }
     )
     test_helpers.assert_dataset_like(dataset_after, dataset_expected)

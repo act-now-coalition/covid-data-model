@@ -130,19 +130,23 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
+    multiregion_dataset.print_stats("drop_regions_without_population")
 
     multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
         multiregion_dataset
     )
+    multiregion_dataset.print_stats("aggregate_puerto_rico_from_counties")
     multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
+    multiregion_dataset.print_stats("aggregate_to_new_york_city")
     multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(multiregion_dataset)
-    multiregion_dataset.print_stats("custom_aggregations")
+    multiregion_dataset.print_stats("replace_dc_county_with_state_data")
 
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     cbsa_dataset = aggregator.aggregate(
         multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
     )
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+    multiregion_dataset.print_stats("CountyToCBSAAggregator")
 
     if aggregate_to_country:
         country_dataset = region_aggregation.aggregate_regions(
@@ -151,6 +155,7 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
             reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
+        multiregion_dataset.print_stats("aggregate_to_country")
 
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
     multiregion_dataset.print_stats("persist")
