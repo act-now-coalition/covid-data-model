@@ -874,34 +874,34 @@ class MultiRegionDataset:
 
     def get_locations_subset(self, location_ids: Collection[str]) -> "MultiRegionDataset":
         # If these mask+loc operations show up as a performance issue try changing to xs.
-        timeseries_mask = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID).isin(
-            location_ids
-        )
-        timeseries_df = self.timeseries.loc[timeseries_mask, :]
+        timeseries_mask = self.timeseries_bucketed.index.get_level_values(
+            CommonFields.LOCATION_ID
+        ).isin(location_ids)
+        timeseries_df = self.timeseries_bucketed.loc[timeseries_mask, :]
         static_mask = self.static.index.get_level_values(CommonFields.LOCATION_ID).isin(
             location_ids
         )
         static_df = self.static.loc[static_mask, :]
         tag_mask = self.tag.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
         tag = self.tag.loc[tag_mask, :]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def remove_regions(self, regions: Collection[Region]) -> "MultiRegionDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))
         return self.remove_locations(location_ids)
 
     def remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
-        timeseries_mask = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID).isin(
-            location_ids
-        )
-        timeseries_df = self.timeseries.loc[~timeseries_mask, :]
+        timeseries_mask = self.timeseries_bucketed.index.get_level_values(
+            CommonFields.LOCATION_ID
+        ).isin(location_ids)
+        timeseries_df = self.timeseries_bucketed.loc[~timeseries_mask, :]
         static_mask = self.static.index.get_level_values(CommonFields.LOCATION_ID).isin(
             location_ids
         )
         static_df = self.static.loc[~static_mask, :]
         tag_mask = self.tag.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
         tag = self.tag.loc[~tag_mask, :]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def get_subset(
         self,

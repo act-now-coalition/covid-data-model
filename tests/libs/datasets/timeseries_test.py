@@ -1298,7 +1298,39 @@ def test_timeseries_rows():
 
 
 def test_multi_region_dataset_get_subset():
-    ds = timeseries.MultiRegionDataset.from_csv(
+    region_us = Region.from_iso1("us")
+    region_tx = Region.from_state("TX")
+    region_county = Region.from_fips("97222")
+    region_cbsa = Region.from_cbsa_code("10100")
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+    ds = test_helpers.build_dataset(
+        {
+            region_us: {m1: [100], m2: [200]},
+            region_tx: {m1: [4], m2: [2]},
+            region_county: {m1: [1], m2: [2]},
+            region_cbsa: {m1: [1], m2: [2], CommonFields.POPULATION: [20_000]},
+        },
+        # TODO(tom): remove static_by_region_then_field_name after
+        #  https://github.com/covid-projections/covid-data-model/pull/1011 is merged.
+        static_by_region_then_field_name={
+            region_us: {CommonFields.POPULATION: 10_000, CommonFields.AGGREGATE_LEVEL: "country"},
+            region_tx: {
+                CommonFields.POPULATION: 5_000,
+                CommonFields.AGGREGATE_LEVEL: "state",
+                CommonFields.STATE: "TX",
+            },
+            region_county: {
+                CommonFields.POPULATION: 1_000,
+                CommonFields.AGGREGATE_LEVEL: "county",
+                CommonFields.FIPS: region_county.fips,
+            },
+            region_cbsa: {CommonFields.AGGREGATE_LEVEL: "cbsa"},
+        },
+    )
+
+    # TODO(tom): remove ds_old when migrating more tests away from `from_csv`
+    ds_old = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,aggregate_level,state,fips,date,m1,m2,population\n"
             "iso1:us,country,,,2020-04-01,100,200,\n"
@@ -1310,6 +1342,7 @@ def test_multi_region_dataset_get_subset():
             "iso1:us#cbsa:10100,cbsa,,,2020-04-01,1,2,20000\n"
         )
     )
+    test_helpers.assert_dataset_like(ds_old, ds)
 
     subset = ds.get_subset(aggregation_level=AggregationLevel.COUNTRY)
     assert subset.static.at["iso1:us", CommonFields.POPULATION] == 10000
@@ -1328,6 +1361,22 @@ def test_multi_region_dataset_get_subset():
         "iso1:us",
         "iso1:us#cbsa:10100",
     }
+
+
+def test_multi_region_dataset_get_subset_with_buckets():
+    # Make some regions at different levels
+    region_us = Region.from_iso1("us")
+    region_tx = Region.from_state("TX")
+    region_la = Region.from_fips("06037")
+    age_40s = DemographicBucket("age:40-49")
+    data_us = {region_us: {CommonFields.CASES: [100, 200]}}
+    data_tx = {region_tx: {CommonFields.CASES: [10, 20]}}
+    data_la = {region_la: {CommonFields.CASES: {DemographicBucket.ALL: [5, 10], age_40s: [1, 2]}}}
+    ds = test_helpers.build_dataset({**data_us, **data_tx, **data_la})
+
+    ds_expected = test_helpers.build_dataset({**data_us, **data_la})
+    test_helpers.assert_dataset_like(ds.get_regions_subset([region_us, region_la]), ds_expected)
+    test_helpers.assert_dataset_like(ds.remove_regions([region_tx]), ds_expected)
 
 
 def test_dataset_regions_property(nyc_region):
