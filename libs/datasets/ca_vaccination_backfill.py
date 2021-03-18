@@ -1,5 +1,7 @@
 import dataclasses
 import pandas as pd
+from covidactnow.datapublic.common_fields import DemographicBucket
+
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets import AggregationLevel
 from libs.pipeline import Region
@@ -12,7 +14,11 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
     """Derives vaccination metrics for CA counties based on State 1st vs 2nd dose reporting."""
 
     ca_county_dataset = ds_in.get_subset(aggregation_level=AggregationLevel.COUNTY, state="CA")
-    ca_county_wide = ca_county_dataset.timeseries_not_bucketed_wide_dates
+    # Get county level time-series in distribution bucket "all". Keep the bucket in the index so
+    # that the concat at the bottom of this function has the correct labels for each time-series.
+    ca_county_wide = ca_county_dataset.timeseries_bucketed_wide_dates.xs(
+        DemographicBucket.ALL, level=PdFields.DEMOGRAPHIC_BUCKET, drop_level=False
+    )
     fields_to_check = [
         CommonFields.VACCINATIONS_INITIATED,
         CommonFields.VACCINATIONS_COMPLETED,
@@ -25,21 +31,23 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
 
     ca_state_wide = ds_in.get_regions_subset(
         [Region.from_state("CA")]
-    ).timeseries_not_bucketed_wide_dates
+    ).timeseries_bucketed_wide_dates.xs(
+        DemographicBucket.ALL, level=PdFields.DEMOGRAPHIC_BUCKET, drop_level=False
+    )
 
     # Drop location index because not used to apply to county level data
-    ca_state_wide = ca_state_wide.reset_index(CommonFields.LOCATION_ID, drop=True)
+    ca_state_wide = ca_state_wide.droplevel(CommonFields.LOCATION_ID)
 
-    ca_administered = ca_state_wide.loc[CommonFields.VACCINES_ADMINISTERED, :]
+    ca_administered = ca_state_wide.loc(axis=0)[CommonFields.VACCINES_ADMINISTERED]
 
     initiated_ratio_of_administered = (
-        ca_state_wide.loc[CommonFields.VACCINATIONS_INITIATED, :] / ca_administered
+        ca_state_wide.loc(axis=0)[CommonFields.VACCINATIONS_INITIATED] / ca_administered
     )
     completed_ratio_of_administered = (
-        ca_state_wide.loc[CommonFields.VACCINATIONS_COMPLETED, :] / ca_administered
+        ca_state_wide.loc(axis=0)[CommonFields.VACCINATIONS_COMPLETED] / ca_administered
     )
 
-    county_administered = ca_county_wide.loc[(slice(None), [CommonFields.VACCINES_ADMINISTERED]), :]
+    county_administered = ca_county_wide.loc(axis=0)[:, CommonFields.VACCINES_ADMINISTERED]
 
     estimated_initiated = county_administered * initiated_ratio_of_administered
     estimated_completed = county_administered * completed_ratio_of_administered
@@ -70,13 +78,14 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
         level=PdFields.VARIABLE,
     )
 
-    all_wide = ds_in.timeseries_not_bucketed_wide_dates
+    all_wide = ds_in.timeseries_bucketed_wide_dates
     # Because we assert that existing dataset does not have CA county VACCINATIONS_COMPLETED_PCT
     # or VACCINATIONS_INITIATED_PCT we can safely combine the existing rows with new derived rows
     combined = pd.concat([vaccines_completed_pct, vaccines_initiated_pct, all_wide])
 
     return dataclasses.replace(
         ds_in,
-        timeseries=MultiRegionDataset.from_timeseries_wide_dates_df(combined).timeseries,
-        timeseries_bucketed=None,
+        timeseries_bucketed=MultiRegionDataset.from_timeseries_wide_dates_df(
+            combined, bucketed=True
+        ).timeseries_bucketed,
     )
