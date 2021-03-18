@@ -812,13 +812,13 @@ class MultiRegionDataset:
         # TODO(tom): check if rename_axis is needed once we have
         #  https://pandas.pydata.org/docs/whatsnew/v1.2.0.html#index-column-name-preservation-when-aggregating
         timeseries_df = (
-            pd.concat([self.timeseries, other.timeseries])
+            pd.concat([self.timeseries_bucketed, other.timeseries_bucketed])
             .sort_index()
             .rename_axis(columns=PdFields.VARIABLE)
         )
         static_df = pd.concat([self.static, other.static]).sort_index()
         tag = pd.concat([self.tag, other.tag]).sort_index()
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def append_fips_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df, containing a fips column, appended."""
@@ -978,7 +978,7 @@ class MultiRegionDataset:
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
-        ts = self.timeseries_not_bucketed_wide_dates
+        ts = self.timeseries_bucketed_wide_dates
         recent_columns_mask = ts.columns >= cutoff_date
         recent_rows_mask = ts.loc[:, recent_columns_mask].notna().any(axis=1)
         timeseries_wide_dates = ts.loc[recent_rows_mask, :]
@@ -988,14 +988,12 @@ class MultiRegionDataset:
         timeseries_wide_variables = (
             timeseries_wide_dates.stack()
             .unstack(PdFields.VARIABLE)
-            .reindex(columns=self.timeseries.columns)
+            .reindex(columns=self.timeseries_bucketed.columns)
             .sort_index()
         )
         # Only keep tag information for timeseries in the new timeseries_wide_dates.
         tag = _slice_with_labels(self.tag, timeseries_wide_dates.index)
-        return dataclasses.replace(
-            self, timeseries=timeseries_wide_variables, tag=tag, timeseries_bucketed=None,
-        )
+        return dataclasses.replace(self, timeseries_bucketed=timeseries_wide_variables, tag=tag,)
 
     def to_csv(self, path: pathlib.Path, include_latest=True):
         """Persists timeseries to CSV.
@@ -1050,10 +1048,10 @@ class MultiRegionDataset:
 
     def drop_columns_if_present(self, columns: List[CommonFields]) -> "MultiRegionDataset":
         """Drops the specified columns from the timeseries if they exist"""
-        timeseries_df = self.timeseries.drop(columns, axis="columns", errors="ignore")
+        timeseries_df = self.timeseries_bucketed.drop(columns, axis="columns", errors="ignore")
         static_df = self.static.drop(columns, axis="columns", errors="ignore")
         tag = self.tag[~self.tag.index.get_level_values(PdFields.VARIABLE).isin(columns)]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         """Joins the timeseries columns in `other` with those in `self`.
