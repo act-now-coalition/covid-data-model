@@ -255,9 +255,6 @@ class Annotations(base_model.APIBaseModel):
     newDeaths: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for newDeaths"
     )
-    vaccinesAdministered: Optional[FieldAnnotations] = pydantic.Field(
-        None, description="Annotations for vaccinesAdministered"
-    )
     vaccinesDistributed: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinesDistributed"
     )
@@ -266,6 +263,9 @@ class Annotations(base_model.APIBaseModel):
     )
     vaccinationsCompleted: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinationsCompleted"
+    )
+    vaccinesAdministered: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinesAdministered"
     )
     # Keep this list of fields in sync with the fields in `Metrics`
     testPositivityRatio: Optional[FieldAnnotations] = pydantic.Field(
