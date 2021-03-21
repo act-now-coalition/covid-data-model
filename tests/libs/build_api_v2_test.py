@@ -13,6 +13,7 @@ from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 from api.can_api_v2_definition import RegionSummary
 from api.can_api_v2_definition import RiskLevels
+from api.can_api_v2_definition import Demographics
 from api.can_api_v2_definition import Metrics
 from libs.metrics import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
@@ -90,15 +91,18 @@ def test_build_summary_for_fips(
             vaccinesDistributed=nyc_latest["vaccines_distributed"],
             vaccinationsInitiated=nyc_latest["vaccinations_initiated"],
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
+            vaccinesAdministeredDemographics={
+                "age": None,
+                "race": None,
+                "sex": None,
+                "ethnicity": None,
+            },
         ),
-        annotations=Annotations(
+        annotations=dict(
             cases=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             deaths=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
-            positiveTests=None,
-            negativeTests=None,
             hospitalBeds=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
             icuBeds=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
-            contactTracers=None,
             newDeaths=FieldAnnotations(
                 anomalies=[
                     {
@@ -206,8 +210,8 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_datase
 
 def test_multiple_distributions():
     """All time-series within a variable are treated as a unit when combining"""
-    m1 = FieldName("cases")
-    m2 = FieldName("deaths")
+    vaccines_administered = FieldName("vaccines_administered")
+    deaths = FieldName("deaths")
     all_bucket = DemographicBucket("all")
     age_20s = DemographicBucket("age:20-29")
     age_30s = DemographicBucket("age:30-39")
@@ -218,11 +222,11 @@ def test_multiple_distributions():
     ds2 = test_helpers.build_dataset(
         {
             region_ca: {
-                m1: {
+                vaccines_administered: {
                     all_bucket: TimeseriesLiteral([3, 4], provenance="ds2_ca_m1_30s"),
                     age_30s: TimeseriesLiteral([3, 4], provenance="ds2_ca_m1_30s"),
                 },
-                m2: {age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")},
+                deaths: {age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")},
             },
         },
         static_by_region_then_field_name={region_ca: {CommonFields.POPULATION: 10000}},
@@ -232,5 +236,5 @@ def test_multiple_distributions():
     summary = build_api_v2.build_region_summary(
         one_region, Metrics.empty(), RiskLevels.empty(), log
     )
-    print(summary)
-    assert summary.actuals.casesByAge == {"30-39": 4}
+    expected_demographics = Demographics(age={"30-39": 4})
+    assert summary.actuals.vaccinesAdministeredDemographics == expected_demographics

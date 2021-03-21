@@ -123,23 +123,23 @@ class OneRegionTimeseriesDataset:
         # https://stackoverflow.com/a/56065318
         return source_url_series.groupby(level=0).agg(list).to_dict()
 
-    def annotations_all_bucket(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
+    def _annotations_for_tag_types(
+        self, field_name: FieldName, tag_types: List[TagType]
+    ) -> List[taglib.TagInTimeseries]:
         try:
             return self.tag_objects_series.loc[
-                [metric], DemographicBucket.ALL, ANNOTATION_TAG_TYPES
+                [field_name], DemographicBucket.ALL, tag_types
             ].to_list()
         except KeyError:
             # Not very elegant but I can't find
             # anything better in https://github.com/pandas-dev/pandas/issues/10695
             return []
 
+    def annotations_all_bucket(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
+        return self._annotations_for_tag_types(metric, ANNOTATION_TAG_TYPES)
+
     def sources_all_bucket(self, field_name: FieldName) -> List[taglib.Source]:
-        try:
-            return self.tag_objects_series.loc[
-                [field_name], DemographicBucket.ALL, [TagType.SOURCE]
-            ].to_list()
-        except KeyError:
-            return []
+        return self._annotations_for_tag_types(field_name, [TagType.SOURCE])
 
     @cached_property
     def bucketed_latest_by_field(

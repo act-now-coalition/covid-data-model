@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List
-from typing import Optional
+from typing import List, Dict, Optional
 import pandas as pd
+
 from api.can_api_v2_definition import (
     Actuals,
     ActualsTimeseriesRow,
@@ -9,6 +9,7 @@ from api.can_api_v2_definition import (
     FieldAnnotations,
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
+    Demographics,
     Metrics,
     RiskLevels,
     RiskLevelsRow,
@@ -23,9 +24,11 @@ from covidactnow.datapublic.common_fields import CommonFields
 from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
+
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+import structlog
 
 
 METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in FieldSourceType enum"
@@ -35,12 +38,25 @@ METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE = "More than one provenance for a field"
 USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 
 
-def _select_category(category: str, data: dict):
+_logger = structlog.get_logger()
+
+
+def _select_category(category: str, data: Dict):
     return {
         key.replace(category + ":", ""): value
         for key, value in data.items()
         if key.startswith(category)
     }
+
+
+def _build_demographic_data_for_field(field_bucket: Dict[str, int]) -> Demographics:
+    return Demographics(
+        # TODO(chris): maybe add `or None`?
+        age=_select_category("age", field_bucket) or None,
+        race=_select_category("race", field_bucket) or None,
+        ethnicity=_select_category("ethnicity", field_bucket) or None,
+        sex=_select_category("sex", field_bucket) or None,
+    )
 
 
 def _build_actuals(actual_data: dict, bucketed_data: dict = None) -> Actuals:
@@ -49,11 +65,13 @@ def _build_actuals(actual_data: dict, bucketed_data: dict = None) -> Actuals:
     Args:
         actual_data: Dictionary of data, generally derived one of the combined datasets.
         intervention: Current state level intervention.
-
     """
-    cases_by_age = None
+    vaccines_administered_demographics = None
     if bucketed_data:
-        cases_by_age = _select_category("age", bucketed_data[CommonFields.CASES])
+        vaccines_administered_demographics = _build_demographic_data_for_field(
+            bucketed_data[CommonFields.VACCINES_ADMINISTERED]
+        )
+
     return Actuals(
         cases=actual_data.get(CommonFields.CASES),
         deaths=actual_data.get(CommonFields.DEATHS),
@@ -76,10 +94,8 @@ def _build_actuals(actual_data: dict, bucketed_data: dict = None) -> Actuals:
         newDeaths=actual_data.get(CommonFields.NEW_DEATHS),
         vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
         vaccinationsInitiated=actual_data.get(CommonFields.VACCINATIONS_INITIATED),
-        # Vaccinations completed currently optional as data is not yet flowing through.
-        # This will allow us to include vaccines completed data as soon as its scraped.
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
-        casesByAge=cases_by_age,
+        vaccinesAdministeredDemographics=vaccines_administered_demographics,
     )
 
 
@@ -90,7 +106,7 @@ def build_region_summary(
     log,
 ) -> RegionSummary:
     latest_values = one_region.latest
-    print(latest_values)
+
     region = one_region.region
 
     actuals = _build_actuals(latest_values, bucketed_data=one_region.bucketed_latest_by_field)
@@ -129,6 +145,11 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
 }
 
 
+DEMOGRAPHIC_FIELD_TO_COMMON_FIELDS = {
+    "vaccinesAdministeredDemographics": CommonFields.VACCINES_ADMINISTERED,
+}
+
+
 METRICS_NAME_TO_COMMON_FIELD = {
     "contactTracerCapacityRatio": CommonFields.CONTACT_TRACERS_COUNT,
     "caseDensity": CommonFields.CASES,
@@ -152,7 +173,14 @@ def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotation
         annotations_name: _build_metric_annotations(one_region, field_name, log)
         for annotations_name, field_name in name_and_common_field
     }
-    return Annotations(**annotations)
+    return {k: v for k, v in annotations.items() if v is not None}
+
+
+def _build_demographic_annotations(
+    region_dataset: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log=None
+):
+    log = log or _logger
+    pass
 
 
 def _build_metric_annotations(
@@ -163,12 +191,6 @@ def _build_metric_annotations(
         FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url, name=tag.name)
         for tag in tag_series.sources_all_bucket(field_name)
     ]
-
-    if not sources:
-        # Fall back to using provenance and source_url.
-        # TODO(tom): Remove this block of code when we're pretty sure `source` has all the data
-        #  we need.
-        sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
 
     anomalies = tag_series.annotations_all_bucket(field_name)
     anomalies = [
