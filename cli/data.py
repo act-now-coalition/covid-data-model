@@ -27,7 +27,6 @@ from libs.datasets import region_aggregation
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets import new_cases_and_deaths
-from libs.datasets import ca_vaccination_backfill
 from libs.datasets import vaccine_backfills
 from libs.datasets.sources import forecast_hub
 from libs.datasets import tail_filter
@@ -117,7 +116,6 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
         ],
     )
     multiregion_dataset.print_stats("zeros_filter")
-    multiregion_dataset = ca_vaccination_backfill.derive_ca_county_vaccine_pct(multiregion_dataset)
     multiregion_dataset = vaccine_backfills.backfill_vaccination_initiated(multiregion_dataset)
     multiregion_dataset.print_stats("backfill_vaccination_initiated")
 
