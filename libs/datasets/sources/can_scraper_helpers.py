@@ -155,13 +155,14 @@ class CanScraperLoader:
 
     @staticmethod
     def _check_location_id(all_df: pd.DataFrame):
-        # Get unique location_id and fips pairs from input data
+        # TODO(tom): Maybe merge this function and timeseries._map_and_warn_about_mismatches. They
+        #  are similar but the inputs are slightly different so can't be bothered to refactor now.
         location_id_fips_df = all_df.loc[:, [Fields.LOCATION_ID, Fields.LOCATION]].drop_duplicates()
 
         COMPUTED_LOCATION_ID = "computed_location_id"
         location_id_fips_df[COMPUTED_LOCATION_ID] = _fips_from_int(
             location_id_fips_df[Fields.LOCATION]
-        ).apply(pipeline.fips_to_location_id)
+        ).map(dataset_utils.get_fips_to_location())
 
         bad_location_id_mask = (
             location_id_fips_df[Fields.LOCATION_ID] != location_id_fips_df[COMPUTED_LOCATION_ID]
