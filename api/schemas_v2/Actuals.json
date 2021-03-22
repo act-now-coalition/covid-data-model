@@ -140,6 +140,18 @@
           "type": "null"
         }
       ]
+    },
+    "vaccinesAdministered": {
+      "title": "Vaccinesadministered",
+      "description": "Total number of vaccine doses administered.",
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [

@@ -191,6 +191,9 @@ This value may vary by type of vaccine, but for Moderna and Pfizer this indicate
 number of people vaccinated with both the first and second dose.
 """,
     )
+    vaccinesAdministered: Optional[int] = pydantic.Field(
+        None, description="Total number of vaccine doses administered."
+    )
     # When adding a new "actual" field here remember to add a `FieldAnnotations` in `Annotations`.
 
 
@@ -260,6 +263,9 @@ class Annotations(base_model.APIBaseModel):
     )
     vaccinationsCompleted: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinationsCompleted"
+    )
+    vaccinesAdministered: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinesAdministered"
     )
     # Keep this list of fields in sync with the fields in `Metrics`
     testPositivityRatio: Optional[FieldAnnotations] = pydantic.Field(

@@ -1199,6 +1199,18 @@
               }
             ],
             "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer this indicates\nnumber of people vaccinated with both the first and second dose.\n"
+          },
+          "vaccinesAdministered": {
+            "title": "Vaccinesadministered",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total number of vaccine doses administered."
           }
         },
         "description": "Known actuals data."
@@ -1879,6 +1891,15 @@
             ],
             "description": "Annotations for newDeaths"
           },
+          "vaccinesAdministered": {
+            "title": "Vaccinesadministered",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinesAdministered"
+          },
           "vaccinesDistributed": {
             "title": "Vaccinesdistributed",
             "allOf": [
@@ -2438,6 +2459,18 @@
               }
             ],
             "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer this indicates\nnumber of people vaccinated with both the first and second dose.\n"
+          },
+          "vaccinesAdministered": {
+            "title": "Vaccinesadministered",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total number of vaccine doses administered."
           },
           "date": {
             "title": "Date",

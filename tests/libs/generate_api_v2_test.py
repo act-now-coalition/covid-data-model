@@ -80,6 +80,7 @@ def test_build_summary_for_fips(
             newCases=nyc_latest["new_cases"],
             newDeaths=nyc_latest["new_deaths"],
             vaccinesDistributed=nyc_latest["vaccines_distributed"],
+            vaccinesAdministered=nyc_latest["vaccines_administered"],
             vaccinationsInitiated=nyc_latest["vaccinations_initiated"],
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
         ),
