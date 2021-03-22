@@ -207,3 +207,10 @@ def test_build_latest_for_column_missing_last_value():
     expected = pd.Series([11.0], index=["iso1:us#fips:1"], name="cases")
     expected.index.name = "location_id"
     pd.testing.assert_series_equal(result, expected)
+
+
+def test_geo_data():
+    geo_data = dataset_utils.get_geo_data()
+    dups = geo_data.index.duplicated()
+    if dups.any():
+        raise ValueError(f"Duplicated location_id:\n{geo_data.index[dups]}")

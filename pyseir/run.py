@@ -95,9 +95,9 @@ class PyseirOutputDatasets:
     @staticmethod
     def from_pipeline_output(pipelines: List[OneRegionPipeline]) -> "PyseirOutputDatasets":
         infection_rate_metric_df = pd.concat((p.infer_df for p in pipelines), ignore_index=True)
-        infection_rate_ds = MultiRegionDataset.from_geodata_timeseries_df(infection_rate_metric_df)
+        infection_rate_ds = MultiRegionDataset.from_timeseries_df(infection_rate_metric_df)
 
         icu_df = pd.concat((p.icu_data.data for p in pipelines if p.icu_data), ignore_index=True)
-        icu_ds = MultiRegionDataset.from_geodata_timeseries_df(icu_df)
+        icu_ds = MultiRegionDataset.from_timeseries_df(icu_df)
 
         return PyseirOutputDatasets(icu=icu_ds, infection_rate=infection_rate_ds)

@@ -204,7 +204,7 @@ def test_one_region_dataset():
 
     with structlog.testing.capture_logs() as logs:
         ts = timeseries.OneRegionTimeseriesDataset(
-            Region.from_fips("99999"),
+            Region.from_fips("97111"),
             pd.DataFrame([], columns="location_id county aggregate_level date m1 m2".split()),
             {},
         )
@@ -271,7 +271,15 @@ def test_one_region_multiple_provenance():
 def test_add_aggregate_level():
     ts_df = read_csv_and_index_fips_date("fips,date,m1,m2\n" "36061,2020-04-02,2,\n").reset_index()
     multiregion = timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
-    assert multiregion.static.aggregate_level.to_list() == ["county"]
+    assert multiregion.geo_data.aggregate_level.to_list() == ["county"]
+
+
+def test_fips_not_in_geo_data_csv_raises():
+    with pytest.raises(KeyError):
+        ts_df = read_csv_and_index_fips_date(
+            "fips,date,m1,m2\n" "98789,2020-04-02,2,\n"
+        ).reset_index()
+        timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
 
 
 def test_append_regions():
@@ -292,12 +300,12 @@ def test_append_regions():
             "location_id,date,m2\n"
             "iso1:us#cbsa:10100,2020-04-02,2\n"
             "iso1:us#cbsa:10100,2020-04-03,3\n"
-            "iso1:us#cbsa:20200,2020-04-03,4\n"
+            "iso1:us#cbsa:20300,2020-04-03,4\n"
             "iso1:us#cbsa:10100,,3\n"
-            "iso1:us#cbsa:20200,,4\n"
+            "iso1:us#cbsa:20300,,4\n"
         )
     ).add_provenance_csv(
-        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:20200,m1,prov20200m2\n")
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:20300,m1,prov20200m2\n")
     )
     # Check that merge is symmetric
     ts_merged_1 = ts_fips.append_regions(ts_cbsa)
@@ -309,9 +317,9 @@ def test_append_regions():
             "location_id,date,county,aggregate_level,m1,m2\n"
             "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
             "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
-            "iso1:us#cbsa:20200,2020-04-03,,,,4\n"
+            "iso1:us#cbsa:20300,2020-04-03,,,,4\n"
             "iso1:us#cbsa:10100,,,,,3\n"
-            "iso1:us#cbsa:20200,,,,,4\n"
+            "iso1:us#cbsa:20300,,,,,4\n"
             "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
             "iso1:us#fips:97111,2020-04-03,Bar County,county,3,\n"
             "iso1:us#fips:97222,2020-04-04,Foo County,county,,11\n"
@@ -322,7 +330,7 @@ def test_append_regions():
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#fips:97111,m1,prov97111m1\n"
-            "iso1:us#cbsa:20200,m1,prov20200m2\n"
+            "iso1:us#cbsa:20300,m1,prov20200m2\n"
         )
     )
     test_helpers.assert_dataset_like(ts_merged_1, ts_expected)
@@ -842,8 +850,11 @@ def test_timeseries_latest_values():
     # Check access to timeseries latests values via get_one_region
     region_10100 = dataset.get_one_region(Region.from_cbsa_code("10100"))
     assert region_10100.latest == {
-        "aggregate_level": None,
+        "aggregate_level": "cbsa",
         "county": None,
+        "country": "USA",
+        "fips": "10100",
+        "state": None,
         "m1": 10,  # Derived from timeseries
         "m2": 4,  # Explicitly in recent values
     }
@@ -851,6 +862,9 @@ def test_timeseries_latest_values():
     assert region_97111.latest == {
         "aggregate_level": "county",
         "county": "Bar County",
+        "country": "USA",
+        "fips": "97111",
+        "state": "ZZ",
         "m1": 5,
         "m2": None,
     }
@@ -1046,8 +1060,8 @@ def test_drop_regions_without_population():
             "iso1:us#cbsa:10100,,,,80000,\n"
             "iso1:us#fips:97111,2020-04-02,Bar County,county,,2\n"
             "iso1:us#fips:97111,,Bar County,county,40000,4\n"
-            "iso1:us#cbsa:20200,2020-04-02,,,,\n"
-            "iso1:us#cbsa:20200,,,,,\n"
+            "iso1:us#cbsa:20300,2020-04-02,,,,\n"
+            "iso1:us#cbsa:20300,,,,,\n"
             "iso1:us#fips:97222,2020-04-02,Bar County,county,,2\n"
             "iso1:us#fips:97222,,Bar County,county,,4\n"
         )
@@ -1068,7 +1082,7 @@ def test_drop_regions_without_population():
     test_helpers.assert_dataset_like(ts_out, ts_expected)
 
     assert [l["event"] for l in logs] == ["Dropping unexpected regions without populaton"]
-    assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20200"]]
+    assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20300"]]
 
 
 def test_merge_provenance():
@@ -1188,7 +1202,7 @@ def test_timeseries_empty_timeseries_and_static():
 def test_timeseries_empty():
     # Check that empty geodata_timeseries_df creates a MultiRegionDataset
     # and that get_one_region raises expected exception.
-    dataset = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
+    dataset = timeseries.MultiRegionDataset.from_timeseries_df(
         pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     )
     with pytest.raises(timeseries.RegionLatestNotFound):
@@ -1197,10 +1211,65 @@ def test_timeseries_empty():
 
 def test_timeseries_empty_static_not_empty():
     # Check that empty timeseries does not prevent static data working as expected.
-    dataset = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
+    dataset = timeseries.MultiRegionDataset.from_timeseries_df(
         pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     ).add_static_values(pd.DataFrame([{"location_id": "iso1:us#fips:97111", "m1": 1234}]))
     assert dataset.get_one_region(Region.from_fips("97111")).latest["m1"] == 1234
+
+
+def test_from_timeseries_df_fips_location_id_mismatch():
+    df = pd.read_csv(
+        io.StringIO(
+            "                  location_id, fips,      date,m1\n"
+            "iso1:us#iso2:us-tx#fips:48197,48201,2020-04-02, 2\n"
+            "iso1:us#iso2:us-tx#fips:48201,48201,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    with pytest.warns(timeseries.ExtraColumnWarning, match="48201"):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
+
+
+def test_from_timeseries_df_no_fips_no_warning():
+    df = pd.read_csv(
+        io.StringIO(
+            " location_id, fips,      date,m1\n"
+            "     iso1:us,     ,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    timeseries.MultiRegionDataset.from_timeseries_df(df)
+
+
+def test_from_timeseries_df_fips_state_mismatch():
+    df = pd.read_csv(
+        io.StringIO(
+            "                  location_id,state,      date,m1\n"
+            "iso1:us#iso2:us-tx#fips:48197,   TX,2020-04-02, 2\n"
+            "iso1:us#iso2:us-tx#fips:48201,   IL,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    with pytest.warns(timeseries.ExtraColumnWarning, match="48201"):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
+
+
+def test_from_timeseries_df_bad_level():
+    df = pd.read_csv(
+        io.StringIO(
+            "                  location_id, aggregate_level,      date,m1\n"
+            "iso1:us#iso2:us-tx#fips:48201,          county,2020-04-02, 2\n"
+            "iso1:us#iso2:us-tx#fips:48197,           state,2020-04-02, 2\n"
+            "           iso1:us#iso2:us-tx,           state,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    with pytest.warns(timeseries.ExtraColumnWarning, match="48197"):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
 
 
 def test_combined_timeseries():
@@ -1388,7 +1457,10 @@ def test_multi_region_dataset_get_subset():
                 CommonFields.AGGREGATE_LEVEL: "county",
                 CommonFields.FIPS: region_county.fips,
             },
-            region_cbsa: {CommonFields.AGGREGATE_LEVEL: "cbsa"},
+            region_cbsa: {
+                CommonFields.AGGREGATE_LEVEL: "cbsa",
+                CommonFields.FIPS: region_cbsa.fips,
+            },
         },
     )
 
@@ -1403,6 +1475,7 @@ def test_multi_region_dataset_get_subset():
             "iso1:us#fips:97222,county,,97222,2020-04-01,1,2,\n"
             "iso1:us#fips:97222,county,,97222,,,,1000\n"
             "iso1:us#cbsa:10100,cbsa,,,2020-04-01,1,2,20000\n"
+            "iso1:us#cbsa:10100,cbsa,,10100,,,,\n"
         )
     )
     test_helpers.assert_dataset_like(ds_old, ds)

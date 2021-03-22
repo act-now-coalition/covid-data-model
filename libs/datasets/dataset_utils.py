@@ -1,3 +1,4 @@
+import functools
 from typing import Optional, Type
 import os
 import enum
@@ -343,3 +344,21 @@ def build_latest_for_column(timeseries_df: pd.DataFrame, column: CommonFields) -
 
     data = timeseries_df.sort_index()
     return data[column].groupby([CommonFields.LOCATION_ID], sort=False).last()
+
+
+@functools.lru_cache(None)
+def get_geo_data() -> pd.DataFrame:
+    return pd.read_csv(DATA_DIRECTORY / "geo-data.csv", dtype={CommonFields.FIPS: str}).set_index(
+        CommonFields.LOCATION_ID
+    )
+
+
+@functools.lru_cache(None)
+def get_fips_to_location() -> pd.DataFrame:
+    return (
+        get_geo_data()
+        .reset_index()
+        # location_id such as "iso1:us" don't have a FIPS. Drop them so a lookup of FIPS=NA fails.
+        .dropna(subset=[CommonFields.FIPS])
+        .set_index(CommonFields.FIPS)[CommonFields.LOCATION_ID]
+    )

@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import pathlib
 import re
+import warnings
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import chain
@@ -45,6 +46,8 @@ from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
+
+from libs.pipeline import RegionMaskOrRegion
 
 
 _log = structlog.get_logger()
@@ -206,9 +209,63 @@ def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("location_id already in DataFrame")
 
     df = df.copy()
-
-    df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].apply(pipeline.fips_to_location_id)
+    df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].map(dataset_utils.get_fips_to_location())
+    # Missing values are mapped to NaN but we want it to raise. There doesn't seem to be a better
+    # work-around at https://github.com/pandas-dev/pandas/issues/14210
+    if df[CommonFields.LOCATION_ID].isna().any():
+        raise KeyError(
+            f"No location_id found for "
+            f"{df.loc[df[CommonFields.LOCATION_ID].isna(), CommonFields.FIPS].value_counts()}"
+        )
     return df
+
+
+class ExtraColumnWarning(UserWarning):
+    pass
+
+
+def _map_and_warn_about_mismatches(timeseries_df: pd.DataFrame, field_name: FieldName):
+    """Warns if field_name differs from the static geo data for `field_name`."""
+    COMPUTED = FieldName("computed")
+    orig_series = timeseries_df.loc(axis=1)[field_name]
+    map_from_location_id = dataset_utils.get_geo_data()[field_name]
+    computed_series = orig_series.index.get_level_values(CommonFields.LOCATION_ID).map(
+        map_from_location_id
+    )
+    df = pd.DataFrame({COMPUTED: computed_series, field_name: orig_series})
+    # If timeseries_df didn't have a value for aggregate level don't compare it to the
+    # computed value.
+    df = df.dropna(subset=[field_name])
+    bad_df = df.loc[df[COMPUTED] != df[field_name]]
+    if not bad_df.empty:
+        warnings.warn(ExtraColumnWarning(f"Bad {field_name}\n{bad_df}"), stacklevel=2)
+
+
+def _warn_and_drop_extra_columns(timeseries_df: pd.DataFrame) -> pd.DataFrame:
+    # TODO(tom): After tests are cleaned up to not include these extra columns, most likely by
+    #  building MultiRegionDataset using test_helpers instead of parsing a CSV, remove these checks.
+    if CommonFields.FIPS in timeseries_df.columns:
+        _map_and_warn_about_mismatches(timeseries_df, CommonFields.FIPS)
+        timeseries_df = timeseries_df.drop(columns=CommonFields.FIPS)
+    if CommonFields.AGGREGATE_LEVEL in timeseries_df.columns:
+        _map_and_warn_about_mismatches(timeseries_df, CommonFields.AGGREGATE_LEVEL)
+        timeseries_df = timeseries_df.drop(columns=CommonFields.AGGREGATE_LEVEL)
+    if CommonFields.STATE in timeseries_df.columns:
+        _map_and_warn_about_mismatches(timeseries_df, CommonFields.STATE)
+        timeseries_df = timeseries_df.drop(columns=CommonFields.STATE)
+    timeseries_df = timeseries_df.drop(columns=CommonFields.COUNTY, errors="ignore")
+    geodata_column_mask = timeseries_df.columns.isin(
+        set(TIMESERIES_INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
+    )
+    if geodata_column_mask.any():
+        warnings.warn(
+            ExtraColumnWarning(
+                f"Ignoring extra columns: " f"{timeseries_df.columns[geodata_column_mask]}"
+            ),
+            stacklevel=2,
+        )
+    timeseries_df = timeseries_df.loc[:, ~geodata_column_mask]
+    return timeseries_df
 
 
 def _add_fips_if_missing(df: pd.DataFrame):
@@ -235,17 +292,6 @@ def _add_aggregate_level_if_missing(df: pd.DataFrame):
         df[CommonFields.AGGREGATE_LEVEL] = df[CommonFields.LOCATION_ID].apply(
             lambda x: Region.from_location_id(x).level.value
         )
-
-
-def _geodata_df_to_static_attribute_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
-    """Creates a DataFrame to use as static from geo data taken from timeseries CSV."""
-    assert geodata_df.index.names == [None]  # [CommonFields.LOCATION_ID, CommonFields.DATE]
-    deduped_values = geodata_df.drop_duplicates().set_index(CommonFields.LOCATION_ID)
-    duplicates = deduped_values.index.duplicated(keep=False)
-    if duplicates.any():
-        _log.warning("Conflicting geo data", duplicates=deduped_values.loc[duplicates, :])
-        deduped_values = deduped_values.loc[~deduped_values.index.duplicated(keep="first"), :]
-    return deduped_values.sort_index()
 
 
 def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
@@ -449,6 +495,21 @@ class MultiRegionDataset:
         except KeyError:
             return _EMPTY_TAG_SERIES.droplevel(TagField.DEMOGRAPHIC_BUCKET)
 
+    @cached_property
+    def location_ids(self) -> pd.Index:
+        return self.static.index.unique(CommonFields.LOCATION_ID).union(
+            self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID)
+        )
+
+    @cached_property
+    def geo_data(self) -> pd.DataFrame:
+        location_ids = self.location_ids
+        geo_data = dataset_utils.get_geo_data()
+        missing_location_id = location_ids.difference(geo_data.index)
+        if not missing_location_id.empty:
+            raise KeyError(f"location_id not in data/geo-data.csv:\n{missing_location_id}")
+        return geo_data.reindex(index=location_ids)
+
     @property
     def timeseries_regions(self) -> Set[Region]:
         """Returns a set of all regions in the timeseries dataset."""
@@ -464,18 +525,15 @@ class MultiRegionDataset:
         return provenance_tags.droplevel([TagField.TYPE]).rename(PdFields.PROVENANCE)
 
     @cached_property
-    def _geo_data(self) -> pd.DataFrame:
-        return self.static.loc[:, self.static.columns.isin(GEO_DATA_COLUMNS)]
-
-    @cached_property
     def dataset_type(self) -> DatasetType:
         return DatasetType.MULTI_REGION
 
     @lru_cache(maxsize=None)
     def static_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
         """Static values merged with the latest timeseries values."""
+        static_and_geo_data = self.static.join(self.geo_data)
         return _merge_attributes(
-            self._timeseries_latest_values().reset_index(), self.static.reset_index()
+            self._timeseries_latest_values().reset_index(), static_and_geo_data.reset_index()
         )
 
     @cached_property
@@ -605,18 +663,14 @@ class MultiRegionDataset:
             return MultiRegionDataset(timeseries=timeseries_wide_variables)
 
     @staticmethod
-    def from_geodata_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
-        """Make a new dataset from a DataFrame containing timeseries (real-valued metrics) and
-        static geo data (county name etc)."""
-        assert timeseries_and_geodata_df.index.names == [None]
-        timeseries_and_geodata_df = timeseries_and_geodata_df.set_index(
+    def from_timeseries_df(timeseries_df: pd.DataFrame) -> "MultiRegionDataset":
+        """Make a new dataset from a DataFrame containing timeseries (real-valued metrics)."""
+        assert timeseries_df.index.names == [None]
+        timeseries_df = timeseries_df.set_index(
             [CommonFields.LOCATION_ID, CommonFields.DATE]
         ).rename_axis(columns=PdFields.VARIABLE)
 
-        geodata_column_mask = timeseries_and_geodata_df.columns.isin(
-            set(TIMESERIES_INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
-        )
-        timeseries_df = timeseries_and_geodata_df.loc[:, ~geodata_column_mask]
+        timeseries_df = _warn_and_drop_extra_columns(timeseries_df)
         # Change all columns in timeseries_df to have a numeric dtype, as checked in __post_init__
         if timeseries_df.empty:
             # Use astype to force columns in an empty DataFrame to numeric dtypes.
@@ -627,12 +681,8 @@ class MultiRegionDataset:
             # NaN, which is a valid float. Apply to_numeric to columns so that int columns
             # are not modified.
             timeseries_df = timeseries_df.fillna(np.nan).apply(pd.to_numeric).sort_index()
-        geodata_df = timeseries_and_geodata_df.loc[:, geodata_column_mask]
-        static_df = _geodata_df_to_static_attribute_df(
-            geodata_df.reset_index().drop(columns=[CommonFields.DATE])
-        )
 
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df)
+        return MultiRegionDataset(timeseries=timeseries_df)
 
     def add_fips_static_df(self, latest_df: pd.DataFrame) -> "MultiRegionDataset":
         latest_df = _add_location_id(latest_df)
@@ -640,7 +690,10 @@ class MultiRegionDataset:
 
     def add_static_values(self, attributes_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new object with non-NA values in `latest_df` added to the static attribute."""
-        combined_attributes = _merge_attributes(self.static.reset_index(), attributes_df)
+        scalars_without_geodata = attributes_df.loc[
+            :, attributes_df.columns.difference(GEO_DATA_COLUMNS)
+        ]
+        combined_attributes = _merge_attributes(self.static.reset_index(), scalars_without_geodata)
         assert combined_attributes.index.names == [CommonFields.LOCATION_ID]
         return dataclasses.replace(self, static=combined_attributes)
 
@@ -702,11 +755,11 @@ class MultiRegionDataset:
         timeseries_df = combined_df.loc[rows_with_date, :]
 
         # Extract rows of combined_df which don't have a date.
-        latest_df = combined_df.loc[~rows_with_date, :]
+        latest_df = combined_df.loc[~rows_with_date, :].drop(columns=[CommonFields.DATE])
 
-        dataset = MultiRegionDataset.from_geodata_timeseries_df(timeseries_df)
+        dataset = MultiRegionDataset.from_timeseries_df(timeseries_df)
         if not latest_df.empty:
-            dataset = dataset.add_static_values(latest_df.drop(columns=[CommonFields.DATE]))
+            dataset = dataset.add_static_values(latest_df)
 
         if isinstance(path_or_buf, pathlib.Path):
             provenance_path = pathlib.Path(str(path_or_buf).replace(".csv", "-provenance.csv"))
@@ -773,7 +826,7 @@ class MultiRegionDataset:
         _add_state_if_missing(ts_df)
         _add_aggregate_level_if_missing(ts_df)
 
-        return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
+        return MultiRegionDataset.from_timeseries_df(ts_df)
 
     @staticmethod
     def new_without_timeseries() -> "MultiRegionDataset":
@@ -790,6 +843,7 @@ class MultiRegionDataset:
         assert self.static.index.names == [CommonFields.LOCATION_ID]
         assert self.static.index.is_unique
         assert self.static.index.is_monotonic_increasing
+        assert self.static.columns.intersection(GEO_DATA_COLUMNS).empty
 
         assert isinstance(self.tag, pd.Series)
         assert self.tag.index.names == _TAG_INDEX_FIELDS
@@ -805,8 +859,12 @@ class MultiRegionDataset:
             .empty
         )
 
+        extra_location_ids = self.location_ids.difference(dataset_utils.get_geo_data().index)
+        if not extra_location_ids.empty:
+            raise AssertionError(f"Unknown locations:\n{extra_location_ids}")
+
     def append_regions(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
-        common_location_id = self.static.index.intersection(other.static.index)
+        common_location_id = self.location_ids.intersection(other.location_ids)
         if not common_location_id.empty:
             raise ValueError("Do not use append_regions with duplicate location_id")
         # TODO(tom): check if rename_axis is needed once we have
@@ -819,11 +877,6 @@ class MultiRegionDataset:
         static_df = pd.concat([self.static, other.static]).sort_index()
         tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
-
-    def append_fips_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
-        """Returns a new dataset with additional_tag_df, containing a fips column, appended."""
-        additional_tag_df = _add_location_id(additional_tag_df).drop(columns=CommonFields.FIPS)
-        return self.append_tag_df(additional_tag_df)
 
     def append_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df appended."""
@@ -868,8 +921,27 @@ class MultiRegionDataset:
             attributes_series = pd.Series([], dtype=object)
         return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
 
-    def get_regions_subset(self, regions: Collection[Region]) -> "MultiRegionDataset":
-        location_ids = pd.Index(sorted(r.location_id for r in regions))
+    def _location_ids_in_mask(self, region_mask: pipeline.RegionMask) -> pd.Index:
+        geo_data = self.geo_data
+        rows_key = dataset_utils.make_rows_key(
+            geo_data, aggregation_level=region_mask.level, states=region_mask.states,
+        )
+        return geo_data.loc[rows_key, :].index
+
+    def _regionmaskorregions_to_location_id(
+        self, regions_and_masks: Collection[RegionMaskOrRegion]
+    ):
+        location_ids = set()
+        for region_or_mask in regions_and_masks:
+            if isinstance(region_or_mask, Region):
+                location_ids.add(region_or_mask.location_id)
+            else:
+                assert isinstance(region_or_mask, pipeline.RegionMask)
+                location_ids.update(self._location_ids_in_mask(region_or_mask))
+        return pd.Index(sorted(location_ids), dtype=str)
+
+    def get_regions_subset(self, regions: Collection[RegionMaskOrRegion]) -> "MultiRegionDataset":
+        location_ids = self._regionmaskorregions_to_location_id(regions)
         return self.get_locations_subset(location_ids)
 
     def get_locations_subset(self, location_ids: Collection[str]) -> "MultiRegionDataset":
@@ -886,8 +958,8 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask, :]
         return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
-    def remove_regions(self, regions: Collection[Region]) -> "MultiRegionDataset":
-        location_ids = pd.Index(sorted(r.location_id for r in regions))
+    def remove_regions(self, regions: Collection[RegionMaskOrRegion]) -> "MultiRegionDataset":
+        location_ids = self._regionmaskorregions_to_location_id(regions)
         return self.remove_locations(location_ids)
 
     def remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
@@ -914,7 +986,7 @@ class MultiRegionDataset:
     ) -> "MultiRegionDataset":
         """Returns a new object containing data for a subset of the regions in `self`."""
         rows_key = dataset_utils.make_rows_key(
-            self.static,
+            self.geo_data,
             aggregation_level=aggregation_level,
             fips=fips,
             state=state,
@@ -922,7 +994,7 @@ class MultiRegionDataset:
             location_id_matches=location_id_matches,
             exclude_county_999=exclude_county_999,
         )
-        location_ids = self.static.loc[rows_key, :].index
+        location_ids = self.geo_data.loc[rows_key, :].index
         return self.get_locations_subset(location_ids)
 
     def get_counties_and_places(
@@ -1001,7 +1073,7 @@ class MultiRegionDataset:
         Args:
             path: Path to write to.
         """
-        timeseries_data = self._geo_data.join(self.timeseries).reset_index()
+        timeseries_data = self.timeseries.reset_index()
         _add_fips_if_missing(timeseries_data)
 
         if include_latest:
@@ -1086,11 +1158,8 @@ class MultiRegionDataset:
             region = Region.from_location_id(location_id)
             tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
             yield region, OneRegionTimeseriesDataset(
-                region=region, data=timeseries_group.reset_index(), latest=latest_dict, tag=tag
+                region, timeseries_group.reset_index(), latest_dict, tag=tag
             )
-
-    def get_county_name(self, *, region: pipeline.Region) -> str:
-        return self.static.at[region.location_id, CommonFields.COUNTY]
 
 
 def _remove_padded_nans(df, columns):
