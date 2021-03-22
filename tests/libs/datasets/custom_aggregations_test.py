@@ -1,5 +1,4 @@
 import dataclasses
-import io
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
@@ -8,7 +7,6 @@ from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 from libs.datasets import custom_aggregations
-from libs.datasets import timeseries
 from libs.pipeline import Region
 from tests import test_helpers
 
@@ -98,7 +96,7 @@ def test_calculate_puerto_rico_bed_occupancy_rate():
     }
     ds_in = test_helpers.build_dataset(
         ts_data,
-        static_by_region_then_field_name={region_pr_state: static_pr_state, **static_others,},
+        static_by_region_then_field_name={region_pr_state: static_pr_state, **static_others},
     )
 
     ds_out = custom_aggregations.aggregate_puerto_rico_from_counties(ds_in)
@@ -106,7 +104,7 @@ def test_calculate_puerto_rico_bed_occupancy_rate():
     ds_expected = test_helpers.build_dataset(
         ts_data,
         static_by_region_then_field_name={
-            region_pr_state: {field_already_agg: 10, field_to_agg: 5},
+            region_pr_state: {field_to_agg: 5, **static_pr_state},
             **static_others,
         },
     )
