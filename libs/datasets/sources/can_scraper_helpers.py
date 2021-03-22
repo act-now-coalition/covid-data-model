@@ -13,7 +13,6 @@ from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
-from libs import pipeline
 from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import dataset_utils
 from libs.datasets import taglib
