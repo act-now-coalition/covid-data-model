@@ -7,7 +7,6 @@ from typing import Optional
 import pandas as pd
 import structlog
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import PdFields
 from typing_extensions import final
 
 from libs import pipeline
