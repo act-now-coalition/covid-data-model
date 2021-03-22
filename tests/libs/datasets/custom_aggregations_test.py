@@ -60,6 +60,7 @@ def test_replace_dc_county(nyc_region):
 
 
 def test_calculate_puerto_rico_bed_occupancy_rate():
+    # TODO(tom): Test ALL_BED_TYPICAL_OCCUPANCY_RATE and ICU_TYPICAL_OCCUPANCY_RATE aggregation.
     field_already_agg = FieldName("already_aggregated")
     field_to_agg = FieldName("to_aggregate")
     field_other = FieldName("other")
