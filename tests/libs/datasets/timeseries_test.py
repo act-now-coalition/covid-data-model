@@ -1202,7 +1202,7 @@ def test_timeseries_empty_timeseries_and_static():
 def test_timeseries_empty():
     # Check that empty geodata_timeseries_df creates a MultiRegionDataset
     # and that get_one_region raises expected exception.
-    dataset = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
+    dataset = timeseries.MultiRegionDataset.from_timeseries_df(
         pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     )
     with pytest.raises(timeseries.RegionLatestNotFound):
@@ -1211,10 +1211,65 @@ def test_timeseries_empty():
 
 def test_timeseries_empty_static_not_empty():
     # Check that empty timeseries does not prevent static data working as expected.
-    dataset = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
+    dataset = timeseries.MultiRegionDataset.from_timeseries_df(
         pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     ).add_static_values(pd.DataFrame([{"location_id": "iso1:us#fips:97111", "m1": 1234}]))
     assert dataset.get_one_region(Region.from_fips("97111")).latest["m1"] == 1234
+
+
+def test_from_timeseries_df_fips_location_id_mismatch():
+    df = pd.read_csv(
+        io.StringIO(
+            "                  location_id, fips,      date,m1\n"
+            "iso1:us#iso2:us-tx#fips:48197,48201,2020-04-02, 2\n"
+            "iso1:us#iso2:us-tx#fips:48201,48201,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    with pytest.warns(timeseries.ExtraColumnWarning, match="48201"):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
+
+
+def test_from_timeseries_df_no_fips_no_warning():
+    df = pd.read_csv(
+        io.StringIO(
+            " location_id, fips,      date,m1\n"
+            "     iso1:us,     ,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    timeseries.MultiRegionDataset.from_timeseries_df(df)
+
+
+def test_from_timeseries_df_fips_state_mismatch():
+    df = pd.read_csv(
+        io.StringIO(
+            "                  location_id,state,      date,m1\n"
+            "iso1:us#iso2:us-tx#fips:48197,   TX,2020-04-02, 2\n"
+            "iso1:us#iso2:us-tx#fips:48201,   IL,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    with pytest.warns(timeseries.ExtraColumnWarning, match="48201"):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
+
+
+def test_from_timeseries_df_bad_level():
+    df = pd.read_csv(
+        io.StringIO(
+            "                  location_id, aggregate_level,      date,m1\n"
+            "iso1:us#iso2:us-tx#fips:48201,          county,2020-04-02, 2\n"
+            "iso1:us#iso2:us-tx#fips:48197,           state,2020-04-02, 2\n"
+            "           iso1:us#iso2:us-tx,           state,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    with pytest.warns(timeseries.ExtraColumnWarning, match="48197"):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
 
 
 def test_combined_timeseries():

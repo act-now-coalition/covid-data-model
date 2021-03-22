@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import pathlib
 import re
+import warnings
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import chain
@@ -47,6 +48,7 @@ import pandas.core.groupby.generic
 from backports.cached_property import cached_property
 
 from libs.pipeline import RegionMaskOrRegion
+
 
 _log = structlog.get_logger()
 
@@ -218,6 +220,54 @@ def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+class ExtraColumnWarning(UserWarning):
+    pass
+
+
+def _map_and_warn_about_mismatches(timeseries_df: pd.DataFrame, field_name: FieldName):
+    """Warns if field_name differs from the static geo data for `field_name`."""
+    COMPUTED = FieldName("computed")
+    orig_series = timeseries_df.loc(axis=1)[field_name]
+    map_from_location_id = dataset_utils.get_geo_data()[field_name]
+    computed_series = orig_series.index.get_level_values(CommonFields.LOCATION_ID).map(
+        map_from_location_id
+    )
+    df = pd.DataFrame({COMPUTED: computed_series, field_name: orig_series})
+    # If timeseries_df didn't have a value for aggregate level don't compare it to the
+    # computed value.
+    df = df.dropna(subset=[field_name])
+    bad_df = df.loc[df[COMPUTED] != df[field_name]]
+    if not bad_df.empty:
+        warnings.warn(ExtraColumnWarning(f"Bad {field_name}\n{bad_df}"), stacklevel=2)
+
+
+def _warn_and_drop_extra_columns(timeseries_df: pd.DataFrame) -> pd.DataFrame:
+    # TODO(tom): After tests are cleaned up to not include these extra columns, most likely by
+    #  building MultiRegionDataset using test_helpers instead of parsing a CSV, remove these checks.
+    if CommonFields.FIPS in timeseries_df.columns:
+        _map_and_warn_about_mismatches(timeseries_df, CommonFields.FIPS)
+        timeseries_df = timeseries_df.drop(columns=CommonFields.FIPS)
+    if CommonFields.AGGREGATE_LEVEL in timeseries_df.columns:
+        _map_and_warn_about_mismatches(timeseries_df, CommonFields.AGGREGATE_LEVEL)
+        timeseries_df = timeseries_df.drop(columns=CommonFields.AGGREGATE_LEVEL)
+    if CommonFields.STATE in timeseries_df.columns:
+        _map_and_warn_about_mismatches(timeseries_df, CommonFields.STATE)
+        timeseries_df = timeseries_df.drop(columns=CommonFields.STATE)
+    timeseries_df = timeseries_df.drop(columns=CommonFields.COUNTY, errors="ignore")
+    geodata_column_mask = timeseries_df.columns.isin(
+        set(TIMESERIES_INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
+    )
+    if geodata_column_mask.any():
+        warnings.warn(
+            ExtraColumnWarning(
+                f"Ignoring extra columns: " f"{timeseries_df.columns[geodata_column_mask]}"
+            ),
+            stacklevel=2,
+        )
+    timeseries_df = timeseries_df.loc[:, ~geodata_column_mask]
+    return timeseries_df
+
+
 def _add_fips_if_missing(df: pd.DataFrame):
     """Adds the FIPS column derived from location_id, inplace."""
     if CommonFields.FIPS not in df.columns:
@@ -242,17 +292,6 @@ def _add_aggregate_level_if_missing(df: pd.DataFrame):
         df[CommonFields.AGGREGATE_LEVEL] = df[CommonFields.LOCATION_ID].apply(
             lambda x: Region.from_location_id(x).level.value
         )
-
-
-def _geodata_df_to_static_attribute_df(geodata_df: pd.DataFrame) -> pd.DataFrame:
-    """Creates a DataFrame to use as static from geo data taken from timeseries CSV."""
-    assert geodata_df.index.names == [None]  # [CommonFields.LOCATION_ID, CommonFields.DATE]
-    deduped_values = geodata_df.drop_duplicates().set_index(CommonFields.LOCATION_ID)
-    duplicates = deduped_values.index.duplicated(keep=False)
-    if duplicates.any():
-        _log.warning("Conflicting geo data", duplicates=deduped_values.loc[duplicates, :])
-        deduped_values = deduped_values.loc[~deduped_values.index.duplicated(keep="first"), :]
-    return deduped_values.sort_index()
 
 
 def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
@@ -624,17 +663,14 @@ class MultiRegionDataset:
             return MultiRegionDataset(timeseries=timeseries_wide_variables)
 
     @staticmethod
-    def from_geodata_timeseries_df(timeseries_and_geodata_df: pd.DataFrame) -> "MultiRegionDataset":
+    def from_timeseries_df(timeseries_df: pd.DataFrame) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame containing timeseries (real-valued metrics)."""
-        assert timeseries_and_geodata_df.index.names == [None]
-        timeseries_and_geodata_df = timeseries_and_geodata_df.set_index(
+        assert timeseries_df.index.names == [None]
+        timeseries_df = timeseries_df.set_index(
             [CommonFields.LOCATION_ID, CommonFields.DATE]
         ).rename_axis(columns=PdFields.VARIABLE)
 
-        geodata_column_mask = timeseries_and_geodata_df.columns.isin(
-            set(TIMESERIES_INDEX_FIELDS) | set(GEO_DATA_COLUMNS)
-        )
-        timeseries_df = timeseries_and_geodata_df.loc[:, ~geodata_column_mask]
+        timeseries_df = _warn_and_drop_extra_columns(timeseries_df)
         # Change all columns in timeseries_df to have a numeric dtype, as checked in __post_init__
         if timeseries_df.empty:
             # Use astype to force columns in an empty DataFrame to numeric dtypes.
@@ -721,7 +757,7 @@ class MultiRegionDataset:
         # Extract rows of combined_df which don't have a date.
         latest_df = combined_df.loc[~rows_with_date, :].drop(columns=[CommonFields.DATE])
 
-        dataset = MultiRegionDataset.from_geodata_timeseries_df(timeseries_df)
+        dataset = MultiRegionDataset.from_timeseries_df(timeseries_df)
         if not latest_df.empty:
             dataset = dataset.add_static_values(latest_df)
 
@@ -790,7 +826,7 @@ class MultiRegionDataset:
         _add_state_if_missing(ts_df)
         _add_aggregate_level_if_missing(ts_df)
 
-        return MultiRegionDataset.from_geodata_timeseries_df(ts_df)
+        return MultiRegionDataset.from_timeseries_df(ts_df)
 
     @staticmethod
     def new_without_timeseries() -> "MultiRegionDataset":

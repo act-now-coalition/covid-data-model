@@ -355,4 +355,10 @@ def get_geo_data() -> pd.DataFrame:
 
 @functools.lru_cache(None)
 def get_fips_to_location() -> pd.DataFrame:
-    return get_geo_data().reset_index().set_index(CommonFields.FIPS)[CommonFields.LOCATION_ID]
+    return (
+        get_geo_data()
+        .reset_index()
+        # location_id such as "iso1:us" don't have a FIPS. Drop them so a lookup of FIPS=NA fails.
+        .dropna(subset=[CommonFields.FIPS])
+        .set_index(CommonFields.FIPS)[CommonFields.LOCATION_ID]
+    )
