@@ -101,9 +101,12 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
         timeseries_field_datasets, static_field_datasets
     )
     _logger.info("Finished combining datasets")
+    multiregion_dataset.print_stats("combined")
     multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
+    multiregion_dataset.print_stats("drop_tail")
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
     _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
+    multiregion_dataset.print_stats("TailFilter")
     multiregion_dataset = zeros_filter.drop_all_zero_timeseries(
         multiregion_dataset,
         [
@@ -113,8 +116,10 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
             CommonFields.VACCINATIONS_INITIATED,
         ],
     )
+    multiregion_dataset.print_stats("zeros_filter")
     multiregion_dataset = ca_vaccination_backfill.derive_ca_county_vaccine_pct(multiregion_dataset)
     multiregion_dataset = vaccine_backfills.backfill_vaccination_initiated(multiregion_dataset)
+    multiregion_dataset.print_stats("backfill_vaccination_initiated")
 
     multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
     multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
@@ -125,18 +130,23 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
     )
+    multiregion_dataset.print_stats("drop_regions_without_population")
 
     multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
         multiregion_dataset
     )
+    multiregion_dataset.print_stats("aggregate_puerto_rico_from_counties")
     multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
+    multiregion_dataset.print_stats("aggregate_to_new_york_city")
     multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(multiregion_dataset)
+    multiregion_dataset.print_stats("replace_dc_county_with_state_data")
 
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     cbsa_dataset = aggregator.aggregate(
         multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
     )
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+    multiregion_dataset.print_stats("CountyToCBSAAggregator")
 
     if aggregate_to_country:
         country_dataset = region_aggregation.aggregate_regions(
@@ -145,8 +155,10 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
             reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
+        multiregion_dataset.print_stats("aggregate_to_country")
 
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
+    multiregion_dataset.print_stats("persist")
 
 
 @main.command()

@@ -130,7 +130,7 @@ METRICS_NAME_TO_COMMON_FIELD = {
 
 
 def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotations:
-    assert one_region.tag.index.names == [TagField.VARIABLE, TagField.TYPE]
+    assert one_region.tag_all_bucket.index.names == [TagField.VARIABLE, TagField.TYPE]
     name_and_common_field = [
         *ACTUALS_NAME_TO_COMMON_FIELD.items(),
         *METRICS_NAME_TO_COMMON_FIELD.items(),
@@ -148,7 +148,7 @@ def _build_metric_annotations(
 
     sources = [
         FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url, name=tag.name)
-        for tag in tag_series.sources(field_name)
+        for tag in tag_series.sources_all_bucket(field_name)
     ]
 
     if not sources:
@@ -157,7 +157,7 @@ def _build_metric_annotations(
         #  we need.
         sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
 
-    anomalies = tag_series.annotations(field_name)
+    anomalies = tag_series.annotations_all_bucket(field_name)
     anomalies = [
         AnomalyAnnotation(
             date=tag.date, original_observation=tag.original_observation, type=tag.tag_type

@@ -123,18 +123,19 @@ def _make_output_dataset(
     locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
     _append_variable_index_level(wide_date_df, output_metric)
 
-    assert dataset_in.tag.index.names == [
+    assert dataset_in.tag_all_bucket.index.names == [
         TagField.LOCATION_ID,
         TagField.VARIABLE,
         TagField.TYPE,
     ]
-    dataset_out = MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df)
+    dataset_out = MultiRegionDataset.from_timeseries_wide_dates_df(wide_date_df, bucketed=False)
     if source_columns:
-        source_tags = dataset_in.tag.loc[locations, list(source_columns)].reset_index()
+        source_tags = dataset_in.tag_all_bucket.loc[locations, list(source_columns)].reset_index()
         source_tags[TagField.VARIABLE] = output_metric
         # When there are two source_columns they usually contain the same provenance content.
         # Only keep one copy of it.
-        output_tags = source_tags.drop_duplicates(ignore_index=True)
+        output_tags = source_tags.drop_duplicates(ignore_index=True).copy()
+        timeseries.tag_df_add_all_bucket_in_place(output_tags)
         dataset_out = dataset_out.append_tag_df(output_tags)
 
     return dataset_out
@@ -168,11 +169,9 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
     def calculate(
         self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
-        delta_df = (
-            dataset.timeseries_wide_dates()
-            .reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
-            .diff(periods=diff_days, axis=1)
-        )
+        delta_df = dataset.timeseries_not_bucketed_wide_dates.reorder_levels(
+            [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+        ).diff(periods=diff_days, axis=1)
         assert delta_df.columns.names == [CommonFields.DATE]
         assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
@@ -213,7 +212,7 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
     def calculate(
         self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
-        df = dataset.timeseries_wide_dates().reorder_levels(
+        df = dataset.timeseries_not_bucketed_wide_dates.reorder_levels(
             [PdFields.VARIABLE, CommonFields.LOCATION_ID]
         )
         assert df.columns.names == [CommonFields.DATE]
@@ -340,7 +339,7 @@ class AllMethods:
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()
 
-        input_wide = dataset_in.timeseries_wide_dates()
+        input_wide = dataset_in.timeseries_not_bucketed_wide_dates
         if input_wide.empty:
             raise NoRealTimeseriesValuesException()
         dates = input_wide.columns.get_level_values(CommonFields.DATE)

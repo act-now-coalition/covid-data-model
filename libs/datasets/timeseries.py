@@ -15,11 +15,14 @@ from typing import Set
 from typing import Sequence
 from typing import Tuple
 
+import more_itertools
+from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from pandas.core.dtypes.common import is_numeric_dtype
+from pandas.core.dtypes.common import is_bool_dtype
 from typing_extensions import final
 
 import pandas as pd
@@ -49,19 +52,31 @@ _log = structlog.get_logger()
 
 
 # Fields used as panda MultiIndex levels when tags are represented in a pd.Series
-TAG_INDEX_FIELDS = [
+_TAG_INDEX_FIELDS = [
     TagField.LOCATION_ID,
     TagField.VARIABLE,
+    TagField.DEMOGRAPHIC_BUCKET,
     TagField.TYPE,
 ]
 
-TAG_DF_COLUMNS = TAG_INDEX_FIELDS + [TagField.CONTENT]
+_TAG_DF_COLUMNS = _TAG_INDEX_FIELDS + [TagField.CONTENT]
 
 ANNOTATION_TAG_TYPES = [
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
     TagType.CUMULATIVE_TAIL_TRUNCATED,
     TagType.ZSCORE_OUTLIER,
 ]
+
+
+# An empty pd.Series with the structure expected for the tag attribute. Use this when a
+# dataset does not have any tags.
+_EMPTY_TAG_SERIES = pd.Series(
+    [],
+    name=TagField.CONTENT,
+    dtype="str",
+    index=pd.MultiIndex.from_tuples([], names=_TAG_INDEX_FIELDS),
+)
+_EMPTY_ONE_REGION_TAG_SERIES = _EMPTY_TAG_SERIES.droplevel(TagField.LOCATION_ID)
 
 
 class RegionLatestNotFound(IndexError):
@@ -83,45 +98,58 @@ class OneRegionTimeseriesDataset:
     latest: Dict[str, Any]
 
     # A default exists for convenience in tests. Non-test code is expected to explicitly set tag.
-    tag: pd.Series = dataclasses.field(
-        default_factory=lambda: _EMPTY_TAG_SERIES.reset_index(CommonFields.LOCATION_ID, drop=True)
-    )
+    tag: pd.Series = _EMPTY_ONE_REGION_TAG_SERIES
+
+    @cached_property
+    def tag_all_bucket(self) -> pd.Series:
+        try:
+            return self.tag.xs(DemographicBucket.ALL, level=TagField.DEMOGRAPHIC_BUCKET)
+        except KeyError:
+            return _EMPTY_ONE_REGION_TAG_SERIES.droplevel([TagField.DEMOGRAPHIC_BUCKET])
 
     @property
     def provenance(self) -> Mapping[CommonFields, List[str]]:
-        provenance_series = self.tag.loc[:, [TagType.PROVENANCE]].droplevel([TagField.TYPE])
+        provenance_series = self.tag_all_bucket.loc[:, [TagType.PROVENANCE]].droplevel(
+            [TagField.TYPE]
+        )
         # https://stackoverflow.com/a/56065318
         return provenance_series.groupby(level=0).agg(list).to_dict()
 
     @property
     def source_url(self) -> Mapping[CommonFields, List[UrlStr]]:
-        source_url_series = self.tag.loc[:, [TagType.SOURCE_URL]].droplevel([TagField.TYPE])
+        source_url_series = self.tag_all_bucket.loc[:, [TagType.SOURCE_URL]].droplevel(
+            [TagField.TYPE]
+        )
         # https://stackoverflow.com/a/56065318
         return source_url_series.groupby(level=0).agg(list).to_dict()
 
-    def annotations(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
+    def annotations_all_bucket(self, metric: FieldName) -> List[taglib.AnnotationWithDate]:
         try:
-            return self.tag_objects_series.loc[[metric], ANNOTATION_TAG_TYPES].to_list()
+            return self.tag_objects_series.loc[
+                [metric], DemographicBucket.ALL, ANNOTATION_TAG_TYPES
+            ].to_list()
         except KeyError:
             # Not very elegant but I can't find
             # anything better in https://github.com/pandas-dev/pandas/issues/10695
             return []
 
-    def sources(self, field_name: FieldName) -> List[taglib.Source]:
+    def sources_all_bucket(self, field_name: FieldName) -> List[taglib.Source]:
         try:
-            return self.tag_objects_series.loc[[field_name], [TagType.SOURCE]].to_list()
+            return self.tag_objects_series.loc[
+                [field_name], DemographicBucket.ALL, [TagType.SOURCE]
+            ].to_list()
         except KeyError:
             return []
 
     @cached_property
     def tag_objects_series(self) -> pd.Series:
         """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
-        assert self.tag.index.names[1] == TagField.TYPE
+        assert self.tag.index.names[2] == TagField.TYPE
         # Apply a function to each element in the Series self.tag with the function having access to
         # the index of each element. From https://stackoverflow.com/a/47645833/341400.
         # result_type reduce forces the return value to be a Series, even when tag is empty.
         return self.tag.to_frame().apply(
-            lambda row: taglib.TagInTimeseries.make(row.name[1], content=row.content),
+            lambda row: taglib.TagInTimeseries.make(row.name[2], content=row.content),
             axis=1,
             result_type="reduce",
         )
@@ -138,7 +166,11 @@ class OneRegionTimeseriesDataset:
         if CommonFields.DATE not in self.data.columns:
             raise ValueError("A timeseries must have a date column")
 
-        assert self.tag.index.names == [TagField.VARIABLE, TagField.TYPE]
+        assert self.tag.index.names == [
+            TagField.VARIABLE,
+            TagField.DEMOGRAPHIC_BUCKET,
+            TagField.TYPE,
+        ]
 
     @property
     def date_indexed(self) -> pd.DataFrame:
@@ -273,28 +305,29 @@ def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     return wide
 
 
-# An empty pd.Series with the structure expected for the tag attribute. Use this when a
-# dataset does not have any tags.
-_EMPTY_TAG_SERIES = pd.Series(
+# An empty pd.DataFrame with the structure expected for the static attribute. Use this when
+# a dataset does not have any static values.
+EMPTY_STATIC_DF = pd.DataFrame(
     [],
-    name=TagField.CONTENT,
-    dtype="str",
-    index=pd.MultiIndex.from_tuples([], names=TAG_INDEX_FIELDS),
+    index=pd.Index([], name=CommonFields.LOCATION_ID),
+    columns=pd.Index([], name=PdFields.VARIABLE),
 )
 
 
-# An empty pd.DataFrame with the structure expected for the static attribute. Use this when
-# a dataset does not have any static values.
-EMPTY_REGIONAL_ATTRIBUTES_DF = pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
-
-
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
-# variable> and column labels <date>.
-EMPTY_TIMESERIES_WIDE_DATES_DF = pd.DataFrame(
+# variable, bucket> and column labels <date>.
+EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF = pd.DataFrame(
     [],
     dtype="float",
-    index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
+    index=pd.MultiIndex.from_tuples(
+        [], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET]
+    ),
     columns=pd.DatetimeIndex([], name=CommonFields.DATE),
+)
+
+
+EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF = EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.droplevel(
+    PdFields.DEMOGRAPHIC_BUCKET
 )
 
 
@@ -340,6 +373,17 @@ def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, buckete
     assert numeric_columns.all()
 
 
+def _tag_add_all_bucket(tag: pd.Series) -> pd.Series:
+    tag_bucketed = pd.concat(
+        {DemographicBucket.ALL: tag}, names=[PdFields.DEMOGRAPHIC_BUCKET]
+    ).reorder_levels(_TAG_INDEX_FIELDS)
+    return tag_bucketed
+
+
+def tag_df_add_all_bucket_in_place(tag_df: pd.DataFrame):
+    tag_df[TagField.DEMOGRAPHIC_BUCKET] = "all"
+
+
 # eq=False because instances are large and we want to compare by id instead of value
 @final
 @dataclass_with_default_init(frozen=True, eq=False)
@@ -362,7 +406,7 @@ class MultiRegionDataset:
     # Static data, each identified by variable name and region. This includes county name,
     # state etc (GEO_DATA_COLUMNS) and metrics that change so slowly they can be
     # considered constant, such as population and hospital beds.
-    static: pd.DataFrame = EMPTY_REGIONAL_ATTRIBUTES_DF
+    static: pd.DataFrame = EMPTY_STATIC_DF
 
     # A Series of tag CONTENT values having index with levels TAG_INDEX_FIELDS (LOCATION_ID,
     # VARIABLE, TYPE). Rows with identical index values may exist.
@@ -406,6 +450,13 @@ class MultiRegionDataset:
             )
 
     @cached_property
+    def tag_all_bucket(self) -> pd.Series:
+        try:
+            return self.tag.xs("all", level=TagField.DEMOGRAPHIC_BUCKET)
+        except KeyError:
+            return _EMPTY_TAG_SERIES.droplevel(TagField.DEMOGRAPHIC_BUCKET)
+
+    @cached_property
     def location_ids(self) -> pd.Index:
         return self.static.index.unique(CommonFields.LOCATION_ID).union(
             self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID)
@@ -430,7 +481,8 @@ class MultiRegionDataset:
     @cached_property
     def provenance(self) -> pd.DataFrame:
         """A Series of str with a MultiIndex with names LOCATION_ID and VARIABLE"""
-        provenance_tags = self.tag.loc[:, :, [TagType.PROVENANCE]]
+        # TODO(tom): Remove this function. It is only used in tests.
+        provenance_tags = self.tag_all_bucket.loc[:, :, [TagType.PROVENANCE]]
         return provenance_tags.droplevel([TagField.TYPE]).rename(PdFields.PROVENANCE)
 
     @cached_property
@@ -445,28 +497,40 @@ class MultiRegionDataset:
             self._timeseries_latest_values().reset_index(), static_and_geo_data.reset_index()
         )
 
-    def _timeseries_long(self) -> pd.Series:
-        """Returns the timeseries data in long format Series, where all values are in a single column.
-
-        Returns: a Series with MultiIndex LOCATION_ID, DATE, VARIABLE
-        """
-        # TODO(tom): Replace calls to this with timeseries_bucketed_long.
-        return self.timeseries.stack(dropna=True).rename(PdFields.VALUE).sort_index()
-
     @cached_property
     def timeseries_bucketed_long(self) -> pd.Series:
         """A Series with MultiIndex LOCATION_ID, DEMOGRAPHIC_BUCKET, DATE, VARIABLE"""
         return self.timeseries_bucketed.stack(dropna=True).rename(PdFields.VALUE).sort_index()
 
-    @lru_cache(maxsize=None)
-    def timeseries_wide_dates(self) -> pd.DataFrame:
-        """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
-        if self.timeseries.empty:
-            return EMPTY_TIMESERIES_WIDE_DATES_DF
-        timeseries_long = self._timeseries_long()
-        dates = timeseries_long.index.get_level_values(CommonFields.DATE)
+    @cached_property
+    def wide_var_not_null(self) -> pd.DataFrame:
+        """True iff there is at least one real value in any bucket with given location and
+        variable"""
+        wide_var_not_null = (
+            self.timeseries_bucketed_long.notnull()
+            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE], sort=False)
+            .any()
+            # TODO(tom) unstack sometimes return dtype Object, sometimes bool. Work out why and
+            #  remove astype.
+            .unstack(PdFields.VARIABLE, fill_value=False)
+            .sort_index()
+            .astype(bool)
+        )
+        assert wide_var_not_null.index.names == [CommonFields.LOCATION_ID]
+        assert wide_var_not_null.columns.names == [PdFields.VARIABLE]
+        assert wide_var_not_null.dtypes.apply(is_bool_dtype).all()
+        return wide_var_not_null
+
+    @cached_property
+    def timeseries_bucketed_wide_dates(self) -> pd.DataFrame:
+        """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE, BUCKET index and DATE
+        columns."""
+        if self.timeseries_bucketed.empty:
+            return EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF
+        timeseries_long = self.timeseries_bucketed_long
+        dates = timeseries_long.index.unique(CommonFields.DATE)
         if dates.empty:
-            return EMPTY_TIMESERIES_WIDE_DATES_DF
+            return EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF
         start_date = dates.min()
         end_date = dates.max()
         date_range = pd.date_range(start=start_date, end=end_date)
@@ -474,10 +538,38 @@ class MultiRegionDataset:
             timeseries_long.unstack(CommonFields.DATE)
             .reindex(columns=date_range)
             .rename_axis(columns=CommonFields.DATE)
+            .reorder_levels(
+                [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET]
+            )
         )
         if not timeseries_wide.columns.is_all_dates:
             raise ValueError(f"Problem with {start_date} to {end_date}... {str(self.timeseries)}")
         return timeseries_wide
+
+    def print_stats(self, name: str):
+        """Print stats about buckets by CommonFields group; quick and ugly"""
+        buckets = self.timeseries_bucketed_long.index.get_level_values(PdFields.DEMOGRAPHIC_BUCKET)
+        bucket_all = buckets == DemographicBucket.ALL
+        count = (
+            pd.DataFrame(
+                {"all": bucket_all, "not_all": ~bucket_all},
+                index=self.timeseries_bucketed_long.index.get_level_values(PdFields.VARIABLE),
+            )
+            .groupby(common_fields.COMMON_FIELD_TO_GROUP, sort=False)
+            .sum()
+        )
+        print(f"Dataset {name}:\n{count}")
+
+    @cached_property
+    def timeseries_not_bucketed_wide_dates(self) -> pd.DataFrame:
+        """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
+        # TODO(tom): Replace all calls to this function with calls to timeseries_bucketed_wide_dates
+        try:
+            return self.timeseries_bucketed_wide_dates.xs(
+                "all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0
+            )
+        except KeyError:
+            return EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
@@ -581,16 +673,17 @@ class MultiRegionDataset:
         """Returns a new object with given provenance string for every timeseries."""
         return self.add_provenance_series(
             pd.Series([], dtype=str, name=PdFields.PROVENANCE).reindex(
-                self.timeseries_wide_dates().index, fill_value=provenance
+                self.timeseries_not_bucketed_wide_dates.index, fill_value=provenance
             )
         )
 
-    def add_tag_all(self, tag: taglib.TagInTimeseries) -> "MultiRegionDataset":
-        """Returns a new object with given tag copied for every timeseries."""
+    def add_tag_all_bucket(self, tag: taglib.TagInTimeseries) -> "MultiRegionDataset":
+        """Returns a new object with given tag copied for every timeseries with bucket "all"."""
         tag_df = pd.DataFrame(
             {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
-            index=self.timeseries_wide_dates().index,
+            index=self.timeseries_not_bucketed_wide_dates.index,
         ).reset_index()
+        tag_df_add_all_bucket_in_place(tag_df)
         return self.append_tag_df(tag_df)
 
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
@@ -602,8 +695,11 @@ class MultiRegionDataset:
 
         new_index_df = provenance.index.to_frame()
         new_index_df[TagField.TYPE] = TagType.PROVENANCE
+        new_index_df[TagField.DEMOGRAPHIC_BUCKET] = DemographicBucket.ALL
         tag_additions = provenance.copy()
-        tag_additions.index = pd.MultiIndex.from_frame(new_index_df)
+        tag_additions.index = pd.MultiIndex.from_frame(new_index_df).reorder_levels(
+            _TAG_INDEX_FIELDS
+        )
         # Make a sorted series. The order doesn't matter and sorting makes the order depend only on
         # what is represented, not the order it appears in the input.
         tag = pd.concat([self.tag, tag_additions]).sort_index().rename(TagField.CONTENT)
@@ -639,7 +735,13 @@ class MultiRegionDataset:
     @staticmethod
     def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
         wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
-        wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+        bucketed = PdFields.DEMOGRAPHIC_BUCKET in wide_dates_df.columns
+        if bucketed:
+            wide_dates_df = wide_dates_df.set_index(
+                [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET]
+            )
+        else:
+            wide_dates_df = wide_dates_df.set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE])
 
         # Iterate through all known tag types. The following are populated while iterating.
         tag_columns_mask = pd.Series(False, index=wide_dates_df.columns)
@@ -671,11 +773,14 @@ class MultiRegionDataset:
             annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
             tag_df_to_concat.append(annotations)
 
-        dataset = MultiRegionDataset.from_timeseries_wide_dates_df(wide_dates_df).add_static_values(
-            static_df
-        )
+        dataset = MultiRegionDataset.from_timeseries_wide_dates_df(
+            wide_dates_df, bucketed=bucketed
+        ).add_static_values(static_df)
         if tag_df_to_concat:
-            dataset = dataset.append_tag_df(pd.concat(tag_df_to_concat))
+            tag_df = pd.concat(tag_df_to_concat)
+            if not bucketed:
+                tag_df_add_all_bucket_in_place(tag_df)
+            dataset = dataset.append_tag_df(tag_df)
 
         return dataset
 
@@ -705,7 +810,7 @@ class MultiRegionDataset:
         assert self.static.columns.intersection(GEO_DATA_COLUMNS).empty
 
         assert isinstance(self.tag, pd.Series)
-        assert self.tag.index.names == TAG_INDEX_FIELDS
+        assert self.tag.index.names == _TAG_INDEX_FIELDS
         # TODO(tom): Work out why is_monotonic_increasing is false (just for index with NaT
         #  and real date values?) after calling sort_index(). It may be related to
         #  https://github.com/pandas-dev/pandas/issues/35992 which is fixed in pandas 1.2.0
@@ -729,48 +834,33 @@ class MultiRegionDataset:
         # TODO(tom): check if rename_axis is needed once we have
         #  https://pandas.pydata.org/docs/whatsnew/v1.2.0.html#index-column-name-preservation-when-aggregating
         timeseries_df = (
-            pd.concat([self.timeseries, other.timeseries])
+            pd.concat([self.timeseries_bucketed, other.timeseries_bucketed])
             .sort_index()
             .rename_axis(columns=PdFields.VARIABLE)
         )
         static_df = pd.concat([self.static, other.static]).sort_index()
         tag = pd.concat([self.tag, other.tag]).sort_index()
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def append_tag_df(self, additional_tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with additional_tag_df appended."""
         if additional_tag_df.empty:
             return self
-        assert additional_tag_df.columns.symmetric_difference(TAG_DF_COLUMNS, sort=False).empty
+        assert additional_tag_df.columns.symmetric_difference(_TAG_DF_COLUMNS, sort=False).empty
         # Sort by index fields, and within rows having identical index fields, by content. This
         # makes the order of values in combined_series identical, independent of the order they
         # were appended.
         combined_df = (
             self.tag.reset_index()
             .append(additional_tag_df)
-            .sort_values(TAG_INDEX_FIELDS + [TagField.CONTENT])
+            .sort_values(_TAG_INDEX_FIELDS + [TagField.CONTENT])
         )
-        combined_series = combined_df.set_index(TAG_INDEX_FIELDS)[TagField.CONTENT]
+        combined_series = combined_df.set_index(_TAG_INDEX_FIELDS)[TagField.CONTENT]
         return dataclasses.replace(self, tag=combined_series)
 
     def replace_tag_df(self, tag_df: pd.DataFrame) -> "MultiRegionDataset":
         """Returns a new dataset with all tags replaced by those in tag_df"""
         return dataclasses.replace(self, tag=_EMPTY_TAG_SERIES).append_tag_df(tag_df)
-
-    @cached_property
-    def tag_objects_series(self) -> pd.Series:
-        """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
-        # This is similar to OneRegionTimeseriesDataset.tag_objects_series but index is slightly
-        # different.
-        assert self.tag.index.names[2] == TagField.TYPE
-        # Apply a function to each element in the Series self.tag with the function having access to
-        # the index of each element. From https://stackoverflow.com/a/47645833/341400.
-        # result_type reduce forces the return value to be a Series, even when tag is empty.
-        return self.tag.to_frame().apply(
-            lambda row: taglib.TagInTimeseries.make(row.name[2], content=row.content),
-            axis=1,
-            result_type="reduce",
-        )
 
     def get_one_region(self, region: Region) -> OneRegionTimeseriesDataset:
         try:
@@ -819,34 +909,35 @@ class MultiRegionDataset:
         return self.get_locations_subset(location_ids)
 
     def get_locations_subset(self, location_ids: Collection[str]) -> "MultiRegionDataset":
-        timeseries_mask = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID).isin(
-            location_ids
-        )
-        timeseries_df = self.timeseries.loc[timeseries_mask, :]
+        # If these mask+loc operations show up as a performance issue try changing to xs.
+        timeseries_mask = self.timeseries_bucketed.index.get_level_values(
+            CommonFields.LOCATION_ID
+        ).isin(location_ids)
+        timeseries_df = self.timeseries_bucketed.loc[timeseries_mask, :]
         static_mask = self.static.index.get_level_values(CommonFields.LOCATION_ID).isin(
             location_ids
         )
         static_df = self.static.loc[static_mask, :]
         tag_mask = self.tag.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
         tag = self.tag.loc[tag_mask, :]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def remove_regions(self, regions: Collection[RegionMaskOrRegion]) -> "MultiRegionDataset":
         location_ids = self._regionmaskorregions_to_location_id(regions)
         return self.remove_locations(location_ids)
 
     def remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
-        timeseries_mask = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID).isin(
-            location_ids
-        )
-        timeseries_df = self.timeseries.loc[~timeseries_mask, :]
+        timeseries_mask = self.timeseries_bucketed.index.get_level_values(
+            CommonFields.LOCATION_ID
+        ).isin(location_ids)
+        timeseries_df = self.timeseries_bucketed.loc[~timeseries_mask, :]
         static_mask = self.static.index.get_level_values(CommonFields.LOCATION_ID).isin(
             location_ids
         )
         static_df = self.static.loc[~static_mask, :]
         tag_mask = self.tag.index.get_level_values(CommonFields.LOCATION_ID).isin(location_ids)
         tag = self.tag.loc[~tag_mask, :]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def get_subset(
         self,
@@ -891,10 +982,10 @@ class MultiRegionDataset:
         return self.timeseries.groupby(CommonFields.LOCATION_ID)
 
     def timeseries_rows(self) -> pd.DataFrame:
-        """Returns a DataFrame containing timeseries values and tag, suitable for writing
+        """Returns a DataFrame containing timeseries values and tag_all_bucket, suitable for writing
         to a CSV."""
         # Make a copy to avoid modifying the cached DataFrame
-        wide_dates = self.timeseries_wide_dates().copy()
+        wide_dates = self.timeseries_bucketed_wide_dates.copy()
         # Format as a string here because to_csv includes a full timestamp.
         wide_dates.columns = wide_dates.columns.strftime("%Y-%m-%d")
         # When I look at the CSV I'm usually looking for the most recent values so reverse the
@@ -923,7 +1014,7 @@ class MultiRegionDataset:
 
     def drop_stale_timeseries(self, cutoff_date: datetime.date) -> "MultiRegionDataset":
         """Returns a new object containing only timeseries with a real value on or after cutoff_date."""
-        ts = self.timeseries_wide_dates()
+        ts = self.timeseries_bucketed_wide_dates
         recent_columns_mask = ts.columns >= cutoff_date
         recent_rows_mask = ts.loc[:, recent_columns_mask].notna().any(axis=1)
         timeseries_wide_dates = ts.loc[recent_rows_mask, :]
@@ -933,17 +1024,12 @@ class MultiRegionDataset:
         timeseries_wide_variables = (
             timeseries_wide_dates.stack()
             .unstack(PdFields.VARIABLE)
-            .reindex(columns=self.timeseries.columns)
+            .reindex(columns=self.timeseries_bucketed.columns)
             .sort_index()
         )
         # Only keep tag information for timeseries in the new timeseries_wide_dates.
-        tag_mask = self.tag.reset_index([TagField.TYPE], drop=True).index.isin(
-            timeseries_wide_dates.index
-        )
-        tag = self.tag.loc[tag_mask]
-        return dataclasses.replace(
-            self, timeseries=timeseries_wide_variables, tag=tag, timeseries_bucketed=None
-        )
+        tag = _slice_with_labels(self.tag, timeseries_wide_dates.index)
+        return dataclasses.replace(self, timeseries_bucketed=timeseries_wide_variables, tag=tag,)
 
     def to_csv(self, path: pathlib.Path, include_latest=True):
         """Persists timeseries to CSV.
@@ -998,10 +1084,10 @@ class MultiRegionDataset:
 
     def drop_columns_if_present(self, columns: List[CommonFields]) -> "MultiRegionDataset":
         """Drops the specified columns from the timeseries if they exist"""
-        timeseries_df = self.timeseries.drop(columns, axis="columns", errors="ignore")
+        timeseries_df = self.timeseries_bucketed.drop(columns, axis="columns", errors="ignore")
         static_df = self.static.drop(columns, axis="columns", errors="ignore")
         tag = self.tag[~self.tag.index.get_level_values(PdFields.VARIABLE).isin(columns)]
-        return MultiRegionDataset(timeseries=timeseries_df, static=static_df, tag=tag)
+        return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         """Joins the timeseries columns in `other` with those in `self`.
@@ -1015,13 +1101,17 @@ class MultiRegionDataset:
             raise NotImplementedError(
                 f"join with other with attributes {other_non_geo_attributes} not supported"
             )
-        common_ts_columns = set(other.timeseries.columns) & set(self.timeseries.columns)
+        common_ts_columns = set(other.timeseries_bucketed.columns) & set(
+            self.timeseries_bucketed.columns
+        )
         if common_ts_columns:
             # columns to be joined need to be disjoint
             raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
-        combined_df = pd.concat([self.timeseries, other.timeseries], axis=1)
+        combined_df = pd.concat([self.timeseries_bucketed, other.timeseries_bucketed], axis=1)
         combined_tag = pd.concat([self.tag, other.tag]).sort_index()
-        return MultiRegionDataset(timeseries=combined_df, static=self.static, tag=combined_tag)
+        return MultiRegionDataset(
+            timeseries_bucketed=combined_df, static=self.static, tag=combined_tag
+        )
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
         """Iterates through all the regions in this object"""
@@ -1034,13 +1124,6 @@ class MultiRegionDataset:
             yield region, OneRegionTimeseriesDataset(
                 region, timeseries_group.reset_index(), latest_dict, tag=tag
             )
-
-    def provenance_map(self) -> Mapping[CommonFields, Set[str]]:
-        """Returns a mapping from field name to set of provenances."""
-        assert TAG_INDEX_FIELDS[2] == TagField.TYPE
-        return (
-            self.tag.loc[:, :, [TagType.PROVENANCE]].groupby(TagField.VARIABLE).apply(set).to_dict()
-        )
 
 
 def _remove_padded_nans(df, columns):
@@ -1077,35 +1160,21 @@ class DatasetName(str):
     pass
 
 
-def _to_datasets_wide_dates_map(
-    datasets: Iterable[MultiRegionDataset],
-) -> Mapping[MultiRegionDataset, pd.DataFrame]:
-    """Turns an iterable of datasets to a mapping of DataFrame with identical date columns.
+def _slice_with_labels(series: pd.Series, labels: pd.MultiIndex) -> pd.Series:
+    """Emulates what I'd like `series.xs(labels, level=labels.names, drop=False)` to do
+    and also doesn't raise a KeyError."""
 
-    The mapping depends on MultiRegionDataset being hashable by id.
-    """
-    datasets_wide = {ds: ds.timeseries_wide_dates() for ds in datasets}
-    if not datasets_wide:
-        return {}
-    # Find the earliest and latest dates to make a range covering all timeseries.
-    dates = pd.DatetimeIndex(
-        np.hstack(
-            list(df.columns.get_level_values(CommonFields.DATE) for df in datasets_wide.values())
-        )
+    # Somewhat inspired by https://stackoverflow.com/questions/42733118/how-to-select-a-subset-from
+
+    # Change the input series to have index labels in same order as labels
+    reindexed = series.reset_index().set_index(labels.names)
+    # Select the rows (avoiding KeyError of reindexed.loc[labels]) then restore the index to match
+    # the input Series
+    return (
+        reindexed.loc[reindexed.index.isin(labels)]
+        .reset_index()
+        .set_index(series.index.names)[series.name]
     )
-    if dates.empty:
-        input_date_range = pd.DatetimeIndex([], name=CommonFields.DATE)
-    else:
-        start_date = dates.min()
-        end_date = dates.max()
-        input_date_range = pd.date_range(start=start_date, end=end_date, name=CommonFields.DATE)
-    datasets_wide_reindexed = {
-        ds: df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID]).reindex(
-            columns=input_date_range
-        )
-        for ds, df in datasets_wide.items()
-    }
-    return datasets_wide_reindexed
 
 
 def combined_datasets(
@@ -1116,32 +1185,22 @@ def combined_datasets(
 
     For each region, the timeseries from the first dataset in the list with a real value is returned.
     """
-    # MultiRegionDataset in `timeseries_field_datasets` will be looked up in `datasets_wide` by id.
-    datasets_wide = _to_datasets_wide_dates_map(
-        chain.from_iterable(timeseries_field_datasets.values())
-    )
-    # TODO(tom): Consider how to factor out the timeseries and static processing. For example,
-    #  create rows with the entire timeseries and tags then use groupby(location_id).first().
-    #  Or maybe do something with groupby(location_id).apply if it is fast enough.
-    # A list of "wide date" DataFrame (VARIABLE, LOCATION_ID index and DATE columns) that
-    # will be concat-ed.
-    timeseries_dfs = []
-    # A list of Series that will be concat-ed
-    tag_series = []
-    for field, datasets in timeseries_field_datasets.items():
-        # Iterate through the datasets for this field. For each dataset add location_id with data
-        # in field to location_id_so_far iff the location_id is not already there.
-        location_id_so_far = pd.Index([])
-        for dataset in datasets:
-            field_wide_df = datasets_wide[dataset].loc[[field], :]
-            assert field_wide_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-            location_ids = field_wide_df.index.get_level_values(CommonFields.LOCATION_ID)
-            # Select the locations in `dataset_name` that have a timeseries for `field` and are
-            # not in `location_id_so_far`.
-            selected_location_id = location_ids.difference(location_id_so_far)
-            timeseries_dfs.append(field_wide_df.loc[(slice(None), selected_location_id), :])
-            location_id_so_far = location_id_so_far.union(selected_location_id).sort_values()
-            tag_series.append(dataset.tag.loc[selected_location_id, [field]])
+    if timeseries_field_datasets:
+        # First make a map from dataset to table with bool values that represent what timeseries
+        # (or distribution) has any real value in that dataset.
+        # In the table the index labels are currently just location_id (but could be expanded to
+        # include the distribution such as 'all', 'age', 'race', ... if these are combined
+        # separately) and columns are fields.
+        all_timeseries_datasets = set(chain.from_iterable(timeseries_field_datasets.values()))
+        datasets_wide = _datasets_wide_var_not_null(all_timeseries_datasets)
+        # Then make a map from dataset to table with the same index and columns but only True
+        # where that particular data will be copied to the output. These tables will have a
+        # subset of the True values in `datasets_wide`.
+        datasets_output = _pick_first_with_field(datasets_wide, timeseries_field_datasets)
+        # Finally copy the timeseries and tags that were selected from each dataset.
+        ts_bucketed, tags = _combine_timeseries(datasets_output)
+    else:
+        ts_bucketed, tags = _combine_timeseries({})
 
     static_series = []
     for field, dataset_list in static_field_datasets.items():
@@ -1167,37 +1226,102 @@ def combined_datasets(
                     verify_integrity=True,
                 )
         static_series.append(static_column_so_far)
-    if timeseries_dfs:
-        output_timeseries_wide_dates = pd.concat(timeseries_dfs, verify_integrity=True)
-        assert output_timeseries_wide_dates.index.names == [
-            PdFields.VARIABLE,
-            CommonFields.LOCATION_ID,
-        ]
-        assert output_timeseries_wide_dates.columns.names == [CommonFields.DATE]
-        # Transform from a column for each date to a column for each variable (with rows for dates).
-        # stack and unstack does the transform quickly but does not handle an empty DataFrame.
-        if output_timeseries_wide_dates.empty:
-            output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
-        else:
-            output_timeseries_wide_variables = (
-                output_timeseries_wide_dates.stack().unstack(PdFields.VARIABLE).sort_index()
-            )
-        output_tag = pd.concat(tag_series)
-    else:
-        output_timeseries_wide_variables = EMPTY_TIMESERIES_WIDE_VARIABLES_DF
-        output_tag = _EMPTY_TAG_SERIES
     if static_series:
         output_static_df = pd.concat(
             static_series, axis=1, sort=True, verify_integrity=True
         ).rename_axis(index=CommonFields.LOCATION_ID)
     else:
-        output_static_df = EMPTY_REGIONAL_ATTRIBUTES_DF
+        output_static_df = EMPTY_STATIC_DF
 
-    return MultiRegionDataset(
-        timeseries=output_timeseries_wide_variables,
-        tag=output_tag.sort_index(),
-        static=output_static_df,
+    return MultiRegionDataset(timeseries_bucketed=ts_bucketed, tag=tags, static=output_static_df,)
+
+
+def _pick_first_with_field(
+    datasets_wide: Mapping[MultiRegionDataset, pd.DataFrame],
+    timeseries_field_datasets: Mapping[FieldName, List[MultiRegionDataset]],
+) -> Mapping[MultiRegionDataset, pd.DataFrame]:
+    """Creates a DataFrame for each dataset that has True for the subset of datasets_wide that is
+    selected according to timeseries_field_datasets"""
+    common_index = more_itertools.first(datasets_wide.values()).index
+    for df in datasets_wide.values():
+        assert df.columns.names == [PdFields.VARIABLE]
+        assert df.index.equals(common_index)
+    assert common_index.names == [CommonFields.LOCATION_ID]
+    datasets_output = {
+        ds: pd.DataFrame([], index=common_index, dtype="bool").rename_axis(
+            columns=PdFields.VARIABLE
+        )
+        for ds in datasets_wide.keys()
+    }
+    for field, datasets in timeseries_field_datasets.items():
+        location_id_so_far = pd.Series([], dtype=bool).reindex(index=common_index, fill_value=False)
+        for dataset in datasets:
+            try:
+                this_dataset = datasets_wide[dataset].loc[:, field]
+            except KeyError:
+                continue
+            datasets_output[dataset].loc[:, field] = this_dataset & ~location_id_so_far
+            location_id_so_far = location_id_so_far | this_dataset
+    return datasets_output
+
+
+def _datasets_wide_var_not_null(
+    datasets: Collection[MultiRegionDataset],
+) -> Mapping[MultiRegionDataset, pd.DataFrame]:
+    """Makes a map from dataset to a DataFrame with a True where the timeseries has a real value."""
+    datasets_wide = {ds: ds.wide_var_not_null for ds in datasets}
+    return _with_common_index(datasets_wide)
+
+
+def _with_common_index(
+    datasets_wide: Mapping[MultiRegionDataset, pd.DataFrame]
+) -> Mapping[MultiRegionDataset, pd.DataFrame]:
+    dataset_wide_first = more_itertools.first(datasets_wide.values())
+    assert dataset_wide_first.index.names == [CommonFields.LOCATION_ID]
+    assert dataset_wide_first.columns.names == [PdFields.VARIABLE]
+    common_index = pd.Index(
+        np.unique(np.concatenate([ds_w.index for ds_w in datasets_wide.values()])),
+        name=dataset_wide_first.index.name,
     )
+    datasets_wide = {
+        ds: ds_w.reindex(index=common_index, fill_value=False) for ds, ds_w in datasets_wide.items()
+    }
+    return datasets_wide
+
+
+def _combine_timeseries(
+    datasets_output: Mapping[MultiRegionDataset, pd.DataFrame]
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """Combine timeseries selected from each dataset into one structure.
+
+    Args:
+        datasets_output: Map from dataset to a DataFrame of which timeseries to output
+    Returns:
+        Tuple of timeseries_bucketed and tag, suitable for MultiRegionDataset.__init__
+    """
+    ts_bucketed_long_to_concat = []
+    tags_to_concat = []
+    for ds, outputs in datasets_output.items():
+        if outputs.empty:
+            continue
+        # Change False to nan so they are dropped when stacking.
+        output_labels = outputs.replace({False: np.nan}).stack().index
+        if output_labels.empty:
+            continue
+        assert output_labels.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        ts_bucketed_long_to_concat.append(
+            _slice_with_labels(ds.timeseries_bucketed_long, output_labels)
+        )
+        tags_to_concat.append(_slice_with_labels(ds.tag, output_labels))
+
+    if ts_bucketed_long_to_concat:
+        ts_bucketed = pd.concat(ts_bucketed_long_to_concat).unstack(PdFields.VARIABLE).sort_index()
+        tags = pd.concat(tags_to_concat).sort_index()
+    else:
+        ts_bucketed = EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF
+        tags = _EMPTY_TAG_SERIES
+
+    return ts_bucketed, tags
 
 
 def make_source_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
@@ -1230,13 +1354,16 @@ def make_source_url_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     """Make source_url tags from source tags"""
     # TODO(tom): When we have clearer view of how we want to build materialized views of tags
     #  replace use of this function.
-    assert TagType.SOURCE_URL not in ds_in.tag.index.get_level_values(TagField.TYPE)
+    assert TagType.SOURCE_URL not in ds_in.tag_all_bucket.index.unique(TagField.TYPE)
     try:
-        source_tags = ds_in.tag_objects_series.loc[:, :, [TagType.SOURCE]]
+        source_tags = ds_in.tag.xs(TagType.SOURCE, level=TagField.TYPE)
     except KeyError:
         return ds_in
     source_url = (
-        source_tags.apply(lambda tag: tag.url).dropna().rename(TagField.CONTENT).reset_index()
+        source_tags.apply(lambda content: taglib.Source.make_instance(content=content).url)
+        .dropna()
+        .rename(TagField.CONTENT)
+        .reset_index()
     )
     source_url[TagField.TYPE] = TagType.SOURCE_URL
     return ds_in.append_tag_df(source_url)

@@ -3,6 +3,8 @@ from covidactnow.datapublic.common_fields import CommonFields
 
 import pandas as pd
 import numpy as np
+from covidactnow.datapublic.common_fields import PdFields
+
 from libs.datasets import taglib
 from libs.datasets import timeseries
 
@@ -83,27 +85,13 @@ def drop_series_outliers(
 
     Returns: timeseries with outliers removed from new_cases.
     """
-    df_copy = dataset.timeseries.copy()
-    grouped_df = dataset.groupby_region()
+    ts_to_filter = dataset.timeseries_bucketed_wide_dates.xs(
+        field, level=PdFields.VARIABLE, drop_level=False
+    )
+    zscores = ts_to_filter.apply(_calculate_modified_zscore, axis=1, result_type="reduce")
+    to_exclude = (zscores > zscore_threshold) & (ts_to_filter > threshold)
 
-    zscores = grouped_df[field].apply(_calculate_modified_zscore)
-    to_exclude = (zscores > zscore_threshold) & (df_copy[field] > threshold)
-
-    new_tags = taglib.TagCollection()
-    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
-    # rows where to_exclude is True.
-    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    values = [(idx, df_copy.at[idx, field]) for idx in to_exclude[to_exclude].keys()]
-    for (location_id, date), original_value in values:
-        tag = taglib.ZScoreOutlier(date=date, original_observation=original_value,)
-        new_tags.add(tag, location_id=location_id, variable=field)
-    df_copy.loc[to_exclude, field] = np.nan
-
-    new_dataset = dataclasses.replace(
-        dataset, timeseries=df_copy, timeseries_bucketed=None
-    ).append_tag_df(new_tags.as_dataframe())
-
-    return new_dataset
+    return exclude_observations(dataset, to_exclude)
 
 
 def drop_tail_positivity_outliers(
@@ -123,39 +111,60 @@ def drop_tail_positivity_outliers(
     """
     # TODO(https://trello.com/c/7J2SmDnr): Be more consistent about accessing this data
     # through wide dates rather than duplicating timeseries.
-    df_copy = dataset.timeseries.copy()
-    grouped_df = dataset.groupby_region()
+    ts_to_filter = dataset.timeseries_bucketed_wide_dates.xs(
+        CommonFields.TEST_POSITIVITY_7D, level=PdFields.VARIABLE, drop_level=False
+    )
 
     def process_series(series):
         recent_series = series.tail(10)
         # window of 5 days seems to capture about the right amount of variance.
         # If window is too large, there may have been a large enough natural shift
         # in test positivity that recent extreme value looks more noraml.
-        series = _calculate_modified_zscore(recent_series, window=5, ignore_zeros=False)
-        series.index = series.index.get_level_values(CommonFields.DATE)
-        series = series.dropna().last("1D")
-        return series
+        series_zscores = _calculate_modified_zscore(recent_series, window=5, ignore_zeros=False)
+        series_zscores = series_zscores.dropna().last("1D")
+        return series_zscores
 
-    zscores = grouped_df[CommonFields.TEST_POSITIVITY_7D].apply(process_series)
-    test_positivity_diffs = df_copy[CommonFields.TEST_POSITIVITY_7D].diff().abs()
+    zscores = ts_to_filter.apply(process_series, axis=1, result_type="reduce")
+    test_positivity_diffs = ts_to_filter.diff(axis=1).abs()
 
-    to_exclude = (zscores > zscore_threshold) & (test_positivity_diffs > diff_threshold_ratio)
+    to_exclude_wide = (zscores > zscore_threshold) & (test_positivity_diffs > diff_threshold_ratio)
+    return exclude_observations(dataset, to_exclude_wide)
 
+
+def exclude_observations(dataset, to_exclude_wide) -> MultiRegionDataset:
+    to_exclude_long = to_exclude_wide.stack()
+    to_exclude_index = to_exclude_long.loc[to_exclude_long].index
     new_tags = taglib.TagCollection()
-    # to_exclude is a Series of bools with the same index as df_copy. Iterate through the index
-    # rows where to_exclude is True.
-    assert to_exclude.index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
-    for idx, _ in to_exclude[to_exclude].iteritems():
+    timeseries_copy = dataset.timeseries_bucketed.copy()
+    # Iterate through the MultiIndex to_exclude_index, accessing elements of timeseries_copy.
+    # These asserts check that the labels are in the expected order. It might be cleaner to
+    # change timeseries_copy to a long format with the same index level order as to_exclude_index
+    # but that is a bigger change.
+    assert to_exclude_index.names == [
+        CommonFields.LOCATION_ID,
+        PdFields.VARIABLE,
+        PdFields.DEMOGRAPHIC_BUCKET,
+        CommonFields.DATE,
+    ]
+    assert timeseries_copy.index.names == [
+        CommonFields.LOCATION_ID,
+        PdFields.DEMOGRAPHIC_BUCKET,
+        CommonFields.DATE,
+    ]
+    assert timeseries_copy.columns.names == [PdFields.VARIABLE]
+    # MultiIndex does not support iterating as a NamedTuple
+    # https://github.com/pandas-dev/pandas/issues/34840 but we could do it via a DataFrame.
+    for location_id, variable, bucket, date in to_exclude_index:
         new_tags.add(
             taglib.ZScoreOutlier(
-                date=idx[1], original_observation=df_copy.at[idx, CommonFields.TEST_POSITIVITY_7D],
+                date=date,
+                original_observation=timeseries_copy.at[(location_id, bucket, date), variable],
             ),
-            location_id=idx[0],
-            variable=CommonFields.TEST_POSITIVITY_7D,
+            location_id=location_id,
+            variable=variable,
+            bucket=bucket,
         )
-
-    df_copy.loc[to_exclude[to_exclude].index, CommonFields.TEST_POSITIVITY_7D] = np.nan
-
-    return dataclasses.replace(dataset, timeseries=df_copy, timeseries_bucketed=None).append_tag_df(
+        timeseries_copy.at[(location_id, bucket, date), variable] = np.nan
+    return dataclasses.replace(dataset, timeseries_bucketed=timeseries_copy).append_tag_df(
         new_tags.as_dataframe()
     )

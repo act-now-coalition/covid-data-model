@@ -238,6 +238,9 @@ def _apply_scaling_factor(
         [CommonFields.LOCATION_ID, CommonFields.DATE],
         [CommonFields.LOCATION_ID],
     )
+    # Check that scale_factors has location index and CommonFields in columns.
+    assert scale_factors.index.names == [CommonFields.LOCATION_ID]
+    assert scale_factors.columns.difference(CommonFields).empty
 
     # Scaled fields are modified in-place
     df_out = df_in.copy()
@@ -263,7 +266,7 @@ def _aggregate_dataframe_by_region(
         empty_result = timeseries.EMPTY_TIMESERIES_WIDE_VARIABLES_DF
     else:
         groupby_columns = [LOCATION_ID_AGG, PdFields.VARIABLE]
-        empty_result = timeseries.EMPTY_REGIONAL_ATTRIBUTES_DF
+        empty_result = timeseries.EMPTY_STATIC_DF
 
     # df_in is sometimes empty in unittests. Return a DataFrame that is also empty and
     # has enough of an index that the test passes.

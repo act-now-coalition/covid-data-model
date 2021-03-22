@@ -10,6 +10,7 @@ from typing import Union
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 import pandas as pd
+from covidactnow.datapublic.common_fields import DemographicBucket
 
 from libs.datasets import data_source
 from libs.datasets import taglib
@@ -151,7 +152,14 @@ def test_query_multiple_variables_with_ethnicity():
 
     cases = TimeseriesLiteral([100, 100], source=taglib.Source(type="MySource"))
     expected_ds = test_helpers.build_default_region_dataset(
-        {CommonFields.CASES: cases}, region=Region.from_fips("36"),
+        {
+            CommonFields.CASES: {
+                # bucket="all" has a taglib.Source with it; other buckets have only the numbers
+                DemographicBucket.ALL: cases,
+                DemographicBucket("ethnicity:hispanic"): [40, 40],
+            }
+        },
+        region=Region.from_fips("36"),
     )
 
     test_helpers.assert_dataset_like(ds, expected_ds)
@@ -230,5 +238,5 @@ def test_bad_location_id():
     )
     input_data = build_can_scraper_dataframe({variable: [10, 20, 30]})
     input_data.iat[0, input_data.columns.get_loc(ccd_helpers.Fields.LOCATION_ID)] = "iso1:us#nope"
-    with pytest.warns(ccd_helpers.BadLocationId, match=r"\#nope"):
+    with pytest.raises(ccd_helpers.BadLocationId, match=r"\#nope"):
         ccd_helpers.CanScraperLoader(input_data)

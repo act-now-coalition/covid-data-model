@@ -25,7 +25,7 @@ def drop_all_zero_timeseries(
     locations with a population over some threshold. Or perhaps an automatic filter isn't worth
     the trouble after all :-(
     """
-    ts_wide = ds_in.timeseries_wide_dates()
+    ts_wide = ds_in.timeseries_bucketed_wide_dates
 
     # Separate into timeseries in `fields` and all others.
     variable_mask = ts_wide.index.get_level_values(PdFields.VARIABLE).isin(fields)
@@ -49,7 +49,5 @@ def drop_all_zero_timeseries(
     # be cleaner to add a method 'MultiRegionDataset.drop_timeseries' similar to 'remove_regions' or
     # move this into 'MultiRegionDataset' similar to 'drop_stale_timeseries'.
     return dataclasses.replace(
-        ds_in,
-        timeseries=ts_wide_out.stack().unstack(PdFields.VARIABLE).sort_index(),
-        timeseries_bucketed=None,
+        ds_in, timeseries_bucketed=ts_wide_out.stack().unstack(PdFields.VARIABLE).sort_index(),
     )

@@ -17,7 +17,7 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
         CommonFields.VACCINATIONS_INITIATED: CommonFields.VACCINATIONS_INITIATED_PCT,
         CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_COMPLETED_PCT,
     }
-    ds_in_wide_dates = ds_in.timeseries_wide_dates()
+    ds_in_wide_dates = ds_in.timeseries_not_bucketed_wide_dates
     ds_in_wide_dates = ds_in_wide_dates.loc[
         ds_in_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(field_map.keys())
     ]
@@ -49,6 +49,14 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     return dataset_without_pct.join_columns(ds_all_pct)
 
 
+def _xs_or_empty(df: pd.DataFrame, key, *, level) -> pd.DataFrame:
+    """Similar to df.xs(key, level=level, drop_level=True) but returns an empty DataFrame instead of
+    raising KeyError when key is not found."""
+    index_mask = df.index.get_level_values(level) == key
+    rows = df.loc(axis=0)[index_mask]
+    return rows.droplevel(level)
+
+
 def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDataset:
     """Backfills vaccination initiated data from total doses administered and total completed.
 
@@ -57,54 +65,30 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
 
     Returns: New dataset with backfilled data.
     """
-    fields = [
-        CommonFields.VACCINES_ADMINISTERED,
-        CommonFields.VACCINATIONS_INITIATED,
-        CommonFields.VACCINATIONS_COMPLETED,
-    ]
-    df = dataset.timeseries_wide_dates().loc[(slice(None), fields), :]
-    df_var_first = df.reorder_levels([PdFields.VARIABLE, CommonFields.LOCATION_ID])
+    timeseries_wide = dataset.timeseries_bucketed_wide_dates.dropna(axis=1, how="all")
 
-    administered = df_var_first.loc[CommonFields.VACCINES_ADMINISTERED]
-    inititiated = df_var_first.loc[[CommonFields.VACCINATIONS_INITIATED]]
-    completed = df_var_first.loc[[CommonFields.VACCINATIONS_COMPLETED]]
+    administered = _xs_or_empty(
+        timeseries_wide, CommonFields.VACCINES_ADMINISTERED, level=PdFields.VARIABLE
+    )
+    completed = _xs_or_empty(
+        timeseries_wide, CommonFields.VACCINATIONS_COMPLETED, level=PdFields.VARIABLE
+    )
 
     computed_initiated = administered - completed
 
-    # Rename index value to be initiated
-    computed_initiated = computed_initiated.rename(
-        index={CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_INITIATED}
-    )
+    # Use concat to prepend the VARIABLE index level, then reorder the levels to match the dataset.
+    computed_initiated = pd.concat(
+        {CommonFields.VACCINATIONS_INITIATED: computed_initiated},
+        names=[PdFields.VARIABLE] + list(computed_initiated.index.names),
+    ).reorder_levels(timeseries_wide.index.names)
 
-    locations = df.index.get_level_values(CommonFields.LOCATION_ID).unique()
-    locations_with_initiated = (
-        inititiated.notna()
-        .any(axis="columns")
-        .index.get_level_values(CommonFields.LOCATION_ID)
-        .unique()
-    )
-    locations_without_initiated = locations.difference(locations_with_initiated)
+    timeseries_wide_combined = pd.concat([timeseries_wide, computed_initiated])
 
-    combined_initiated_df = pd.concat(
-        [
-            inititiated.loc[
-                (slice(CommonFields.VACCINATIONS_INITIATED), locations_with_initiated), :
-            ],
-            computed_initiated.loc[
-                (slice(CommonFields.VACCINATIONS_INITIATED), locations_without_initiated), :
-            ],
-        ]
-    )
-
-    combined_initiated_df = combined_initiated_df.reorder_levels(
-        [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-    )
-    initiated_dataset = MultiRegionDataset.from_timeseries_wide_dates_df(combined_initiated_df)
-
-    # locations that are na for all vaccinations initiated
-    timeseries_copy = dataset.timeseries.copy()
-    timeseries_copy.loc[:, CommonFields.VACCINATIONS_INITIATED] = initiated_dataset.timeseries.loc[
-        :, CommonFields.VACCINATIONS_INITIATED
+    # https://stackoverflow.com/a/34297689
+    timeseries_wide_deduped = timeseries_wide_combined.loc[
+        ~timeseries_wide_combined.index.duplicated(keep="first")
     ]
 
-    return dataclasses.replace(dataset, timeseries=timeseries_copy, timeseries_bucketed=None)
+    timeseries_wide_vars = timeseries_wide_deduped.stack().unstack(PdFields.VARIABLE)
+
+    return dataclasses.replace(dataset, timeseries_bucketed=timeseries_wide_vars)

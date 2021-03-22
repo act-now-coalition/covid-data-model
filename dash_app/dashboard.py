@@ -31,7 +31,12 @@ EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
 # These columns match the OneRegion tag attribute. Unlike timeseries.TAG_INDEX_FIELDS it does
 # not contain LOCATION_ID.
-TAG_TABLE_COLUMNS = [TagField.VARIABLE, TagField.TYPE, TagField.CONTENT]
+TAG_TABLE_COLUMNS = [
+    TagField.VARIABLE,
+    TagField.DEMOGRAPHIC_BUCKET,
+    TagField.TYPE,
+    TagField.CONTENT,
+]
 
 
 # TODO(tom): Move all the aggregation and statistics stuff to a different module and test it.
@@ -117,16 +122,17 @@ class PerRegionStats(AggregatedStats):
     @staticmethod
     def make(ds: timeseries.MultiRegionDataset) -> "PerRegionStats":
         wide_var_has_timeseries = (
-            ds.timeseries_wide_dates()
-            .notnull()
+            ds.timeseries_not_bucketed_wide_dates.notnull()
             .any(1)
             .unstack(PdFields.VARIABLE, fill_value=False)
             .astype(bool)
         )
-        wide_var_has_url = ds.tag.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+        wide_var_has_url = (
+            ds.tag_all_bucket.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+        )
         # Need to use pivot_table instead of unstack to aggregate using sum.
         wide_var_annotation_count = pd.pivot_table(
-            ds.tag.loc[:, :, timeseries.ANNOTATION_TAG_TYPES].notnull().reset_index(),
+            ds.tag_all_bucket.loc[:, :, timeseries.ANNOTATION_TAG_TYPES].notnull().reset_index(),
             values=TagField.CONTENT,
             index=CommonFields.LOCATION_ID,
             columns=PdFields.VARIABLE,
@@ -225,7 +231,10 @@ def init(server):
     )
 
     source_url_value_counts = (
-        ds.tag.loc[:, :, TagType.SOURCE_URL].value_counts().rename_axis(index="URL").rename("count")
+        ds.tag_all_bucket.loc[:, :, TagType.SOURCE_URL]
+        .value_counts()
+        .rename_axis(index="URL")
+        .rename("count")
     )
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
