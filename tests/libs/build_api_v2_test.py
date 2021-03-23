@@ -13,7 +13,7 @@ from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 from api.can_api_v2_definition import RegionSummary
 from api.can_api_v2_definition import RiskLevels
-from api.can_api_v2_definition import Demographics
+from api.can_api_v2_definition import DemographicDistributions
 from api.can_api_v2_definition import Metrics
 from libs.metrics import top_level_metric_risk_levels
 from libs.datasets import combined_datasets
@@ -237,5 +237,6 @@ def test_multiple_distributions():
     summary = build_api_v2.build_region_summary(
         one_region, Metrics.empty(), RiskLevels.empty(), log
     )
-    expected_demographics = Demographics(age={"30-39": 4})
+    expected_demographics = DemographicDistributions(age={"30-39": 4})
     assert summary.actuals.vaccinesAdministeredDemographics == expected_demographics
+    assert summary.actuals.vaccinationsInitiatedDemographics is None

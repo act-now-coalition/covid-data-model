@@ -28,6 +28,7 @@ from api.can_api_v2_definition import FieldSourceType
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+from libs.datasets.sources import can_scraper_helpers
 import structlog
 
 
@@ -41,40 +42,45 @@ USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 _logger = structlog.get_logger()
 
 
-def _select_category(category: str, data: Dict):
+def _filter_demographic_field_and_remove_prefix(demographic_field: str, data: Dict):
     return {
-        key.replace(category + ":", ""): value
+        key.replace(demographic_field + ":", ""): value
         for key, value in data.items()
-        if key.startswith(category)
+        if key.startswith(demographic_field)
     }
 
 
-def _build_demographic_data_for_field(field_bucket: Dict[str, int]) -> DemographicDistributions:
-    return DemographicDistributions(
-        # TODO(chris): maybe add `or None`?
-        age=_select_category("age", field_bucket) or None,
-        race=_select_category("race", field_bucket) or None,
-        ethnicity=_select_category("ethnicity", field_bucket) or None,
-        sex=_select_category("sex", field_bucket) or None,
-    )
+def _build_demographic_data_for_field(
+    field_bucket: Dict[str, int]
+) -> Optional[DemographicDistributions]:
+
+    data = {
+        field: _filter_demographic_field_and_remove_prefix(field, field_bucket) or None
+        for field in can_scraper_helpers.DEMOGRAPHIC_FIELDS
+    }
+
+    # If there is no demographic data, do not create a DemographicDistributions
+    # object, simply return none
+    if not any(value for value in data.values()):
+        return None
+
+    return DemographicDistributions(**data)
 
 
-def _build_actuals(actual_data: dict, bucketed_data: dict = None) -> Actuals:
+def _build_actuals(actual_data: dict, bucketed_data: Optional[dict] = None) -> Actuals:
     """Generate actuals entry.
 
     Args:
         actual_data: Dictionary of data, generally derived one of the combined datasets.
         intervention: Current state level intervention.
     """
-    vaccines_administered_demographics = None
-    vaccines_initiated_demographics = None
-    if bucketed_data:
-        vaccines_administered_demographics = _build_demographic_data_for_field(
-            bucketed_data.get(CommonFields.VACCINES_ADMINISTERED, {})
-        )
-        vaccines_administered_demographics = _build_demographic_data_for_field(
-            bucketed_data.get(CommonFields.VACCINATIONS_INITIATED, {})
-        )
+    bucketed_data = bucketed_data or {}
+    vaccines_administered_demographics = _build_demographic_data_for_field(
+        bucketed_data.get(CommonFields.VACCINES_ADMINISTERED, {})
+    )
+    vaccines_initiated_demographics = _build_demographic_data_for_field(
+        bucketed_data.get(CommonFields.VACCINATIONS_INITIATED, {})
+    )
 
     return Actuals(
         cases=actual_data.get(CommonFields.CASES),
@@ -114,7 +120,6 @@ def build_region_summary(
     latest_values = one_region.latest
 
     region = one_region.region
-
     actuals = _build_actuals(latest_values, bucketed_data=one_region.bucketed_latest_by_field)
     return RegionSummary(
         fips=region.fips,
