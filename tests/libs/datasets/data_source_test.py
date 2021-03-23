@@ -70,11 +70,6 @@ def test_data_source_make_dataset(tmpdir):
         pass
 
     region = pipeline.Region.from_state("AZ")
-    region_static = {
-        CommonFields.STATE: "AZ",
-        CommonFields.FIPS: "04",
-        CommonFields.AGGREGATE_LEVEL: "state",
-    }
     tmp_data_root = pathlib.Path(tmpdir)
     csv_path = tmp_data_root / NYTimesForTest.COMMON_DF_CSV_PATH
     csv_path.parent.mkdir(parents=True)
@@ -86,7 +81,6 @@ def test_data_source_make_dataset(tmpdir):
         # Make timeseries using just the real values, no source.
         {CommonFields.CASES: list(cases_ts), CommonFields.DEATHS: list(deaths_ts)},
         region=region,
-        static=region_static,
     )
     dataset_start.to_csv(csv_path, include_latest=False)
 

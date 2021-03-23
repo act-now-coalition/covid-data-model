@@ -221,7 +221,7 @@ def test_multiregion_provenance():
     region_03 = Region.from_fips("03")
     ds = test_helpers.build_dataset(
         {
-            region_97111: {m1: TimeseriesLiteral([1, 2, None], provenance="src11"),},
+            region_97111: {m1: TimeseriesLiteral([1, 2, None], provenance="src11")},
             region_97222: {
                 m1: TimeseriesLiteral([None, None, 3], provenance="src21"),
                 m2: TimeseriesLiteral([10, None, 30], provenance="src22"),
@@ -230,11 +230,6 @@ def test_multiregion_provenance():
                 m1: TimeseriesLiteral([None, None, 4], provenance="src31"),
                 m2: TimeseriesLiteral([None, None, 40], provenance="src32"),
             },
-        },
-        static_by_region_then_field_name={
-            region_97111: {CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value},
-            region_97222: {CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value},
-            region_03: {CommonFields.AGGREGATE_LEVEL: AggregationLevel.STATE.value},
         },
     )
 
@@ -1424,42 +1419,12 @@ def test_multi_region_dataset_get_subset():
             region_county: {m1: [1], m2: [2]},
             region_cbsa: {m1: [1], m2: [2], CommonFields.POPULATION: [20_000]},
         },
-        # TODO(tom): remove static_by_region_then_field_name after
-        #  https://github.com/covid-projections/covid-data-model/pull/1011 is merged.
         static_by_region_then_field_name={
-            region_us: {CommonFields.POPULATION: 10_000, CommonFields.AGGREGATE_LEVEL: "country"},
-            region_tx: {
-                CommonFields.POPULATION: 5_000,
-                CommonFields.AGGREGATE_LEVEL: "state",
-                CommonFields.STATE: "TX",
-            },
-            region_county: {
-                CommonFields.POPULATION: 1_000,
-                CommonFields.AGGREGATE_LEVEL: "county",
-                CommonFields.FIPS: region_county.fips,
-            },
-            region_cbsa: {
-                CommonFields.AGGREGATE_LEVEL: "cbsa",
-                CommonFields.FIPS: region_cbsa.fips,
-            },
+            region_us: {CommonFields.POPULATION: 10_000},
+            region_tx: {CommonFields.POPULATION: 5_000},
+            region_county: {CommonFields.POPULATION: 1_000},
         },
     )
-
-    # TODO(tom): remove ds_old when migrating more tests away from `from_csv`
-    ds_old = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,aggregate_level,state,fips,date,m1,m2,population\n"
-            "iso1:us,country,,,2020-04-01,100,200,\n"
-            "iso1:us,country,,,,,,10000\n"
-            "iso1:us#iso2:us-tx,state,TX,,2020-04-01,4,2,\n"
-            "iso1:us#iso2:us-tx,state,TX,,,,,5000\n"
-            "iso1:us#fips:97222,county,,97222,2020-04-01,1,2,\n"
-            "iso1:us#fips:97222,county,,97222,,,,1000\n"
-            "iso1:us#cbsa:10100,cbsa,,,2020-04-01,1,2,20000\n"
-            "iso1:us#cbsa:10100,cbsa,,10100,,,,\n"
-        )
-    )
-    test_helpers.assert_dataset_like(ds_old, ds)
 
     subset = ds.get_subset(aggregation_level=AggregationLevel.COUNTRY)
     assert subset.static.at["iso1:us", CommonFields.POPULATION] == 10000
