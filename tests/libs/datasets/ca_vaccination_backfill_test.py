@@ -49,18 +49,7 @@ def test_ca_county_vaccination_calculation():
         region_la: {CommonFields.VACCINES_ADMINISTERED: [100, 200]},
         region_mo: {CommonFields.VACCINATIONS_COMPLETED_PCT: [25.0, 28.0]},
     }
-    # TODO: finish https://github.com/covid-projections/covid-data-model/pull/1011 and delete these.
-    static_by_region_then_field_name = {
-        region_ca: {
-            CommonFields.STATE: "CA",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.STATE.value,
-        },
-        region_la: {
-            CommonFields.POPULATION: 1000,
-            CommonFields.STATE: "CA",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
-        },
-    }
+    static_by_region_then_field_name = {region_la: {CommonFields.POPULATION: 1000}}
     dataset = test_helpers.build_dataset(
         input_data, static_by_region_then_field_name=static_by_region_then_field_name
     )

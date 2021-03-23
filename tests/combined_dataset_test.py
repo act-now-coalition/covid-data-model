@@ -231,17 +231,7 @@ def test_dataclass_include_exclude():
     regions_orig = [Region.from_state(state) for state in "AZ CA NY IL TX".split()] + [
         Region.from_fips(fips) for fips in "06037 06045 17031 17201".split()
     ]
-    dataset_orig = test_helpers.build_dataset(
-        {region: region_data for region in regions_orig},
-        static_by_region_then_field_name={
-            region: {
-                CommonFields.STATE: region.state,
-                CommonFields.FIPS: region.fips,
-                CommonFields.AGGREGATE_LEVEL: region.level.value,
-            }
-            for region in regions_orig
-        },
-    )
+    dataset_orig = test_helpers.build_dataset({region: region_data for region in regions_orig})
 
     # Make a new subclass to keep this test separate from others in the make_dataset lru_cache.
     class DataSourceForTest(data_source.DataSource):
