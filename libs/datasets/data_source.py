@@ -57,7 +57,7 @@ class DataSource(object):
         return taglib.Source(type=cls.SOURCE_TYPE, url=cls.SOURCE_URL, name=cls.SOURCE_NAME)
 
     @classmethod
-    def _check_data(cls, data: pd.DataFrame):
+    def _check_and_removed_unexpected_data(cls, data: pd.DataFrame):
         # data may be indexed by location_id,date (in CanSraperBase, ready for MultiRegionDataset)
         # or not (in DataSource, which calls from_fips_timeseries_df). TODO(tom): reduce the
         #  number of code paths.
@@ -110,7 +110,7 @@ class DataSource(object):
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         """Default implementation of make_dataset that loads timeseries data from a CSV."""
         data = cls._load_data()
-        data = cls._check_data(data)
+        data = cls._check_and_removed_unexpected_data(data)
         return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all_bucket(cls.source_tag())
 
 
@@ -146,7 +146,7 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
             source_type=cls.SOURCE_TYPE,
         )
         data = rows.unstack(PdFields.VARIABLE)
-        data = cls._check_data(data)
+        data = cls._check_and_removed_unexpected_data(data)
         ds = MultiRegionDataset(timeseries_bucketed=data)
         if not source_df.empty:
             # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.
