@@ -141,6 +141,18 @@
         }
       ]
     },
+    "vaccinesAdministered": {
+      "title": "Vaccinesadministered",
+      "description": "Total number of vaccine doses administered.",
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "date": {
       "title": "Date",
       "description": "Date of timeseries data point",

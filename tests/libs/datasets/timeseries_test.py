@@ -204,7 +204,7 @@ def test_one_region_dataset():
 
     with structlog.testing.capture_logs() as logs:
         ts = timeseries.OneRegionTimeseriesDataset(
-            Region.from_fips("99999"),
+            Region.from_fips("97111"),
             pd.DataFrame([], columns="location_id county aggregate_level date m1 m2".split()),
             {},
         )
@@ -271,7 +271,15 @@ def test_one_region_multiple_provenance():
 def test_add_aggregate_level():
     ts_df = read_csv_and_index_fips_date("fips,date,m1,m2\n" "36061,2020-04-02,2,\n").reset_index()
     multiregion = timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
-    assert multiregion.static.aggregate_level.to_list() == ["county"]
+    assert multiregion.geo_data.aggregate_level.to_list() == ["county"]
+
+
+def test_fips_not_in_geo_data_csv_raises():
+    with pytest.raises(KeyError):
+        ts_df = read_csv_and_index_fips_date(
+            "fips,date,m1,m2\n" "98789,2020-04-02,2,\n"
+        ).reset_index()
+        timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
 
 
 def test_append_regions():
@@ -292,12 +300,12 @@ def test_append_regions():
             "location_id,date,m2\n"
             "iso1:us#cbsa:10100,2020-04-02,2\n"
             "iso1:us#cbsa:10100,2020-04-03,3\n"
-            "iso1:us#cbsa:20200,2020-04-03,4\n"
+            "iso1:us#cbsa:20300,2020-04-03,4\n"
             "iso1:us#cbsa:10100,,3\n"
-            "iso1:us#cbsa:20200,,4\n"
+            "iso1:us#cbsa:20300,,4\n"
         )
     ).add_provenance_csv(
-        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:20200,m1,prov20200m2\n")
+        io.StringIO("location_id,variable,provenance\n" "iso1:us#cbsa:20300,m1,prov20200m2\n")
     )
     # Check that merge is symmetric
     ts_merged_1 = ts_fips.append_regions(ts_cbsa)
@@ -309,9 +317,9 @@ def test_append_regions():
             "location_id,date,county,aggregate_level,m1,m2\n"
             "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
             "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
-            "iso1:us#cbsa:20200,2020-04-03,,,,4\n"
+            "iso1:us#cbsa:20300,2020-04-03,,,,4\n"
             "iso1:us#cbsa:10100,,,,,3\n"
-            "iso1:us#cbsa:20200,,,,,4\n"
+            "iso1:us#cbsa:20300,,,,,4\n"
             "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
             "iso1:us#fips:97111,2020-04-03,Bar County,county,3,\n"
             "iso1:us#fips:97222,2020-04-04,Foo County,county,,11\n"
@@ -322,10 +330,39 @@ def test_append_regions():
         io.StringIO(
             "location_id,variable,provenance\n"
             "iso1:us#fips:97111,m1,prov97111m1\n"
-            "iso1:us#cbsa:20200,m1,prov20200m2\n"
+            "iso1:us#cbsa:20300,m1,prov20200m2\n"
         )
     )
     test_helpers.assert_dataset_like(ts_merged_1, ts_expected)
+
+
+def test_append_regions_with_buckets():
+    region_cbsa = Region.from_cbsa_code("10100")
+    region_la = Region.from_fips("06037")
+    region_sf = Region.from_fips("06075")
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+    age_40s = DemographicBucket("age:40-49")
+    data_county = {
+        region_la: {
+            m1: {
+                age_40s: TimeseriesLiteral([1, 2], annotation=[test_helpers.make_tag()]),
+                DemographicBucket.ALL: [2, 3],
+            }
+        },
+        region_sf: {m1: [3, 4]},
+    }
+    data_cbsa = {region_cbsa: {m2: [5, 6]}}
+    ds_county = test_helpers.build_dataset(data_county)
+    ds_cbsa = test_helpers.build_dataset(data_cbsa)
+
+    ds_out_1 = ds_county.append_regions(ds_cbsa)
+    ds_out_2 = ds_cbsa.append_regions(ds_county)
+
+    ds_expected = test_helpers.build_dataset({**data_cbsa, **data_county})
+
+    test_helpers.assert_dataset_like(ds_out_1, ds_expected)
+    test_helpers.assert_dataset_like(ds_out_2, ds_expected)
 
 
 def test_append_regions_duplicate_region_raises():
@@ -813,8 +850,11 @@ def test_timeseries_latest_values():
     # Check access to timeseries latests values via get_one_region
     region_10100 = dataset.get_one_region(Region.from_cbsa_code("10100"))
     assert region_10100.latest == {
-        "aggregate_level": None,
+        "aggregate_level": "cbsa",
         "county": None,
+        "country": "USA",
+        "fips": "10100",
+        "state": None,
         "m1": 10,  # Derived from timeseries
         "m2": 4,  # Explicitly in recent values
     }
@@ -822,6 +862,9 @@ def test_timeseries_latest_values():
     assert region_97111.latest == {
         "aggregate_level": "county",
         "county": "Bar County",
+        "country": "USA",
+        "fips": "97111",
+        "state": "ZZ",
         "m1": 5,
         "m2": None,
     }
@@ -960,6 +1003,25 @@ def test_join_columns_missing_regions():
     test_helpers.assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
 
 
+def test_join_columns_with_buckets():
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+    age20s = DemographicBucket("age:20-29")
+
+    m1_data = {m1: {age20s: [1, 2, 3]}}
+    ds_1 = test_helpers.build_default_region_dataset(m1_data)
+    m2_data = {m2: {age20s: [4, 5, 6], DemographicBucket.ALL: [7, 8, 9]}}
+    ds_2 = test_helpers.build_default_region_dataset(m2_data)
+
+    with pytest.raises(ValueError):
+        ds_1.join_columns(ds_1)
+
+    ds_expected = test_helpers.build_default_region_dataset({**m1_data, **m2_data})
+
+    ds_joined = ds_1.join_columns(ds_2)
+    test_helpers.assert_dataset_like(ds_joined, ds_expected)
+
+
 def test_iter_one_region():
     ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
@@ -998,8 +1060,8 @@ def test_drop_regions_without_population():
             "iso1:us#cbsa:10100,,,,80000,\n"
             "iso1:us#fips:97111,2020-04-02,Bar County,county,,2\n"
             "iso1:us#fips:97111,,Bar County,county,40000,4\n"
-            "iso1:us#cbsa:20200,2020-04-02,,,,\n"
-            "iso1:us#cbsa:20200,,,,,\n"
+            "iso1:us#cbsa:20300,2020-04-02,,,,\n"
+            "iso1:us#cbsa:20300,,,,,\n"
             "iso1:us#fips:97222,2020-04-02,Bar County,county,,2\n"
             "iso1:us#fips:97222,,Bar County,county,,4\n"
         )
@@ -1020,7 +1082,7 @@ def test_drop_regions_without_population():
     test_helpers.assert_dataset_like(ts_out, ts_expected)
 
     assert [l["event"] for l in logs] == ["Dropping unexpected regions without populaton"]
-    assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20200"]]
+    assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20300"]]
 
 
 def test_merge_provenance():
@@ -1098,7 +1160,6 @@ def test_join_columns_with_tags():
 
 
 def test_drop_column_with_tags():
-    """Checks that join_columns preserves tags."""
     region = Region.from_state("TX")
     cases_values = [100, 200, 300, 400]
     ts_lit = TimeseriesLiteral(cases_values, annotation=[test_helpers.make_tag()])
@@ -1114,6 +1175,22 @@ def test_drop_column_with_tags():
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
 
 
+def test_drop_column_with_tags_and_bucket():
+    age_40s = DemographicBucket("age:40-49")
+    ts_lit = TimeseriesLiteral([10, 20, 30], annotation=[test_helpers.make_tag()])
+    data_cases = {CommonFields.CASES: {age_40s: ts_lit, DemographicBucket.ALL: ts_lit}}
+    data_deaths = {CommonFields.DEATHS: {age_40s: ts_lit}}
+
+    dataset_in = test_helpers.build_default_region_dataset({**data_cases, **data_deaths})
+    assert len(dataset_in.tag) == 3
+
+    dataset_out = dataset_in.drop_column_if_present(CommonFields.DEATHS)
+
+    assert len(dataset_out.tag) == 2
+    dataset_expected = test_helpers.build_default_region_dataset({**data_cases})
+    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+
+
 def test_timeseries_empty_timeseries_and_static():
     # Check that empty dataset creates a MultiRegionDataset
     # and that get_one_region raises expected exception.
@@ -1125,7 +1202,7 @@ def test_timeseries_empty_timeseries_and_static():
 def test_timeseries_empty():
     # Check that empty geodata_timeseries_df creates a MultiRegionDataset
     # and that get_one_region raises expected exception.
-    dataset = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
+    dataset = timeseries.MultiRegionDataset.from_timeseries_df(
         pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     )
     with pytest.raises(timeseries.RegionLatestNotFound):
@@ -1134,10 +1211,65 @@ def test_timeseries_empty():
 
 def test_timeseries_empty_static_not_empty():
     # Check that empty timeseries does not prevent static data working as expected.
-    dataset = timeseries.MultiRegionDataset.from_geodata_timeseries_df(
+    dataset = timeseries.MultiRegionDataset.from_timeseries_df(
         pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
     ).add_static_values(pd.DataFrame([{"location_id": "iso1:us#fips:97111", "m1": 1234}]))
     assert dataset.get_one_region(Region.from_fips("97111")).latest["m1"] == 1234
+
+
+def test_from_timeseries_df_fips_location_id_mismatch():
+    df = pd.read_csv(
+        io.StringIO(
+            "                  location_id, fips,      date,m1\n"
+            "iso1:us#iso2:us-tx#fips:48197,48201,2020-04-02, 2\n"
+            "iso1:us#iso2:us-tx#fips:48201,48201,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    with pytest.warns(timeseries.ExtraColumnWarning, match="48201"):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
+
+
+def test_from_timeseries_df_no_fips_no_warning():
+    df = pd.read_csv(
+        io.StringIO(
+            " location_id, fips,      date,m1\n"
+            "     iso1:us,     ,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    timeseries.MultiRegionDataset.from_timeseries_df(df)
+
+
+def test_from_timeseries_df_fips_state_mismatch():
+    df = pd.read_csv(
+        io.StringIO(
+            "                  location_id,state,      date,m1\n"
+            "iso1:us#iso2:us-tx#fips:48197,   TX,2020-04-02, 2\n"
+            "iso1:us#iso2:us-tx#fips:48201,   IL,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    with pytest.warns(timeseries.ExtraColumnWarning, match="48201"):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
+
+
+def test_from_timeseries_df_bad_level():
+    df = pd.read_csv(
+        io.StringIO(
+            "                  location_id, aggregate_level,      date,m1\n"
+            "iso1:us#iso2:us-tx#fips:48201,          county,2020-04-02, 2\n"
+            "iso1:us#iso2:us-tx#fips:48197,           state,2020-04-02, 2\n"
+            "           iso1:us#iso2:us-tx,           state,2020-04-02, 2\n".replace(" ", "")
+        ),
+        parse_dates=[CommonFields.DATE],
+        dtype={"fips": str},
+    )
+    with pytest.warns(timeseries.ExtraColumnWarning, match="48197"):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
 
 
 def test_combined_timeseries():
@@ -1298,7 +1430,42 @@ def test_timeseries_rows():
 
 
 def test_multi_region_dataset_get_subset():
-    ds = timeseries.MultiRegionDataset.from_csv(
+    region_us = Region.from_iso1("us")
+    region_tx = Region.from_state("TX")
+    region_county = Region.from_fips("97222")
+    region_cbsa = Region.from_cbsa_code("10100")
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+    ds = test_helpers.build_dataset(
+        {
+            region_us: {m1: [100], m2: [200]},
+            region_tx: {m1: [4], m2: [2]},
+            region_county: {m1: [1], m2: [2]},
+            region_cbsa: {m1: [1], m2: [2], CommonFields.POPULATION: [20_000]},
+        },
+        # TODO(tom): remove static_by_region_then_field_name after
+        #  https://github.com/covid-projections/covid-data-model/pull/1011 is merged.
+        static_by_region_then_field_name={
+            region_us: {CommonFields.POPULATION: 10_000, CommonFields.AGGREGATE_LEVEL: "country"},
+            region_tx: {
+                CommonFields.POPULATION: 5_000,
+                CommonFields.AGGREGATE_LEVEL: "state",
+                CommonFields.STATE: "TX",
+            },
+            region_county: {
+                CommonFields.POPULATION: 1_000,
+                CommonFields.AGGREGATE_LEVEL: "county",
+                CommonFields.FIPS: region_county.fips,
+            },
+            region_cbsa: {
+                CommonFields.AGGREGATE_LEVEL: "cbsa",
+                CommonFields.FIPS: region_cbsa.fips,
+            },
+        },
+    )
+
+    # TODO(tom): remove ds_old when migrating more tests away from `from_csv`
+    ds_old = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,aggregate_level,state,fips,date,m1,m2,population\n"
             "iso1:us,country,,,2020-04-01,100,200,\n"
@@ -1308,8 +1475,10 @@ def test_multi_region_dataset_get_subset():
             "iso1:us#fips:97222,county,,97222,2020-04-01,1,2,\n"
             "iso1:us#fips:97222,county,,97222,,,,1000\n"
             "iso1:us#cbsa:10100,cbsa,,,2020-04-01,1,2,20000\n"
+            "iso1:us#cbsa:10100,cbsa,,10100,,,,\n"
         )
     )
+    test_helpers.assert_dataset_like(ds_old, ds)
 
     subset = ds.get_subset(aggregation_level=AggregationLevel.COUNTRY)
     assert subset.static.at["iso1:us", CommonFields.POPULATION] == 10000
@@ -1328,6 +1497,22 @@ def test_multi_region_dataset_get_subset():
         "iso1:us",
         "iso1:us#cbsa:10100",
     }
+
+
+def test_multi_region_dataset_get_subset_with_buckets():
+    # Make some regions at different levels
+    region_us = Region.from_iso1("us")
+    region_tx = Region.from_state("TX")
+    region_la = Region.from_fips("06037")
+    age_40s = DemographicBucket("age:40-49")
+    data_us = {region_us: {CommonFields.CASES: [100, 200]}}
+    data_tx = {region_tx: {CommonFields.CASES: [10, 20]}}
+    data_la = {region_la: {CommonFields.CASES: {DemographicBucket.ALL: [5, 10], age_40s: [1, 2]}}}
+    ds = test_helpers.build_dataset({**data_us, **data_tx, **data_la})
+
+    ds_expected = test_helpers.build_dataset({**data_us, **data_la})
+    test_helpers.assert_dataset_like(ds.get_regions_subset([region_us, region_la]), ds_expected)
+    test_helpers.assert_dataset_like(ds.remove_regions([region_tx]), ds_expected)
 
 
 def test_dataset_regions_property(nyc_region):
@@ -1577,3 +1762,28 @@ def test_bucketed_latest_missing_location_id(nyc_region: Region):
     # nyc_region = Region.from_fips("97222")
     print(dataset._bucketed_latest_for_location_id(nyc_region.location_id))
     assert 0
+
+
+def test_print_stats():
+    all_bucket = DemographicBucket("all")
+    age_20s = DemographicBucket("age:20-29")
+    age_30s = DemographicBucket("age:30-39")
+
+    test_helpers.build_default_region_dataset(
+        {
+            CommonFields.ICU_BEDS: TimeseriesLiteral(
+                [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),],
+            ),
+            CommonFields.CASES: [100, 200, 300],
+        }
+    ).print_stats("DS1")
+
+    test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {
+                age_20s: TimeseriesLiteral([3, 4, 5], source=taglib.Source(type="MySource")),
+                age_30s: [4, 5, 6],
+                all_bucket: [1, 2, 3],
+            }
+        }
+    ).print_stats("DS2")

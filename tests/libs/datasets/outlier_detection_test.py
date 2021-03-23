@@ -1,5 +1,7 @@
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
+
 from tests import test_helpers
 from libs.datasets import outlier_detection
 from libs.datasets.taglib import TagType
@@ -46,6 +48,35 @@ def test_not_removing_short_series():
     result = outlier_detection.drop_series_outliers(dataset, CommonFields.NEW_CASES, threshold=30)
 
     test_helpers.assert_dataset_like(dataset, result)
+
+
+def test_drop_series_outliers_preserves_buckets():
+    age_40s = DemographicBucket("age:40-49")
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.NEW_CASES: [1, 2, 3], CommonFields.CASES: {age_40s: [0, 1, 2]}}
+    )
+    ds_out = outlier_detection.drop_series_outliers(ds_in, CommonFields.NEW_CASES, threshold=30)
+
+    test_helpers.assert_dataset_like(ds_in, ds_out)
+
+
+def test_drop_series_outliers_remove_from_bucketed():
+    age_40s = DemographicBucket("age:40-49")
+    ts_unmodified = {DemographicBucket.ALL: [2.0] * 8}
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.NEW_CASES: {age_40s: [1.0] * 7 + [32.0], **ts_unmodified}}
+    )
+
+    ds_out = outlier_detection.drop_series_outliers(ds_in, CommonFields.NEW_CASES, threshold=30)
+
+    expected_tag = test_helpers.make_tag(
+        TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=32.0
+    )
+    ts_with_outlier_removed = TimeseriesLiteral([1.0] * 7 + [None], annotation=[expected_tag])
+    ds_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.NEW_CASES: {age_40s: ts_with_outlier_removed, **ts_unmodified}}
+    )
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_dates=True)
 
 
 # TODO(chris): Make test stronger, doesn't cover all edge cases

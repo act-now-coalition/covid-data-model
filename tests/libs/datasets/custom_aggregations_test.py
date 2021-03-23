@@ -1,12 +1,13 @@
 import dataclasses
-import io
 import pytest
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldName
 
 from libs import pipeline
+from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 from libs.datasets import custom_aggregations
-from libs.datasets import timeseries
+from libs.pipeline import Region
 from tests import test_helpers
 
 
@@ -58,23 +59,55 @@ def test_replace_dc_county(nyc_region):
     assert ts1.equals(ts2)
 
 
-@pytest.mark.skip(reason="test not written, needs proper columns")
 def test_calculate_puerto_rico_bed_occupancy_rate():
-    ds = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,county,aggregate_level,date,population\n"
-            "iso1:us#iso2:us-pr,Texas,state,2020-04-01,4,,\n"
-            "iso1:us#iso2:us-pr,Texas,state,,,4,2500\n"
-        )
+    # TODO(tom): Test ALL_BED_TYPICAL_OCCUPANCY_RATE and ICU_TYPICAL_OCCUPANCY_RATE aggregation.
+    field_already_agg = FieldName("already_aggregated")
+    field_to_agg = FieldName("to_aggregate")
+    field_other = FieldName("other")
+
+    region_pr_state = Region.from_state("PR")
+    region_jd = Region.from_fips("72075")
+    region_rg = Region.from_fips("72119")
+    region_la = Region.from_fips("06037")
+
+    ts_data = {region_pr_state: {field_other: [7, 8]}, region_la: {field_other: [70, 80]}}
+    static_pr_state = {
+        field_already_agg: 10,
+        CommonFields.STATE: "PR",
+        CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
+    }
+    static_others = {
+        region_jd: {
+            field_to_agg: 2,
+            field_already_agg: 4,
+            CommonFields.STATE: "PR",
+            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
+        },
+        region_rg: {
+            field_to_agg: 3,
+            CommonFields.STATE: "PR",
+            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
+        },
+        region_la: {
+            field_to_agg: 100,
+            field_already_agg: 200,
+            CommonFields.STATE: "CA",
+            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
+        },
+    }
+    ds_in = test_helpers.build_dataset(
+        ts_data,
+        static_by_region_then_field_name={region_pr_state: static_pr_state, **static_others},
     )
 
-    actual = custom_aggregations.aggregate_puerto_rico_from_counties(ds)
+    ds_out = custom_aggregations.aggregate_puerto_rico_from_counties(ds_in)
 
-    expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,aggregate_level,date,m1,s1,population\n"
-            "iso1:us,country,2020-04-01,7,,\n"
-            "iso1:us,country,,,10,10000\n"
-        )
+    ds_expected = test_helpers.build_dataset(
+        ts_data,
+        static_by_region_then_field_name={
+            region_pr_state: {field_to_agg: 5, **static_pr_state},
+            **static_others,
+        },
     )
-    test_helpers.assert_dataset_like(actual, expected)
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected)

@@ -84,6 +84,15 @@
         }
       ]
     },
+    "vaccinesAdministered": {
+      "title": "Vaccinesadministered",
+      "description": "Annotations for vaccinesAdministered",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
     "vaccinesDistributed": {
       "title": "Vaccinesdistributed",
       "description": "Annotations for vaccinesDistributed",

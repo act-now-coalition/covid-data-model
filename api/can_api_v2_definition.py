@@ -199,8 +199,10 @@ This value may vary by type of vaccine, but for Moderna and Pfizer this indicate
 number of people vaccinated with both the first and second dose.
 """,
     )
+    vaccinesAdministered: Optional[int] = pydantic.Field(
+        None, description="Total number of vaccine doses administered."
+    )
     vaccinesAdministeredDemographics: Optional[Demographics] = pydantic.Field(None)
-
     # When adding a new "actual" field here remember to add a `FieldAnnotations` in `Annotations`.
 
 

@@ -95,6 +95,7 @@ def _build_actuals(actual_data: dict, bucketed_data: dict = None) -> Actuals:
         vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
         vaccinationsInitiated=actual_data.get(CommonFields.VACCINATIONS_INITIATED),
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
+        vaccinesAdministered=actual_data.get(CommonFields.VACCINES_ADMINISTERED),
         vaccinesAdministeredDemographics=vaccines_administered_demographics,
     )
 
@@ -139,6 +140,7 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
     "icuBeds": CommonFields.ICU_BEDS,
     "newCases": CommonFields.NEW_CASES,
     "newDeaths": CommonFields.NEW_DEATHS,
+    "vaccinesAdministered": CommonFields.VACCINES_ADMINISTERED,
     "vaccinesDistributed": CommonFields.VACCINES_DISTRIBUTED,
     "vaccinationsInitiated": CommonFields.VACCINATIONS_INITIATED,
     "vaccinationsCompleted": CommonFields.VACCINATIONS_COMPLETED,
@@ -265,6 +267,7 @@ def build_region_timeseries(
         # Don't include vaccinations in timeseries before first possible vaccination
         # date to not bloat timeseries.
         if row[CommonFields.DATE] < USA_VACCINATION_START_DATE:
+            del actual["vaccinesAdministered"]
             del actual["vaccinesDistributed"]
             del actual["vaccinationsInitiated"]
             del actual["vaccinationsCompleted"]
