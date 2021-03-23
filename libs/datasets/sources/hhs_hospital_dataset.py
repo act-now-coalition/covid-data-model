@@ -49,11 +49,11 @@ def make_hhs_variable(can_scraper_field, common_field, measurement):
     )
 
 
-# NOTE: HHSHospitalStateDataset and HHSHospitalCountyDataset must be separate classes because they
-# use different measurements ("current" vs "rolling_average_7_day") on the same variables (e.g.
-# "adult_icu_beds_capacity"). CanScraperBase operates on a per-variable basis (instead of
-# per-variable+measurement) and so will not merge them properly if we try to use both in the same
-# dataset.
+# TODO(michael): HHSHospitalStateDataset and HHSHospitalCountyDataset must be separate classes
+# because they both have ScraperVariables that target the same CommonFields. This happens becaues
+# the state level and county level data use the same variable names but different measurements
+# ("current" and "rolling_average_7_day"). This causes CanScraperBase to overwrite itself as it's
+# extracting the variables. Using separate Dataset classes solves this.
 
 
 class HHSHospitalStateDataset(data_source.CanScraperBase):
