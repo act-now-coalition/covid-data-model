@@ -9,7 +9,7 @@ from api.can_api_v2_definition import (
     FieldAnnotations,
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
-    Demographics,
+    DemographicDistributions,
     Metrics,
     RiskLevels,
     RiskLevelsRow,
@@ -49,8 +49,8 @@ def _select_category(category: str, data: Dict):
     }
 
 
-def _build_demographic_data_for_field(field_bucket: Dict[str, int]) -> Demographics:
-    return Demographics(
+def _build_demographic_data_for_field(field_bucket: Dict[str, int]) -> DemographicDistributions:
+    return DemographicDistributions(
         # TODO(chris): maybe add `or None`?
         age=_select_category("age", field_bucket) or None,
         race=_select_category("race", field_bucket) or None,

@@ -60,7 +60,7 @@ class NonCovidPatientsMethod(enum.Enum):
     ESTIMATED_FROM_TOTAL_ICU_ACTUAL = "estimated_from_total_icu_actual"
 
 
-class Demographics(base_model.APIBaseModel):
+class DemographicDistributions(base_model.APIBaseModel):
 
     age: Optional[Dict[str, int]] = pydantic.Field(None)
     race: Optional[Dict[str, int]] = pydantic.Field(None)
@@ -202,7 +202,7 @@ number of people vaccinated with both the first and second dose.
     vaccinesAdministered: Optional[int] = pydantic.Field(
         None, description="Total number of vaccine doses administered."
     )
-    vaccinesAdministeredDemographics: Optional[Demographics] = pydantic.Field(None)
+    vaccinesAdministeredDemographics: Optional[DemographicDistributions] = pydantic.Field(None)
     # When adding a new "actual" field here remember to add a `FieldAnnotations` in `Annotations`.
 
 
