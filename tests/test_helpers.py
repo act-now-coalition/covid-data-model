@@ -181,6 +181,9 @@ def build_dataset(
     if static_by_region_then_field_name:
         static_df_rows = []
         for region, data in static_by_region_then_field_name.items():
+            assert CommonFields.AGGREGATE_LEVEL not in data
+            assert CommonFields.STATE not in data
+            assert CommonFields.COUNTY not in data
             row = {
                 CommonFields.LOCATION_ID: region.location_id,
                 **data,
