@@ -67,9 +67,13 @@ def _build_actuals(actual_data: dict, bucketed_data: dict = None) -> Actuals:
         intervention: Current state level intervention.
     """
     vaccines_administered_demographics = None
+    vaccines_initiated_demographics = None
     if bucketed_data:
         vaccines_administered_demographics = _build_demographic_data_for_field(
-            bucketed_data[CommonFields.VACCINES_ADMINISTERED]
+            bucketed_data.get(CommonFields.VACCINES_ADMINISTERED, {})
+        )
+        vaccines_administered_demographics = _build_demographic_data_for_field(
+            bucketed_data.get(CommonFields.VACCINATIONS_INITIATED, {})
         )
 
     return Actuals(
@@ -97,6 +101,7 @@ def _build_actuals(actual_data: dict, bucketed_data: dict = None) -> Actuals:
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
         vaccinesAdministered=actual_data.get(CommonFields.VACCINES_ADMINISTERED),
         vaccinesAdministeredDemographics=vaccines_administered_demographics,
+        vaccinationsInitiatedDemographics=vaccines_initiated_demographics,
     )
 
 

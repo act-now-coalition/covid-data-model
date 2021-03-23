@@ -203,6 +203,7 @@ number of people vaccinated with both the first and second dose.
         None, description="Total number of vaccine doses administered."
     )
     vaccinesAdministeredDemographics: Optional[DemographicDistributions] = pydantic.Field(None)
+    vaccinationsInitiatedDemographics: Optional[DemographicDistributions] = pydantic.Field(None)
     # When adding a new "actual" field here remember to add a `FieldAnnotations` in `Annotations`.
 
 
