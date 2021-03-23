@@ -2,6 +2,8 @@ import pathlib
 
 import more_itertools
 import pytest
+import pandas as pd
+import structlog
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
@@ -100,6 +102,58 @@ def test_data_source_make_dataset(tmpdir):
         {CommonFields.CASES: cases_ts, CommonFields.DEATHS: deaths_ts}, region=region,
     )
     test_helpers.assert_dataset_like(dataset_expected, dataset_read)
+
+
+def test_data_source_truncates_dates():
+    df = test_helpers.read_csv_str(
+        "fips,      date,cases,deaths\n"
+        "  01,2019-12-31,  100,     1\n"
+        "  01,2020-01-01,  200,     2\n",
+        skip_spaces=True,
+    )
+
+    class NYTimesForTest(nytimes_dataset.NYTimesDataset):
+        @classmethod
+        def _load_data(cls) -> pd.DataFrame:
+            return df
+
+    with structlog.testing.capture_logs() as logs:
+        ds = NYTimesForTest.make_dataset()
+
+    assert ds.timeseries_bucketed_wide_dates.columns.to_list() == pd.to_datetime(["2020-01-01"])
+    assert more_itertools.one(logs)["event"] == "Dropping old data"
+
+
+def test_data_source_truncates_dates_can_scraper():
+    """A second test for data truncation. See comment at top of _check_data."""
+    variable_cases = ccd_helpers.ScraperVariable(
+        variable_name="cases",
+        measurement="cumulative",
+        unit="people",
+        provider="usafacts",
+        common_field=CommonFields.CASES,
+    )
+    variable_deaths = ccd_helpers.ScraperVariable(
+        variable_name="deaths",
+        measurement="cumulative",
+        unit="people",
+        provider="usafacts",
+        common_field=CommonFields.DEATHS,
+    )
+    input_data = build_can_scraper_dataframe(
+        {variable_cases: [10, 20], variable_deaths: [1, 2]}, start_date="2019-12-31"
+    )
+
+    class CANScraperForTest(can_scraper_usafacts.CANScraperUSAFactsProvider):
+        @staticmethod
+        def _get_covid_county_dataset():
+            return ccd_helpers.CanScraperLoader(input_data)
+
+    with structlog.testing.capture_logs() as logs:
+        ds = CANScraperForTest.make_dataset()
+
+    assert ds.timeseries_bucketed_wide_dates.columns.to_list() == pd.to_datetime(["2020-01-01"])
+    assert more_itertools.one(logs)["event"] == "Dropping old data"
 
 
 def test_can_scraper_class_single_provider():
