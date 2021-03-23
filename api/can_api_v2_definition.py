@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, NewType
+from typing import List, Optional, Dict
 import enum
 
 from libs.datasets.dataset_utils import AggregationLevel
