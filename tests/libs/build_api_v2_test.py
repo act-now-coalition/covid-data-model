@@ -92,12 +92,8 @@ def test_build_summary_for_fips(
             vaccinesAdministered=nyc_latest["vaccines_administered"],
             vaccinationsInitiated=nyc_latest["vaccinations_initiated"],
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
-            vaccinesAdministeredDemographics={
-                "age": None,
-                "race": None,
-                "sex": None,
-                "ethnicity": None,
-            },
+            vaccinesAdministeredDemographics=None,
+            vaccinesInitiatedDemographics=None,
         ),
         annotations=dict(
             cases=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),

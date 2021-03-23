@@ -636,6 +636,13 @@ class MultiRegionDataset:
 
     @cached_property
     def _timeseries_bucketed_latest_values(self) -> pd.DataFrame:
+        if self.timeseries.columns.empty:
+            return pd.DataFrame(
+                [],
+                index=pd.MultiIndex.from_tuples(
+                    [], names=[CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET]
+                ),
+            )
         long_bucketed = self.timeseries_bucketed.stack().sort_index().droplevel(CommonFields.DATE)
         unduplicated_bucketed_and_last_mask = ~long_bucketed.index.duplicated(keep="last")
         return long_bucketed.loc[unduplicated_bucketed_and_last_mask, :].unstack(PdFields.VARIABLE)
@@ -951,7 +958,7 @@ class MultiRegionDataset:
         except KeyError:
             return pd.DataFrame(
                 [],
-                index=[PdFields.DEMOGRAPHIC_BUCKET],
+                index=pd.MultiIndex.from_tuples([], names=[PdFields.DEMOGRAPHIC_BUCKET]),
                 columns=self.timeseries_bucketed.columns,
                 dtype="float",
             )

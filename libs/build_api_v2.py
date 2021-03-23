@@ -67,7 +67,7 @@ def _build_demographic_data_for_field(
     return DemographicDistributions(**data)
 
 
-def _build_actuals(actual_data: dict, bucketed_data: Optional[dict] = None) -> Actuals:
+def _build_actuals(actual_data: dict, bucketed_data: Optional[Dict] = None) -> Actuals:
     """Generate actuals entry.
 
     Args:
