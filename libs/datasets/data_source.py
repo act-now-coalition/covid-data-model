@@ -23,6 +23,13 @@ import pandas as pd
 _log = structlog.get_logger()
 
 
+def format_sample_of_df(df: pd.DataFrame) -> str:
+    """Formats a sample of a DataFrame as a string, suitable for dumping to a log."""
+    return df.to_string(
+        line_width=120, max_rows=10, max_cols=5, max_colwidth=40, show_dimensions=True
+    )
+
+
 class DataSource(object):
     """Represents a single dataset source; loads data and produces a MultiRegionDataset."""
 
@@ -72,9 +79,7 @@ class DataSource(object):
                 _log.warning(
                     "Dropping old data",
                     cls=cls.SOURCE_TYPE,
-                    dropped_df=data.loc[old_dates_mask].to_string(
-                        line_width=200, max_rows=10, max_colwidth=40
-                    ),
+                    dropped_df=format_sample_of_df(data.loc[old_dates_mask]),
                 )
                 data = data.loc[~old_dates_mask]
         expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
