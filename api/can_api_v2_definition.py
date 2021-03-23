@@ -235,7 +235,73 @@ class FieldAnnotations(base_model.APIBaseModel):
     anomalies: List[AnomalyAnnotation]
 
 
-Annotations = NewType("Annotations", Dict[str, Optional[FieldAnnotations]])
+class Annotations(base_model.APIBaseModel):
+    """Annotations for each field."""
+
+    # Keep this list of fields in sync with the fields in `Actuals`
+    cases: Optional[FieldAnnotations] = pydantic.Field(None, description="Annotations for cases")
+    deaths: Optional[FieldAnnotations] = pydantic.Field(None, description="Annotations for deaths")
+    positiveTests: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for positiveTests"
+    )
+    negativeTests: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for negativeTests"
+    )
+    contactTracers: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for contactTracers"
+    )
+    hospitalBeds: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for hospitalBeds"
+    )
+    icuBeds: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for icuBeds"
+    )
+    newCases: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for newCases"
+    )
+    newDeaths: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for newDeaths"
+    )
+    vaccinesDistributed: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinesDistributed"
+    )
+    vaccinationsInitiated: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsInitiated"
+    )
+    vaccinationsCompleted: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsCompleted"
+    )
+    vaccinesAdministered: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinesAdministered"
+    )
+    # Keep this list of fields in sync with the fields in `Metrics`
+    testPositivityRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for testPositivityRatio"
+    )
+    caseDensity: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for caseDensity"
+    )
+    contactTracerCapacityRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for contactTracerCapacityRatio"
+    )
+    infectionRate: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for infectionRate"
+    )
+    infectionRateCI90: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for infectionRateCI90"
+    )
+    icuHeadroomRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for icuHeadroomRatio"
+    )
+    icuCapacityRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for icuCapacityRatio"
+    )
+    vaccinationsInitiatedRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsInitiatedRatio"
+    )
+    vaccinationsCompletedRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsCompletedRatio"
+    )
 
 
 class Metrics(base_model.APIBaseModel):
@@ -401,7 +467,7 @@ class RegionSummary(base_model.APIBaseModel):
     metrics: Metrics = pydantic.Field(...)
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
     actuals: Actuals = pydantic.Field(...)
-    annotations: Dict[str, Optional[FieldAnnotations]] = pydantic.Field(...)
+    annotations: Annotations = pydantic.Field(...)
 
     lastUpdatedDate: datetime.date = pydantic.Field(..., description="Date of latest data")
 
