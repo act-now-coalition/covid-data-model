@@ -563,9 +563,9 @@ class MultiRegionDataset:
 
     @cached_property
     def _timeseries_bucketed_latest_values(self) -> pd.DataFrame:
-        long_bucketed = self.timeseries_bucketed.stack().droplevel(CommonFields.DATE)
+        long_bucketed = self.timeseries_bucketed.stack().sort_index().droplevel(CommonFields.DATE)
         unduplicated_bucketed_and_last_mask = ~long_bucketed.index.duplicated(keep="last")
-        return long_bucketed.loc[unduplicated_bucketed_and_last_mask, :].unstack()
+        return long_bucketed.loc[unduplicated_bucketed_and_last_mask, :].unstack(PdFields.VARIABLE)
 
     def latest_in_static(self, field: FieldName) -> "MultiRegionDataset":
         """Returns a new object with the latest values from timeseries 'field' copied to static."""
@@ -877,11 +877,16 @@ class MultiRegionDataset:
 
     def _bucketed_latest_for_location_id(self, location_id: str) -> pd.DataFrame:
         """Returns the latest values dict of a location_id."""
-        # try:
-        data = self._timeseries_bucketed_latest_values.loc[location_id, :]
-        return data
-        # except KeyError:
-        #     data = pd.Series([], dtype=object)
+        try:
+            data = self._timeseries_bucketed_latest_values.loc[location_id, :]
+            return data
+        except KeyError:
+            return pd.DataFrame(
+                [],
+                index=[PdFields.DEMOGRAPHIC_BUCKET],
+                columns=self.timeseries_bucketed.columns,
+                dtype="float",
+            )
 
     def get_regions_subset(self, regions: Collection[Region]) -> "MultiRegionDataset":
         location_ids = pd.Index(sorted(r.location_id for r in regions))

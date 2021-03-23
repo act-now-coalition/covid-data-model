@@ -1570,3 +1570,10 @@ def test_combine_demographic_data_multiple_distributions():
         }
     )
     test_helpers.assert_dataset_like(combined, ds_expected)
+
+
+def test_bucketed_latest_missing_location_id(nyc_region: Region):
+    dataset = test_helpers.build_default_region_dataset({CommonFields.CASES: [1, 2, 3]})
+    # nyc_region = Region.from_fips("97222")
+    print(dataset._bucketed_latest_for_location_id(nyc_region.location_id))
+    assert 0
