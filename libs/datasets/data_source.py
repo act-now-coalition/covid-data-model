@@ -70,7 +70,11 @@ class DataSource(object):
             old_dates_mask = dates_sequence < "2020-01-01"
             if old_dates_mask.any():
                 _log.warning(
-                    "Dropping old data", cls=cls.SOURCE_TYPE, dropped_df=data.loc[old_dates_mask]
+                    "Dropping old data",
+                    cls=cls.SOURCE_TYPE,
+                    dropped_df=data.loc[old_dates_mask].to_string(
+                        line_width=200, max_rows=10, max_colwidth=40
+                    ),
                 )
                 data = data.loc[~old_dates_mask]
         expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
