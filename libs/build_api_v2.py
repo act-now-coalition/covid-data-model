@@ -147,11 +147,6 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
 }
 
 
-DEMOGRAPHIC_FIELD_TO_COMMON_FIELDS = {
-    "vaccinesAdministeredDemographics": CommonFields.VACCINES_ADMINISTERED,
-}
-
-
 METRICS_NAME_TO_COMMON_FIELD = {
     "contactTracerCapacityRatio": CommonFields.CONTACT_TRACERS_COUNT,
     "caseDensity": CommonFields.CASES,
@@ -178,13 +173,6 @@ def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotation
     return {k: v for k, v in annotations.items() if v is not None}
 
 
-def _build_demographic_annotations(
-    region_dataset: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log=None
-):
-    log = log or _logger
-    pass
-
-
 def _build_metric_annotations(
     tag_series: timeseries.OneRegionTimeseriesDataset, field_name: CommonFields, log
 ) -> Optional[FieldAnnotations]:
@@ -193,6 +181,12 @@ def _build_metric_annotations(
         FieldSource(type=_lookup_source_type(tag.type, field_name, log), url=tag.url, name=tag.name)
         for tag in tag_series.sources_all_bucket(field_name)
     ]
+
+    if not sources:
+        # Fall back to using provenance and source_url.
+        # TODO(tom): Remove this block of code when we're pretty sure `source` has all the data
+        #  we need.
+        sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
 
     anomalies = tag_series.annotations_all_bucket(field_name)
     anomalies = [
