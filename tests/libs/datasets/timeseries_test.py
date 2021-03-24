@@ -1755,6 +1755,51 @@ def test_bucketed_latest_missing_location_id(nyc_region: Region):
     pd.testing.assert_frame_equal(expected, output)
 
 
+def test_bucketed_latest_missing_location_id(nyc_region: Region):
+    dataset = test_helpers.build_default_region_dataset({CommonFields.CASES: [1, 2, 3]})
+    # nyc_region = Region.from_fips("97222")
+    output = dataset._bucketed_latest_for_location_id(nyc_region.location_id)
+    expected = pd.DataFrame(
+        [],
+        index=pd.MultiIndex.from_tuples([], names=[PdFields.DEMOGRAPHIC_BUCKET]),
+        columns=pd.Index([CommonFields.CASES], name="variable"),
+        dtype="float",
+    )
+    pd.testing.assert_frame_equal(expected, output)
+
+
+def test_bucketed_latest(nyc_region: Region):
+    m1 = FieldName("m1")
+    age20s = DemographicBucket("age:20-29")
+    age30s = DemographicBucket("age:30-39")
+
+    dataset = test_helpers.build_default_region_dataset(
+        {m1: {age20s: [21, 22, 23], age30s: [31, 32, 33],}}
+    )
+    bucketed_latest = dataset._bucketed_latest_for_location_id(
+        test_helpers.DEFAULT_REGION.location_id
+    )
+    expected = pd.DataFrame(
+        [{"m1": 23}, {"m1": 33}],
+        index=pd.Index([age20s, age30s], name=PdFields.DEMOGRAPHIC_BUCKET),
+        columns=pd.Index([m1], name="variable"),
+    )
+    pd.testing.assert_frame_equal(bucketed_latest, expected)
+
+
+def test_one_region_demographic_distributions():
+    m1 = FieldName("m1")
+    age20s = DemographicBucket("age:20-29")
+    age30s = DemographicBucket("age:30-39")
+    dataset = test_helpers.build_default_region_dataset(
+        {m1: {age20s: [21, 22, 23], age30s: [31, 32, 33], DemographicBucket.ALL: [20, 21, 22]}}
+    )
+    one_region = dataset.get_one_region(test_helpers.DEFAULT_REGION)
+
+    expected = {m1: {"age": {"20-29": 23, "30-39": 33}}}
+    assert one_region.demographic_distributions_by_field == expected
+
+
 def test_print_stats():
     all_bucket = DemographicBucket("all")
     age_20s = DemographicBucket("age:20-29")

@@ -156,7 +156,7 @@ class OneRegionTimeseriesDataset:
     @cached_property
     def demographic_distributions_by_field(
         self,
-    ) -> Dict[CommonFields, Dict[str, demographics.Distribution]]:
+    ) -> Dict[CommonFields, Dict[str, demographics.ScalarDistribution]]:
         """Returns demographic distributions by field."""
         result = defaultdict(lambda: defaultdict(dict))
 
@@ -966,7 +966,6 @@ class MultiRegionDataset:
         return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
 
     def _bucketed_latest_for_location_id(self, location_id: str) -> pd.DataFrame:
-        """Returns the latest values dict of a location_id."""
         try:
             data = self._timeseries_bucketed_latest_values.loc[location_id, :]
             return data

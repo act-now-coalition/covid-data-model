@@ -4,10 +4,11 @@ import dataclasses
 import pandas as pd
 
 
-Distribution = NewType("Distribution", Dict[str, float])
+# Key for ScalarDistributions are just bucket names, such as "10-19" in a distribution for age.
+ScalarDistribution = NewType("Distribution", Dict[str, float])
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class DistributionBucket:
     """Represents a single bucket contained in a distribution."""
 
@@ -34,7 +35,7 @@ class DistributionBucket:
 
     @staticmethod
     def make_from_row(demographic_fields: List[str], row: pd.Series) -> "DistributionBucket":
-        """Creates a bucket from a row of data with demographic fields. """
+        """Creates a bucket from a row of data with demographic fields."""
         non_all = []
         for field in demographic_fields:
             if row[field] != "all":

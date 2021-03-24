@@ -87,7 +87,7 @@ DEMOGRAPHIC_FIELDS = [Fields.AGE, Fields.RACE, Fields.ETHNICITY, Fields.SEX]
 
 
 def make_short_name(row: pd.Series) -> str:
-    """Transform a Series of demographic values into a single string such as 'age:0-9;sex:female'"""
+    """Transform a Series of demographic values into a single string such as 'age;sex:0-9;female'"""
     distribution_bucket = DistributionBucket.make_from_row(DEMOGRAPHIC_FIELDS, row)
     return str(distribution_bucket)
 
