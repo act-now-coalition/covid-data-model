@@ -6,6 +6,7 @@ from covidactnow.datapublic.common_fields import PdFields
 import pandas as pd
 
 from libs.datasets import AggregationLevel
+from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.pipeline import Region, RegionMask
 
@@ -57,10 +58,26 @@ def drop_observations(
     ts_filter = timeseries_wide_dates[ts_mask]
     ts_pass = timeseries_wide_dates[~ts_mask]
 
+    new_tags = taglib.TagCollection()
+    assert ts_filter.index.names == [
+        CommonFields.LOCATION_ID,
+        PdFields.VARIABLE,
+        PdFields.DEMOGRAPHIC_BUCKET,
+    ]
+    for location_id, variable, bucket in ts_filter.index:
+        new_tags.add(
+            taglib.KnownIssue(date=drop_start_date, disclaimer=config["public_note"]),
+            location_id=location_id,
+            variable=variable,
+            bucket=bucket,
+        )
+
     ts_filter = ts_filter.loc[:, ts_filter.columns < drop_start_date]
 
     ts_new = pd.concat([ts_filter, ts_pass]).stack().unstack(PdFields.VARIABLE).sort_index()
-    return dataclasses.replace(dataset, timeseries_bucketed=ts_new)
+    return dataclasses.replace(dataset, timeseries_bucketed=ts_new).append_tag_df(
+        new_tags.as_dataframe()
+    )
 
 
 def run(dataset: timeseries.MultiRegionDataset, config=CONFIG) -> timeseries.MultiRegionDataset:

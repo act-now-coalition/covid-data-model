@@ -97,6 +97,8 @@ def make_tag(
         # Force to the expected types and add defaults if not in kwargs
         kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
+    elif tag_type is taglib.TagType.KNOWN_ISSUE:
+        kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
 
     return taglib.TAG_TYPE_TO_CLASS[tag_type](**kwargs)
 
