@@ -154,7 +154,7 @@ class OneRegionTimeseriesDataset:
     @cached_property
     def bucketed_latest_by_field_and_distribution_name(
         self,
-    ) -> Dict[CommonFields, Dict[DemographicBucket, float]]:
+    ) -> Dict[CommonFields, Dict[str, Dict[str, float]]]:
         """Returns distribution bucket data grouped by field and demographic bucket type."""
         result = defaultdict(lambda: defaultdict(dict))
 
@@ -639,15 +639,12 @@ class MultiRegionDataset:
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
 
-        if self.timeseries.columns.empty:
+        try:
+            return self._timeseries_bucketed_latest_values.xs(
+                "all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0
+            )
+        except KeyError:
             return pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
-        # timeseries is already sorted by DATE with the latest at the bottom.
-        long = self.timeseries.stack().droplevel(CommonFields.DATE)
-        # `long` has MultiIndex with LOCATION_ID and VARIABLE (added by stack). Keep only the last
-        # row with each index to get the last value for each date.
-        unduplicated_and_last_mask = ~long.index.duplicated(keep="last")
-
-        return long.loc[unduplicated_and_last_mask, :].unstack()
 
     @cached_property
     def _timeseries_bucketed_latest_values(self) -> pd.DataFrame:

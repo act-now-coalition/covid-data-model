@@ -175,7 +175,7 @@ def build_annotations(one_region: OneRegionTimeseriesDataset, log) -> Annotation
         annotations_name: _build_metric_annotations(one_region, field_name, log)
         for annotations_name, field_name in name_and_common_field
     }
-    return {k: v for k, v in annotations.items() if v is not None}
+    return Annotations(**annotations)
 
 
 def _build_metric_annotations(
