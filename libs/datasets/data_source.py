@@ -23,6 +23,13 @@ import pandas as pd
 _log = structlog.get_logger()
 
 
+def format_sample_of_df(df: pd.DataFrame) -> str:
+    """Formats a sample of a DataFrame as a string, suitable for dumping to a log."""
+    return df.to_string(
+        line_width=120, max_rows=10, max_cols=5, max_colwidth=40, show_dimensions=True
+    )
+
+
 class DataSource(object):
     """Represents a single dataset source; loads data and produces a MultiRegionDataset."""
 
@@ -42,7 +49,14 @@ class DataSource(object):
     # Fields that are ignored when warning about missing and extra fields. By default some fields
     # that contain redundant information about the location are ignored because cleaning them up
     # isn't worth the effort.
-    IGNORED_FIELDS = (CommonFields.COUNTY, CommonFields.COUNTRY, CommonFields.STATE)
+    IGNORED_FIELDS = (
+        CommonFields.COUNTY,
+        CommonFields.COUNTRY,
+        CommonFields.STATE,
+        CommonFields.AGGREGATE_LEVEL,
+        CommonFields.DATE,
+        CommonFields.FIPS,
+    )
 
     @classmethod
     def source_tag(cls) -> taglib.Source:
@@ -50,7 +64,24 @@ class DataSource(object):
         return taglib.Source(type=cls.SOURCE_TYPE, url=cls.SOURCE_URL, name=cls.SOURCE_NAME)
 
     @classmethod
-    def _check_data(cls, data: pd.DataFrame):
+    def _check_and_removed_unexpected_data(cls, data: pd.DataFrame):
+        # data may be indexed by location_id,date (in CanSraperBase, ready for MultiRegionDataset)
+        # or not (in DataSource, which calls from_fips_timeseries_df). TODO(tom): reduce the
+        #  number of code paths.
+        dates_sequence: Optional[Union[pd.Series, pd.Index]] = None
+        if CommonFields.DATE in data.columns:
+            dates_sequence = pd.to_datetime(data.loc[:, CommonFields.DATE])
+        elif CommonFields.DATE in data.index.names:
+            dates_sequence = data.index.get_level_values(CommonFields.DATE)
+        if dates_sequence is not None:
+            old_dates_mask = dates_sequence < "2020-01-01"
+            if old_dates_mask.any():
+                _log.warning(
+                    "Dropping old data",
+                    cls=cls.SOURCE_TYPE,
+                    dropped_df=format_sample_of_df(data.loc[old_dates_mask]),
+                )
+                data = data.loc[~old_dates_mask]
         expected_fields = pd.Index({*cls.EXPECTED_FIELDS, *TIMESERIES_INDEX_FIELDS})
         # Keep only the expected fields.
         found_expected_fields = data.columns.intersection(expected_fields)
@@ -72,14 +103,19 @@ class DataSource(object):
         return data
 
     @classmethod
-    @lru_cache(None)
-    def make_dataset(cls) -> timeseries.MultiRegionDataset:
-        """Default implementation of make_dataset that loads timeseries data from a CSV."""
+    def _load_data(cls) -> pd.DataFrame:
+        """Loads the CSV, override to inject data in a test."""
         assert cls.COMMON_DF_CSV_PATH, f"No path in {cls}"
         data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
         input_path = data_root / cls.COMMON_DF_CSV_PATH
-        data = common_df.read_csv(input_path, set_index=False)
-        data = cls._check_data(data)
+        return common_df.read_csv(input_path, set_index=False)
+
+    @classmethod
+    @lru_cache(None)
+    def make_dataset(cls) -> timeseries.MultiRegionDataset:
+        """Default implementation of make_dataset that loads timeseries data from a CSV."""
+        data = cls._load_data()
+        data = cls._check_and_removed_unexpected_data(data)
         return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all_bucket(cls.source_tag())
 
 
@@ -115,7 +151,7 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
             source_type=cls.SOURCE_TYPE,
         )
         data = rows.unstack(PdFields.VARIABLE)
-        data = cls._check_data(data)
+        data = cls._check_and_removed_unexpected_data(data)
         ds = MultiRegionDataset(timeseries_bucketed=data)
         if not source_df.empty:
             # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.

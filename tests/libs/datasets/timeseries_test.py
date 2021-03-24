@@ -221,7 +221,7 @@ def test_multiregion_provenance():
     region_03 = Region.from_fips("03")
     ds = test_helpers.build_dataset(
         {
-            region_97111: {m1: TimeseriesLiteral([1, 2, None], provenance="src11"),},
+            region_97111: {m1: TimeseriesLiteral([1, 2, None], provenance="src11")},
             region_97222: {
                 m1: TimeseriesLiteral([None, None, 3], provenance="src21"),
                 m2: TimeseriesLiteral([10, None, 30], provenance="src22"),
@@ -230,11 +230,6 @@ def test_multiregion_provenance():
                 m1: TimeseriesLiteral([None, None, 4], provenance="src31"),
                 m2: TimeseriesLiteral([None, None, 40], provenance="src32"),
             },
-        },
-        static_by_region_then_field_name={
-            region_97111: {CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value},
-            region_97222: {CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value},
-            region_03: {CommonFields.AGGREGATE_LEVEL: AggregationLevel.STATE.value},
         },
     )
 
@@ -394,15 +389,13 @@ def test_timeseries_long():
         start_date="2020-04-02",
     )
 
-    expected = pd.read_csv(
-        io.StringIO(
-            "       location_id,      date,variable,value\n"
-            "iso1:us#cbsa:10100,2020-04-02,      m2,    2\n"
-            "iso1:us#cbsa:10100,2020-04-03,      m2,    3\n"
-            "iso1:us#fips:97111,2020-04-02,      m1,    2\n"
-            "iso1:us#fips:97111,2020-04-04,      m1,    4\n".replace(" ", "")
-        ),
-        parse_dates=[CommonFields.DATE],
+    expected = test_helpers.read_csv_str(
+        "       location_id,      date,variable,value\n"
+        "iso1:us#cbsa:10100,2020-04-02,      m2,    2\n"
+        "iso1:us#cbsa:10100,2020-04-03,      m2,    3\n"
+        "iso1:us#fips:97111,2020-04-02,      m1,    2\n"
+        "iso1:us#fips:97111,2020-04-04,      m1,    4\n",
+        skip_spaces=True,
         dtype={"value": float},
     )
     long_series = ds.timeseries_bucketed_long
@@ -437,19 +430,17 @@ def test_timeseries_bucketed_long():
         start_date="2020-04-02",
     )
 
-    expected = pd.read_csv(
-        io.StringIO(
-            "       location_id,demographic_bucket,      date,variable,value\n"
-            "iso1:us#cbsa:10100,               all,2020-04-02,      m2,    2\n"
-            "iso1:us#cbsa:10100,               all,2020-04-03,      m2,    3\n"
-            "iso1:us#fips:97111,           age:0-9,2020-04-02,      m1,    4\n"
-            "iso1:us#fips:97111,           age:0-9,2020-04-03,      m1,    5\n"
-            "iso1:us#fips:97111,           age:0-9,2020-04-04,      m1,    6\n"
-            "iso1:us#fips:97111,         age:10-19,2020-04-04,      m1,    7\n"
-            "iso1:us#fips:97111,               all,2020-04-02,      m1,    2\n"
-            "iso1:us#fips:97111,               all,2020-04-04,      m1,    4\n".replace(" ", "")
-        ),
-        parse_dates=[CommonFields.DATE],
+    expected = test_helpers.read_csv_str(
+        "       location_id,demographic_bucket,      date,variable,value\n"
+        "iso1:us#cbsa:10100,               all,2020-04-02,      m2,    2\n"
+        "iso1:us#cbsa:10100,               all,2020-04-03,      m2,    3\n"
+        "iso1:us#fips:97111,           age:0-9,2020-04-02,      m1,    4\n"
+        "iso1:us#fips:97111,           age:0-9,2020-04-03,      m1,    5\n"
+        "iso1:us#fips:97111,           age:0-9,2020-04-04,      m1,    6\n"
+        "iso1:us#fips:97111,         age:10-19,2020-04-04,      m1,    7\n"
+        "iso1:us#fips:97111,               all,2020-04-02,      m1,    2\n"
+        "iso1:us#fips:97111,               all,2020-04-04,      m1,    4\n",
+        skip_spaces=True,
         dtype={"value": float},
     )
     long_series = ds.timeseries_bucketed_long
@@ -1218,55 +1209,43 @@ def test_timeseries_empty_static_not_empty():
 
 
 def test_from_timeseries_df_fips_location_id_mismatch():
-    df = pd.read_csv(
-        io.StringIO(
-            "                  location_id, fips,      date,m1\n"
-            "iso1:us#iso2:us-tx#fips:48197,48201,2020-04-02, 2\n"
-            "iso1:us#iso2:us-tx#fips:48201,48201,2020-04-02, 2\n".replace(" ", "")
-        ),
-        parse_dates=[CommonFields.DATE],
-        dtype={"fips": str},
+    df = test_helpers.read_csv_str(
+        "                  location_id, fips,      date,m1\n"
+        "iso1:us#iso2:us-tx#fips:48197,48201,2020-04-02, 2\n"
+        "iso1:us#iso2:us-tx#fips:48201,48201,2020-04-02, 2\n",
+        skip_spaces=True,
     )
     with pytest.warns(timeseries.ExtraColumnWarning, match="48201"):
         timeseries.MultiRegionDataset.from_timeseries_df(df)
 
 
 def test_from_timeseries_df_no_fips_no_warning():
-    df = pd.read_csv(
-        io.StringIO(
-            " location_id, fips,      date,m1\n"
-            "     iso1:us,     ,2020-04-02, 2\n".replace(" ", "")
-        ),
-        parse_dates=[CommonFields.DATE],
-        dtype={"fips": str},
+    df = test_helpers.read_csv_str(
+        "            location_id, fips,      date,m1\n"
+        "                iso1:us,     ,2020-04-02, 2\n",
+        skip_spaces=True,
     )
     timeseries.MultiRegionDataset.from_timeseries_df(df)
 
 
 def test_from_timeseries_df_fips_state_mismatch():
-    df = pd.read_csv(
-        io.StringIO(
-            "                  location_id,state,      date,m1\n"
-            "iso1:us#iso2:us-tx#fips:48197,   TX,2020-04-02, 2\n"
-            "iso1:us#iso2:us-tx#fips:48201,   IL,2020-04-02, 2\n".replace(" ", "")
-        ),
-        parse_dates=[CommonFields.DATE],
-        dtype={"fips": str},
+    df = test_helpers.read_csv_str(
+        "                  location_id,state,      date,m1\n"
+        "iso1:us#iso2:us-tx#fips:48197,   TX,2020-04-02, 2\n"
+        "iso1:us#iso2:us-tx#fips:48201,   IL,2020-04-02, 2\n",
+        skip_spaces=True,
     )
     with pytest.warns(timeseries.ExtraColumnWarning, match="48201"):
         timeseries.MultiRegionDataset.from_timeseries_df(df)
 
 
 def test_from_timeseries_df_bad_level():
-    df = pd.read_csv(
-        io.StringIO(
-            "                  location_id, aggregate_level,      date,m1\n"
-            "iso1:us#iso2:us-tx#fips:48201,          county,2020-04-02, 2\n"
-            "iso1:us#iso2:us-tx#fips:48197,           state,2020-04-02, 2\n"
-            "           iso1:us#iso2:us-tx,           state,2020-04-02, 2\n".replace(" ", "")
-        ),
-        parse_dates=[CommonFields.DATE],
-        dtype={"fips": str},
+    df = test_helpers.read_csv_str(
+        "                  location_id, aggregate_level,      date,m1\n"
+        "iso1:us#iso2:us-tx#fips:48201,          county,2020-04-02, 2\n"
+        "iso1:us#iso2:us-tx#fips:48197,           state,2020-04-02, 2\n"
+        "           iso1:us#iso2:us-tx,           state,2020-04-02, 2\n",
+        skip_spaces=True,
     )
     with pytest.warns(timeseries.ExtraColumnWarning, match="48197"):
         timeseries.MultiRegionDataset.from_timeseries_df(df)
@@ -1415,16 +1394,13 @@ def test_timeseries_rows():
     )
 
     rows = ts.timeseries_rows()
-    expected = pd.read_csv(
-        io.StringIO(
-            "       location_id,variable,demographic_bucket,2020-04-02,2020-04-01\n"
-            "iso1:us#iso2:us-az,      m1,               all,        12,         8\n"
-            "iso1:us#iso2:us-az,      m2,               all,        40,        20\n"
-            "iso1:us#iso2:us-tx,      m1,               all,         4,         4\n"
-            "iso1:us#iso2:us-tx,      m2,               all,         4,         2\n".replace(
-                " ", ""
-            )
-        )
+    expected = test_helpers.read_csv_str(
+        "       location_id,variable,demographic_bucket,2020-04-02,2020-04-01\n"
+        "iso1:us#iso2:us-az,      m1,               all,        12,         8\n"
+        "iso1:us#iso2:us-az,      m2,               all,        40,        20\n"
+        "iso1:us#iso2:us-tx,      m1,               all,         4,         4\n"
+        "iso1:us#iso2:us-tx,      m2,               all,         4,         2\n",
+        skip_spaces=True,
     ).set_index([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
     pd.testing.assert_frame_equal(rows, expected, check_dtype=False, check_exact=False)
 
@@ -1443,42 +1419,12 @@ def test_multi_region_dataset_get_subset():
             region_county: {m1: [1], m2: [2]},
             region_cbsa: {m1: [1], m2: [2], CommonFields.POPULATION: [20_000]},
         },
-        # TODO(tom): remove static_by_region_then_field_name after
-        #  https://github.com/covid-projections/covid-data-model/pull/1011 is merged.
         static_by_region_then_field_name={
-            region_us: {CommonFields.POPULATION: 10_000, CommonFields.AGGREGATE_LEVEL: "country"},
-            region_tx: {
-                CommonFields.POPULATION: 5_000,
-                CommonFields.AGGREGATE_LEVEL: "state",
-                CommonFields.STATE: "TX",
-            },
-            region_county: {
-                CommonFields.POPULATION: 1_000,
-                CommonFields.AGGREGATE_LEVEL: "county",
-                CommonFields.FIPS: region_county.fips,
-            },
-            region_cbsa: {
-                CommonFields.AGGREGATE_LEVEL: "cbsa",
-                CommonFields.FIPS: region_cbsa.fips,
-            },
+            region_us: {CommonFields.POPULATION: 10_000},
+            region_tx: {CommonFields.POPULATION: 5_000},
+            region_county: {CommonFields.POPULATION: 1_000},
         },
     )
-
-    # TODO(tom): remove ds_old when migrating more tests away from `from_csv`
-    ds_old = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,aggregate_level,state,fips,date,m1,m2,population\n"
-            "iso1:us,country,,,2020-04-01,100,200,\n"
-            "iso1:us,country,,,,,,10000\n"
-            "iso1:us#iso2:us-tx,state,TX,,2020-04-01,4,2,\n"
-            "iso1:us#iso2:us-tx,state,TX,,,,,5000\n"
-            "iso1:us#fips:97222,county,,97222,2020-04-01,1,2,\n"
-            "iso1:us#fips:97222,county,,97222,,,,1000\n"
-            "iso1:us#cbsa:10100,cbsa,,,2020-04-01,1,2,20000\n"
-            "iso1:us#cbsa:10100,cbsa,,10100,,,,\n"
-        )
-    )
-    test_helpers.assert_dataset_like(ds_old, ds)
 
     subset = ds.get_subset(aggregation_level=AggregationLevel.COUNTRY)
     assert subset.static.at["iso1:us", CommonFields.POPULATION] == 10000
@@ -1780,3 +1726,12 @@ def test_print_stats():
             }
         }
     ).print_stats("DS2")
+
+
+def test_static_and_geo_data():
+    region_chi = Region.from_fips("17031")
+    ds = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: [0]}, static={CommonFields.POPULATION: 5}, region=region_chi
+    )
+    assert ds.static_and_geo_data.loc[region_chi.location_id, CommonFields.COUNTY] == "Cook County"
+    assert ds.static_and_geo_data.loc[region_chi.location_id, CommonFields.POPULATION] == 5

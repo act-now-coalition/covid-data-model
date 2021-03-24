@@ -510,6 +510,10 @@ class MultiRegionDataset:
             raise KeyError(f"location_id not in data/geo-data.csv:\n{missing_location_id}")
         return geo_data.reindex(index=location_ids)
 
+    @cached_property
+    def static_and_geo_data(self) -> pd.DataFrame:
+        return self.static.join(self.geo_data)
+
     @property
     def timeseries_regions(self) -> Set[Region]:
         """Returns a set of all regions in the timeseries dataset."""
@@ -531,9 +535,8 @@ class MultiRegionDataset:
     @lru_cache(maxsize=None)
     def static_and_timeseries_latest_with_fips(self) -> pd.DataFrame:
         """Static values merged with the latest timeseries values."""
-        static_and_geo_data = self.static.join(self.geo_data)
         return _merge_attributes(
-            self._timeseries_latest_values().reset_index(), static_and_geo_data.reset_index()
+            self._timeseries_latest_values().reset_index(), self.static_and_geo_data.reset_index()
         )
 
     @cached_property
