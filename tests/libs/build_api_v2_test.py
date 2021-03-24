@@ -206,8 +206,6 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_datase
 
 def test_multiple_distributions():
     """All time-series within a variable are treated as a unit when combining"""
-    vaccines_administered = FieldName("vaccines_administered")
-    deaths = FieldName("deaths")
     all_bucket = DemographicBucket("all")
     age_20s = DemographicBucket("age:20-29")
     age_30s = DemographicBucket("age:30-39")
@@ -218,11 +216,13 @@ def test_multiple_distributions():
     ds2 = test_helpers.build_dataset(
         {
             region_ca: {
-                vaccines_administered: {
+                CommonFields.VACCINES_ADMINISTERED: {
                     all_bucket: TimeseriesLiteral([3, 4], provenance="ds2_ca_m1_30s"),
                     age_30s: TimeseriesLiteral([3, 4], provenance="ds2_ca_m1_30s"),
                 },
-                deaths: {age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")},
+                CommonFields.DEATHS: {
+                    age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")
+                },
             },
         },
         static_by_region_then_field_name={region_ca: {CommonFields.POPULATION: 10000}},
