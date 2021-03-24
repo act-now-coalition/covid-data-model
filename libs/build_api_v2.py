@@ -28,7 +28,6 @@ from api.can_api_v2_definition import FieldSourceType
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.sources import can_scraper_helpers
 import structlog
 
 

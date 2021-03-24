@@ -4,7 +4,6 @@ import pytest
 import structlog
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import FieldName
 
 from api.can_api_v2_definition import Actuals
 from api.can_api_v2_definition import FieldAnnotations
