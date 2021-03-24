@@ -1755,19 +1755,6 @@ def test_bucketed_latest_missing_location_id(nyc_region: Region):
     pd.testing.assert_frame_equal(expected, output)
 
 
-def test_bucketed_latest_missing_location_id(nyc_region: Region):
-    dataset = test_helpers.build_default_region_dataset({CommonFields.CASES: [1, 2, 3]})
-    # nyc_region = Region.from_fips("97222")
-    output = dataset._bucketed_latest_for_location_id(nyc_region.location_id)
-    expected = pd.DataFrame(
-        [],
-        index=pd.MultiIndex.from_tuples([], names=[PdFields.DEMOGRAPHIC_BUCKET]),
-        columns=pd.Index([CommonFields.CASES], name="variable"),
-        dtype="float",
-    )
-    pd.testing.assert_frame_equal(expected, output)
-
-
 def test_bucketed_latest(nyc_region: Region):
     m1 = FieldName("m1")
     age20s = DemographicBucket("age:20-29")
