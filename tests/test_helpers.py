@@ -144,9 +144,9 @@ def build_dataset(
         for bucket_name, bucket_ts in iter_buckets(var_buckets)
     }
 
-    # Make sure there is only one len among all of region_var_bucket_seq.values(). Make a DatetimeIndex
-    # with that many dates.
-    sequence_lengths = more_itertools.one(set(len(seq) for seq in region_var_bucket_seq.values()))
+    # Find the longest sequence in region_var_bucket_seq.values(). Make a DatetimeIndex with that
+    # many dates.
+    sequence_lengths = max(len(seq) for seq in region_var_bucket_seq.values())
     dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
 
     index = pd.MultiIndex.from_tuples(
