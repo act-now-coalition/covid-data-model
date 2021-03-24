@@ -195,8 +195,8 @@ def region_table(stats: PerRegionStats, dataset: timeseries.MultiRegionDataset) 
             CommonFields.STATE,
             CommonFields.POPULATION,
         ]
-    ).intersection(dataset.static.columns)
-    regions = dataset.static.loc[:, static_columns]
+    ).intersection(dataset.static_and_geo_data.columns)
+    regions = dataset.static_and_geo_data.loc[:, static_columns]
 
     regions = regions.join(stats.stats_for_locations(regions.index))
 

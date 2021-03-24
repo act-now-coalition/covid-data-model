@@ -1726,3 +1726,12 @@ def test_print_stats():
             }
         }
     ).print_stats("DS2")
+
+
+def test_static_and_geo_data():
+    region_chi = Region.from_fips("17031")
+    ds = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: [0]}, static={CommonFields.POPULATION: 5}, region=region_chi
+    )
+    assert ds.static_and_geo_data.loc[region_chi.location_id, CommonFields.COUNTY] == "Cook County"
+    assert ds.static_and_geo_data.loc[region_chi.location_id, CommonFields.POPULATION] == 5
