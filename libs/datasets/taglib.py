@@ -55,6 +55,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
     ZSCORE_OUTLIER = "zscore_outlier"
+    KNOWN_ISSUE = "known_issue"
 
     PROVENANCE = PdFields.PROVENANCE
     SOURCE_URL = "source_url"
@@ -269,6 +270,26 @@ class ZScoreOutlier(AnnotationWithDate):
     TAG_TYPE = TagType.ZSCORE_OUTLIER
 
 
+@dataclass(frozen=True)
+class KnownIssue(TagInTimeseries):
+    disclaimer: str
+    date: pd.Timestamp
+
+    TAG_TYPE = TagType.KNOWN_ISSUE
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        content_parsed = json.loads(content)
+        return cls(
+            disclaimer=content_parsed["disclaimer"], date=pd.to_datetime(content_parsed["date"]),
+        )
+
+    @property
+    def content(self) -> str:
+        d = {"disclaimer": self.disclaimer, "date": self.date.date().isoformat()}
+        return json.dumps(d, separators=(",", ":"))
+
+
 TAG_TYPE_TO_CLASS = {
     TagType.CUMULATIVE_TAIL_TRUNCATED: CumulativeTailTruncated,
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED: CumulativeLongTailTruncated,
@@ -276,6 +297,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.PROVENANCE: ProvenanceTag,
     TagType.SOURCE_URL: SourceUrl,
     TagType.SOURCE: Source,
+    TagType.KNOWN_ISSUE: KnownIssue,
 }
 
 

@@ -97,6 +97,8 @@ def make_tag(
         # Force to the expected types and add defaults if not in kwargs
         kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
+    elif tag_type is taglib.TagType.KNOWN_ISSUE:
+        kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
 
     return taglib.TAG_TYPE_TO_CLASS[tag_type](**kwargs)
 
@@ -144,9 +146,9 @@ def build_dataset(
         for bucket_name, bucket_ts in iter_buckets(var_buckets)
     }
 
-    # Make sure there is only one len among all of region_var_bucket_seq.values(). Make a DatetimeIndex
-    # with that many dates.
-    sequence_lengths = more_itertools.one(set(len(seq) for seq in region_var_bucket_seq.values()))
+    # Find the longest sequence in region_var_bucket_seq.values(). Make a DatetimeIndex with that
+    # many dates.
+    sequence_lengths = max(len(seq) for seq in region_var_bucket_seq.values())
     dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
 
     index = pd.MultiIndex.from_tuples(
