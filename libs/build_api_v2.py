@@ -42,21 +42,15 @@ USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 _logger = structlog.get_logger()
 
 
-def _filter_demographic_field_and_remove_prefix(demographic_field: str, data: Dict):
-    return {
-        key.replace(demographic_field + ":", ""): value
-        for key, value in data.items()
-        if key.startswith(demographic_field)
-    }
-
-
 def _build_demographic_data_for_field(
-    field_bucket: Dict[str, int]
+    field_distributions: Dict[str, Dict[str, int]]
 ) -> Optional[DemographicDistributions]:
 
     data = {
-        field: _filter_demographic_field_and_remove_prefix(field, field_bucket) or None
-        for field in can_scraper_helpers.DEMOGRAPHIC_FIELDS
+        "age": field_distributions.get("age"),
+        "race": field_distributions.get("race"),
+        "ethinicity": field_distributions.get("ethinicity"),
+        "sex": field_distributions.get("sex"),
     }
 
     # If there is no demographic data, do not create a DemographicDistributions
@@ -120,7 +114,8 @@ def build_region_summary(
     latest_values = one_region.latest
 
     region = one_region.region
-    actuals = _build_actuals(latest_values, bucketed_data=one_region.bucketed_latest_by_field)
+    bucketed_data = one_region.bucketed_latest_by_field_and_distribution_name
+    actuals = _build_actuals(latest_values, bucketed_data=bucketed_data)
     return RegionSummary(
         fips=region.fips,
         country=region.country,

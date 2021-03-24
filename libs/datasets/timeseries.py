@@ -1,3 +1,17 @@
+from typing import (
+    Any,
+    Collection,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Union,
+    TextIO,
+    Mapping,
+    Set,
+    Sequence,
+    Tuple,
+)
 import dataclasses
 import datetime
 import pathlib
@@ -6,15 +20,7 @@ import warnings
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import chain
-from typing import Any
-from typing import Collection
-from typing import Dict
-from typing import Iterable
-from typing import List, Optional, Union, TextIO
-from typing import Mapping
-from typing import Set
-from typing import Sequence
-from typing import Tuple
+from collections import defaultdict
 
 import more_itertools
 from covidactnow.datapublic import common_fields
@@ -146,13 +152,22 @@ class OneRegionTimeseriesDataset:
             return []
 
     @cached_property
-    def bucketed_latest_by_field(
+    def bucketed_latest_by_field_and_distribution_name(
         self,
-    ) -> Dict[CommonFields, Dict[DemographicBucket, Optional[float]]]:
-        return {
-            field: self.bucketed_latest.loc[:, field].to_dict()
-            for field in self.bucketed_latest.columns
-        }
+    ) -> Dict[CommonFields, Dict[DemographicBucket, float]]:
+        """Returns distribution bucket data grouped by field and demographic bucket type."""
+        result = defaultdict(lambda: defaultdict(dict))
+
+        for field in self.bucketed_latest.columns:
+            field_data = self.bucketed_latest.loc[:, field].to_dict()
+            for distribution, value in field_data.items():
+                # Skipping 'all' it as it does not have multiple values per distribution.
+                if distribution == "all":
+                    continue
+                distribution_name, distribution_value = distribution.split(":")
+                result[field][distribution_name][distribution_value] = value
+
+        return result
 
     @cached_property
     def tag_objects_series(self) -> pd.Series:
