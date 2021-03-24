@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import inspect
+import io
 from typing import Iterable
 from typing import List
 
@@ -321,3 +322,35 @@ def get_concrete_subclasses(cls) -> Iterable[Type]:
     for subcls in get_subclasses(cls):
         if not inspect.isabstract(subcls) and abc.ABC not in subcls.__bases__:
             yield subcls
+
+
+def read_csv_str(
+    csv: str,
+    *,
+    skip_spaces: bool = False,
+    parse_dates: Optional[List] = None,
+    dtype: Optional[Mapping] = None,
+) -> pd.DataFrame:
+    """Reads a CSV passed as a string.
+
+    Args:
+        csv: String content to parse as a CSV
+        skip_spaces: If True, removes all " " from csv
+        parse_dates: Passed to pd.read_csv. If None and 'date' is in the header then ['date'].
+        dtype: Passed to pd.read_csv. If None and 'fips' is in the header it is parsed as a str.
+    """
+    if skip_spaces:
+        csv = csv.replace(" ", "")
+    header = more_itertools.first(csv.splitlines()).split(",")
+    if parse_dates is None:
+        if CommonFields.DATE in header:
+            parse_dates = [CommonFields.DATE]
+        else:
+            parse_dates = []
+    if dtype is None:
+        if CommonFields.FIPS in header:
+            dtype = {CommonFields.FIPS: str}
+        else:
+            dtype = {}
+
+    return pd.read_csv(io.StringIO(csv), parse_dates=parse_dates, dtype=dtype, low_memory=True)
