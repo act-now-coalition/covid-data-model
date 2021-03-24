@@ -23,27 +23,23 @@ CONFIG = {
                 Region.from_fips("49013"),
                 Region.from_fips("49047"),
             ],
-            "drop_observations": [
-                {
-                    "start_date": "2021-02-12",
-                    "fields": [CommonFields.CASES, CommonFields.DEATHS],
-                    "internal_note": "https://trello.com/c/aj7ep7S7/1130",
-                    "public_note": "The TriCounty Health Department is focusing on vaccinations "
-                    "and we have not found a new source of case counts.",
-                }
-            ],
+            "observations_to_drop": {
+                "start_date": "2021-02-12",
+                "fields": [CommonFields.CASES, CommonFields.DEATHS],
+                "internal_note": "https://trello.com/c/aj7ep7S7/1130",
+                "public_note": "The TriCounty Health Department is focusing on vaccinations "
+                "and we have not found a new source of case counts.",
+            },
         },
         {
             "regions_included": [RegionMask(AggregationLevel.COUNTY, states=["OK"])],
             "regions_excluded": [Region.from_fips("40109"), Region.from_fips("40143")],
-            "drop_observations": [
-                {
-                    "start_date": "2021-03-15",
-                    "fields": [CommonFields.CASES, CommonFields.DEATHS],
-                    "internal_note": "https://trello.com/c/HdAKfp49/1139",
-                    "public_note": "Something broke with the OK county data.",
-                }
-            ],
+            "observations_to_drop": {
+                "start_date": "2021-03-15",
+                "fields": [CommonFields.CASES, CommonFields.DEATHS],
+                "internal_note": "https://trello.com/c/HdAKfp49/1139",
+                "public_note": "Something broke with the OK county data.",
+            },
         },
     ]
 }
@@ -95,17 +91,17 @@ def drop_observations(
 
 def run(dataset: timeseries.MultiRegionDataset, config=CONFIG) -> timeseries.MultiRegionDataset:
     for filter_ in config["filters"]:
-        dataset_filter = dataset.get_regions_subset(filter_["regions_included"])
+        filtered_dataset = dataset.get_regions_subset(filter_["regions_included"])
         if filter_.get("regions_excluded"):
-            dataset_filter = dataset_filter.remove_regions(filter_["regions_excluded"])
-        if dataset_filter.location_ids.empty:
+            filtered_dataset = filtered_dataset.remove_regions(filter_["regions_excluded"])
+        if filtered_dataset.location_ids.empty:
             # TODO(tom): Find a cleaner way to refer to a filter in logs.
             _logger.info("No locations matched", regions=str(filter_["regions_included"]))
             continue
-        dataset_pass = dataset.remove_locations(dataset_filter.location_ids)
-        for drop_config in filter_["drop_observations"]:
-            dataset_filter = drop_observations(dataset_filter, drop_config)
+        passed_dataset = dataset.remove_locations(filtered_dataset.location_ids)
+        observations_to_drop = filter_.get("observations_to_drop")
+        filtered_dataset = drop_observations(filtered_dataset, observations_to_drop)
 
-        dataset = dataset_filter.append_regions(dataset_pass)
+        dataset = filtered_dataset.append_regions(passed_dataset)
 
     return dataset

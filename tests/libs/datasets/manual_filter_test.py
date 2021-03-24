@@ -20,7 +20,7 @@ def test_manual_filter():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-02-12",
-        disclaimer=manual_filter.CONFIG["filters"][0]["drop_observations"][0]["public_note"],
+        disclaimer=manual_filter.CONFIG["filters"][0]["observations_to_drop"]["public_note"],
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -46,7 +46,7 @@ def test_manual_filter_region_excluded():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=manual_filter.CONFIG["filters"][1]["drop_observations"][0]["public_note"],
+        disclaimer=manual_filter.CONFIG["filters"][1]["observations_to_drop"]["public_note"],
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -81,7 +81,7 @@ def test_manual_filter_per_bucket_tag():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=manual_filter.CONFIG["filters"][1]["drop_observations"][0]["public_note"],
+        disclaimer=manual_filter.CONFIG["filters"][1]["observations_to_drop"]["public_note"],
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {
