@@ -42,15 +42,14 @@ USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 _logger = structlog.get_logger()
 
 
-def _build_demographic_data_for_field(
-    field_distributions: Dict[str, Dict[str, int]]
+def _build_distributions(
+    distributions: Dict[str, Dict[str, int]]
 ) -> Optional[DemographicDistributions]:
-
     data = {
-        "age": field_distributions.get("age"),
-        "race": field_distributions.get("race"),
-        "ethinicity": field_distributions.get("ethinicity"),
-        "sex": field_distributions.get("sex"),
+        "age": distributions.get("age"),
+        "race": distributions.get("race"),
+        "ethnicity": distributions.get("ethnicity"),
+        "sex": distributions.get("sex"),
     }
 
     # If there is no demographic data, do not create a DemographicDistributions
@@ -61,19 +60,19 @@ def _build_demographic_data_for_field(
     return DemographicDistributions(**data)
 
 
-def _build_actuals(actual_data: dict, bucketed_data: Optional[Dict] = None) -> Actuals:
+def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = None) -> Actuals:
     """Generate actuals entry.
 
     Args:
         actual_data: Dictionary of data, generally derived one of the combined datasets.
         intervention: Current state level intervention.
     """
-    bucketed_data = bucketed_data or {}
-    vaccines_administered_demographics = _build_demographic_data_for_field(
-        bucketed_data.get(CommonFields.VACCINES_ADMINISTERED, {})
+    distributions_by_field = distributions_by_field or {}
+    vaccines_administered_demographics = _build_distributions(
+        distributions_by_field.get(CommonFields.VACCINES_ADMINISTERED, {})
     )
-    vaccines_initiated_demographics = _build_demographic_data_for_field(
-        bucketed_data.get(CommonFields.VACCINATIONS_INITIATED, {})
+    vaccines_initiated_demographics = _build_distributions(
+        distributions_by_field.get(CommonFields.VACCINATIONS_INITIATED, {})
     )
 
     return Actuals(
@@ -114,8 +113,8 @@ def build_region_summary(
     latest_values = one_region.latest
 
     region = one_region.region
-    bucketed_data = one_region.bucketed_latest_by_field_and_distribution_name
-    actuals = _build_actuals(latest_values, bucketed_data=bucketed_data)
+    distributions = one_region.demographic_distributions_by_field
+    actuals = _build_actuals(latest_values, distributions_by_field=distributions)
     return RegionSummary(
         fips=region.fips,
         country=region.country,

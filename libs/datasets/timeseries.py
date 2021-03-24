@@ -46,9 +46,11 @@ from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import NON_NUMERIC_COLUMNS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets import taglib
+from libs.datasets import demographics
 from libs.datasets.taglib import TagField
 from libs.datasets.taglib import TagType
 from libs.datasets.taglib import UrlStr
+from libs.datasets.demographics import DistributionBucket
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
@@ -152,20 +154,21 @@ class OneRegionTimeseriesDataset:
             return []
 
     @cached_property
-    def bucketed_latest_by_field_and_distribution_name(
+    def demographic_distributions_by_field(
         self,
-    ) -> Dict[CommonFields, Dict[str, Dict[str, float]]]:
-        """Returns distribution bucket data grouped by field and demographic bucket type."""
+    ) -> Dict[CommonFields, Dict[str, demographics.Distribution]]:
+        """Returns demographic distributions by field."""
         result = defaultdict(lambda: defaultdict(dict))
 
         for field in self.bucketed_latest.columns:
             field_data = self.bucketed_latest.loc[:, field].to_dict()
-            for distribution, value in field_data.items():
+            for short_name, value in field_data.items():
                 # Skipping 'all' it as it does not have multiple values per distribution.
-                if distribution == "all":
+                if short_name == "all":
                     continue
-                distribution_name, distribution_value = distribution.split(":")
-                result[field][distribution_name][distribution_value] = value
+
+                bucket = DistributionBucket.from_str(short_name)
+                result[field][bucket.distribution][bucket.name] = value
 
         return result
 

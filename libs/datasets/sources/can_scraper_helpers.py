@@ -16,6 +16,7 @@ from covidactnow.datapublic.common_fields import PdFields
 from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import dataset_utils
 from libs.datasets import taglib
+from libs.datasets.demographics import DistributionBucket
 
 
 # Airflow jobs output a single parquet file with all of the data - this is where
@@ -87,14 +88,8 @@ DEMOGRAPHIC_FIELDS = [Fields.AGE, Fields.RACE, Fields.ETHNICITY, Fields.SEX]
 
 def make_short_name(row: pd.Series) -> str:
     """Transform a Series of demographic values into a single string such as 'age:0-9;sex:female'"""
-    non_all = []
-    for field in DEMOGRAPHIC_FIELDS:
-        if row[field] != "all":
-            non_all.append(f"{field}:{row[field]}")
-    if non_all:
-        return ";".join(non_all)
-    else:
-        return "all"
+    distribution_bucket = DistributionBucket.make_from_row(DEMOGRAPHIC_FIELDS, row)
+    return str(distribution_bucket)
 
 
 class BadLocationId(UserWarning):
