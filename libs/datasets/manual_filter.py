@@ -14,6 +14,7 @@ from libs.pipeline import Region, RegionMask
 _logger = structlog.getLogger()
 
 
+# TODO(tom): Make some kind of hierarchy of class to form a schema that can be populated by a JSON.
 CONFIG = {
     "filters": [
         {
@@ -51,20 +52,29 @@ CONFIG = {
 def drop_observations(
     dataset: timeseries.MultiRegionDataset, config
 ) -> timeseries.MultiRegionDataset:
+    """Drops observations according to `config` from every region in dataset."""
     drop_start_date = pd.to_datetime(config["start_date"])
 
-    timeseries_wide_dates = dataset.timeseries_bucketed_wide_dates
-    ts_mask = timeseries_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(config["fields"])
-    ts_filter = timeseries_wide_dates[ts_mask]
-    ts_pass = timeseries_wide_dates[~ts_mask]
+    ts_in = dataset.timeseries_bucketed_wide_dates
+
+    mask_selected_fields = ts_in.index.get_level_values(PdFields.VARIABLE).isin(config["fields"])
+    ts_selected_fields = ts_in.loc[mask_selected_fields]
+    ts_not_selected_fields = ts_in.loc[~mask_selected_fields]
+
+    obsv_selected = ts_selected_fields.loc[:, ts_selected_fields.columns >= drop_start_date]
+    mask_has_real_value_to_drop = obsv_selected.notna().any(1)
+    ts_to_filter = ts_selected_fields.loc[mask_has_real_value_to_drop]
+    ts_no_real_values_to_drop = ts_selected_fields.loc[~mask_has_real_value_to_drop]
+
+    ts_filtered = ts_to_filter.loc[:, ts_to_filter.columns < drop_start_date]
 
     new_tags = taglib.TagCollection()
-    assert ts_filter.index.names == [
+    assert ts_to_filter.index.names == [
         CommonFields.LOCATION_ID,
         PdFields.VARIABLE,
         PdFields.DEMOGRAPHIC_BUCKET,
     ]
-    for location_id, variable, bucket in ts_filter.index:
+    for location_id, variable, bucket in ts_to_filter.index:
         new_tags.add(
             taglib.KnownIssue(date=drop_start_date, disclaimer=config["public_note"]),
             location_id=location_id,
@@ -72,9 +82,12 @@ def drop_observations(
             bucket=bucket,
         )
 
-    ts_filter = ts_filter.loc[:, ts_filter.columns < drop_start_date]
-
-    ts_new = pd.concat([ts_filter, ts_pass]).stack().unstack(PdFields.VARIABLE).sort_index()
+    ts_new = (
+        pd.concat([ts_not_selected_fields, ts_no_real_values_to_drop, ts_filtered])
+        .stack()
+        .unstack(PdFields.VARIABLE)
+        .sort_index()
+    )
     return dataclasses.replace(dataset, timeseries_bucketed=ts_new).append_tag_df(
         new_tags.as_dataframe()
     )
@@ -86,6 +99,7 @@ def run(dataset: timeseries.MultiRegionDataset, config=CONFIG) -> timeseries.Mul
         if filter_.get("regions_excluded"):
             dataset_filter = dataset_filter.remove_regions(filter_["regions_excluded"])
         if dataset_filter.location_ids.empty:
+            # TODO(tom): Find a cleaner way to refer to a filter in logs.
             _logger.info("No locations matched", regions=str(filter_["regions_included"]))
             continue
         dataset_pass = dataset.remove_locations(dataset_filter.location_ids)
