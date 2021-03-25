@@ -42,6 +42,10 @@ EOF
   sls deploy -s $ENV
 
   aws cloudfront wait distribution-deployed --id $CLOUDFRONT_DISTRIBUTION_ID
+
+  # Make sure API endpoints are working after deploy. Pulls from existing user and makes
+  # sure that API returns results.
+  pytest end_to_end_test.py::test_api_flow_existing_user
 }
 
 prepare "$@"
