@@ -157,16 +157,26 @@ class OneRegionTimeseriesDataset:
     def demographic_distributions_by_field(
         self,
     ) -> Dict[CommonFields, Dict[str, demographics.ScalarDistribution]]:
-        """Returns demographic distributions by field."""
-        result = defaultdict(lambda: defaultdict(dict))
+        """Returns demographic distributions by field.
 
-        for field in self.bucketed_latest.columns:
-            field_data = self.bucketed_latest.loc[:, field].to_dict()
+        Only returns distributions where at least one value exists.
+        """
+        result = defaultdict(lambda: defaultdict(dict))
+        bucketed_latest = self.bucketed_latest.where(pd.notnull(self.bucketed_latest), None)
+
+        for field in bucketed_latest.columns:
+            field_data = bucketed_latest.loc[:, field].to_dict()
             for short_name, value in field_data.items():
                 # Skipping 'all' it as it does not have multiple values per distribution.
                 if short_name == "all":
                     continue
 
+                # Only adding real-valued data to distributions.  If there are multiple
+                # variables with different buckets for a given distribution, including none's
+                # will mix buckets.  To properly fix, consider passing latest in a long format
+                # rather than a wide variables format.
+                if value is None:
+                    continue
                 bucket = DistributionBucket.from_str(short_name)
                 result[field][bucket.distribution][bucket.name] = value
 
