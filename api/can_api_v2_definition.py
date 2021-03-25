@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 import enum
 
 from libs.datasets.dataset_utils import AggregationLevel
@@ -58,6 +58,14 @@ class NonCovidPatientsMethod(enum.Enum):
     ACTUAL = "actual"
     ESTIMATED_FROM_TYPICAL_UTILIZATION = "estimated_from_typical_utilization"
     ESTIMATED_FROM_TOTAL_ICU_ACTUAL = "estimated_from_total_icu_actual"
+
+
+class DemographicDistributions(base_model.APIBaseModel):
+
+    age: Optional[Dict[str, int]] = pydantic.Field(None)
+    race: Optional[Dict[str, int]] = pydantic.Field(None)
+    ethnicity: Optional[Dict[str, int]] = pydantic.Field(None)
+    sex: Optional[Dict[str, int]] = pydantic.Field(None)
 
 
 class ICUHeadroomMetricDetails(base_model.APIBaseModel):
@@ -194,6 +202,8 @@ number of people vaccinated with both the first and second dose.
     vaccinesAdministered: Optional[int] = pydantic.Field(
         None, description="Total number of vaccine doses administered."
     )
+    vaccinesAdministeredDemographics: Optional[DemographicDistributions] = pydantic.Field(None)
+    vaccinationsInitiatedDemographics: Optional[DemographicDistributions] = pydantic.Field(None)
     # When adding a new "actual" field here remember to add a `FieldAnnotations` in `Annotations`.
 
 
@@ -351,6 +361,7 @@ class Metrics(base_model.APIBaseModel):
             infectionRate=None,
             infectionRateCI90=None,
             icuHeadroomRatio=None,
+            icuCapacityRatio=None,
         )
 
 
@@ -394,6 +405,18 @@ class RiskLevels(base_model.APIBaseModel):
     infectionRate: RiskLevel = pydantic.Field(..., description="Infection rate risk level.")
     icuHeadroomRatio: RiskLevel = pydantic.Field(..., description="ICU headroom ratio risk level.")
     icuCapacityRatio: RiskLevel = pydantic.Field(..., description="ICU capacity ratio risk level.")
+
+    @classmethod
+    def empty(cls) -> "RiskLevels":
+        return RiskLevels(
+            overall=RiskLevel.LOW,
+            testPositivityRatio=RiskLevel.LOW,
+            caseDensity=RiskLevel.LOW,
+            contactTracerCapacityRatio=RiskLevel.LOW,
+            infectionRate=RiskLevel.LOW,
+            icuHeadroomRatio=RiskLevel.LOW,
+            icuCapacityRatio=RiskLevel.LOW,
+        )
 
 
 # Additional class used for bulk timeseries where we are not including all risk levels

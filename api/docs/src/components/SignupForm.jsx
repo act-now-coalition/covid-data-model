@@ -19,7 +19,10 @@ const trackEmailSignupSuccess = (isNewUser) => {
     eventAction: 'Submit',
     eventLabel: isNewUser ? 'New User' : 'Existing User'
   });
-}
+  if (isNewUser) {
+    gtag_report_conversion();
+  }
+};
 
 const SignupForm = () => {
   const [email, setEmail] = useState();

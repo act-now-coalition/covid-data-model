@@ -1,3 +1,17 @@
+from typing import (
+    Any,
+    Collection,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Union,
+    TextIO,
+    Mapping,
+    Set,
+    Sequence,
+    Tuple,
+)
 import dataclasses
 import datetime
 import pathlib
@@ -6,15 +20,7 @@ import warnings
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import chain
-from typing import Any
-from typing import Collection
-from typing import Dict
-from typing import Iterable
-from typing import List, Optional, Union, TextIO
-from typing import Mapping
-from typing import Set
-from typing import Sequence
-from typing import Tuple
+from collections import defaultdict
 
 import more_itertools
 from covidactnow.datapublic import common_fields
@@ -40,9 +46,11 @@ from libs.datasets.dataset_utils import GEO_DATA_COLUMNS
 from libs.datasets.dataset_utils import NON_NUMERIC_COLUMNS
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets import taglib
+from libs.datasets import demographics
 from libs.datasets.taglib import TagField
 from libs.datasets.taglib import TagType
 from libs.datasets.taglib import UrlStr
+from libs.datasets.demographics import DistributionBucket
 from libs.pipeline import Region
 import pandas.core.groupby.generic
 from backports.cached_property import cached_property
@@ -99,6 +107,8 @@ class OneRegionTimeseriesDataset:
 
     latest: Dict[str, Any]
 
+    bucketed_latest: pd.DataFrame
+
     # A default exists for convenience in tests. Non-test code is expected to explicitly set tag.
     tag: pd.Series = _EMPTY_ONE_REGION_TAG_SERIES
 
@@ -142,6 +152,35 @@ class OneRegionTimeseriesDataset:
             ].to_list()
         except KeyError:
             return []
+
+    @cached_property
+    def demographic_distributions_by_field(
+        self,
+    ) -> Dict[CommonFields, Dict[str, demographics.ScalarDistribution]]:
+        """Returns demographic distributions by field.
+
+        Only returns distributions where at least one value exists.
+        """
+        result = defaultdict(lambda: defaultdict(dict))
+        bucketed_latest = self.bucketed_latest.where(pd.notnull(self.bucketed_latest), None)
+
+        for field in bucketed_latest.columns:
+            field_data = bucketed_latest.loc[:, field].to_dict()
+            for short_name, value in field_data.items():
+                # Skipping 'all' it as it does not have multiple values per distribution.
+                if short_name == "all":
+                    continue
+
+                # Only adding real-valued data to distributions.  If there are multiple
+                # variables with different buckets for a given distribution, including none's
+                # will mix buckets.  To properly fix, consider passing latest in a long format
+                # rather than a wide variables format.
+                if value is None:
+                    continue
+                bucket = DistributionBucket.from_str(short_name)
+                result[field][bucket.distribution][bucket.name] = value
+
+        return result
 
     @cached_property
     def tag_objects_series(self) -> pd.Series:
@@ -615,14 +654,26 @@ class MultiRegionDataset:
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
-        if self.timeseries.columns.empty:
+
+        try:
+            return self._timeseries_bucketed_latest_values.xs(
+                "all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0
+            )
+        except KeyError:
             return pd.DataFrame([], index=pd.Index([], name=CommonFields.LOCATION_ID))
-        # timeseries is already sorted by DATE with the latest at the bottom.
-        long = self.timeseries.stack().droplevel(CommonFields.DATE)
-        # `long` has MultiIndex with LOCATION_ID and VARIABLE (added by stack). Keep only the last
-        # row with each index to get the last value for each date.
-        unduplicated_and_last_mask = ~long.index.duplicated(keep="last")
-        return long.loc[unduplicated_and_last_mask, :].unstack()
+
+    @cached_property
+    def _timeseries_bucketed_latest_values(self) -> pd.DataFrame:
+        if self.timeseries.columns.empty:
+            return pd.DataFrame(
+                [],
+                index=pd.MultiIndex.from_tuples(
+                    [], names=[CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET]
+                ),
+            )
+        long_bucketed = self.timeseries_bucketed.stack().sort_index().droplevel(CommonFields.DATE)
+        unduplicated_bucketed_and_last_mask = ~long_bucketed.index.duplicated(keep="last")
+        return long_bucketed.loc[unduplicated_bucketed_and_last_mask, :].unstack(PdFields.VARIABLE)
 
     def latest_in_static(self, field: FieldName) -> "MultiRegionDataset":
         """Returns a new object with the latest values from timeseries 'field' copied to static."""
@@ -909,12 +960,15 @@ class MultiRegionDataset:
         except KeyError:
             ts_df = pd.DataFrame([], columns=[CommonFields.LOCATION_ID, CommonFields.DATE])
         latest_dict = self._location_id_latest_dict(region.location_id)
+        bucketed_latest = self._bucketed_latest_for_location_id(region.location_id)
         if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
 
         tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
 
-        return OneRegionTimeseriesDataset(region=region, data=ts_df, latest=latest_dict, tag=tag)
+        return OneRegionTimeseriesDataset(
+            region=region, data=ts_df, latest=latest_dict, tag=tag, bucketed_latest=bucketed_latest
+        )
 
     def _location_id_latest_dict(self, location_id: str) -> dict:
         """Returns the latest values dict of a location_id."""
@@ -923,6 +977,18 @@ class MultiRegionDataset:
         except KeyError:
             attributes_series = pd.Series([], dtype=object)
         return attributes_series.where(pd.notnull(attributes_series), None).to_dict()
+
+    def _bucketed_latest_for_location_id(self, location_id: str) -> pd.DataFrame:
+        try:
+            data = self._timeseries_bucketed_latest_values.loc[location_id, :]
+            return data
+        except KeyError:
+            return pd.DataFrame(
+                [],
+                index=pd.MultiIndex.from_tuples([], names=[PdFields.DEMOGRAPHIC_BUCKET]),
+                columns=self.timeseries_bucketed.columns,
+                dtype="float",
+            )
 
     def _location_ids_in_mask(self, region_mask: pipeline.RegionMask) -> pd.Index:
         geo_data = self.geo_data
@@ -1160,8 +1226,14 @@ class MultiRegionDataset:
             latest_dict = self._location_id_latest_dict(location_id)
             region = Region.from_location_id(location_id)
             tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
+            bucketed_latest = self._bucketed_latest_for_location_id(location_id)
+
             yield region, OneRegionTimeseriesDataset(
-                region, timeseries_group.reset_index(), latest_dict, tag=tag
+                region,
+                timeseries_group.reset_index(),
+                latest_dict,
+                tag=tag,
+                bucketed_latest=bucketed_latest,
             )
 
 

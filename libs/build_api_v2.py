@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List
-from typing import Optional
+from typing import List, Dict, Optional
 import pandas as pd
+
 from api.can_api_v2_definition import (
     Actuals,
     ActualsTimeseriesRow,
@@ -9,6 +9,7 @@ from api.can_api_v2_definition import (
     FieldAnnotations,
     AggregateFlattenedTimeseries,
     AggregateRegionSummary,
+    DemographicDistributions,
     Metrics,
     RiskLevels,
     RiskLevelsRow,
@@ -23,9 +24,11 @@ from covidactnow.datapublic.common_fields import CommonFields
 from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
+
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+import structlog
 
 
 METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in FieldSourceType enum"
@@ -35,17 +38,45 @@ METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE = "More than one provenance for a field"
 USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 
 
-def _build_actuals(actual_data: dict) -> Actuals:
+_logger = structlog.get_logger()
+
+
+def _build_distributions(
+    distributions: Dict[str, Dict[str, int]]
+) -> Optional[DemographicDistributions]:
+    data = {
+        "age": distributions.get("age"),
+        "race": distributions.get("race"),
+        "ethnicity": distributions.get("ethnicity"),
+        "sex": distributions.get("sex"),
+    }
+
+    # If there is no demographic data, do not create a DemographicDistributions
+    # object, simply return none
+    if not any(value for value in data.values()):
+        return None
+
+    return DemographicDistributions(**data)
+
+
+def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = None) -> Actuals:
     """Generate actuals entry.
 
     Args:
         actual_data: Dictionary of data, generally derived one of the combined datasets.
         intervention: Current state level intervention.
-
     """
+    distributions_by_field = distributions_by_field or {}
+    vaccines_administered_demographics = _build_distributions(
+        distributions_by_field.get(CommonFields.VACCINES_ADMINISTERED, {})
+    )
+    vaccines_initiated_demographics = _build_distributions(
+        distributions_by_field.get(CommonFields.VACCINATIONS_INITIATED, {})
+    )
+
     return Actuals(
-        cases=actual_data[CommonFields.CASES],
-        deaths=actual_data[CommonFields.DEATHS],
+        cases=actual_data.get(CommonFields.CASES),
+        deaths=actual_data.get(CommonFields.DEATHS),
         positiveTests=actual_data.get(CommonFields.POSITIVE_TESTS),
         negativeTests=actual_data.get(CommonFields.NEGATIVE_TESTS),
         contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
@@ -61,14 +92,14 @@ def _build_actuals(actual_data: dict) -> Actuals:
             "currentUsageTotal": actual_data.get(CommonFields.CURRENT_ICU_TOTAL),
             "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
-        newCases=actual_data[CommonFields.NEW_CASES],
-        newDeaths=actual_data[CommonFields.NEW_DEATHS],
+        newCases=actual_data.get(CommonFields.NEW_CASES),
+        newDeaths=actual_data.get(CommonFields.NEW_DEATHS),
         vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
         vaccinationsInitiated=actual_data.get(CommonFields.VACCINATIONS_INITIATED),
-        # Vaccinations completed currently optional as data is not yet flowing through.
-        # This will allow us to include vaccines completed data as soon as its scraped.
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
         vaccinesAdministered=actual_data.get(CommonFields.VACCINES_ADMINISTERED),
+        vaccinesAdministeredDemographics=vaccines_administered_demographics,
+        vaccinationsInitiatedDemographics=vaccines_initiated_demographics,
     )
 
 
@@ -79,9 +110,10 @@ def build_region_summary(
     log,
 ) -> RegionSummary:
     latest_values = one_region.latest
-    region = one_region.region
 
-    actuals = _build_actuals(latest_values)
+    region = one_region.region
+    distributions = one_region.demographic_distributions_by_field
+    actuals = _build_actuals(latest_values, distributions_by_field=distributions)
     return RegionSummary(
         fips=region.fips,
         country=region.country,
@@ -96,7 +128,7 @@ def build_region_summary(
         riskLevels=risk_levels,
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
-        url=latest_values[CommonFields.CAN_LOCATION_PAGE_URL],
+        url=latest_values.get(CommonFields.CAN_LOCATION_PAGE_URL),
         annotations=build_annotations(one_region, log),
     )
 
