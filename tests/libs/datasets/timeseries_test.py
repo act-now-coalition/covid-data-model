@@ -1752,7 +1752,7 @@ def test_one_region_demographic_distributions():
     assert one_region.demographic_distributions_by_field == expected
 
 
-def test_one_region_demographic_distributions():
+def test_one_region_demographic_distributions_overlapping_buckets():
     m1 = FieldName("m1")
     m2 = FieldName("m2")
     age20s = DemographicBucket("age:20-29")
