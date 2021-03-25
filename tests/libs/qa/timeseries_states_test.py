@@ -1,6 +1,8 @@
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
+from covidactnow.datapublic.common_fields import FieldGroup
 
+from dash_app.dashboard import population_ratio_by_variable
 from libs.datasets import AggregationLevel
 from libs.datasets import taglib
 from libs.datasets import timeseries
@@ -37,7 +39,12 @@ def test_make_from_dataset():
                 )
             },
             region_la: {CommonFields.CASES: [8, 9]},
-        }
+        },
+        static_by_region_then_field_name={
+            region_tx: {CommonFields.POPULATION: 10_000},
+            region_sf: {CommonFields.POPULATION: 1_000},
+            region_la: {CommonFields.POPULATION: 5_000},
+        },
     )
     dataset = timeseries.make_source_url_tags(dataset)
 
@@ -60,3 +67,26 @@ def test_make_from_dataset():
     assert (
         cases_by_level.annotation_count.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 2
     )
+
+    cases_by_group = per_region.subset_variables([CommonFields.CASES]).aggregate(
+        timeseries_stats.RegionAggregationMethod.LEVEL,
+        timeseries_stats.VariableAggregationMethod.FIELD_GROUP,
+    )
+    assert (
+        cases_by_group.has_timeseries.at[AggregationLevel.COUNTY.value, FieldGroup.CASES_DEATHS]
+        == 2
+    )
+    assert cases_by_group.has_url.at[AggregationLevel.COUNTY.value, FieldGroup.CASES_DEATHS] == 1
+    assert (
+        cases_by_group.annotation_count.at[AggregationLevel.COUNTY.value, FieldGroup.CASES_DEATHS]
+        == 2
+    )
+
+    per_region.stats_for_locations(dataset.location_ids)
+
+    counties = dataset.get_subset(aggregation_level=AggregationLevel.COUNTY)
+    county_stats = timeseries_stats.PerRegionStats.make(counties)
+    pop_by_var_has_url = population_ratio_by_variable(counties, county_stats.has_url)
+    assert not pop_by_var_has_url.empty
+    pop_by_var_has_ts = population_ratio_by_variable(counties, county_stats.has_timeseries)
+    assert not pop_by_var_has_ts.empty

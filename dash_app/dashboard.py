@@ -182,13 +182,13 @@ def population_ratio_by_variable(
     """Finds the ratio of the population where df is True, broken down by column/variable."""
     assert df.index.names == [CommonFields.LOCATION_ID]
     assert df.columns.names == [PdFields.VARIABLE]
-    population_indexed = dataset.static[CommonFields.POPULATION].reindex(df.index)
+    population_indexed = dataset.static_and_geo_data[CommonFields.POPULATION].reindex(df.index)
     population_total = population_indexed.sum()
     # Make a DataFrame that is like df but filled with zeros.
     zeros = pd.DataFrame(0, index=df.index, columns=df.columns)
     # Where df is True add the population, otherwise add zero. The result is a series with
     # PdFields.VARIABLE index
-    population_where_true = zeros.mask(df, population_indexed, axis=0).sum(axis=0)
+    population_where_true = zeros.mask(df.astype(bool), population_indexed, axis=0).sum(axis=0)
     population_ratio = population_where_true / population_total
     return population_ratio.rename("population_ratio")
 

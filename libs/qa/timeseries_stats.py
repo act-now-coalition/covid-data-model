@@ -3,17 +3,16 @@ from dataclasses import dataclass
 from typing import Collection
 
 import more_itertools
-import numpy as np
 import pandas as pd
 from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 
 from libs import pipeline
 from libs.datasets import timeseries
-from libs.datasets.taglib import TagField
 from libs.datasets.tail_filter import TagType
 
 
@@ -44,35 +43,56 @@ class VariableAggregationMethod(ValueAsStrMixin, str, enum.Enum):
     NONE = "none"
 
 
-def _agg_wide_var_counts(
+def _get_index_level_as_series(df: pd.DataFrame, level: FieldName) -> pd.Series:
+    return pd.Series(df.index.get_level_values(level), index=df.index, name=level)
+
+
+def _agg_counts(
     wide_vars: pd.DataFrame,
     location_id_group_by: RegionAggregationMethod,
     var_group_by: VariableAggregationMethod,
 ) -> pd.DataFrame:
-    """Aggregate wide variable counts to make a smaller table."""
-    assert wide_vars.index.names == [CommonFields.LOCATION_ID]
-    assert wide_vars.columns.names == [PdFields.VARIABLE]
-    assert is_numeric_dtype(more_itertools.one(set(wide_vars.dtypes)))
+    """Aggregate counts to make a smaller table."""
+    assert wide_vars.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
 
+    groupby = []
     if location_id_group_by == RegionAggregationMethod.LEVEL:
-        axis0_groupby = wide_vars.groupby(_location_id_to_agg)
+        groupby.append(
+            _get_index_level_as_series(wide_vars, CommonFields.LOCATION_ID)
+            .map(_location_id_to_agg)
+            .rename("level")
+        )
     elif location_id_group_by == RegionAggregationMethod.LEVEL_AND_COUNTY_BY_STATE:
-        axis0_groupby = wide_vars.groupby(_location_id_to_agg_and_state)
+        groupby.append(
+            _get_index_level_as_series(wide_vars, CommonFields.LOCATION_ID)
+            .map(_location_id_to_agg_and_state)
+            .rename("level")
+        )
     else:
         raise ValueError("Bad location_id_group_by")
 
-    agg_counts = axis0_groupby.sum().rename_axis(index=CommonFields.AGGREGATE_LEVEL)
-
     if var_group_by == VariableAggregationMethod.FIELD_GROUP:
-        agg_counts = agg_counts.groupby(
-            common_fields.COMMON_FIELD_TO_GROUP, axis=1, sort=False
-        ).sum()
-        # Reindex columns to match order of FieldGroup enum.
-        agg_counts = agg_counts.reindex(
-            columns=pd.Index(common_fields.FieldGroup).intersection(agg_counts.columns)
+        groupby.append(
+            _get_index_level_as_series(wide_vars, PdFields.VARIABLE)
+            .map(common_fields.COMMON_FIELD_TO_GROUP)
+            .rename("variable_group")
         )
+    else:
+        groupby.append(PdFields.VARIABLE)
+
+    agg_counts = wide_vars.groupby(groupby, as_index=True).sum()
+    agg_counts = agg_counts.rename_axis(index={"variable_group": "variable"})
 
     return agg_counts
+
+
+@enum.unique
+class TimeseriesStat(ValueAsStrMixin, str, enum.Enum):
+    # Count of timeseries
+    HAS_TIMESERIES = "has_timeseries"
+    # Count of URLs
+    HAS_URL = "has_url"
+    ANNOTATION_COUNT = "annotation_count"
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
@@ -80,82 +100,91 @@ class AggregatedStats:
     """Aggregated statistics, where index are regions and columns are variables. Either axis may
     be filtered to keep only a subset and/or aggregated."""
 
-    # TODO(tom): Move all these into one DataFrame so one vector operation can apply to all of them.
+    stats: pd.DataFrame
 
-    # A table of count of timeseries
-    has_timeseries: pd.DataFrame
-    # A table of count of URLs
-    has_url: pd.DataFrame
-    # A table of count of annotations
-    annotation_count: pd.DataFrame
+    def __post_init__(self):
+        assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, "level"]
+        assert self.stats.index.names[1] in [PdFields.VARIABLE]
+        assert self.stats.columns.to_list() == [
+            TimeseriesStat.HAS_TIMESERIES,
+            TimeseriesStat.HAS_URL,
+            TimeseriesStat.ANNOTATION_COUNT,
+        ]
+        assert is_numeric_dtype(more_itertools.one(set(self.stats.dtypes)))
+
+    @property
+    def has_timeseries(self):
+        return self.stats.loc(axis=1)[TimeseriesStat.HAS_TIMESERIES].unstack(PdFields.VARIABLE)
+
+    @property
+    def has_url(self):
+        return self.stats.loc(axis=1)[TimeseriesStat.HAS_URL].unstack(PdFields.VARIABLE)
+
+    @property
+    def annotation_count(self):
+        return self.stats.loc(axis=1)[TimeseriesStat.ANNOTATION_COUNT].unstack(PdFields.VARIABLE)
+
+
+def xs_or_empty(df: pd.DataFrame, key, level) -> pd.DataFrame:
+    mask = df.index.get_level_values(level).isin(key)
+    return df.loc(axis=0)[mask]
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class PerRegionStats(AggregatedStats):
-    """Instances of AggregatedStats where each row represents one region."""
+    """Instances of AggregatedStats where each row represents one timeseries."""
+
+    def __post_init__(self):
+        assert self.stats.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
 
     @staticmethod
     def make(ds: timeseries.MultiRegionDataset) -> "PerRegionStats":
-        wide_var_has_timeseries = (
+        all_timeseries_index = ds.timeseries_not_bucketed_wide_dates.index
+        has_timeseries = (
             ds.timeseries_not_bucketed_wide_dates.notnull()
             .any(1)
-            .unstack(PdFields.VARIABLE, fill_value=False)
-            .astype(bool)
+            .astype(int)
+            .reindex(index=all_timeseries_index, fill_value=False)
         )
-        wide_var_has_url = (
-            ds.tag_all_bucket.loc[:, :, TagType.SOURCE_URL].unstack(PdFields.VARIABLE).notnull()
+        has_url = (
+            ds.tag_all_bucket.loc[:, :, TagType.SOURCE_URL]
+            .notnull()
+            .astype(int)
+            .reindex(index=all_timeseries_index, fill_value=0)
         )
-        # Need to use pivot_table instead of unstack to aggregate using sum.
-        wide_var_annotation_count = pd.pivot_table(
-            ds.tag_all_bucket.loc[:, :, timeseries.ANNOTATION_TAG_TYPES].notnull().reset_index(),
-            values=TagField.CONTENT,
-            index=CommonFields.LOCATION_ID,
-            columns=PdFields.VARIABLE,
-            aggfunc=np.sum,
-            fill_value=0,
+        annotation_count = (
+            ds.tag_all_bucket.loc[:, :, timeseries.ANNOTATION_TAG_TYPES]
+            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+            .count()
+            .reindex(index=all_timeseries_index, fill_value=0)
         )
 
-        return PerRegionStats(
-            has_timeseries=wide_var_has_timeseries,
-            has_url=wide_var_has_url,
-            annotation_count=wide_var_annotation_count,
+        stats = pd.DataFrame(
+            {
+                TimeseriesStat.HAS_TIMESERIES: has_timeseries,
+                TimeseriesStat.HAS_URL: has_url,
+                TimeseriesStat.ANNOTATION_COUNT: annotation_count,
+            }
         )
+
+        return PerRegionStats(stats=stats)
 
     def aggregate(
         self, regions: RegionAggregationMethod, variables: VariableAggregationMethod
     ) -> AggregatedStats:
-        return AggregatedStats(
-            has_timeseries=_agg_wide_var_counts(self.has_timeseries, regions, variables),
-            has_url=_agg_wide_var_counts(self.has_url, regions, variables),
-            annotation_count=_agg_wide_var_counts(self.annotation_count, regions, variables),
-        )
+        return AggregatedStats(stats=_agg_counts(self.stats, regions, variables))
 
     def subset_variables(self, variables: Collection[CommonFields]) -> "PerRegionStats":
         """Returns a new PerRegionStats with only `variables` in the columns."""
-        return PerRegionStats(
-            has_timeseries=self.has_timeseries.loc[
-                :, self.has_timeseries.columns.intersection(variables).rename(PdFields.VARIABLE)
-            ],
-            has_url=self.has_url.loc[
-                :, self.has_url.columns.intersection(variables).rename(PdFields.VARIABLE)
-            ],
-            annotation_count=self.annotation_count.loc[
-                :, self.annotation_count.columns.intersection(variables).rename(PdFields.VARIABLE)
-            ],
-        )
+        return PerRegionStats(stats=xs_or_empty(self.stats, variables, PdFields.VARIABLE))
 
     def stats_for_locations(self, location_ids: pd.Index) -> pd.DataFrame:
         """Returns a DataFrame of statistics with `location_ids` as the index."""
         assert location_ids.names == [CommonFields.LOCATION_ID]
         # The stats likely don't have a value for every region. Replace any NAs with 0 so that
         # subtracting them produces a real value.
-        df = pd.DataFrame(
-            {
-                "annotation_count": self.annotation_count.sum(axis=1),
-                "url_count": self.has_url.sum(axis=1),
-                "timeseries_count": self.has_timeseries.sum(axis=1),
-            },
-            index=location_ids,
-        ).fillna(0)
-        df["no_url_count"] = df["timeseries_count"] - df["url_count"]
+        df = (
+            self.stats.groupby(CommonFields.LOCATION_ID).sum().reindex(index=location_ids).fillna(0)
+        )
+        df["no_url_count"] = df[TimeseriesStat.HAS_TIMESERIES] - df[TimeseriesStat.HAS_URL]
         return df
