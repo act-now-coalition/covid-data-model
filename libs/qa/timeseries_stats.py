@@ -51,15 +51,15 @@ def _get_index_level_as_series(df: pd.DataFrame, level: FieldName) -> pd.Series:
 
 
 def _agg_counts(
-    wide_vars: pd.DataFrame,
+    stats_df: pd.DataFrame,
     location_id_group_by: RegionAggregationMethod,
     var_group_by: VariableAggregationMethod,
 ) -> pd.DataFrame:
     """Aggregate counts to make a smaller table."""
-    assert wide_vars.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+    assert stats_df.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
 
     groupby = []
-    location_id_series = _get_index_level_as_series(wide_vars, CommonFields.LOCATION_ID)
+    location_id_series = _get_index_level_as_series(stats_df, CommonFields.LOCATION_ID)
     if location_id_group_by == RegionAggregationMethod.LEVEL:
         groupby.append(location_id_series.map(_location_id_to_agg).rename(LEVEL))
     elif location_id_group_by == RegionAggregationMethod.LEVEL_AND_COUNTY_BY_STATE:
@@ -68,7 +68,7 @@ def _agg_counts(
         raise ValueError("Bad location_id_group_by")
 
     if var_group_by == VariableAggregationMethod.FIELD_GROUP:
-        variable_series = _get_index_level_as_series(wide_vars, PdFields.VARIABLE)
+        variable_series = _get_index_level_as_series(stats_df, PdFields.VARIABLE)
         groupby.append(
             variable_series.map(common_fields.COMMON_FIELD_TO_GROUP).rename(VARIABLE_GROUP)
         )
@@ -76,13 +76,13 @@ def _agg_counts(
         # Add variable to groupby to prevent aggregation across `variable` values.
         groupby.append(PdFields.VARIABLE)
 
-    agg_counts = wide_vars.groupby(groupby, as_index=True).sum()
+    agg_counts = stats_df.groupby(groupby, as_index=True).sum()
 
     return agg_counts
 
 
 @enum.unique
-class TimeseriesStat(ValueAsStrMixin, str, enum.Enum):
+class StatName(ValueAsStrMixin, str, enum.Enum):
     # Count of timeseries
     HAS_TIMESERIES = "has_timeseries"
     # Count of URLs
@@ -103,26 +103,26 @@ class AggregatedStats:
         # index level 1 is a variable (cases, deaths, ...) or some kind of aggregated variable
         assert self.stats.index.names[1] in [PdFields.VARIABLE, VARIABLE_GROUP]
         assert self.stats.columns.to_list() == [
-            TimeseriesStat.HAS_TIMESERIES,
-            TimeseriesStat.HAS_URL,
-            TimeseriesStat.ANNOTATION_COUNT,
+            StatName.HAS_TIMESERIES,
+            StatName.HAS_URL,
+            StatName.ANNOTATION_COUNT,
         ]
         assert is_numeric_dtype(more_itertools.one(set(self.stats.dtypes)))
 
     @property
     def has_timeseries(self):
         """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
-        return self.stats.loc(axis=1)[TimeseriesStat.HAS_TIMESERIES].unstack(1)
+        return self.stats.loc(axis=1)[StatName.HAS_TIMESERIES].unstack(1)
 
     @property
     def has_url(self):
         """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
-        return self.stats.loc(axis=1)[TimeseriesStat.HAS_URL].unstack(1)
+        return self.stats.loc(axis=1)[StatName.HAS_URL].unstack(1)
 
     @property
     def annotation_count(self):
         """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
-        return self.stats.loc(axis=1)[TimeseriesStat.ANNOTATION_COUNT].unstack(1)
+        return self.stats.loc(axis=1)[StatName.ANNOTATION_COUNT].unstack(1)
 
 
 def _xs_or_empty(df: pd.DataFrame, key: Collection[str], level: str) -> pd.DataFrame:
@@ -163,9 +163,9 @@ class PerRegionStats(AggregatedStats):
 
         stats = pd.DataFrame(
             {
-                TimeseriesStat.HAS_TIMESERIES: has_timeseries,
-                TimeseriesStat.HAS_URL: has_url,
-                TimeseriesStat.ANNOTATION_COUNT: annotation_count,
+                StatName.HAS_TIMESERIES: has_timeseries,
+                StatName.HAS_URL: has_url,
+                StatName.ANNOTATION_COUNT: annotation_count,
             }
         )
 
@@ -188,5 +188,5 @@ class PerRegionStats(AggregatedStats):
         df = (
             self.stats.groupby(CommonFields.LOCATION_ID).sum().reindex(index=location_ids).fillna(0)
         )
-        df["no_url_count"] = df[TimeseriesStat.HAS_TIMESERIES] - df[TimeseriesStat.HAS_URL]
+        df["no_url_count"] = df[StatName.HAS_TIMESERIES] - df[StatName.HAS_URL]
         return df
