@@ -180,7 +180,7 @@ class OneRegionTimeseriesDataset:
                 bucket = DistributionBucket.from_str(short_name)
                 result[field][bucket.distribution][bucket.name] = value
 
-        return dict(result)
+        return result
 
     @cached_property
     def tag_objects_series(self) -> pd.Series:
