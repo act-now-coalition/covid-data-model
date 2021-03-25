@@ -30,7 +30,14 @@ HOSPITALIZATIONS_FIELDS = Fields(
 )
 
 VACCINATION_FIELDS = Fields(
-    ["vaccinesDistributed", "vaccinationsInitiated", "vaccinationsCompleted"],
+    [
+        "vaccinesDistributed",
+        "vaccinationsInitiated",
+        "vaccinationsCompleted",
+        "vaccinesAdministered",
+        "vaccinesAdministeredDemographics",
+        "vaccinationsInitiatedDemographics",
+    ],
     ["vaccinationsInitiatedRatio", "vaccinationsCompletedRatio"],
 )
 

@@ -61,6 +61,13 @@ class NonCovidPatientsMethod(enum.Enum):
 
 
 class DemographicDistributions(base_model.APIBaseModel):
+    """Distributions of demographic data.
+
+    Note that because different regions may have different demographic distributions for
+    the same field.  For instance, how age is collected is not uniform.
+
+    The data provided matches the source distributions.
+    """
 
     age: Optional[Dict[str, int]] = pydantic.Field(None)
     race: Optional[Dict[str, int]] = pydantic.Field(None)
@@ -202,8 +209,12 @@ number of people vaccinated with both the first and second dose.
     vaccinesAdministered: Optional[int] = pydantic.Field(
         None, description="Total number of vaccine doses administered."
     )
-    vaccinesAdministeredDemographics: Optional[DemographicDistributions] = pydantic.Field(None)
-    vaccinationsInitiatedDemographics: Optional[DemographicDistributions] = pydantic.Field(None)
+    vaccinesAdministeredDemographics: Optional[DemographicDistributions] = pydantic.Field(
+        None, description="Demographic distributions for administered vaccines."
+    )
+    vaccinationsInitiatedDemographics: Optional[DemographicDistributions] = pydantic.Field(
+        None, description="Demographic distributions for initiated vaccinations."
+    )
     # When adding a new "actual" field here remember to add a `FieldAnnotations` in `Annotations`.
 
 

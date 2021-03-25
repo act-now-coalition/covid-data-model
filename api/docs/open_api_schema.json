@@ -1047,6 +1047,69 @@
         },
         "description": "Base model for API output."
       },
+      "DemographicDistributions": {
+        "title": "DemographicDistributions",
+        "type": "object",
+        "properties": {
+          "age": {
+            "title": "Age",
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "race": {
+            "title": "Race",
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "ethnicity": {
+            "title": "Ethnicity",
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "sex": {
+            "title": "Sex",
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "additionalProperties": {
+              "type": "integer"
+            }
+          }
+        },
+        "description": "Distributions of demographic data.\n\nNote that because different regions may have different demographic distributions for\nthe same field.  For instance, how age is collected is not uniform.\n\nThe data provided matches the source distributions."
+      },
       "Actuals": {
         "title": "Actuals",
         "required": [
@@ -1211,6 +1274,24 @@
               }
             ],
             "description": "Total number of vaccine doses administered."
+          },
+          "vaccinesAdministeredDemographics": {
+            "title": "Vaccinesadministereddemographics",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DemographicDistributions"
+              }
+            ],
+            "description": "Demographic distributions for administered vaccines."
+          },
+          "vaccinationsInitiatedDemographics": {
+            "title": "Vaccinationsinitiateddemographics",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DemographicDistributions"
+              }
+            ],
+            "description": "Demographic distributions for initiated vaccinations."
           }
         },
         "description": "Known actuals data."
@@ -1743,6 +1824,7 @@
           "cumulative_tail_truncated",
           "cumulative_long_tail_truncated",
           "zscore_outlier",
+          "known_issue",
           "provenance",
           "source_url",
           "source"
@@ -1891,15 +1973,6 @@
             ],
             "description": "Annotations for newDeaths"
           },
-          "vaccinesAdministered": {
-            "title": "Vaccinesadministered",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/FieldAnnotations"
-              }
-            ],
-            "description": "Annotations for vaccinesAdministered"
-          },
           "vaccinesDistributed": {
             "title": "Vaccinesdistributed",
             "allOf": [
@@ -1926,6 +1999,15 @@
               }
             ],
             "description": "Annotations for vaccinationsCompleted"
+          },
+          "vaccinesAdministered": {
+            "title": "Vaccinesadministered",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinesAdministered"
           },
           "testPositivityRatio": {
             "title": "Testpositivityratio",
@@ -2471,6 +2553,24 @@
               }
             ],
             "description": "Total number of vaccine doses administered."
+          },
+          "vaccinesAdministeredDemographics": {
+            "title": "Vaccinesadministereddemographics",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DemographicDistributions"
+              }
+            ],
+            "description": "Demographic distributions for administered vaccines."
+          },
+          "vaccinationsInitiatedDemographics": {
+            "title": "Vaccinationsinitiateddemographics",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DemographicDistributions"
+              }
+            ],
+            "description": "Demographic distributions for initiated vaccinations."
           },
           "date": {
             "title": "Date",

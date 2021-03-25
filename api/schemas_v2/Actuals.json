@@ -152,6 +152,24 @@
           "type": "null"
         }
       ]
+    },
+    "vaccinesAdministeredDemographics": {
+      "title": "Vaccinesadministereddemographics",
+      "description": "Demographic distributions for administered vaccines.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DemographicDistributions"
+        }
+      ]
+    },
+    "vaccinationsInitiatedDemographics": {
+      "title": "Vaccinationsinitiateddemographics",
+      "description": "Demographic distributions for initiated vaccinations.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DemographicDistributions"
+        }
+      ]
     }
   },
   "required": [
@@ -226,6 +244,69 @@
         "currentUsageCovid",
         "typicalUsageRate"
       ]
+    },
+    "DemographicDistributions": {
+      "title": "DemographicDistributions",
+      "description": "Distributions of demographic data.\n\nNote that because different regions may have different demographic distributions for\nthe same field.  For instance, how age is collected is not uniform.\n\nThe data provided matches the source distributions.",
+      "type": "object",
+      "properties": {
+        "age": {
+          "title": "Age",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "race": {
+          "title": "Race",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ethnicity": {
+          "title": "Ethnicity",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sex": {
+          "title": "Sex",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
     }
   }
 }

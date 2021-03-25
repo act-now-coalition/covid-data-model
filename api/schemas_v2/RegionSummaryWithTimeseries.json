@@ -544,6 +544,69 @@
         "typicalUsageRate"
       ]
     },
+    "DemographicDistributions": {
+      "title": "DemographicDistributions",
+      "description": "Distributions of demographic data.\n\nNote that because different regions may have different demographic distributions for\nthe same field.  For instance, how age is collected is not uniform.\n\nThe data provided matches the source distributions.",
+      "type": "object",
+      "properties": {
+        "age": {
+          "title": "Age",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "race": {
+          "title": "Race",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ethnicity": {
+          "title": "Ethnicity",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sex": {
+          "title": "Sex",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
     "Actuals": {
       "title": "Actuals",
       "description": "Known actuals data.",
@@ -698,6 +761,24 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinesAdministeredDemographics": {
+          "title": "Vaccinesadministereddemographics",
+          "description": "Demographic distributions for administered vaccines.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/DemographicDistributions"
+            }
+          ]
+        },
+        "vaccinationsInitiatedDemographics": {
+          "title": "Vaccinationsinitiateddemographics",
+          "description": "Demographic distributions for initiated vaccinations.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/DemographicDistributions"
+            }
+          ]
         }
       },
       "required": [
@@ -775,6 +856,7 @@
         "cumulative_tail_truncated",
         "cumulative_long_tail_truncated",
         "zscore_outlier",
+        "known_issue",
         "provenance",
         "source_url",
         "source"
@@ -923,15 +1005,6 @@
             }
           ]
         },
-        "vaccinesAdministered": {
-          "title": "Vaccinesadministered",
-          "description": "Annotations for vaccinesAdministered",
-          "allOf": [
-            {
-              "$ref": "#/definitions/FieldAnnotations"
-            }
-          ]
-        },
         "vaccinesDistributed": {
           "title": "Vaccinesdistributed",
           "description": "Annotations for vaccinesDistributed",
@@ -953,6 +1026,15 @@
         "vaccinationsCompleted": {
           "title": "Vaccinationscompleted",
           "description": "Annotations for vaccinationsCompleted",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinesAdministered": {
+          "title": "Vaccinesadministered",
+          "description": "Annotations for vaccinesAdministered",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"
@@ -1344,6 +1426,24 @@
             },
             {
               "type": "null"
+            }
+          ]
+        },
+        "vaccinesAdministeredDemographics": {
+          "title": "Vaccinesadministereddemographics",
+          "description": "Demographic distributions for administered vaccines.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/DemographicDistributions"
+            }
+          ]
+        },
+        "vaccinationsInitiatedDemographics": {
+          "title": "Vaccinationsinitiateddemographics",
+          "description": "Demographic distributions for initiated vaccinations.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/DemographicDistributions"
             }
           ]
         },
