@@ -32,7 +32,7 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
-    - name: Install test requirements
+    - name: Install python requirements
       run: pip install -r requirements_test.txt -r requirements.txt
     - name: Install Serverless Framework and NPM dependencies
       run: |
@@ -83,7 +83,7 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
-    - name: Install test requirements
+    - name: Install python requirements
       run: pip install -r requirements_test.txt -r requirements.txt
     - name: Install Serverless Framework and NPM dependencies
       run: |
