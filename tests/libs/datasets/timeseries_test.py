@@ -1752,6 +1752,27 @@ def test_one_region_demographic_distributions():
     assert one_region.demographic_distributions_by_field == expected
 
 
+def test_one_region_demographic_distributions():
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+    age20s = DemographicBucket("age:20-29")
+    age30s = DemographicBucket("age:30-39")
+    # Presumably 25 to 29 is from a different age distribution as it overlaps with age bucket above.
+    # Make sure that different age bucketing doesn't polute other variables.
+    age25to29 = DemographicBucket("age:25-29")
+
+    dataset = test_helpers.build_default_region_dataset(
+        {
+            m1: {age20s: [21, 22, 23], age30s: [31, 32, 33], DemographicBucket.ALL: [20, 21, 22]},
+            m2: {DemographicBucket.ALL: [20, 21, 22], age25to29: [20, 21, 22]},
+        },
+    )
+    one_region = dataset.get_one_region(test_helpers.DEFAULT_REGION)
+    expected = {m1: {"age": {"20-29": 23, "30-39": 33}}, m2: {"age": {"25-29": 22}}}
+
+    assert one_region.demographic_distributions_by_field == expected
+
+
 def test_print_stats():
     all_bucket = DemographicBucket("all")
     age_20s = DemographicBucket("age:20-29")
