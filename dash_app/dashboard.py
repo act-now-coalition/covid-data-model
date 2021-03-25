@@ -19,9 +19,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagField
 from libs.datasets.tail_filter import TagType
-from libs.qa.timeseries_stats import PerRegionStats
-from libs.qa.timeseries_stats import RegionAggregationMethod
-from libs.qa.timeseries_stats import VariableAggregationMethod
+from libs.qa import timeseries_stats
 
 EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
@@ -35,7 +33,9 @@ TAG_TABLE_COLUMNS = [
 ]
 
 
-def region_table(stats: PerRegionStats, dataset: timeseries.MultiRegionDataset) -> pd.DataFrame:
+def region_table(
+    stats: timeseries_stats.PerVariable, dataset: timeseries.MultiRegionDataset
+) -> pd.DataFrame:
     # Use an index to preserve the order while keeping only columns actually present.
     static_columns = pd.Index(
         [
@@ -73,10 +73,10 @@ def init(server):
 
     variable_groups = ["all"] + list(common_fields.FieldGroup)
 
-    per_region_stats_all_vars = PerRegionStats.make(ds)
+    per_region_stats_all_vars = timeseries_stats.PerVariable.make(ds)
 
     agg_stats = per_region_stats_all_vars.aggregate(
-        RegionAggregationMethod.LEVEL, VariableAggregationMethod.FIELD_GROUP
+        timeseries_stats.RegionAggregation.LEVEL, timeseries_stats.VariableAggregation.FIELD_GROUP
     )
 
     source_url_value_counts = (
@@ -87,7 +87,7 @@ def init(server):
     )
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = PerRegionStats.make(counties)
+    county_stats = timeseries_stats.PerVariable.make(counties)
     county_variable_population_ratio = pd.DataFrame(
         {
             "has_url": population_ratio_by_variable(counties, county_stats.has_url),
@@ -196,7 +196,7 @@ def population_ratio_by_variable(
 def _init_callbacks(
     dash_app,
     ds: timeseries.MultiRegionDataset,
-    per_region_stats_all_vars: PerRegionStats,
+    per_region_stats_all_vars: timeseries_stats.PerVariable,
     region_id_series: pd.Series,
 ):
     @dash_app.callback(

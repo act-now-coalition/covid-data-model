@@ -32,7 +32,7 @@ def test_make_from_dataset():
                     DemographicBucket.ALL: [7, 8, 9],
                 },
             },
-            # `PerRegionStats.make` crashes if there are no Source tags anywhere.
+            # `PerVariable.make` crashes if there are no Source tags anywhere.
             region_sf: {
                 CommonFields.CASES: (
                     TimeseriesLiteral([4, 5], annotation=[tag2a, tag2b], source=source)
@@ -48,7 +48,7 @@ def test_make_from_dataset():
     )
     dataset = timeseries.make_source_url_tags(dataset)
 
-    per_region = timeseries_stats.PerRegionStats.make(dataset)
+    per_region = timeseries_stats.PerVariable.make(dataset)
 
     # Currently only bucket 'all' is counted so bucket_40s is ignored. TODO(tom): support other
     #  buckets.
@@ -59,8 +59,7 @@ def test_make_from_dataset():
     assert per_region.annotation_count.at[region_sf.location_id, CommonFields.CASES] == 2
 
     cases_by_level = per_region.subset_variables([CommonFields.CASES]).aggregate(
-        timeseries_stats.RegionAggregationMethod.LEVEL,
-        timeseries_stats.VariableAggregationMethod.NONE,
+        timeseries_stats.RegionAggregation.LEVEL, timeseries_stats.VariableAggregation.NONE,
     )
     assert cases_by_level.has_timeseries.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 2
     assert cases_by_level.has_url.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 1
@@ -69,8 +68,7 @@ def test_make_from_dataset():
     )
 
     cases_by_group = per_region.subset_variables([CommonFields.CASES]).aggregate(
-        timeseries_stats.RegionAggregationMethod.LEVEL,
-        timeseries_stats.VariableAggregationMethod.FIELD_GROUP,
+        timeseries_stats.RegionAggregation.LEVEL, timeseries_stats.VariableAggregation.FIELD_GROUP,
     )
     assert (
         cases_by_group.has_timeseries.at[AggregationLevel.COUNTY.value, FieldGroup.CASES_DEATHS]
@@ -85,7 +83,7 @@ def test_make_from_dataset():
     per_region.stats_for_locations(dataset.location_ids)
 
     counties = dataset.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = timeseries_stats.PerRegionStats.make(counties)
+    county_stats = timeseries_stats.PerVariable.make(counties)
     pop_by_var_has_url = population_ratio_by_variable(counties, county_stats.has_url)
     assert not pop_by_var_has_url.empty
     pop_by_var_has_ts = population_ratio_by_variable(counties, county_stats.has_timeseries)
