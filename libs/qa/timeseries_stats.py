@@ -15,6 +15,9 @@ from libs import pipeline
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagType
 
+LEVEL = FieldName("level")
+VARIABLE_GROUP = FieldName("variable_group")
+
 
 def _location_id_to_agg(loc_id):
     """Turns a location_id into a label used for aggregation. For now this is only the
@@ -56,32 +59,24 @@ def _agg_counts(
     assert wide_vars.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
 
     groupby = []
+    location_id_series = _get_index_level_as_series(wide_vars, CommonFields.LOCATION_ID)
     if location_id_group_by == RegionAggregationMethod.LEVEL:
-        groupby.append(
-            _get_index_level_as_series(wide_vars, CommonFields.LOCATION_ID)
-            .map(_location_id_to_agg)
-            .rename("level")
-        )
+        groupby.append(location_id_series.map(_location_id_to_agg).rename(LEVEL))
     elif location_id_group_by == RegionAggregationMethod.LEVEL_AND_COUNTY_BY_STATE:
-        groupby.append(
-            _get_index_level_as_series(wide_vars, CommonFields.LOCATION_ID)
-            .map(_location_id_to_agg_and_state)
-            .rename("level")
-        )
+        groupby.append(location_id_series.map(_location_id_to_agg_and_state).rename(LEVEL))
     else:
         raise ValueError("Bad location_id_group_by")
 
     if var_group_by == VariableAggregationMethod.FIELD_GROUP:
+        variable_series = _get_index_level_as_series(wide_vars, PdFields.VARIABLE)
         groupby.append(
-            _get_index_level_as_series(wide_vars, PdFields.VARIABLE)
-            .map(common_fields.COMMON_FIELD_TO_GROUP)
-            .rename("variable_group")
+            variable_series.map(common_fields.COMMON_FIELD_TO_GROUP).rename(VARIABLE_GROUP)
         )
     else:
+        # Add variable to groupby to prevent aggregation across `variable` values.
         groupby.append(PdFields.VARIABLE)
 
     agg_counts = wide_vars.groupby(groupby, as_index=True).sum()
-    agg_counts = agg_counts.rename_axis(index={"variable_group": "variable"})
 
     return agg_counts
 
@@ -103,8 +98,10 @@ class AggregatedStats:
     stats: pd.DataFrame
 
     def __post_init__(self):
-        assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, "level"]
-        assert self.stats.index.names[1] in [PdFields.VARIABLE]
+        # index level 0 is a location_id or some kind of aggregated region kind of thing
+        assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, LEVEL]
+        # index level 1 is a variable (cases, deaths, ...) or some kind of aggregated variable
+        assert self.stats.index.names[1] in [PdFields.VARIABLE, VARIABLE_GROUP]
         assert self.stats.columns.to_list() == [
             TimeseriesStat.HAS_TIMESERIES,
             TimeseriesStat.HAS_URL,
@@ -114,18 +111,22 @@ class AggregatedStats:
 
     @property
     def has_timeseries(self):
-        return self.stats.loc(axis=1)[TimeseriesStat.HAS_TIMESERIES].unstack(PdFields.VARIABLE)
+        """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
+        return self.stats.loc(axis=1)[TimeseriesStat.HAS_TIMESERIES].unstack(1)
 
     @property
     def has_url(self):
-        return self.stats.loc(axis=1)[TimeseriesStat.HAS_URL].unstack(PdFields.VARIABLE)
+        """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
+        return self.stats.loc(axis=1)[TimeseriesStat.HAS_URL].unstack(1)
 
     @property
     def annotation_count(self):
-        return self.stats.loc(axis=1)[TimeseriesStat.ANNOTATION_COUNT].unstack(PdFields.VARIABLE)
+        """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
+        return self.stats.loc(axis=1)[TimeseriesStat.ANNOTATION_COUNT].unstack(1)
 
 
-def xs_or_empty(df: pd.DataFrame, key, level) -> pd.DataFrame:
+def _xs_or_empty(df: pd.DataFrame, key: Collection[str], level: str) -> pd.DataFrame:
+    """Similar to df.xs(key, level=level) but returns an empty DataFrame when key is not present"""
     mask = df.index.get_level_values(level).isin(key)
     return df.loc(axis=0)[mask]
 
@@ -139,6 +140,7 @@ class PerRegionStats(AggregatedStats):
 
     @staticmethod
     def make(ds: timeseries.MultiRegionDataset) -> "PerRegionStats":
+        # TODO(tom): Change to timeseries_bucketed
         all_timeseries_index = ds.timeseries_not_bucketed_wide_dates.index
         has_timeseries = (
             ds.timeseries_not_bucketed_wide_dates.notnull()
@@ -176,7 +178,7 @@ class PerRegionStats(AggregatedStats):
 
     def subset_variables(self, variables: Collection[CommonFields]) -> "PerRegionStats":
         """Returns a new PerRegionStats with only `variables` in the columns."""
-        return PerRegionStats(stats=xs_or_empty(self.stats, variables, PdFields.VARIABLE))
+        return PerRegionStats(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
 
     def stats_for_locations(self, location_ids: pd.Index) -> pd.DataFrame:
         """Returns a DataFrame of statistics with `location_ids` as the index."""
