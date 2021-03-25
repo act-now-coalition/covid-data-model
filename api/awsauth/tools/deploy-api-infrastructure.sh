@@ -29,6 +29,10 @@ execute() {
 $DOTENV
 EOF
 
+  # Run test to make sure that config properly loads - do not want to deploy code if config file
+  # does not work.
+  pytest unit_test.py::test_aws_auth_config_loads
+
   sls config credentials \
       --provider aws \
       --key $AWS_ACCESS_KEY_ID \
