@@ -32,7 +32,7 @@ def test_make_from_dataset():
                     DemographicBucket.ALL: [7, 8, 9],
                 },
             },
-            # `PerRegionStats.make` crashes if there are no Source tags anywhere.
+            # `PerTimeseriesStats.make` crashes if there are no Source tags anywhere.
             region_sf: {
                 CommonFields.CASES: (
                     TimeseriesLiteral([4, 5], annotation=[tag2a, tag2b], source=source)
@@ -48,13 +48,11 @@ def test_make_from_dataset():
     )
     dataset = timeseries.make_source_url_tags(dataset)
 
-    per_region = timeseries_stats.PerRegionStats.make(dataset)
+    per_region = timeseries_stats.PerTimeseriesStats.make(dataset).aggregate_buckets()
 
-    # Currently only bucket 'all' is counted so bucket_40s is ignored. TODO(tom): support other
-    #  buckets.
     assert (
         per_region.has_timeseries.at[region_tx.location_id, CommonFields.VACCINATIONS_COMPLETED]
-        == 1
+        == 2
     )
     assert per_region.annotation_count.at[region_sf.location_id, CommonFields.CASES] == 2
 
@@ -85,7 +83,7 @@ def test_make_from_dataset():
     per_region.stats_for_locations(dataset.location_ids)
 
     counties = dataset.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = timeseries_stats.PerRegionStats.make(counties)
+    county_stats = timeseries_stats.PerTimeseriesStats.make(counties).aggregate_buckets()
     pop_by_var_has_url = population_ratio_by_variable(counties, county_stats.has_url)
     assert not pop_by_var_has_url.empty
     pop_by_var_has_ts = population_ratio_by_variable(counties, county_stats.has_timeseries)

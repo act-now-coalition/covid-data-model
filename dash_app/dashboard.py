@@ -19,7 +19,8 @@ from libs.datasets import dataset_utils
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagField
 from libs.datasets.tail_filter import TagType
-from libs.qa.timeseries_stats import PerRegionStats
+from libs.qa import timeseries_stats
+from libs.qa.timeseries_stats import PerTimeseriesStats
 from libs.qa.timeseries_stats import RegionAggregationMethod
 from libs.qa.timeseries_stats import VariableAggregationMethod
 
@@ -35,7 +36,9 @@ TAG_TABLE_COLUMNS = [
 ]
 
 
-def region_table(stats: PerRegionStats, dataset: timeseries.MultiRegionDataset) -> pd.DataFrame:
+def region_table(
+    stats: timeseries_stats.PerLocation, dataset: timeseries.MultiRegionDataset
+) -> pd.DataFrame:
     # Use an index to preserve the order while keeping only columns actually present.
     static_columns = pd.Index(
         [
@@ -73,9 +76,9 @@ def init(server):
 
     variable_groups = ["all"] + list(common_fields.FieldGroup)
 
-    per_region_stats_all_vars = PerRegionStats.make(ds)
+    per_timeseries_stats = PerTimeseriesStats.make(ds)
 
-    agg_stats = per_region_stats_all_vars.aggregate(
+    agg_stats = per_timeseries_stats.aggregate(
         RegionAggregationMethod.LEVEL, VariableAggregationMethod.FIELD_GROUP
     )
 
@@ -87,7 +90,7 @@ def init(server):
     )
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = PerRegionStats.make(counties)
+    county_stats = PerTimeseriesStats.make(counties)
     county_variable_population_ratio = pd.DataFrame(
         {
             "has_url": population_ratio_by_variable(counties, county_stats.has_url),
@@ -95,7 +98,7 @@ def init(server):
         }
     )
 
-    region_df = region_table(per_region_stats_all_vars, ds)
+    region_df = region_table(per_timeseries_stats, ds)
 
     dash_app.layout = html.Div(
         children=[
@@ -157,7 +160,7 @@ def init(server):
         ]
     )
 
-    _init_callbacks(dash_app, ds, per_region_stats_all_vars, region_df["id"])
+    _init_callbacks(dash_app, ds, per_timeseries_stats, region_df["id"])
 
     return dash_app.server
 
@@ -196,7 +199,7 @@ def population_ratio_by_variable(
 def _init_callbacks(
     dash_app,
     ds: timeseries.MultiRegionDataset,
-    per_region_stats_all_vars: PerRegionStats,
+    per_timeseries_stats: PerTimeseriesStats,
     region_id_series: pd.Series,
 ):
     @dash_app.callback(
@@ -206,12 +209,12 @@ def _init_callbacks(
     )
     def update_regions_table_variables(variable_dropdown_value):
         if variable_dropdown_value == "all":
-            per_region_stats = per_region_stats_all_vars
+            selected_var_stats = per_timeseries_stats
         else:
             selected_variables = common_fields.FIELD_GROUP_TO_LIST_FIELDS[variable_dropdown_value]
-            per_region_stats = per_region_stats_all_vars.subset_variables(selected_variables)
+            selected_var_stats = per_timeseries_stats.subset_variables(selected_variables)
 
-        region_df = region_table(per_region_stats, ds)
+        region_df = region_table(selected_var_stats, ds)
         columns = [{"name": i, "id": i} for i in region_df.columns if i != "id"]
         data = region_df.to_dict("records")
         return data, columns
