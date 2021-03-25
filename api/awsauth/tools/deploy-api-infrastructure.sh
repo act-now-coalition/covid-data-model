@@ -1,6 +1,8 @@
 #!/bin/bash
-#
 # deploy-api-infrastructure.sh - Deploys API infrastructure to cloudfront lambda function.
+
+set -o nounset
+set -o errexit
 
 # Checks command-line arguments, sets variables, etc.
 prepare () {
@@ -29,6 +31,10 @@ execute() {
 $DOTENV
 EOF
 
+  # Run test to make sure that config properly loads - do not want to deploy code if config file
+  # does not work.
+  pytest unit_test.py::test_aws_auth_config_loads
+
   sls config credentials \
       --provider aws \
       --key $AWS_ACCESS_KEY_ID \
@@ -42,6 +48,10 @@ EOF
   sls deploy -s $ENV
 
   aws cloudfront wait distribution-deployed --id $CLOUDFRONT_DISTRIBUTION_ID
+
+  # Make sure API endpoints are working after deploy. Pulls from existing user and makes
+  # sure that API returns results.
+  pytest end_to_end_test.py::test_api_flow_existing_user
 }
 
 prepare "$@"

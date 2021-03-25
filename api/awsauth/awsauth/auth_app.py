@@ -44,7 +44,6 @@ CORS_OPTIONS_HEADERS = {
 
 
 def init():
-    global FIREHOSE_CLIENT
     Config.init()
     registry.initialize()
 
