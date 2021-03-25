@@ -1,6 +1,8 @@
 #!/bin/bash
-#
 # deploy-api-infrastructure.sh - Deploys API infrastructure to cloudfront lambda function.
+
+set -o nounset
+set -o errexit
 
 # Checks command-line arguments, sets variables, etc.
 prepare () {
