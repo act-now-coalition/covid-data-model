@@ -5,7 +5,7 @@ import pandas as pd
 
 
 # Key for ScalarDistributions are just bucket names, such as "10-19" in a distribution for age.
-ScalarDistribution = NewType("Distribution", Dict[str, float])
+ScalarDistribution = NewType("ScalarDistribution", Dict[str, float])
 
 
 @dataclasses.dataclass(frozen=True)
