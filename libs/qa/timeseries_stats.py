@@ -35,13 +35,13 @@ def _location_id_to_agg_and_state(loc_id):
 
 
 @enum.unique
-class RegionAggregationMethod(ValueAsStrMixin, str, enum.Enum):
+class RegionAggregation(ValueAsStrMixin, str, enum.Enum):
     LEVEL = "level"
     LEVEL_AND_COUNTY_BY_STATE = "level_and_county_by_state"
 
 
 @enum.unique
-class VariableAggregationMethod(ValueAsStrMixin, str, enum.Enum):
+class VariableAggregation(ValueAsStrMixin, str, enum.Enum):
     FIELD_GROUP = "field_group"
     NONE = "none"
 
@@ -52,22 +52,22 @@ def _get_index_level_as_series(df: pd.DataFrame, level: FieldName) -> pd.Series:
 
 def _agg_counts(
     stats_df: pd.DataFrame,
-    location_id_group_by: RegionAggregationMethod,
-    var_group_by: VariableAggregationMethod,
+    location_id_group_by: RegionAggregation,
+    var_group_by: VariableAggregation,
 ) -> pd.DataFrame:
     """Aggregate counts to make a smaller table."""
     assert stats_df.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
 
     groupby = []
     location_id_series = _get_index_level_as_series(stats_df, CommonFields.LOCATION_ID)
-    if location_id_group_by == RegionAggregationMethod.LEVEL:
+    if location_id_group_by == RegionAggregation.LEVEL:
         groupby.append(location_id_series.map(_location_id_to_agg).rename(LEVEL))
-    elif location_id_group_by == RegionAggregationMethod.LEVEL_AND_COUNTY_BY_STATE:
+    elif location_id_group_by == RegionAggregation.LEVEL_AND_COUNTY_BY_STATE:
         groupby.append(location_id_series.map(_location_id_to_agg_and_state).rename(LEVEL))
     else:
         raise ValueError("Bad location_id_group_by")
 
-    if var_group_by == VariableAggregationMethod.FIELD_GROUP:
+    if var_group_by == VariableAggregation.FIELD_GROUP:
         variable_series = _get_index_level_as_series(stats_df, PdFields.VARIABLE)
         groupby.append(
             variable_series.map(common_fields.COMMON_FIELD_TO_GROUP).rename(VARIABLE_GROUP)
@@ -91,9 +91,8 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
-class AggregatedStats:
-    """Aggregated statistics, where index are regions and columns are variables. Either axis may
-    be filtered to keep only a subset and/or aggregated."""
+class Aggregated:
+    """Aggregated statistics grouped by region and variable, or collections of them."""
 
     stats: pd.DataFrame
 
@@ -132,7 +131,7 @@ def _xs_or_empty(df: pd.DataFrame, key: Collection[str], level: str) -> pd.DataF
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
-class PerLocation(AggregatedStats):
+class PerLocation(Aggregated):
     def __post_init__(self):
         assert self.stats.index.names[0] == CommonFields.LOCATION_ID
 
@@ -157,10 +156,8 @@ class PerVariable(PerLocation):
     def subset_variables(self, variables: Collection[CommonFields]) -> "PerVariable":
         return self.__class__(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
 
-    def aggregate(
-        self, regions: RegionAggregationMethod, variables: VariableAggregationMethod
-    ) -> AggregatedStats:
-        return AggregatedStats(stats=_agg_counts(self.stats, regions, variables))
+    def aggregate(self, regions: RegionAggregation, variables: VariableAggregation) -> Aggregated:
+        return Aggregated(stats=_agg_counts(self.stats, regions, variables))
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value

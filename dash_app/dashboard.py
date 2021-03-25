@@ -20,9 +20,6 @@ from libs.datasets import timeseries
 from libs.datasets.taglib import TagField
 from libs.datasets.tail_filter import TagType
 from libs.qa import timeseries_stats
-from libs.qa.timeseries_stats import PerTimeseriesStats
-from libs.qa.timeseries_stats import RegionAggregationMethod
-from libs.qa.timeseries_stats import VariableAggregationMethod
 
 EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
@@ -76,10 +73,10 @@ def init(server):
 
     variable_groups = ["all"] + list(common_fields.FieldGroup)
 
-    per_timeseries_stats = PerTimeseriesStats.make(ds)
+    per_timeseries_stats = timeseries_stats.PerTimeseriesStats.make(ds)
 
     agg_stats = per_timeseries_stats.aggregate(
-        RegionAggregationMethod.LEVEL, VariableAggregationMethod.FIELD_GROUP
+        timeseries_stats.RegionAggregation.LEVEL, timeseries_stats.VariableAggregation.FIELD_GROUP
     )
 
     source_url_value_counts = (
@@ -90,7 +87,7 @@ def init(server):
     )
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = PerTimeseriesStats.make(counties)
+    county_stats = timeseries_stats.PerTimeseriesStats.make(counties)
     county_variable_population_ratio = pd.DataFrame(
         {
             "has_url": population_ratio_by_variable(counties, county_stats.has_url),
@@ -199,7 +196,7 @@ def population_ratio_by_variable(
 def _init_callbacks(
     dash_app,
     ds: timeseries.MultiRegionDataset,
-    per_timeseries_stats: PerTimeseriesStats,
+    per_timeseries_stats: timeseries_stats.PerTimeseriesStats,
     region_id_series: pd.Series,
 ):
     @dash_app.callback(

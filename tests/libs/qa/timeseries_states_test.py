@@ -32,7 +32,7 @@ def test_make_from_dataset():
                     DemographicBucket.ALL: [7, 8, 9],
                 },
             },
-            # `PerTimeseriesStats.make` crashes if there are no Source tags anywhere.
+            # `PerVariable.make` crashes if there are no Source tags anywhere.
             region_sf: {
                 CommonFields.CASES: (
                     TimeseriesLiteral([4, 5], annotation=[tag2a, tag2b], source=source)
@@ -57,8 +57,7 @@ def test_make_from_dataset():
     assert per_region.annotation_count.at[region_sf.location_id, CommonFields.CASES] == 2
 
     cases_by_level = per_region.subset_variables([CommonFields.CASES]).aggregate(
-        timeseries_stats.RegionAggregationMethod.LEVEL,
-        timeseries_stats.VariableAggregationMethod.NONE,
+        timeseries_stats.RegionAggregation.LEVEL, timeseries_stats.VariableAggregation.NONE,
     )
     assert cases_by_level.has_timeseries.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 2
     assert cases_by_level.has_url.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 1
@@ -67,8 +66,7 @@ def test_make_from_dataset():
     )
 
     cases_by_group = per_region.subset_variables([CommonFields.CASES]).aggregate(
-        timeseries_stats.RegionAggregationMethod.LEVEL,
-        timeseries_stats.VariableAggregationMethod.FIELD_GROUP,
+        timeseries_stats.RegionAggregation.LEVEL, timeseries_stats.VariableAggregation.FIELD_GROUP,
     )
     assert (
         cases_by_group.has_timeseries.at[AggregationLevel.COUNTY.value, FieldGroup.CASES_DEATHS]
