@@ -25,6 +25,13 @@ class EnvConstants(pydantic.BaseSettings):
 
     HUBSPOT_ENABLED: bool
 
+    # Hubspot portal id differs between environments. We have a separate
+    # hubspot portal for our dev environment.
+    HUBSPOT_PORTAL_ID: str
+
+    # GUID of hubspot form used for API signup
+    HUBSPOT_REG_FORM_GUID: str
+
     EMAIL_BLOCKLIST: List[str]
 
     class Config:

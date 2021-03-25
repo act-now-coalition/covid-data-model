@@ -115,7 +115,7 @@ def _get_or_create_api_key(email: str, is_crs_user: bool) -> Tuple[bool, str]:
 
     # attempt to add hubspot contact, but don't block reg on failure.
     try:
-        registry.hubspot_client.create_contact(email)
+        registry.hubspot_client.submit_reg_form(email)
     except hubspot_client.HubSpotAPICallFailed:
         _logger.error("HubSpot call failed")
         sentry_sdk.capture_exception()
