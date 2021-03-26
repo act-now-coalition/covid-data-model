@@ -8,39 +8,13 @@ class HubSpotAPICallFailed(Exception):
 
 
 class HubSpotClient:
-    def create_contact(self, email: str) -> Optional[dict]:
-        """Creates a contact in hubspot for a given email.
-
-        Args:
-            email: Email address of contact.
-
-        Returns: Successful contact creation response.
-
-        Raises: HubSpotAPICallFailed on Hubspot error.
-        """
-        if not Config.Constants.HUBSPOT_ENABLED:
-            return
-
-        # https://pypi.org/project/hubspot-api-client/
-        url = "https://api.hubapi.com/crm/v3/objects/contacts"
-
-        querystring = {"hapikey": Config.Constants.HUBSPOT_API_KEY}
-        data = {"properties": {"email": email}}
-
-        response = requests.post(url, json=data, params=querystring)
-
-        if not response.ok:
-            raise HubSpotAPICallFailed("Hubspot contact creation failed")
-
-        return response.json()
-
     def submit_reg_form(self, email: str) -> Optional[dict]:
         """Submit hubspot registration form.
 
         Args:
             email: Email of user creating account.
 
-        Returns: Successful form submission response.
+        Returns: Successful form submission response if hubspot enabled. None if hubspot disable.
 
         Raises: HubSpotAPICallFailed on Hubspot error.
         """
