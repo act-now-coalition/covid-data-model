@@ -71,7 +71,7 @@ class RegistrationArguments:
     hubspot_token: Optional[str]
 
     @staticmethod
-    def make_from_input_data(data: Dict) -> "RegistrationArguments":
+    def make_from_json_body(data: Dict) -> "RegistrationArguments":
         if "email" not in data:
             raise ValueError("Missing email parameter")
 
