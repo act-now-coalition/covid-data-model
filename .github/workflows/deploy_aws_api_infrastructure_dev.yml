@@ -32,6 +32,8 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
+    - name: Install python requirements
+      run: pip install -r requirements_test.txt -r requirements.txt
     - name: Install Serverless Framework and NPM dependencies
       run: |
         npm install -g serverless
@@ -43,6 +45,7 @@ jobs:
         CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         DOTENV: ${{ secrets.DOTENV }}
         AWS_REGION: us-east-1
+        API_URL: https://api-dev.covidactnow.org/v2
       run: tools/deploy-api-infrastructure.sh dev
 
   TestDev:
@@ -80,6 +83,8 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
+    - name: Install python requirements
+      run: pip install -r requirements_test.txt -r requirements.txt
     - name: Install Serverless Framework and NPM dependencies
       run: |
         npm install -g serverless
@@ -91,4 +96,5 @@ jobs:
         CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         DOTENV: ${{ secrets.DOTENV }}
         AWS_REGION: us-east-1
+        API_URL: https://api.covidactnow.org/v2
       run: tools/deploy-api-infrastructure.sh prod
