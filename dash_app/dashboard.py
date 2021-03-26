@@ -1,6 +1,7 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_pivottable
 import dash_table
 import git
 import more_itertools
@@ -97,6 +98,9 @@ def init(server):
 
     region_df = region_table(per_timeseries_stats, ds)
 
+    df = per_timeseries_stats.stats.reset_index()
+    pivottable_data = [df.columns.tolist()] + df.values.tolist()
+
     dash_app.layout = html.Div(
         children=[
             html.H1(children="CAN Data Pipeline Dashboard"),
@@ -111,6 +115,8 @@ def init(server):
                 ).has_timeseries,
                 id="distribution_timeseries_count",
             ),
+            html.H2("Interactive pivot table"),
+            dash_pivottable.PivotTable(id="pivot_table", data=pivottable_data),
             html.H2("Source URLs"),
             dash_table_from_data_frame(
                 source_url_value_counts, id="source_url_counts", page_size=8

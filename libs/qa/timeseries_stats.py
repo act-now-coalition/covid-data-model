@@ -13,7 +13,6 @@ from covidactnow.datapublic.common_fields import PdFields
 from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 
-from libs import pipeline
 from libs.datasets import dataset_utils
 from libs.datasets import demographics
 from libs.datasets import timeseries
@@ -21,21 +20,6 @@ from libs.datasets.tail_filter import TagType
 
 DISTRIBUTION = FieldName("distribution")
 FIELD_GROUP = FieldName("field_group")
-
-
-def _location_id_to_agg(loc_id):
-    """Turns a location_id into a label used for aggregation. For now this is only the
-    AggregationLevel but future UI changes could let the user aggregate regions by state etc."""
-    region = pipeline.Region.from_location_id(loc_id)
-    return region.level.value
-
-
-def _location_id_to_agg_and_state(loc_id):
-    region = pipeline.Region.from_location_id(loc_id)
-    if region.is_county():
-        return region.state
-    else:
-        return region.level.value
 
 
 def _get_index_level_as_series(df: pd.DataFrame, level: FieldName) -> pd.Series:
@@ -103,7 +87,8 @@ def _xs_or_empty(df: pd.DataFrame, key: Collection[str], level: str) -> pd.DataF
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class PerTimeseries(Aggregated):
-    """Instances of AggregatedStats where each row represents one timeseries."""
+    """Instances of AggregatedStats where each row represents one timeseries. The index has many
+    levels that are used by various groupby operations."""
 
     def __post_init__(self):
         assert self.stats.index.names == [
