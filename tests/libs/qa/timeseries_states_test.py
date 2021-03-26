@@ -1,6 +1,7 @@
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldGroup
+from covidactnow.datapublic.common_fields import PdFields
 
 from dash_app.dashboard import population_ratio_by_variable
 from libs.datasets import AggregationLevel
@@ -48,7 +49,8 @@ def test_make_from_dataset():
     )
     dataset = timeseries.make_source_url_tags(dataset)
 
-    per_region = timeseries_stats.PerTimeseriesStats.make(dataset).aggregate_buckets()
+    per_timeseries = timeseries_stats.PerTimeseriesStats.make(dataset)
+    per_region = per_timeseries.aggregate(CommonFields.LOCATION_ID, PdFields.VARIABLE)
 
     assert (
         per_region.has_timeseries.at[region_tx.location_id, CommonFields.VACCINATIONS_COMPLETED]
@@ -56,8 +58,8 @@ def test_make_from_dataset():
     )
     assert per_region.annotation_count.at[region_sf.location_id, CommonFields.CASES] == 2
 
-    cases_by_level = per_region.subset_variables([CommonFields.CASES]).aggregate(
-        timeseries_stats.RegionAggregation.LEVEL, timeseries_stats.VariableAggregation.NONE,
+    cases_by_level = per_timeseries.subset_variables([CommonFields.CASES]).aggregate(
+        timeseries_stats.LEVEL, PdFields.VARIABLE
     )
     assert cases_by_level.has_timeseries.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 2
     assert cases_by_level.has_url.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 1
@@ -65,8 +67,8 @@ def test_make_from_dataset():
         cases_by_level.annotation_count.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 2
     )
 
-    cases_by_group = per_region.subset_variables([CommonFields.CASES]).aggregate(
-        timeseries_stats.RegionAggregation.LEVEL, timeseries_stats.VariableAggregation.FIELD_GROUP,
+    cases_by_group = per_timeseries.subset_variables([CommonFields.CASES]).aggregate(
+        timeseries_stats.LEVEL, timeseries_stats.FIELD_GROUP
     )
     assert (
         cases_by_group.has_timeseries.at[AggregationLevel.COUNTY.value, FieldGroup.CASES_DEATHS]
@@ -78,10 +80,12 @@ def test_make_from_dataset():
         == 2
     )
 
-    per_region.stats_for_locations(dataset.location_ids)
+    per_timeseries.stats_for_locations(dataset.location_ids)
 
     counties = dataset.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = timeseries_stats.PerTimeseriesStats.make(counties).aggregate_buckets()
+    county_stats = timeseries_stats.PerTimeseriesStats.make(counties).aggregate(
+        CommonFields.LOCATION_ID, PdFields.VARIABLE
+    )
     pop_by_var_has_url = population_ratio_by_variable(counties, county_stats.has_url)
     assert not pop_by_var_has_url.empty
     pop_by_var_has_ts = population_ratio_by_variable(counties, county_stats.has_timeseries)

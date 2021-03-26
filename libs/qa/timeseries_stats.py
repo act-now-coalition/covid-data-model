@@ -14,11 +14,13 @@ from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 
 from libs import pipeline
+from libs.datasets import demographics
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagType
 
 LEVEL = FieldName("level")
-VARIABLE_GROUP = FieldName("variable_group")
+DISTRIBUTION = FieldName("distribution")
+FIELD_GROUP = FieldName("field_group")
 
 
 def _location_id_to_agg(loc_id):
@@ -72,7 +74,7 @@ class Aggregated:
         # index level 0 is a location_id or some kind of aggregated region kind of thing
         assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, LEVEL]
         # index level 1 is a variable (cases, deaths, ...) or some kind of aggregated variable
-        assert self.stats.index.names[1] in [PdFields.VARIABLE, VARIABLE_GROUP]
+        assert self.stats.index.names[1] in [PdFields.VARIABLE, FIELD_GROUP, DISTRIBUTION]
         assert self.stats.columns.to_list() == [
             StatName.HAS_TIMESERIES,
             StatName.HAS_URL,
@@ -91,17 +93,17 @@ class Aggregated:
 
     @property
     def has_timeseries(self):
-        """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
+        """DataFrame with column per VARIABLE or FIELD_GROUP"""
         return self.stats_by_region_variable.loc(axis=1)[StatName.HAS_TIMESERIES]
 
     @property
     def has_url(self):
-        """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
+        """DataFrame with column per VARIABLE or FIELD_GROUP"""
         return self.stats_by_region_variable.loc(axis=1)[StatName.HAS_URL]
 
     @property
     def annotation_count(self):
-        """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
+        """DataFrame with column per VARIABLE or FIELD_GROUP"""
         return self.stats_by_region_variable.loc(axis=1)[StatName.ANNOTATION_COUNT]
 
 
@@ -130,38 +132,7 @@ class PerLocation(Aggregated):
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
-class PerVariable(PerLocation):
-    def __post_init__(self):
-        assert self.stats.index.names[0] == CommonFields.LOCATION_ID
-        assert self.stats.index.names[1] == PdFields.VARIABLE
-
-    def subset_variables(self, variables: Collection[CommonFields]) -> "PerVariable":
-        return self.__class__(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
-
-    def aggregate(self, regions: RegionAggregation, variables: VariableAggregation) -> Aggregated:
-        groupby = []
-        location_id_series = _get_index_level_as_series(self.stats, CommonFields.LOCATION_ID)
-        if regions == RegionAggregation.LEVEL:
-            groupby.append(location_id_series.map(_location_id_to_agg).rename(LEVEL))
-        elif regions == RegionAggregation.LEVEL_AND_COUNTY_BY_STATE:
-            groupby.append(location_id_series.map(_location_id_to_agg_and_state).rename(LEVEL))
-        else:
-            raise ValueError("Bad location_id_group_by")
-
-        if variables == VariableAggregation.FIELD_GROUP:
-            variable_series = _get_index_level_as_series(self.stats, PdFields.VARIABLE)
-            groupby.append(
-                variable_series.map(common_fields.COMMON_FIELD_TO_GROUP).rename(VARIABLE_GROUP)
-            )
-        else:
-            # Add variable to groupby to prevent aggregation across `variable` values.
-            groupby.append(PdFields.VARIABLE)
-
-        return Aggregated(stats=self.stats.groupby(groupby, as_index=True).sum())
-
-
-@dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
-class PerTimeseriesStats(PerVariable):
+class PerTimeseriesStats(PerLocation):
     """Instances of AggregatedStats where each row represents one timeseries."""
 
     def __post_init__(self):
@@ -169,6 +140,9 @@ class PerTimeseriesStats(PerVariable):
             CommonFields.LOCATION_ID,
             PdFields.VARIABLE,
             PdFields.DEMOGRAPHIC_BUCKET,
+            DISTRIBUTION,
+            LEVEL,
+            FIELD_GROUP,
         ]
 
     @staticmethod
@@ -206,10 +180,25 @@ class PerTimeseriesStats(PerVariable):
                 StatName.HAS_URL: has_url,
                 StatName.ANNOTATION_COUNT: annotation_count,
                 StatName.BUCKET_ALL_COUNT: bucket_all_count,
+                DISTRIBUTION: all_timeseries_index.get_level_values(
+                    PdFields.DEMOGRAPHIC_BUCKET
+                ).map(lambda b: demographics.DistributionBucket.from_str(b).distribution),
+                LEVEL: all_timeseries_index.get_level_values(CommonFields.LOCATION_ID).map(
+                    _location_id_to_agg
+                ),
+                # LEVEL_AND_COUNTY_BY_STATE:
+                # groupby.append(location_id_series.map(_location_id_to_agg_and_state).rename(
+                # LEVEL)
+                FIELD_GROUP: all_timeseries_index.get_level_values(PdFields.VARIABLE).map(
+                    common_fields.COMMON_FIELD_TO_GROUP
+                ),
             }
-        )
+        ).set_index([DISTRIBUTION, LEVEL, FIELD_GROUP], append=True)
 
         return PerTimeseriesStats(stats=stats)
 
-    def aggregate_buckets(self) -> "PerVariable":
-        return PerVariable(self.stats.groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE]).sum())
+    def subset_variables(self, variables: Collection[CommonFields]) -> "PerTimeseriesStats":
+        return PerTimeseriesStats(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
+
+    def aggregate(self, index: FieldName, columns: FieldName) -> Aggregated:
+        return Aggregated(stats=self.stats.groupby([index, columns], as_index=True).sum())

@@ -75,9 +75,7 @@ def init(server):
 
     per_timeseries_stats = timeseries_stats.PerTimeseriesStats.make(ds)
 
-    agg_stats = per_timeseries_stats.aggregate(
-        timeseries_stats.RegionAggregation.LEVEL, timeseries_stats.VariableAggregation.FIELD_GROUP
-    )
+    agg_stats = per_timeseries_stats.aggregate(timeseries_stats.LEVEL, timeseries_stats.FIELD_GROUP)
 
     source_url_value_counts = (
         ds.tag_all_bucket.loc[:, :, TagType.SOURCE_URL]
@@ -103,6 +101,13 @@ def init(server):
             html.P(commit_str),
             html.H2("Time-series count"),
             dash_table_from_data_frame(agg_stats.has_timeseries, id="agg_has_timeseries"),
+            html.H2("Distribution count"),
+            dash_table_from_data_frame(
+                per_timeseries_stats.aggregate(
+                    timeseries_stats.LEVEL, timeseries_stats.DISTRIBUTION
+                ).has_timeseries,
+                id="distribution_timeseries_count",
+            ),
             html.H2("Source URLs"),
             dash_table_from_data_frame(
                 source_url_value_counts, id="source_url_counts", page_size=8
