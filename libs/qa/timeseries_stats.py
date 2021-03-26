@@ -14,6 +14,7 @@ from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 
 from libs import pipeline
+from libs.datasets import dataset_utils
 from libs.datasets import demographics
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagType
@@ -114,25 +115,7 @@ def _xs_or_empty(df: pd.DataFrame, key: Collection[str], level: str) -> pd.DataF
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
-class PerLocation(Aggregated):
-    def __post_init__(self):
-        assert self.stats.index.names[0] == CommonFields.LOCATION_ID
-
-    def stats_for_locations(self, location_ids: pd.Index) -> pd.DataFrame:
-        """Returns a DataFrame of statistics with `location_ids` as the index."""
-        assert location_ids.names == [CommonFields.LOCATION_ID]
-        # The stats likely don't have a value for every region. Replace any NAs with 0 so that
-        # subtracting them produces a real value.
-        df = (
-            self.stats.groupby(CommonFields.LOCATION_ID).sum().reindex(index=location_ids).fillna(0)
-        )
-        df["no_url_count"] = df[StatName.HAS_TIMESERIES] - df[StatName.HAS_URL]
-        df["bucket_not_all"] = df[StatName.HAS_TIMESERIES] - df[StatName.BUCKET_ALL_COUNT]
-        return df
-
-
-@dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
-class PerTimeseriesStats(PerLocation):
+class PerTimeseriesStats(Aggregated):
     """Instances of AggregatedStats where each row represents one timeseries."""
 
     def __post_init__(self):
@@ -142,6 +125,7 @@ class PerTimeseriesStats(PerLocation):
             PdFields.DEMOGRAPHIC_BUCKET,
             DISTRIBUTION,
             LEVEL,
+            CommonFields.STATE,
             FIELD_GROUP,
         ]
 
@@ -174,6 +158,7 @@ class PerTimeseriesStats(PerLocation):
         ).astype(int)
         # These Series need to have dtype int so that groupby sum doesn't turn them into a float.
         # For unknown reasons a bool is turned into a float.
+        location_id_index = all_timeseries_index.get_level_values(CommonFields.LOCATION_ID)
         stats = pd.DataFrame(
             {
                 StatName.HAS_TIMESERIES: has_timeseries,
@@ -183,17 +168,17 @@ class PerTimeseriesStats(PerLocation):
                 DISTRIBUTION: all_timeseries_index.get_level_values(
                     PdFields.DEMOGRAPHIC_BUCKET
                 ).map(lambda b: demographics.DistributionBucket.from_str(b).distribution),
-                LEVEL: all_timeseries_index.get_level_values(CommonFields.LOCATION_ID).map(
-                    _location_id_to_agg
+                LEVEL: location_id_index.map(
+                    dataset_utils.get_geo_data()[CommonFields.AGGREGATE_LEVEL]
                 ),
-                # LEVEL_AND_COUNTY_BY_STATE:
-                # groupby.append(location_id_series.map(_location_id_to_agg_and_state).rename(
-                # LEVEL)
+                CommonFields.STATE: location_id_index.map(
+                    dataset_utils.get_geo_data()[CommonFields.STATE]
+                ),
                 FIELD_GROUP: all_timeseries_index.get_level_values(PdFields.VARIABLE).map(
                     common_fields.COMMON_FIELD_TO_GROUP
                 ),
             }
-        ).set_index([DISTRIBUTION, LEVEL, FIELD_GROUP], append=True)
+        ).set_index([DISTRIBUTION, LEVEL, CommonFields.STATE, FIELD_GROUP], append=True)
 
         return PerTimeseriesStats(stats=stats)
 
@@ -202,3 +187,15 @@ class PerTimeseriesStats(PerLocation):
 
     def aggregate(self, index: FieldName, columns: FieldName) -> Aggregated:
         return Aggregated(stats=self.stats.groupby([index, columns], as_index=True).sum())
+
+    def stats_for_locations(self, location_ids: pd.Index) -> pd.DataFrame:
+        """Returns a DataFrame of statistics with `location_ids` as the index."""
+        assert location_ids.names == [CommonFields.LOCATION_ID]
+        # The stats likely don't have a value for every region. Replace any NAs with 0 so that
+        # subtracting them produces a real value.
+        df = (
+            self.stats.groupby(CommonFields.LOCATION_ID).sum().reindex(index=location_ids).fillna(0)
+        )
+        df["no_url_count"] = df[StatName.HAS_TIMESERIES] - df[StatName.HAS_URL]
+        df["bucket_not_all"] = df[StatName.HAS_TIMESERIES] - df[StatName.BUCKET_ALL_COUNT]
+        return df

@@ -34,7 +34,7 @@ TAG_TABLE_COLUMNS = [
 
 
 def region_table(
-    stats: timeseries_stats.PerLocation, dataset: timeseries.MultiRegionDataset
+    stats: timeseries_stats.PerTimeseriesStats, dataset: timeseries.MultiRegionDataset
 ) -> pd.DataFrame:
     # Use an index to preserve the order while keeping only columns actually present.
     static_columns = pd.Index(
@@ -100,8 +100,9 @@ def init(server):
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
             html.H2("Time-series count"),
+            html.H3("By variable group"),
             dash_table_from_data_frame(agg_stats.has_timeseries, id="agg_has_timeseries"),
-            html.H2("Distribution count"),
+            html.H3("By demographic distribution"),
             dash_table_from_data_frame(
                 per_timeseries_stats.aggregate(
                     timeseries_stats.LEVEL, timeseries_stats.DISTRIBUTION
