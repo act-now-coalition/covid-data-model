@@ -4,6 +4,7 @@ from typing import Collection
 
 import more_itertools
 import pandas as pd
+from backports.cached_property import cached_property
 from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
@@ -50,37 +51,6 @@ def _get_index_level_as_series(df: pd.DataFrame, level: FieldName) -> pd.Series:
     return pd.Series(df.index.get_level_values(level), index=df.index, name=level)
 
 
-def _agg_counts(
-    stats_df: pd.DataFrame,
-    location_id_group_by: RegionAggregation,
-    var_group_by: VariableAggregation,
-) -> pd.DataFrame:
-    """Aggregate counts to make a smaller table."""
-    assert stats_df.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-
-    groupby = []
-    location_id_series = _get_index_level_as_series(stats_df, CommonFields.LOCATION_ID)
-    if location_id_group_by == RegionAggregation.LEVEL:
-        groupby.append(location_id_series.map(_location_id_to_agg).rename(LEVEL))
-    elif location_id_group_by == RegionAggregation.LEVEL_AND_COUNTY_BY_STATE:
-        groupby.append(location_id_series.map(_location_id_to_agg_and_state).rename(LEVEL))
-    else:
-        raise ValueError("Bad location_id_group_by")
-
-    if var_group_by == VariableAggregation.FIELD_GROUP:
-        variable_series = _get_index_level_as_series(stats_df, PdFields.VARIABLE)
-        groupby.append(
-            variable_series.map(common_fields.COMMON_FIELD_TO_GROUP).rename(VARIABLE_GROUP)
-        )
-    else:
-        # Add variable to groupby to prevent aggregation across `variable` values.
-        groupby.append(PdFields.VARIABLE)
-
-    agg_counts = stats_df.groupby(groupby, as_index=True).sum()
-
-    return agg_counts
-
-
 @enum.unique
 class StatName(ValueAsStrMixin, str, enum.Enum):
     # Count of timeseries
@@ -108,20 +78,28 @@ class Aggregated:
         ]
         assert is_numeric_dtype(more_itertools.one(set(self.stats.dtypes)))
 
+    @cached_property
+    def stats_by_region_variable(self) -> pd.DataFrame:
+        """A DataFrame with location index and column levels CommonField and StatName"""
+        # The names of index levels 0 and 1 may vary. There doesn't seem to be a way to pass the
+        # index level numbers to groupby so lookup the names.
+        groupby = [self.stats.index.names[0], self.stats.index.names[1]]
+        return self.stats.groupby(groupby, as_index=True).sum().unstack(1)
+
     @property
     def has_timeseries(self):
         """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
-        return self.stats.loc(axis=1)[StatName.HAS_TIMESERIES].unstack(1)
+        return self.stats_by_region_variable.loc(axis=1)[StatName.HAS_TIMESERIES]
 
     @property
     def has_url(self):
         """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
-        return self.stats.loc(axis=1)[StatName.HAS_URL].unstack(1)
+        return self.stats_by_region_variable.loc(axis=1)[StatName.HAS_URL]
 
     @property
     def annotation_count(self):
         """DataFrame with column per VARIABLE or VARIABLE_GROUP"""
-        return self.stats.loc(axis=1)[StatName.ANNOTATION_COUNT].unstack(1)
+        return self.stats_by_region_variable.loc(axis=1)[StatName.ANNOTATION_COUNT]
 
 
 def _xs_or_empty(df: pd.DataFrame, key: Collection[str], level: str) -> pd.DataFrame:
@@ -157,7 +135,25 @@ class PerVariable(PerLocation):
         return self.__class__(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
 
     def aggregate(self, regions: RegionAggregation, variables: VariableAggregation) -> Aggregated:
-        return Aggregated(stats=_agg_counts(self.stats, regions, variables))
+        groupby = []
+        location_id_series = _get_index_level_as_series(self.stats, CommonFields.LOCATION_ID)
+        if regions == RegionAggregation.LEVEL:
+            groupby.append(location_id_series.map(_location_id_to_agg).rename(LEVEL))
+        elif regions == RegionAggregation.LEVEL_AND_COUNTY_BY_STATE:
+            groupby.append(location_id_series.map(_location_id_to_agg_and_state).rename(LEVEL))
+        else:
+            raise ValueError("Bad location_id_group_by")
+
+        if variables == VariableAggregation.FIELD_GROUP:
+            variable_series = _get_index_level_as_series(self.stats, PdFields.VARIABLE)
+            groupby.append(
+                variable_series.map(common_fields.COMMON_FIELD_TO_GROUP).rename(VARIABLE_GROUP)
+            )
+        else:
+            # Add variable to groupby to prevent aggregation across `variable` values.
+            groupby.append(PdFields.VARIABLE)
+
+        return Aggregated(stats=self.stats.groupby(groupby, as_index=True).sum())
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
