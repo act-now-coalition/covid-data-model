@@ -7,6 +7,7 @@ import pandas as pd
 from backports.cached_property import cached_property
 from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
 from covidactnow.datapublic.common_fields import ValueAsStrMixin
@@ -58,6 +59,7 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
     # Count of URLs
     HAS_URL = "has_url"
     ANNOTATION_COUNT = "annotation_count"
+    BUCKET_ALL_COUNT = "bucket_all_count"
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
@@ -75,6 +77,7 @@ class Aggregated:
             StatName.HAS_TIMESERIES,
             StatName.HAS_URL,
             StatName.ANNOTATION_COUNT,
+            StatName.BUCKET_ALL_COUNT,
         ]
         assert is_numeric_dtype(more_itertools.one(set(self.stats.dtypes)))
 
@@ -122,6 +125,7 @@ class PerLocation(Aggregated):
             self.stats.groupby(CommonFields.LOCATION_ID).sum().reindex(index=location_ids).fillna(0)
         )
         df["no_url_count"] = df[StatName.HAS_TIMESERIES] - df[StatName.HAS_URL]
+        df["bucket_not_all"] = df[StatName.HAS_TIMESERIES] - df[StatName.BUCKET_ALL_COUNT]
         return df
 
 
@@ -174,7 +178,7 @@ class PerTimeseriesStats(PerVariable):
             ds.timeseries_bucketed_wide_dates.notnull()
             .any(1)
             .astype(int)
-            .reindex(index=all_timeseries_index, fill_value=False)
+            .reindex(index=all_timeseries_index, fill_value=0)
         )
         has_url = (
             ds.tag.loc[:, :, :, TagType.SOURCE_URL]
@@ -188,12 +192,20 @@ class PerTimeseriesStats(PerVariable):
             .count()
             .reindex(index=all_timeseries_index, fill_value=0)
         )
-
+        bucket_all_count = (
+            _get_index_level_as_series(
+                ds.timeseries_bucketed_wide_dates, PdFields.DEMOGRAPHIC_BUCKET
+            )
+            == DemographicBucket.ALL
+        ).astype(int)
+        # These Series need to have dtype int so that groupby sum doesn't turn them into a float.
+        # For unknown reasons a bool is turned into a float.
         stats = pd.DataFrame(
             {
                 StatName.HAS_TIMESERIES: has_timeseries,
                 StatName.HAS_URL: has_url,
                 StatName.ANNOTATION_COUNT: annotation_count,
+                StatName.BUCKET_ALL_COUNT: bucket_all_count,
             }
         )
 
