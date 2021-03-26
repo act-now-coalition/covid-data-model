@@ -8,7 +8,7 @@ class HubSpotAPICallFailed(Exception):
 
 
 class HubSpotClient:
-    def submit_reg_form(self, email: str) -> Optional[dict]:
+    def submit_reg_form(self, email: str, hubspot_token: Optional[str] = None) -> Optional[dict]:
         """Submit hubspot registration form.
 
         Args:
@@ -28,6 +28,9 @@ class HubSpotClient:
         url = f"https://api.hsforms.com/submissions/v3/integration/submit/{portal_id}/{form_guid}"
 
         form_data = {"fields": [{"name": "email", "value": email}]}
+
+        if hubspot_token:
+            form_data["context"] = {"hutk": hubspot_token}
 
         response = requests.post(url, json=form_data)
 
