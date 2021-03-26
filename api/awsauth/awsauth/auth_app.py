@@ -61,6 +61,34 @@ if IS_LAMBDA:
     init()
 
 
+@dataclasses.dataclass(frozen=True)
+class RegistrationArguments:
+
+    email: str
+
+    is_crs_user: bool
+
+    hubspot_token: Optional[str]
+
+    @staticmethod
+    def make_from_input_data(data: Dict) -> "RegistrationArguments":
+        if "email" not in data:
+            raise ValueError("Missing email parameter")
+
+        email = data["email"]
+
+        if not re.match(EMAIL_REGEX, email):
+            raise ValueError("Invalid email")
+
+        is_crs_user = data.get("is_crs_usr", False)
+
+        hubspot_token = data.get("hubspot_token")
+
+        return RegistrationArguments(
+            email=email, is_crs_user=is_crs_user, hubspot_token=hubspot_token
+        )
+
+
 # Fairly permissive email regex taken from
 # https://stackoverflow.com/questions/8022530/how-to-check-for-valid-email-address#comment52453093_8022584
 EMAIL_REGEX = r"[^@\s]+@[^@\s]+\.[a-zA-Z0-9]+$"
@@ -179,34 +207,6 @@ def check_api_key_edge(event, context):
 
     # Return request, which forwards to S3 backend.
     return request
-
-
-@dataclasses.dataclass(frozen=True)
-class RegistrationArguments:
-
-    email: str
-
-    is_crs_user: bool
-
-    hubspot_token: Optional[str]
-
-    @staticmethod
-    def make_from_input_data(data: Dict) -> "RegistrationArguments":
-        if "email" not in data:
-            raise ValueError("Missing email parameter")
-
-        email = data["email"]
-
-        if not re.match(EMAIL_REGEX, email):
-            raise ValueError("Invalid email")
-
-        is_crs_user = data.get("is_crs_usr", False)
-
-        hubspot_token = data.get("hubspot_token")
-
-        return RegistrationArguments(
-            email=email, is_crs_user=is_crs_user, hubspot_token=hubspot_token
-        )
 
 
 def register_edge(event, context):
