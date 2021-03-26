@@ -34,7 +34,7 @@ TAG_TABLE_COLUMNS = [
 
 
 def region_table(
-    stats: timeseries_stats.PerTimeseriesStats, dataset: timeseries.MultiRegionDataset
+    stats: timeseries_stats.PerTimeseries, dataset: timeseries.MultiRegionDataset
 ) -> pd.DataFrame:
     # Use an index to preserve the order while keeping only columns actually present.
     static_columns = pd.Index(
@@ -73,9 +73,11 @@ def init(server):
 
     variable_groups = ["all"] + list(common_fields.FieldGroup)
 
-    per_timeseries_stats = timeseries_stats.PerTimeseriesStats.make(ds)
+    per_timeseries_stats = timeseries_stats.PerTimeseries.make(ds)
 
-    agg_stats = per_timeseries_stats.aggregate(timeseries_stats.LEVEL, timeseries_stats.FIELD_GROUP)
+    agg_stats = per_timeseries_stats.aggregate(
+        CommonFields.AGGREGATE_LEVEL, timeseries_stats.FIELD_GROUP
+    )
 
     source_url_value_counts = (
         ds.tag_all_bucket.loc[:, :, TagType.SOURCE_URL]
@@ -85,7 +87,7 @@ def init(server):
     )
 
     counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = timeseries_stats.PerTimeseriesStats.make(counties)
+    county_stats = timeseries_stats.PerTimeseries.make(counties)
     county_variable_population_ratio = pd.DataFrame(
         {
             "has_url": population_ratio_by_variable(counties, county_stats.has_url),
@@ -105,7 +107,7 @@ def init(server):
             html.H3("By demographic distribution"),
             dash_table_from_data_frame(
                 per_timeseries_stats.aggregate(
-                    timeseries_stats.LEVEL, timeseries_stats.DISTRIBUTION
+                    CommonFields.AGGREGATE_LEVEL, timeseries_stats.DISTRIBUTION
                 ).has_timeseries,
                 id="distribution_timeseries_count",
             ),
@@ -202,7 +204,7 @@ def population_ratio_by_variable(
 def _init_callbacks(
     dash_app,
     ds: timeseries.MultiRegionDataset,
-    per_timeseries_stats: timeseries_stats.PerTimeseriesStats,
+    per_timeseries_stats: timeseries_stats.PerTimeseries,
     region_id_series: pd.Series,
 ):
     @dash_app.callback(

@@ -19,7 +19,6 @@ from libs.datasets import demographics
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagType
 
-LEVEL = FieldName("level")
 DISTRIBUTION = FieldName("distribution")
 FIELD_GROUP = FieldName("field_group")
 
@@ -37,18 +36,6 @@ def _location_id_to_agg_and_state(loc_id):
         return region.state
     else:
         return region.level.value
-
-
-@enum.unique
-class RegionAggregation(ValueAsStrMixin, str, enum.Enum):
-    LEVEL = "level"
-    LEVEL_AND_COUNTY_BY_STATE = "level_and_county_by_state"
-
-
-@enum.unique
-class VariableAggregation(ValueAsStrMixin, str, enum.Enum):
-    FIELD_GROUP = "field_group"
-    NONE = "none"
 
 
 def _get_index_level_as_series(df: pd.DataFrame, level: FieldName) -> pd.Series:
@@ -73,7 +60,7 @@ class Aggregated:
 
     def __post_init__(self):
         # index level 0 is a location_id or some kind of aggregated region kind of thing
-        assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, LEVEL]
+        assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, CommonFields.AGGREGATE_LEVEL]
         # index level 1 is a variable (cases, deaths, ...) or some kind of aggregated variable
         assert self.stats.index.names[1] in [PdFields.VARIABLE, FIELD_GROUP, DISTRIBUTION]
         assert self.stats.columns.to_list() == [
@@ -115,7 +102,7 @@ def _xs_or_empty(df: pd.DataFrame, key: Collection[str], level: str) -> pd.DataF
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
-class PerTimeseriesStats(Aggregated):
+class PerTimeseries(Aggregated):
     """Instances of AggregatedStats where each row represents one timeseries."""
 
     def __post_init__(self):
@@ -124,66 +111,65 @@ class PerTimeseriesStats(Aggregated):
             PdFields.VARIABLE,
             PdFields.DEMOGRAPHIC_BUCKET,
             DISTRIBUTION,
-            LEVEL,
+            CommonFields.AGGREGATE_LEVEL,
             CommonFields.STATE,
             FIELD_GROUP,
         ]
 
     @staticmethod
-    def make(ds: timeseries.MultiRegionDataset) -> "PerTimeseriesStats":
+    def make(ds: timeseries.MultiRegionDataset) -> "PerTimeseries":
         all_timeseries_index = ds.timeseries_bucketed_wide_dates.index
-        has_timeseries = (
+
+        stat_map = {}
+        # These pd.Series need to have dtype int so that groupby sum doesn't turn them into a float.
+        # For unknown reasons a bool is turned into a float.
+        stat_map[StatName.HAS_TIMESERIES] = (
             ds.timeseries_bucketed_wide_dates.notnull()
             .any(1)
             .astype(int)
             .reindex(index=all_timeseries_index, fill_value=0)
         )
-        has_url = (
+        stat_map[StatName.HAS_URL] = (
             ds.tag.loc[:, :, :, TagType.SOURCE_URL]
             .notnull()
             .astype(int)
             .reindex(index=all_timeseries_index, fill_value=0)
         )
-        annotation_count = (
+        stat_map[StatName.ANNOTATION_COUNT] = (
             ds.tag.loc[:, :, :, timeseries.ANNOTATION_TAG_TYPES]
             .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE])
             .count()
             .reindex(index=all_timeseries_index, fill_value=0)
         )
-        bucket_all_count = (
+        stat_map[StatName.BUCKET_ALL_COUNT] = (
             _get_index_level_as_series(
                 ds.timeseries_bucketed_wide_dates, PdFields.DEMOGRAPHIC_BUCKET
             )
             == DemographicBucket.ALL
         ).astype(int)
-        # These Series need to have dtype int so that groupby sum doesn't turn them into a float.
-        # For unknown reasons a bool is turned into a float.
         location_id_index = all_timeseries_index.get_level_values(CommonFields.LOCATION_ID)
-        stats = pd.DataFrame(
-            {
-                StatName.HAS_TIMESERIES: has_timeseries,
-                StatName.HAS_URL: has_url,
-                StatName.ANNOTATION_COUNT: annotation_count,
-                StatName.BUCKET_ALL_COUNT: bucket_all_count,
-                DISTRIBUTION: all_timeseries_index.get_level_values(
-                    PdFields.DEMOGRAPHIC_BUCKET
-                ).map(lambda b: demographics.DistributionBucket.from_str(b).distribution),
-                LEVEL: location_id_index.map(
-                    dataset_utils.get_geo_data()[CommonFields.AGGREGATE_LEVEL]
-                ),
-                CommonFields.STATE: location_id_index.map(
-                    dataset_utils.get_geo_data()[CommonFields.STATE]
-                ),
-                FIELD_GROUP: all_timeseries_index.get_level_values(PdFields.VARIABLE).map(
-                    common_fields.COMMON_FIELD_TO_GROUP
-                ),
-            }
-        ).set_index([DISTRIBUTION, LEVEL, CommonFields.STATE, FIELD_GROUP], append=True)
+        stat_extra_index = {
+            DISTRIBUTION: all_timeseries_index.get_level_values(PdFields.DEMOGRAPHIC_BUCKET).map(
+                lambda b: demographics.DistributionBucket.from_str(b).distribution
+            ),
+            CommonFields.AGGREGATE_LEVEL: location_id_index.map(
+                dataset_utils.get_geo_data()[CommonFields.AGGREGATE_LEVEL]
+            ),
+            CommonFields.STATE: location_id_index.map(
+                dataset_utils.get_geo_data()[CommonFields.STATE]
+            ),
+            FIELD_GROUP: all_timeseries_index.get_level_values(PdFields.VARIABLE).map(
+                common_fields.COMMON_FIELD_TO_GROUP
+            ),
+        }
+        stats = pd.DataFrame({**stat_map, **stat_extra_index}).set_index(
+            list(stat_extra_index.keys()), append=True
+        )
 
-        return PerTimeseriesStats(stats=stats)
+        return PerTimeseries(stats=stats)
 
-    def subset_variables(self, variables: Collection[CommonFields]) -> "PerTimeseriesStats":
-        return PerTimeseriesStats(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
+    def subset_variables(self, variables: Collection[CommonFields]) -> "PerTimeseries":
+        return PerTimeseries(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
 
     def aggregate(self, index: FieldName, columns: FieldName) -> Aggregated:
         return Aggregated(stats=self.stats.groupby([index, columns], as_index=True).sum())
