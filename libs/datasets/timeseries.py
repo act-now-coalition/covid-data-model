@@ -1165,8 +1165,9 @@ class MultiRegionDataset:
         """Writes `self` to files referenced by `pointer`."""
         wide_df = self.timeseries_rows()
 
-        # 7 significant digits of precision seems like enough.
-        csv_buf = wide_df.to_csv(index=True, float_format="%.7g")
+        # The number of significant digits needs to be enough that 100M vaccines are formatted as
+        # an integer and not changed to exponential format.
+        csv_buf = wide_df.to_csv(index=True, float_format="%.9g")
         # Most timeseries don't go back to the oldest dates in the CSV so they are represented by
         # a row ending in lots of commas. Remove these because CSV readers seem to handle rows
         # with missing commas correctly.
