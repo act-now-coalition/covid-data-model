@@ -8,11 +8,15 @@ class HubSpotAPICallFailed(Exception):
 
 
 class HubSpotClient:
-    def submit_reg_form(self, email: str, hubspot_token: Optional[str] = None) -> Optional[dict]:
+    def submit_reg_form(
+        self, email: str, hubspot_token: Optional[str] = None, page_uri: Optional[str] = None
+    ) -> Optional[dict]:
         """Submit hubspot registration form.
 
         Args:
             email: Email of user creating account.
+            hubspot_token: Hubspot token passed from browser cookie.
+            page_uri: URI of page where reg submission happened.
 
         Returns: Successful form submission response if hubspot enabled. None if hubspot disable.
 
@@ -29,8 +33,15 @@ class HubSpotClient:
 
         form_data = {"fields": [{"name": "email", "value": email}]}
 
+        context = {}
+
         if hubspot_token:
-            form_data["context"] = {"hutk": hubspot_token}
+            context["hutk"] = hubspot_token
+        if page_uri:
+            context["pageUri"] = page_uri
+
+        if context:
+            form_data["context"] = context
 
         response = requests.post(url, json=form_data)
 

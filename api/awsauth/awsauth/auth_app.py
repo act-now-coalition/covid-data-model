@@ -70,6 +70,8 @@ class RegistrationArguments:
 
     hubspot_token: Optional[str]
 
+    page_uri: Optional[str]
+
     @staticmethod
     def make_from_json_body(data: Dict) -> "RegistrationArguments":
         if "email" not in data:
@@ -84,8 +86,10 @@ class RegistrationArguments:
 
         hubspot_token = data.get("hubspot_token")
 
+        page_uri = data.get("page_uri")
+
         return RegistrationArguments(
-            email=email, is_crs_user=is_crs_user, hubspot_token=hubspot_token
+            email=email, is_crs_user=is_crs_user, hubspot_token=hubspot_token, page_uri=page_uri
         )
 
 
