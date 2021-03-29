@@ -41,7 +41,7 @@ const SignupForm = () => {
   const [email, setEmail] = useState();
   const [apiKey, setApiKey] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const {siteConfig} = useDocusaurusContext();
+  const { siteConfig } = useDocusaurusContext();
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -50,11 +50,16 @@ const SignupForm = () => {
       setErrorMessage("Must supply a valid email address");
       return;
     }
+
     const hubspotToken = getCookie(HUBSPOT_COOKIE_NAME);
 
     fetch(siteConfig.customFields.registerUrl, {
       method: "POST",
-      body: JSON.stringify({ email, hubspot_token: hubspotToken }),
+      body: JSON.stringify({
+        email,
+        hubspot_token: hubspotToken,
+        page_uri: window.location.href,
+      }),
       headers: { "Content-Type": "application/json" },
     })
       .then((res) => res.json())
