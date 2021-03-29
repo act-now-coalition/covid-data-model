@@ -33,12 +33,6 @@ class RunArtifact(Enum):
     RT_INFERENCE_REPORT = "rt_inference_report"
     RT_SMOOTHING_REPORT = "rt_smoothing_report"
 
-    MLE_FIT_REPORT = "mle_fit_report"
-
-    WEB_UI_RESULT = "web_ui_result"
-
-    BACKTEST_RESULT = "backtest_result"
-
 
 class SummaryArtifact(Enum):
     RT_METRIC_COMBINED = "rt_combined_metric.csv"
@@ -137,35 +131,6 @@ def get_run_artifact_path(region: Region, artifact, output_dir=None) -> str:
                 STATE_SUMMARY_FOLDER(output_dir),
                 "reports",
                 f"Rt_smoothing__{state_name}__{fips}.pdf",
-            )
-
-    elif artifact is RunArtifact.MLE_FIT_REPORT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_name),
-                f"mle_fit_results__{state_name}__{county}__{fips}.pdf",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "reports",
-                f"mle_fit_results__{state_name}__{fips}.pdf",
-            )
-
-    elif artifact is RunArtifact.WEB_UI_RESULT:
-        path = os.path.join(WEB_UI_FOLDER(output_dir), f"{fips}.__INTERVENTION_IDX__.json")
-
-    elif artifact is RunArtifact.BACKTEST_RESULT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_name),
-                f"backtest_results__{state_name}__{county}__{fips}.pdf",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "reports",
-                f"backtest_results__{state_name}__{fips}.pdf",
             )
 
     else:
