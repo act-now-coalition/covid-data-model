@@ -61,6 +61,10 @@ if IS_LAMBDA:
     init()
 
 
+class InvalidInputError(Exception):
+    """Error raised on invalid input for registration form parameters."""
+
+
 @dataclasses.dataclass(frozen=True)
 class RegistrationArguments:
 
@@ -75,12 +79,12 @@ class RegistrationArguments:
     @staticmethod
     def make_from_json_body(data: Dict) -> "RegistrationArguments":
         if "email" not in data:
-            raise ValueError("Missing email parameter")
+            raise InvalidInputError("Missing email parameter")
 
         email = data["email"]
 
         if not re.match(EMAIL_REGEX, email):
-            raise ValueError("Invalid email")
+            raise InvalidInputError("Invalid email")
 
         is_crs_user = data.get("is_crs_user", False)
 
@@ -242,7 +246,7 @@ def register_edge(event, context):
 
     try:
         args = RegistrationArguments.make_from_json_body(data)
-    except ValueError as exn:
+    except InvalidInputError as exn:
         return {"status": 400, "errorMessage": str(exn), "headers": headers}
 
     api_key = _get_api_key(args.email, args.is_crs_user)
