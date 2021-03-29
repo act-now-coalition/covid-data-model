@@ -6,7 +6,7 @@ from pyseir.utils import RunArtifact
 from pyseir.utils import get_run_artifact_path
 
 
-def test(tmp_path):
+def test_get_run_artifact_path(tmp_path):
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
 
         path = get_run_artifact_path(Region.from_state("TX"), RunArtifact.RT_INFERENCE_REPORT)
