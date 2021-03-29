@@ -65,60 +65,37 @@ def get_run_artifact_path(region: Region, artifact: RunArtifact, output_dir=None
         Location of the artifact.
     """
 
+    output_dir = output_dir or OUTPUT_DIR
+
     if region.level is AggregationLevel.COUNTY:
         state_name = region.get_state_region().state_obj().name
         county = combined_datasets.get_county_name(region)
+        readable_name = f"{state_name}__{county}__{region.fips}"
+        folder = REPORTS_FOLDER(output_dir, state_name)
     elif region.level is AggregationLevel.STATE:
         state_name = region.state_obj().name
-        county = None
+        readable_name = f"{state_name}__{region.fips}"
+        folder = os.path.join(STATE_SUMMARY_FOLDER(output_dir), "reports")
     elif region.level is AggregationLevel.CBSA:
-        state_name = "CBSA"
-        county = None
+        readable_name = f"CBSA__{region.fips}"
+        folder = os.path.join(STATE_SUMMARY_FOLDER(output_dir), "reports")
     elif region.level is AggregationLevel.PLACE:
         state_name = region.get_state_region().state_obj().name
-        county = None
+        readable_name = f"{state_name}__{region.fips}"
+        folder = os.path.join(STATE_SUMMARY_FOLDER(output_dir), "reports")
+    elif region.level is AggregationLevel.COUNTRY:
+        readable_name = region.country
+        folder = os.path.join(output_dir, "pyseir", "reports")
     else:
         raise AssertionError(f"Unsupported aggregation level {region.level}")
 
-    agg_level = region.level
-    fips = region.fips
-
     artifact = RunArtifact(artifact)
 
-    output_dir = output_dir or OUTPUT_DIR
-
     if artifact is RunArtifact.RT_INFERENCE_REPORT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_name),
-                f"Rt_results__{state_name}__{county}__{fips}.pdf",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "reports",
-                f"Rt_results__{state_name}__{fips}.pdf",
-            )
+        path = os.path.join(folder, f"Rt_results__{readable_name}.pdf")
 
     elif artifact is RunArtifact.RT_SMOOTHING_REPORT:
-        if agg_level is AggregationLevel.COUNTY:
-            path = os.path.join(
-                REPORTS_FOLDER(output_dir, state_name),
-                f"Rt_smoothing__{state_name}__{county}__{fips}.pdf",
-            )
-        elif agg_level is AggregationLevel.STATE:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "reports",
-                f"Rt_smoothing__{state_name}__{fips}.pdf",
-            )
-        else:
-            path = os.path.join(
-                STATE_SUMMARY_FOLDER(output_dir),
-                "reports",
-                f"Rt_smoothing__{state_name}__{fips}.pdf",
-            )
-
+        path = os.path.join(folder, f"Rt_smoothing__{readable_name}.pdf")
     else:
         raise ValueError(f"No paths available for artifact {RunArtifact}")
 
