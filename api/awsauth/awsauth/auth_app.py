@@ -82,7 +82,7 @@ class RegistrationArguments:
         if not re.match(EMAIL_REGEX, email):
             raise ValueError("Invalid email")
 
-        is_crs_user = data.get("is_crs_usr", False)
+        is_crs_user = data.get("is_crs_user", False)
 
         hubspot_token = data.get("hubspot_token")
 
