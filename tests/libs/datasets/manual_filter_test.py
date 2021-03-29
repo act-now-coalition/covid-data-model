@@ -1,11 +1,43 @@
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 
+from libs.datasets import AggregationLevel
 from libs.datasets import manual_filter
 from libs.datasets import taglib
 from libs.pipeline import Region
+from libs.pipeline import RegionMask
 from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral
+
+
+TEST_CONFIG = {
+    "filters": [
+        {
+            "regions_included": [
+                Region.from_fips("49009"),
+                Region.from_fips("49013"),
+                Region.from_fips("49047"),
+            ],
+            "observations_to_drop": {
+                "start_date": "2021-02-12",
+                "fields": [CommonFields.CASES, CommonFields.DEATHS],
+                "internal_note": "https://trello.com/c/aj7ep7S7/1130",
+                "public_note": "The TriCounty Health Department is focusing on vaccinations "
+                "and we have not found a new source of case counts.",
+            },
+        },
+        {
+            "regions_included": [RegionMask(AggregationLevel.COUNTY, states=["OK"])],
+            "regions_excluded": [Region.from_fips("40109"), Region.from_fips("40143")],
+            "observations_to_drop": {
+                "start_date": "2021-03-15",
+                "fields": [CommonFields.CASES, CommonFields.DEATHS],
+                "internal_note": "https://trello.com/c/HdAKfp49/1139",
+                "public_note": "Something broke with the OK county data.",
+            },
+        },
+    ]
+}
 
 
 def test_manual_filter():
@@ -15,12 +47,12 @@ def test_manual_filter():
         {r1: {CommonFields.CASES: [4, 5, 6, 7, 8]}, **other_data}, start_date="2021-02-10"
     )
 
-    ds_out = manual_filter.run(ds_in, manual_filter.CONFIG)
+    ds_out = manual_filter.run(ds_in, TEST_CONFIG)
 
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-02-12",
-        disclaimer=manual_filter.CONFIG["filters"][0]["observations_to_drop"]["public_note"],
+        disclaimer=TEST_CONFIG["filters"][0]["observations_to_drop"]["public_note"],
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -41,12 +73,12 @@ def test_manual_filter_region_excluded():
         {region_included: {CommonFields.CASES: [1, 2, 3]}, **other_data}, start_date="2021-03-14"
     )
 
-    ds_out = manual_filter.run(ds_in, manual_filter.CONFIG)
+    ds_out = manual_filter.run(ds_in, TEST_CONFIG)
 
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=manual_filter.CONFIG["filters"][1]["observations_to_drop"]["public_note"],
+        disclaimer=TEST_CONFIG["filters"][1]["observations_to_drop"]["public_note"],
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -76,12 +108,12 @@ def test_manual_filter_per_bucket_tag():
         region=region,
     )
 
-    ds_out = manual_filter.run(ds_in, manual_filter.CONFIG)
+    ds_out = manual_filter.run(ds_in, TEST_CONFIG)
 
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=manual_filter.CONFIG["filters"][1]["observations_to_drop"]["public_note"],
+        disclaimer=TEST_CONFIG["filters"][1]["observations_to_drop"]["public_note"],
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {
