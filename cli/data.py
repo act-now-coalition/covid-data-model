@@ -82,7 +82,7 @@ def update_forecasts(filename):
     "--aggregate-to-country/--no-aggregate-to-country",
     is_flag=True,
     help="Aggregate states to one USA country region",
-    default=False,
+    default=True,
 )
 @click.option("--state", type=str, help="For testing, a two letter state abbr")
 @click.option("--fips", type=str, help="For testing, a 5 digit county fips")
