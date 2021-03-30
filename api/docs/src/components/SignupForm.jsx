@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 import {
@@ -7,30 +7,30 @@ import {
   GettingStartedBox,
   ApiKey,
   InputError,
-} from "@site/src/components/SignupForm.style";
+} from '@site/src/components/SignupForm.style';
 
 // Taken from https://ui.dev/validate-email-address-javascript/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const HUBSPOT_COOKIE_NAME = "hubspotutk";
+const HUBSPOT_COOKIE_NAME = 'hubspotutk';
 
 // Taken from
 // https://gist.github.com/joduplessis/7b3b4340353760e945f972a69e855d11
 function getCookie(name) {
-  const value = "; " + document.cookie;
-  const parts = value.split("; " + name + "=");
+  const value = '; ' + document.cookie;
+  const parts = value.split('; ' + name + '=');
 
   if (parts.length == 2) {
-    return parts.pop().split(";").shift();
+    return parts.pop().split(';').shift();
   }
 }
 
-const trackEmailSignupSuccess = (isNewUser) => {
+const trackEmailSignupSuccess = isNewUser => {
   ga('send', {
     hitType: 'event',
     eventCategory: 'API Register',
     eventAction: 'Submit',
-    eventLabel: isNewUser ? 'New User' : 'Existing User'
+    eventLabel: isNewUser ? 'New User' : 'Existing User',
   });
   if (isNewUser) {
     gtag_report_conversion();
@@ -39,37 +39,37 @@ const trackEmailSignupSuccess = (isNewUser) => {
 
 const SignupForm = () => {
   const [email, setEmail] = useState();
-  const [apiKey, setApiKey] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [apiKey, setApiKey] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const { siteConfig } = useDocusaurusContext();
 
-  const onSubmit = async (e) => {
+  const onSubmit = async e => {
     e.preventDefault();
-    setApiKey("");
+    setApiKey('');
     if (!EMAIL_REGEX.test(email)) {
-      setErrorMessage("Must supply a valid email address");
+      setErrorMessage('Must supply a valid email address');
       return;
     }
 
     const hubspotToken = getCookie(HUBSPOT_COOKIE_NAME);
 
     fetch(siteConfig.customFields.registerUrl, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
         email,
         hubspot_token: hubspotToken,
         page_uri: window.location.href,
       }),
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     })
-      .then((res) => res.json())
-      .then((data) => {
+      .then(res => res.json())
+      .then(data => {
         setErrorMessage(undefined);
         // Older API returned data json encoded in "body" parameter.
         setApiKey(data.api_key);
         trackEmailSignupSuccess(data.new_user);
       })
-      .catch((err) => setErrorMessage("Must supply a valid email address"));
+      .catch(err => setErrorMessage('Must supply a valid email address'));
   };
 
   return (
@@ -88,9 +88,9 @@ const SignupForm = () => {
                 id="fieldEmail"
                 maxLength="200"
                 type="email"
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
               />
-              <button type="submit" onClick={(e) => onSubmit(e)}>
+              <button type="submit" onClick={e => onSubmit(e)}>
                 Get API key
               </button>
             </InputHolder>
@@ -110,7 +110,7 @@ const SignupForm = () => {
         )}
       </div>
       <h3>
-        2. Complete the{" "}
+        2. Complete the{' '}
         <a
           href="https://docs.google.com/forms/d/e/1FAIpQLSf15Qx2EdYUHUmNI2JBts4LbVqIxsLN1SEzZLJlwuWdfJ4dVg/viewform?usp=sf_link"
           target="_blank"

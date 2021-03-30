@@ -9,20 +9,20 @@ if (ExecutionEnvironment.canUseDOM) {
   RedocStandalone = require('redoc').RedocStandalone;
 }
 
-
 /**
  * NOTE: Colors taken from `node_modules/infima/styles/common/dark-mode.css`
  * and related files
  */
 const DOCUSAURUS = {
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
+  fontFamily:
+    'system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
   fontSize: '16px',
   darkGray: '#303846',
   dark: {
     primaryText: '#f5f6f7',
     secondaryText: 'rgba(255, 255, 255, 1)',
     backgroundColor: 'rgb(24, 25, 26)',
-  }
+  },
 };
 
 /** @type {Partial<import('redoc').ResolvedThemeInterface>} */
@@ -40,7 +40,7 @@ let LIGHT_THEME_OPTIONS = {
   },
   rightPanel: {
     backgroundColor: DOCUSAURUS.darkGray,
-  }
+  },
 };
 
 /**
@@ -75,22 +75,17 @@ let DARK_THEME_OPTIONS = {
   },
 };
 
-
 /**
  * @returns {import('redoc').ResolvedThemeInterface}
  */
 function getThemeOptions(isDarkMode) {
-  let baseTheme = {
-
-    
-  };
+  let baseTheme = {};
   baseTheme = merge(baseTheme, LIGHT_THEME_OPTIONS);
 
   if (!isDarkMode) return baseTheme;
 
   return merge({}, baseTheme, DARK_THEME_OPTIONS);
 }
-
 
 /**
  *
@@ -110,7 +105,7 @@ function Redocusaurus(props) {
           scrollYOffset: 'nav',
           theme,
           showExtensions: true,
-          ...props.options
+          ...props.options,
         }}
       />
     </div>
