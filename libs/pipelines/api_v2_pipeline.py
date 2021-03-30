@@ -331,5 +331,4 @@ def generate_from_loaded_data(
     deploy_single_level(all_timeseries, AggregationLevel.STATE, output)
     deploy_single_level(all_timeseries, AggregationLevel.CBSA, output)
     deploy_single_level(all_timeseries, AggregationLevel.PLACE, output)
-    deploy_single_level(all_timeseries, AggregationLevel.COUNTRY, output)
     log.info("Finished API generation.")
