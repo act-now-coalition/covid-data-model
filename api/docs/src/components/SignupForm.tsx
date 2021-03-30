@@ -7,7 +7,7 @@ import {
   GettingStartedBox,
   ApiKey,
   InputError,
-} from '@site/src/components/SignupForm.style';
+} from './SignupForm.style';
 
 // Taken from https://ui.dev/validate-email-address-javascript/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -16,16 +16,17 @@ const HUBSPOT_COOKIE_NAME = 'hubspotutk';
 
 // Taken from
 // https://gist.github.com/joduplessis/7b3b4340353760e945f972a69e855d11
-function getCookie(name) {
+function getCookie(name: string) {
   const value = '; ' + document.cookie;
   const parts = value.split('; ' + name + '=');
 
   if (parts.length == 2) {
-    return parts.pop().split(';').shift();
+    return parts.pop()?.split(';').shift();
   }
 }
 
-const trackEmailSignupSuccess = isNewUser => {
+const trackEmailSignupSuccess = (isNewUser: boolean) => {
+  // @ts-ignore
   ga('send', {
     hitType: 'event',
     eventCategory: 'API Register',
@@ -33,12 +34,13 @@ const trackEmailSignupSuccess = isNewUser => {
     eventLabel: isNewUser ? 'New User' : 'Existing User',
   });
   if (isNewUser) {
+    // @ts-ignore
     gtag_report_conversion();
   }
 };
 
 const SignupForm = () => {
-  const [email, setEmail] = useState();
+  const [email, setEmail] = useState<string | undefined>();
   const [apiKey, setApiKey] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const { siteConfig } = useDocusaurusContext();
@@ -86,7 +88,7 @@ const SignupForm = () => {
                 aria-label="Email"
                 placeholder="Enter your email address"
                 id="fieldEmail"
-                maxLength="200"
+                maxLength={200}
                 type="email"
                 onChange={e => setEmail(e.target.value)}
               />
