@@ -536,7 +536,7 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
         "     location_id,variable,demographic_bucket,provenance,2020-04-03,2020-04-02,2020-04-01\n"
         "iso1:us#iso2:us-as, cases,               all,          ,       300,       200,       100\n"
         "iso1:us#iso2:us-as,icu_beds,             all,   pt_src1,         4,         2,         0\n"
-        "iso1:us#iso2:us-ca#fips:06075,cases,     all,          ,       310,       210\n"
+        "iso1:us#iso2:us-ca#fips:06075,cases,     all,          ,       310,       210,\n"
         "iso1:us#iso2:us-ca#fips:06075,deaths,    all,   pt_src2,          ,         2,         1\n"
     ).replace(" ", "")
 
@@ -549,7 +549,7 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
         "                  location_id,variable,provenance,2020-04-03,2020-04-02,2020-04-01\n"
         "           iso1:us#iso2:us-as,   cases,          ,       300,       200,       100\n"
         "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         4,         2,         0\n"
-        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,       310,       210\n"
+        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,       310,       210,\n"
         "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,          ,         2,         1\n".replace(
             " ", ""
         )

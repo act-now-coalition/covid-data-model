@@ -15,7 +15,6 @@ from typing import (
 import dataclasses
 import datetime
 import pathlib
-import re
 import warnings
 from dataclasses import dataclass
 from functools import lru_cache
@@ -1176,10 +1175,6 @@ class MultiRegionDataset:
         # https://trello.com/c/aDGn57Df/1192-change-combined-data-from-csv-to-parquet will remove
         # the need to format values as strings.
         csv_buf = wide_df.to_csv(index=True, float_format="%.9g")
-        # Most timeseries don't go back to the oldest dates in the CSV so they are represented by
-        # a row ending in lots of commas. Remove these because CSV readers seem to handle rows
-        # with missing commas correctly.
-        csv_buf = re.sub(r",+\n", r"\n", csv_buf)
         pointer.path_wide_dates().write_text(csv_buf)
 
         # TODO(tom) Remove once annotations file is retired.
