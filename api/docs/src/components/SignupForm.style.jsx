@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from 'styled-components';
 
 export const InputHolder = styled.div`
   display: flex;
@@ -15,7 +15,7 @@ export const StyledNewsletter = styled.div`
     display: flex;
     flex-direction: column;
 
-    input[type="email"] {
+    input[type='email'] {
       flex: 3;
       display: block;
       padding: 0.25rem 0.75rem;
@@ -29,7 +29,7 @@ export const StyledNewsletter = styled.div`
       appearance: none;
       font-size: 0.875rem;
       box-sizing: border-box;
-      font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+      font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
 
       ::placeholder {
         color: #828282;
@@ -46,7 +46,7 @@ export const StyledNewsletter = styled.div`
       }
     }
 
-    button[type="submit"] {
+    button[type='submit'] {
       cursor: pointer;
       display: block;
       appearance: none;
@@ -67,7 +67,7 @@ export const StyledNewsletter = styled.div`
       border: 1px solid #3ba5c8;
       color: #ffffff;
       font-weight: 700;
-      font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+      font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
 
       &:hover {
         background-color: #3ba5c8;
@@ -107,7 +107,7 @@ export const GettingStartedBox = styled.div`
 `;
 
 export const ApiKey = styled.span`
-  font-family: Roboto Mono, "Courier New", Courier, monospace;
+  font-family: Roboto Mono, 'Courier New', Courier, monospace;
   font-size: 15px;
   font-style: normal;
   font-weight: 700;
