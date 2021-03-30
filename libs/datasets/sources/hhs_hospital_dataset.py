@@ -26,7 +26,7 @@ CUSTOM_START_DATES = {
     "53": "2020-10-25",  # Washington
 }
 
-# Mapping of CAN scraper fields to common fields.
+# Mapping of ScraperVariable.variable_name to common fields.
 FIELD_MAPPING = {
     "adult_icu_beds_capacity": CommonFields.ICU_BEDS,
     "adult_icu_beds_in_use": CommonFields.CURRENT_ICU_TOTAL,
@@ -104,15 +104,13 @@ def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
 def filter_early_data(df):
     """Filters out early data for each location based on DEFAULT_START_DATE and
     CUSTOM_START_DATES."""
-    keep_rows = df.index.get_level_values(CommonFields.DATE.value) >= pd.to_datetime(
-        DEFAULT_START_DATE
-    )
+    keep_rows = df.index.get_level_values(CommonFields.DATE) >= pd.to_datetime(DEFAULT_START_DATE)
     df = df.loc[keep_rows]
 
     for (fips, start_date) in CUSTOM_START_DATES.items():
         location_id = pipeline.fips_to_location_id(fips)
-        keep_rows = (df.index.get_level_values(CommonFields.LOCATION_ID.value) != location_id) | (
-            df.index.get_level_values(CommonFields.DATE.value) >= pd.to_datetime(start_date)
+        keep_rows = (df.index.get_level_values(CommonFields.LOCATION_ID) != location_id) | (
+            df.index.get_level_values(CommonFields.DATE) >= pd.to_datetime(start_date)
         )
         df = df.loc[keep_rows]
 
