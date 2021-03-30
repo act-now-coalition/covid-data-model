@@ -1165,8 +1165,16 @@ class MultiRegionDataset:
         """Writes `self` to files referenced by `pointer`."""
         wide_df = self.timeseries_rows()
 
-        # The number of significant digits needs to be enough that 100M vaccines are formatted as
-        # an integer and not changed to exponential format.
+        # The values we write are generally ratios (such as test positivity) where we only need ~5
+        # digits beyond the decimal point or integers that we'd like to preserve as an exact value.
+        # I'm concerned that a delta calculated from a rounded cumulative count may differ
+        # significantly from a delta calculated from an unrounded version of the same count. Also
+        # a timeseries delta calculated from a rounded cumulative count may include artifacts
+        # that look like the step function. %.9g preserves the exact value for US vaccine counts
+        # that are now over 100M. Unfortunately this also writes unnecessarily high precision for
+        # floats but I don't see an easy solution with to_csv float_format.
+        # https://trello.com/c/aDGn57Df/1192-change-combined-data-from-csv-to-parquet will remove
+        # the need to format values as strings.
         csv_buf = wide_df.to_csv(index=True, float_format="%.9g")
         # Most timeseries don't go back to the oldest dates in the CSV so they are represented by
         # a row ending in lots of commas. Remove these because CSV readers seem to handle rows
