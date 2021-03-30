@@ -4,12 +4,7 @@ module.exports = {
     es6: true,
   },
   parser: '@typescript-eslint/parser',
-  extends: [
-    'react-app',
-    'prettier',
-    'prettier/react',
-    'plugin:prettier/recommended',
-  ],
+  extends: ['prettier', 'plugin:prettier/recommended'],
   globals: {
     Atomics: 'readonly',
     SharedArrayBuffer: 'readonly',
