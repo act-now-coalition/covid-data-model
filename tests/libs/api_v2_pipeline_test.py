@@ -172,7 +172,6 @@ def test_annotation(rt_dataset, icu_dataset):
         region=region,
         static={
             CommonFields.POPULATION: 100_000,
-            CommonFields.STATE: "IL",
             CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
         },
     )
@@ -252,7 +251,6 @@ def test_source(rt_dataset, icu_dataset):
         region=region,
         static={
             CommonFields.POPULATION: 100_000,
-            CommonFields.STATE: "IL",
             CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
         },
     )
@@ -308,7 +306,6 @@ def test_annotation_all_fields_copied(rt_dataset, icu_dataset):
         region=region,
         static={
             CommonFields.POPULATION: 100_000,
-            CommonFields.STATE: "IL",
             CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
         },
     )

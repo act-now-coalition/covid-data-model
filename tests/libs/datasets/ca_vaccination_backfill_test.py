@@ -3,7 +3,6 @@ from covidactnow.datapublic.common_fields import DemographicBucket
 from tests import test_helpers
 import pytest
 from libs.pipeline import Region
-from libs.datasets import AggregationLevel
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs.datasets import ca_vaccination_backfill
@@ -19,16 +18,7 @@ def test_ca_county_vaccination_assertion():
             CommonFields.VACCINATIONS_INITIATED: [50, 150],
         },
     }
-
-    static_by_region_then_field_name = {
-        region_la: {
-            CommonFields.STATE: "CA",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
-        }
-    }
-    dataset = test_helpers.build_dataset(
-        input_data, static_by_region_then_field_name=static_by_region_then_field_name
-    )
+    dataset = test_helpers.build_dataset(input_data)
 
     with pytest.raises(AssertionError):
         dataset_out = ca_vaccination_backfill.derive_ca_county_vaccine_pct(dataset)
@@ -49,18 +39,7 @@ def test_ca_county_vaccination_calculation():
         region_la: {CommonFields.VACCINES_ADMINISTERED: [100, 200]},
         region_mo: {CommonFields.VACCINATIONS_COMPLETED_PCT: [25.0, 28.0]},
     }
-    # TODO: finish https://github.com/covid-projections/covid-data-model/pull/1011 and delete these.
-    static_by_region_then_field_name = {
-        region_ca: {
-            CommonFields.STATE: "CA",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.STATE.value,
-        },
-        region_la: {
-            CommonFields.POPULATION: 1000,
-            CommonFields.STATE: "CA",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
-        },
-    }
+    static_by_region_then_field_name = {region_la: {CommonFields.POPULATION: 1000}}
     dataset = test_helpers.build_dataset(
         input_data, static_by_region_then_field_name=static_by_region_then_field_name
     )
@@ -101,15 +80,7 @@ def test_ca_county_vaccination_calculation_by_bucket():
         region_mo: {CommonFields.VACCINATIONS_COMPLETED_PCT: [25.0, 28.0]},
     }
     static_by_region_then_field_name = {
-        region_ca: {
-            CommonFields.STATE: "CA",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.STATE.value,
-        },
-        region_la: {
-            CommonFields.POPULATION: 1000,
-            CommonFields.STATE: "CA",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
-        },
+        region_la: {CommonFields.POPULATION: 1000},
     }
     dataset = test_helpers.build_dataset(
         input_data, static_by_region_then_field_name=static_by_region_then_field_name

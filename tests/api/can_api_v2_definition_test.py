@@ -4,11 +4,14 @@ from api import can_api_v2_definition
 def test_annotations_is_complete():
     actuals_names = list(can_api_v2_definition.Actuals.__fields__.keys())
     metrics_names = list(can_api_v2_definition.Metrics.__fields__.keys())
+    # Not currently passing through annotations for demographic fields, excluding for now
+    excluded_fields = ["vaccinationsInitiatedDemographics", "vaccinesAdministeredDemographics"]
     # This test checks that metrics and actuals have annotations in a consistent order.
     # Names ending "Details" are the old annotation fields.
     expected_names = [
         name for name in actuals_names + metrics_names if not name.endswith("Details")
     ]
+    expected_names = [name for name in expected_names if name not in excluded_fields]
 
     annotations_names = list(can_api_v2_definition.Annotations.__fields__.keys())
 

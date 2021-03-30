@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import inspect
+import io
 from typing import Iterable
 from typing import List
 
@@ -96,6 +97,8 @@ def make_tag(
         # Force to the expected types and add defaults if not in kwargs
         kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
+    elif tag_type is taglib.TagType.KNOWN_ISSUE:
+        kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
 
     return taglib.TAG_TYPE_TO_CLASS[tag_type](**kwargs)
 
@@ -143,9 +146,9 @@ def build_dataset(
         for bucket_name, bucket_ts in iter_buckets(var_buckets)
     }
 
-    # Make sure there is only one len among all of region_var_bucket_seq.values(). Make a DatetimeIndex
-    # with that many dates.
-    sequence_lengths = more_itertools.one(set(len(seq) for seq in region_var_bucket_seq.values()))
+    # Find the longest sequence in region_var_bucket_seq.values(). Make a DatetimeIndex with that
+    # many dates.
+    sequence_lengths = max(len(seq) for seq in region_var_bucket_seq.values())
     dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
 
     index = pd.MultiIndex.from_tuples(
@@ -321,3 +324,35 @@ def get_concrete_subclasses(cls) -> Iterable[Type]:
     for subcls in get_subclasses(cls):
         if not inspect.isabstract(subcls) and abc.ABC not in subcls.__bases__:
             yield subcls
+
+
+def read_csv_str(
+    csv: str,
+    *,
+    skip_spaces: bool = False,
+    parse_dates: Optional[List] = None,
+    dtype: Optional[Mapping] = None,
+) -> pd.DataFrame:
+    """Reads a CSV passed as a string.
+
+    Args:
+        csv: String content to parse as a CSV
+        skip_spaces: If True, removes all " " from csv
+        parse_dates: Passed to pd.read_csv. If None and 'date' is in the header then ['date'].
+        dtype: Passed to pd.read_csv. If None and 'fips' is in the header it is parsed as a str.
+    """
+    if skip_spaces:
+        csv = csv.replace(" ", "")
+    header = more_itertools.first(csv.splitlines()).split(",")
+    if parse_dates is None:
+        if CommonFields.DATE in header:
+            parse_dates = [CommonFields.DATE]
+        else:
+            parse_dates = []
+    if dtype is None:
+        if CommonFields.FIPS in header:
+            dtype = {CommonFields.FIPS: str}
+        else:
+            dtype = {}
+
+    return pd.read_csv(io.StringIO(csv), parse_dates=parse_dates, dtype=dtype, low_memory=True)

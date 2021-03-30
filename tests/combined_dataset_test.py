@@ -231,17 +231,7 @@ def test_dataclass_include_exclude():
     regions_orig = [Region.from_state(state) for state in "AZ CA NY IL TX".split()] + [
         Region.from_fips(fips) for fips in "06037 06045 17031 17201".split()
     ]
-    dataset_orig = test_helpers.build_dataset(
-        {region: region_data for region in regions_orig},
-        static_by_region_then_field_name={
-            region: {
-                CommonFields.STATE: region.state,
-                CommonFields.FIPS: region.fips,
-                CommonFields.AGGREGATE_LEVEL: region.level.value,
-            }
-            for region in regions_orig
-        },
-    )
+    dataset_orig = test_helpers.build_dataset({region: region_data for region in regions_orig})
 
     # Make a new subclass to keep this test separate from others in the make_dataset lru_cache.
     class DataSourceForTest(data_source.DataSource):
@@ -254,15 +244,15 @@ def test_dataclass_include_exclude():
 
     orig_data_source_cls = DataSourceForTest
     orig_ds = orig_data_source_cls.make_dataset()
-    assert "iso1:us#iso2:us-tx" in orig_ds.static.index
-    assert "iso1:us#iso2:us-ny" in orig_ds.static.index
+    assert "iso1:us#iso2:us-tx" in orig_ds.location_ids
+    assert "iso1:us#iso2:us-ny" in orig_ds.location_ids
 
     ny_source = combined_datasets.datasource_regions(
         orig_data_source_cls, RegionMask(states=["NY"])
     )
     ny_ds = ny_source.make_dataset()
-    assert "iso1:us#iso2:us-tx" not in ny_ds.static.index
-    assert "iso1:us#iso2:us-ny" in ny_ds.static.index
+    assert "iso1:us#iso2:us-tx" not in ny_ds.location_ids
+    assert "iso1:us#iso2:us-ny" in ny_ds.location_ids
 
     ca_counties_without_la_source = combined_datasets.datasource_regions(
         orig_data_source_cls,
@@ -270,13 +260,13 @@ def test_dataclass_include_exclude():
         exclude=Region.from_fips("06037"),
     )
     ds = ca_counties_without_la_source.make_dataset()
-    assert "iso1:us#iso2:us-tx" not in ds.static.index
-    assert "iso1:us#iso2:us-ca" not in ds.static.index
-    assert "iso1:us#iso2:us-ca#fips:06045" in ds.static.index
-    assert "iso1:us#iso2:us-ca#fips:06037" not in ds.static.index
+    assert "iso1:us#iso2:us-tx" not in ds.location_ids
+    assert "iso1:us#iso2:us-ca" not in ds.location_ids
+    assert "iso1:us#iso2:us-ca#fips:06045" in ds.location_ids
+    assert "iso1:us#iso2:us-ca#fips:06037" not in ds.location_ids
 
     # Just Cook County, IL
     ds = combined_datasets.datasource_regions(
         orig_data_source_cls, include=Region.from_fips("17031")
     ).make_dataset()
-    assert ds.static.index.to_list() == ["iso1:us#iso2:us-il#fips:17031"]
+    assert ds.location_ids.to_list() == ["iso1:us#iso2:us-il#fips:17031"]

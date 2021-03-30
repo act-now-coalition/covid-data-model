@@ -4,7 +4,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 
 from libs import pipeline
-from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
 from libs.datasets import custom_aggregations
 from libs.pipeline import Region
@@ -73,27 +72,11 @@ def test_calculate_puerto_rico_bed_occupancy_rate():
     ts_data = {region_pr_state: {field_other: [7, 8]}, region_la: {field_other: [70, 80]}}
     static_pr_state = {
         field_already_agg: 10,
-        CommonFields.STATE: "PR",
-        CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
     }
     static_others = {
-        region_jd: {
-            field_to_agg: 2,
-            field_already_agg: 4,
-            CommonFields.STATE: "PR",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
-        },
-        region_rg: {
-            field_to_agg: 3,
-            CommonFields.STATE: "PR",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
-        },
-        region_la: {
-            field_to_agg: 100,
-            field_already_agg: 200,
-            CommonFields.STATE: "CA",
-            CommonFields.AGGREGATE_LEVEL: AggregationLevel.COUNTY.value,
-        },
+        region_jd: {field_to_agg: 2, field_already_agg: 4},
+        region_rg: {field_to_agg: 3},
+        region_la: {field_to_agg: 100, field_already_agg: 200},
     }
     ds_in = test_helpers.build_dataset(
         ts_data,

@@ -7,6 +7,10 @@ module.exports = {
     {
       src: "/scripts/gtag_conversion_event.js",
     },
+    {
+      src: "//js.hs-scripts.com/8617439.js",
+      async: true,
+    },
   ],
   customFields: {
     registerUrl: "https://api.covidactnow.org/v2/register",
