@@ -12,6 +12,19 @@ import {
 // Taken from https://ui.dev/validate-email-address-javascript/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const HUBSPOT_COOKIE_NAME = "hubspotutk";
+
+// Taken from
+// https://gist.github.com/joduplessis/7b3b4340353760e945f972a69e855d11
+function getCookie(name) {
+  const value = "; " + document.cookie;
+  const parts = value.split("; " + name + "=");
+
+  if (parts.length == 2) {
+    return parts.pop().split(";").shift();
+  }
+}
+
 const trackEmailSignupSuccess = (isNewUser) => {
   ga('send', {
     hitType: 'event',
@@ -28,7 +41,7 @@ const SignupForm = () => {
   const [email, setEmail] = useState();
   const [apiKey, setApiKey] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const {siteConfig} = useDocusaurusContext();
+  const { siteConfig } = useDocusaurusContext();
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -37,9 +50,16 @@ const SignupForm = () => {
       setErrorMessage("Must supply a valid email address");
       return;
     }
+
+    const hubspotToken = getCookie(HUBSPOT_COOKIE_NAME);
+
     fetch(siteConfig.customFields.registerUrl, {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({
+        email,
+        hubspot_token: hubspotToken,
+        page_uri: window.location.href,
+      }),
       headers: { "Content-Type": "application/json" },
     })
       .then((res) => res.json())

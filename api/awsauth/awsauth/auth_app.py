@@ -1,5 +1,6 @@
-from typing import Tuple, Dict
+from typing import Dict, Optional
 import uuid
+import dataclasses
 import urllib.parse
 import datetime
 import base64
@@ -60,6 +61,42 @@ if IS_LAMBDA:
     init()
 
 
+class InvalidInputError(Exception):
+    """Error raised on invalid input for registration form parameters."""
+
+
+@dataclasses.dataclass(frozen=True)
+class RegistrationArguments:
+
+    email: str
+
+    is_crs_user: bool
+
+    hubspot_token: Optional[str]
+
+    page_uri: Optional[str]
+
+    @staticmethod
+    def make_from_json_body(data: Dict) -> "RegistrationArguments":
+        if "email" not in data:
+            raise InvalidInputError("Missing email parameter")
+
+        email = data["email"]
+
+        if not re.match(EMAIL_REGEX, email):
+            raise InvalidInputError("Invalid email")
+
+        is_crs_user = data.get("is_crs_user", False)
+
+        hubspot_token = data.get("hubspot_token")
+
+        page_uri = data.get("page_uri")
+
+        return RegistrationArguments(
+            email=email, is_crs_user=is_crs_user, hubspot_token=hubspot_token, page_uri=page_uri
+        )
+
+
 # Fairly permissive email regex taken from
 # https://stackoverflow.com/questions/8022530/how-to-check-for-valid-email-address#comment52453093_8022584
 EMAIL_REGEX = r"[^@\s]+@[^@\s]+\.[a-zA-Z0-9]+$"
@@ -85,11 +122,11 @@ def _build_welcome_email(to_email: str, api_key: str) -> ses_client.EmailData:
     )
 
 
-def _create_api_key(email: str) -> str:
+def _create_api_key() -> str:
     return uuid.uuid4().hex
 
 
-def _get_or_create_api_key(email: str, is_crs_user: bool) -> Tuple[bool, str]:
+def _get_api_key(email: str, is_crs_user: bool) -> Optional[str]:
     api_key = APIKeyRepo.get_api_key(email)
 
     if api_key:
@@ -99,12 +136,16 @@ def _get_or_create_api_key(email: str, is_crs_user: bool) -> Tuple[bool, str]:
         if is_crs_user:
             APIKeyRepo.record_covid_response_simulator_user(email)
 
-        return False, api_key
+        return api_key
 
-    _logger.info(f"No API Key found for email {email}, creating new key")
+    return None
 
-    api_key = _create_api_key(email)
-    APIKeyRepo.add_api_key(email, api_key, is_crs_user)
+
+def _create_new_user(args: RegistrationArguments) -> str:
+    email = args.email
+
+    api_key = _create_api_key()
+    APIKeyRepo.add_api_key(email, api_key, args.is_crs_user)
 
     welcome_email = _build_welcome_email(email, api_key)
     if EmailRepo.send_email(welcome_email):
@@ -114,12 +155,14 @@ def _get_or_create_api_key(email: str, is_crs_user: bool) -> Tuple[bool, str]:
 
     # attempt to add hubspot contact, but don't block reg on failure.
     try:
-        registry.hubspot_client.create_contact(email)
+        registry.hubspot_client.submit_reg_form(
+            email, hubspot_token=args.hubspot_token, page_uri=args.page_uri
+        )
     except hubspot_client.HubSpotAPICallFailed:
         _logger.error("HubSpot call failed")
         sentry_sdk.capture_exception()
 
-    return True, api_key
+    return api_key
 
 
 def _record_successful_request(request: dict, record: dict):
@@ -200,16 +243,21 @@ def register_edge(event, context):
     headers = {
         "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
     }
-    if "email" not in data:
-        return {"status": 400, "errorMessage": "Missing email parameter", "headers": headers}
 
-    email = data["email"]
-    if not re.match(EMAIL_REGEX, email):
-        return {"status": 400, "errorMessage": "Invalid email", "headers": headers}
+    try:
+        args = RegistrationArguments.make_from_json_body(data)
+    except InvalidInputError as exn:
+        return {"status": 400, "errorMessage": str(exn), "headers": headers}
 
-    is_crs_user = data.get("is_crs_user", False)
-    new_user, api_key = _get_or_create_api_key(email, is_crs_user)
-    body = {"api_key": api_key, "email": email, "new_user": new_user}
+    api_key = _get_api_key(args.email, args.is_crs_user)
+
+    if api_key:
+        new_user = False
+    else:
+        api_key = _create_new_user(args)
+        new_user = True
+
+    body = {"api_key": api_key, "email": args.email, "new_user": new_user}
 
     headers["content-type"] = [{"key": "Content-Type", "value": "application/json"}]
     response = {"status": 200, "body": json.dumps(body), "headers": headers}

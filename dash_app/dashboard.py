@@ -76,8 +76,11 @@ def init(server):
 
     per_timeseries_stats = timeseries_stats.PerTimeseries.make(ds)
 
-    agg_stats = per_timeseries_stats.aggregate(
+    agg_level_and_field_group = per_timeseries_stats.aggregate(
         CommonFields.AGGREGATE_LEVEL, timeseries_stats.FIELD_GROUP
+    )
+    agg_level_and_distribution = per_timeseries_stats.aggregate(
+        CommonFields.AGGREGATE_LEVEL, timeseries_stats.DISTRIBUTION
     )
 
     source_url_value_counts = (
@@ -107,13 +110,12 @@ def init(server):
             html.P(commit_str),
             html.H2("Time-series count"),
             html.H3("By variable group"),
-            dash_table_from_data_frame(agg_stats.has_timeseries, id="agg_has_timeseries"),
+            dash_table_from_data_frame(
+                agg_level_and_field_group.has_timeseries, id="agg_has_timeseries"
+            ),
             html.H3("By demographic distribution"),
             dash_table_from_data_frame(
-                per_timeseries_stats.aggregate(
-                    CommonFields.AGGREGATE_LEVEL, timeseries_stats.DISTRIBUTION
-                ).has_timeseries,
-                id="distribution_timeseries_count",
+                agg_level_and_distribution.has_timeseries, id="distribution_timeseries_count",
             ),
             html.H2("Interactive pivot table"),
             dash_pivottable.PivotTable(id="pivot_table", data=pivottable_data),
@@ -124,7 +126,7 @@ def init(server):
             html.Br(),  # Give table above some space for page action controls
             html.Br(),  # Give table above some space for page action controls
             html.Br(),  # Give table above some space for page action controls
-            dash_table_from_data_frame(agg_stats.has_url, id="agg_has_url"),
+            dash_table_from_data_frame(agg_level_and_field_group.has_url, id="agg_has_url"),
             html.P("Ratio of population in county data with a URL, by variable"),
             dash_table_from_data_frame(
                 county_variable_population_ratio, id="county_variable_population_ratio"
