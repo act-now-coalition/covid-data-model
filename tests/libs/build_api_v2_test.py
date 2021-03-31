@@ -56,7 +56,7 @@ def test_build_summary_for_fips(
     expected = RegionSummary(
         population=nyc_latest["population"],
         state="NY",
-        country="USA",
+        country="US",
         level="county",
         county="New York County",
         fips="36061",

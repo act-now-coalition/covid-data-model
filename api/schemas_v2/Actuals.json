@@ -152,6 +152,26 @@
           "type": "null"
         }
       ]
+    },
+    "vaccinesAdministeredDemographics": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/DemographicDistributions"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "vaccinationsInitiatedDemographics": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/DemographicDistributions"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
@@ -226,6 +246,69 @@
         "currentUsageCovid",
         "typicalUsageRate"
       ]
+    },
+    "DemographicDistributions": {
+      "title": "DemographicDistributions",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "age": {
+          "title": "Age",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "race": {
+          "title": "Race",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ethnicity": {
+          "title": "Ethnicity",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sex": {
+          "title": "Sex",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
     }
   }
 }

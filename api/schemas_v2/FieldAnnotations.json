@@ -86,6 +86,7 @@
         "cumulative_tail_truncated",
         "cumulative_long_tail_truncated",
         "zscore_outlier",
+        "known_issue",
         "provenance",
         "source_url",
         "source"
