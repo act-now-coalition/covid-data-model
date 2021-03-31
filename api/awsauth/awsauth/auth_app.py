@@ -164,7 +164,7 @@ def _create_new_user(args: RegistrationArguments) -> str:
     # attempt to add hubspot contact, but don't block reg on failure.
     try:
         registry.hubspot_client.submit_reg_form(
-            email, hubspot_token=args.hubspot_token, page_uri=args.page_uri
+            email, hubspot_token=args.hubspot_token, page_uri=args.page_uri, use_case=args.use_case
         )
     except hubspot_client.HubSpotAPICallFailed:
         _logger.error("HubSpot call failed")
