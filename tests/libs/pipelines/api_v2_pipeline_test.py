@@ -38,8 +38,8 @@ def test_generate_from_loaded_data_country(tmpdir):
         model_output, output_dir, dataset, structlog.get_logger(),
     )
 
-    assert json.load((output_dir / "country" / "0.json").open())
-    assert json.load((output_dir / "country" / "0.timeseries.json").open())
+    assert json.load((output_dir / "country" / "US.json").open())
+    assert json.load((output_dir / "country" / "US.timeseries.json").open())
     assert json.load((output_dir / "countries.json").open())
     assert json.load((output_dir / "countries.timeseries.json").open())
     assert not pd.read_csv(output_dir / "countries.csv").empty

@@ -115,7 +115,7 @@ def build_region_summary(
     distributions = one_region.demographic_distributions_by_field
     actuals = _build_actuals(latest_values, distributions_by_field=distributions)
     return RegionSummary(
-        fips=region.fips_for_api,
+        fips=region.fips_or_country_code,
         country=region.country,
         state=region.state,
         county=latest_values.get(CommonFields.COUNTY),
