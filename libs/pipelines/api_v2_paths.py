@@ -93,7 +93,6 @@ class APIOutputPathBuilder:
         if self.level is AggregationLevel.STATE:
             return self.region_subdir / f"{region_summary.state}.{file_type.suffix}"
         if self.level is AggregationLevel.COUNTRY:
-            print(region_summary.country)
             return self.region_subdir / f"{region_summary.country}.{file_type.suffix}"
         if self.level in (AggregationLevel.COUNTY, AggregationLevel.CBSA, AggregationLevel.PLACE):
             return self.region_subdir / f"{region_summary.fips}.{file_type.suffix}"
