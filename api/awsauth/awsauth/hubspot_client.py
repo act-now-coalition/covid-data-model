@@ -38,7 +38,7 @@ class HubSpotClient:
 
         fields = [{"name": "email", "value": email}]
         if use_case:
-            fields.append({"name": "Use Case", "value": use_case})
+            fields.append({"name": "use_case", "value": use_case})
         form_data = {"fields": fields}
 
         context = {}
