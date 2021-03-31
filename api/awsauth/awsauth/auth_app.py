@@ -76,6 +76,8 @@ class RegistrationArguments:
 
     page_uri: Optional[str]
 
+    use_case: Optional[str]
+
     @staticmethod
     def make_from_json_body(data: Dict) -> "RegistrationArguments":
         if "email" not in data:
@@ -92,8 +94,14 @@ class RegistrationArguments:
 
         page_uri = data.get("page_uri")
 
+        use_case = data.get("use_case")
+
         return RegistrationArguments(
-            email=email, is_crs_user=is_crs_user, hubspot_token=hubspot_token, page_uri=page_uri
+            email=email,
+            is_crs_user=is_crs_user,
+            hubspot_token=hubspot_token,
+            page_uri=page_uri,
+            use_case=use_case,
         )
 
 
