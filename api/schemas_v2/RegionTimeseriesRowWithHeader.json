@@ -40,7 +40,7 @@
     },
     "fips": {
       "title": "Fips",
-      "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
+      "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, 5-digit CBSA codes, or 1-digit '0' for the entire USA.",
       "type": "string"
     },
     "lat": {
@@ -174,6 +174,69 @@
         "currentUsageCovid",
         "typicalUsageRate"
       ]
+    },
+    "DemographicDistributions": {
+      "title": "DemographicDistributions",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "age": {
+          "title": "Age",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "race": {
+          "title": "Race",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ethnicity": {
+          "title": "Ethnicity",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sex": {
+          "title": "Sex",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
     },
     "Actuals": {
       "title": "Actuals",
@@ -324,6 +387,26 @@
           "anyOf": [
             {
               "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vaccinesAdministeredDemographics": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DemographicDistributions"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vaccinationsInitiatedDemographics": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DemographicDistributions"
             },
             {
               "type": "null"
