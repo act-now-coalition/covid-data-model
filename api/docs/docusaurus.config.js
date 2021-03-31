@@ -13,7 +13,7 @@ module.exports = {
     },
   ],
   customFields: {
-    registerUrl: "https://api.covidactnow.org/v2/register",
+    registerUrl: "https://api-dev.covidactnow.org/v2/register",
   },
   onBrokenLinks: "throw",
   favicon: "img/favicon.ico",
