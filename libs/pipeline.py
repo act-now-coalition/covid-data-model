@@ -135,8 +135,10 @@ class Region:
         return None
 
     @property
-    def country(self):
-        return "USA"
+    def country(self) -> str:
+        """2-letter ISO-3166 Country code."""
+        # TODO(chris): Make more generic if we want to support other countries.
+        return "US"
 
     @property
     def level(self) -> AggregationLevel:

@@ -27,4 +27,4 @@ def test_get_run_artifact_path(tmp_path):
         )
 
         path = get_run_artifact_path(Region.from_iso1("us"), RunArtifact.RT_INFERENCE_REPORT)
-        assert path == os.path.join(tmp_path, "pyseir/reports/Rt_results__USA.pdf")
+        assert path == os.path.join(tmp_path, "pyseir/reports/Rt_results__US.pdf")
