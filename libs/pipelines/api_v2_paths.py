@@ -33,6 +33,8 @@ class APIOutputPathBuilder:
             return "cbsas"
         if self.level is AggregationLevel.PLACE:
             return "places"
+        if self.level is AggregationLevel.COUNTRY:
+            return "countries"
 
         raise ValueError("Unsupported aggregation level")
 
@@ -46,6 +48,8 @@ class APIOutputPathBuilder:
             return self.root / "cbsa"
         if self.level is AggregationLevel.PLACE:
             return self.root / "place"
+        if self.level is AggregationLevel.COUNTRY:
+            return self.root / "country"
 
         raise ValueError("Unsupported aggregation level")
 
@@ -88,7 +92,12 @@ class APIOutputPathBuilder:
     def single_summary(self, region_summary: can_api_v2_definition.RegionSummary, file_type):
         if self.level is AggregationLevel.STATE:
             return self.region_subdir / f"{region_summary.state}.{file_type.suffix}"
-        if self.level in (AggregationLevel.COUNTY, AggregationLevel.CBSA, AggregationLevel.PLACE):
+        if self.level in (
+            AggregationLevel.COUNTY,
+            AggregationLevel.CBSA,
+            AggregationLevel.PLACE,
+            AggregationLevel.COUNTRY,
+        ):
             return self.region_subdir / f"{region_summary.fips}.{file_type.suffix}"
 
         raise NotImplementedError("Level not supported")
@@ -99,7 +108,12 @@ class APIOutputPathBuilder:
 
         if self.level is AggregationLevel.STATE:
             return self.region_subdir / f"{region_timeseries.state}.timeseries.{file_type.suffix}"
-        if self.level in (AggregationLevel.COUNTY, AggregationLevel.CBSA, AggregationLevel.PLACE):
+        if self.level in (
+            AggregationLevel.COUNTY,
+            AggregationLevel.CBSA,
+            AggregationLevel.PLACE,
+            AggregationLevel.COUNTRY,
+        ):
             return self.region_subdir / f"{region_timeseries.fips}.timeseries.{file_type.suffix}"
 
         raise NotImplementedError("Level not supported")
