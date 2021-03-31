@@ -148,11 +148,11 @@ class Region:
         raise NotImplementedError("Unknown Aggregation Level")
 
     @property
-    def fips_or_country_code(self) -> str:
-        """The same as `fips`, except 'US' for the USA as a hack to help the frontend."""
+    def fips_for_api(self) -> str:
+        """The same as `fips`, except '0' for the USA as a hack to help the frontend."""
         if self.level is AggregationLevel.COUNTRY:
             assert self.location_id == "iso1:us"
-            return "US"
+            return "0"
         else:
             return self.fips
 
