@@ -9,7 +9,11 @@ class HubSpotAPICallFailed(Exception):
 
 class HubSpotClient:
     def submit_reg_form(
-        self, email: str, hubspot_token: Optional[str] = None, page_uri: Optional[str] = None
+        self,
+        email: str,
+        hubspot_token: Optional[str] = None,
+        page_uri: Optional[str] = None,
+        use_case: Optional[str] = None,
     ) -> Optional[dict]:
         """Submit hubspot registration form.
 
@@ -17,6 +21,7 @@ class HubSpotClient:
             email: Email of user creating account.
             hubspot_token: Hubspot token passed from browser cookie.
             page_uri: URI of page where reg submission happened.
+            use_case: Use case from form
 
         Returns: Successful form submission response if hubspot enabled. None if hubspot disable.
 
@@ -31,7 +36,10 @@ class HubSpotClient:
         # https://legacydocs.hubspot.com/docs/methods/forms/submit_form
         url = f"https://api.hsforms.com/submissions/v3/integration/submit/{portal_id}/{form_guid}"
 
-        form_data = {"fields": [{"name": "email", "value": email}]}
+        fields = [{"name": "email", "value": email}]
+        if use_case:
+            fields.append({"name": "use_case", "value": use_case})
+        form_data = {"fields": fields}
 
         context = {}
 
