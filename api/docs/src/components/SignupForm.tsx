@@ -49,7 +49,6 @@ const validate = (values: FormData) => {
     errors.email = 'Must supply a valid email address';
   }
 
-  console.log(errors);
   return errors;
 };
 
@@ -81,142 +80,121 @@ const SignupForm = () => {
         trackEmailSignupSuccess(data.new_user);
       })
       .catch(err => {
-        console.log(err);
         setErrorMessage('Must supply a valid email address');
       });
   };
 
   return (
-    <div>
-      <ThemeProvider theme={signupFormTheme}>
-        <Form
-          onSubmit={onSubmit}
-          validate={validate}
-          render={({ handleSubmit, submitting, pristine, values }) => (
-            <form onSubmit={handleSubmit} noValidate>
-              <Grid container spacing={2}>
+    <ThemeProvider theme={signupFormTheme}>
+      <Form
+        onSubmit={onSubmit}
+        validate={validate}
+        render={({ handleSubmit, submitting, pristine, values }) => (
+          <form onSubmit={handleSubmit} noValidate>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Typography>
+                  There are just 2 questions to answer, and then you can
+                  immediately get started.{' '}
+                </Typography>
+              </Grid>
+              <Grid container item xs={12}>
                 <Grid item xs={12}>
-                  <Typography>
-                    There are just 2 questions to answer, and then you can
-                    immediately get started.{' '}
+                  <Typography gutterBottom>
+                    <strong>Email address</strong>
                   </Typography>
                 </Grid>
-                <Grid container item xs={12}>
-                  <Grid item xs={12}>
-                    <Typography gutterBottom>
-                      <strong>Email address</strong>
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Field<string>
-                      component={TextField}
-                      name="email"
-                      label="Email"
-                      type="email"
-                      required
-                      fullWidth
-                      variant="outlined"
-                      aria-label="Email"
-                    />
-                  </Grid>
-                </Grid>
-                {/* <Grid container item xs={12}>
-                    <Grid item xs={12}>
-                      <h5>Organization name</h5>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Field
-                        autoComplete="Organization"
-                        aria-label="Organization"
-                        fullWidth
-                        variant="outlined"
-                        name="organization"
-                        label="Organization name"
-                        component={TextField}
-                        required
-                      />
-                    </Grid>
-                  </Grid> */}
-
-                <Grid container item xs={12}>
-                  <Grid item xs={12}>
-                    <Typography gutterBottom>
-                      <strong>How do you intend to use our data?</strong>
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <span>It’s optional, but it’s helpful for us to know:</span>
-                    <ul>
-                      <li>
-                        The data/metrics you’re interested in (e.g. vaccine
-                        data, risk levels, cases, deaths, etc.)
-                      </li>
-                      <li>
-                        How you will be using this data (e.g. internal dashboard
-                        for reopening offices in the northwest, school project
-                        analyzing nationwide county data, an app to track covid
-                        risk for friends and family, etc.)
-                      </li>
-                      <li>
-                        The locations you’d like to use this for (e.g. all 50
-                        states, counties in the Florida panhandle, or just Cook
-                        County, IL)
-                      </li>
-                    </ul>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Field<string>
-                      aria-label="How you are using the data"
-                      placeholder="How are you using the data"
-                      label="Use case"
-                      rows={5}
-                      variant="outlined"
-                      component={TextField}
-                      name="useCase"
-                      fullWidth
-                      multiline
-                    />
-                  </Grid>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="body2">
-                    Data usage is subject to the{' '}
-                    <a href="#license">terms of our license.</a>
-                  </Typography>
-                </Grid>
-
-                <Grid item>
-                  <Button
-                    size="large"
-                    variant="contained"
-                    type="submit"
-                    color="primary"
-                    disabled={submitting}
-                    disableElevation
-                  >
-                    Get API key
-                  </Button>
-                </Grid>
-                {errorMessage && <InputError>{errorMessage}</InputError>}
-                <Grid item xs={12}>
-                  {!apiKey && (
-                    <p>
-                      If you've previously registered for an API key, you can
-                      enter your email above to retrieve it.
-                    </p>
-                  )}
-                  {apiKey && (
-                    <p>
-                      Congrats, your new API key is <ApiKey>{apiKey}</ApiKey>
-                    </p>
-                  )}
+                <Grid item xs={6}>
+                  <Field<string>
+                    component={TextField}
+                    name="email"
+                    label="Email"
+                    type="email"
+                    required
+                    fullWidth
+                    variant="outlined"
+                    aria-label="Email"
+                  />
                 </Grid>
               </Grid>
-            </form>
-          )}
-        />
-      </ThemeProvider>
-    </div>
+              <Grid container item xs={12}>
+                <Grid item xs={12}>
+                  <Typography gutterBottom>
+                    <strong>How do you intend to use our data?</strong>
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <span>It’s optional, but it’s helpful for us to know:</span>
+                  <ul>
+                    <li>
+                      The data/metrics you’re interested in (e.g. vaccine data,
+                      risk levels, cases, deaths, etc.)
+                    </li>
+                    <li>
+                      How you will be using this data (e.g. internal dashboard
+                      for reopening offices in the northwest, school project
+                      analyzing nationwide county data, an app to track covid
+                      risk for friends and family, etc.)
+                    </li>
+                    <li>
+                      The locations you’d like to use this for (e.g. all 50
+                      states, counties in the Florida panhandle, or just Cook
+                      County, IL)
+                    </li>
+                  </ul>
+                </Grid>
+                <Grid item xs={12}>
+                  <Field<string>
+                    aria-label="How you are using the data"
+                    placeholder="How are you using the data"
+                    label="Use case"
+                    rows={5}
+                    variant="outlined"
+                    component={TextField}
+                    name="useCase"
+                    fullWidth
+                    multiline
+                  />
+                </Grid>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="body2">
+                  Data usage is subject to the{' '}
+                  <a href="#license">terms of our license.</a>
+                </Typography>
+              </Grid>
+
+              <Grid item>
+                <Button
+                  size="large"
+                  variant="contained"
+                  type="submit"
+                  color="primary"
+                  disabled={submitting}
+                  disableElevation
+                >
+                  Get API key
+                </Button>
+              </Grid>
+              {errorMessage && <InputError>{errorMessage}</InputError>}
+              <Grid item xs={12}>
+                {!apiKey && (
+                  <p>
+                    If you've previously registered for an API key, you can
+                    enter your email above to retrieve it.
+                  </p>
+                )}
+                {apiKey && (
+                  <p>
+                    Congrats, your new API key is <ApiKey>{apiKey}</ApiKey>
+                  </p>
+                )}
+              </Grid>
+            </Grid>
+          </form>
+        )}
+      />
+    </ThemeProvider>
   );
 };
 
