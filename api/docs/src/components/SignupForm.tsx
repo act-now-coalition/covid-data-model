@@ -104,7 +104,7 @@ const SignupForm = () => {
                     <strong>Email address</strong>
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid item sm={6} xs={12}>
                   <Field<string>
                     component={TextField}
                     name="email"
@@ -120,11 +120,11 @@ const SignupForm = () => {
               <Grid container item xs={12}>
                 <Grid item xs={12}>
                   <Typography gutterBottom>
-                    <strong>How do you intend to use our data?</strong>
+                    <strong>How do you intend to use our Covid data?</strong>
                   </Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <span>It’s optional, but it’s helpful for us to know:</span>
+                  <span>It's optional, but we’d find it helpful to know:</span>
                   <ul>
                     <li>
                       The data/metrics you’re interested in (e.g. vaccine data,
@@ -143,10 +143,10 @@ const SignupForm = () => {
                     </li>
                   </ul>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid item xs={12} xl={10}>
                   <Field<string>
                     aria-label="How you are using the data"
-                    placeholder="How are you using the data"
+                    placeholder="How are you using the data?"
                     label="Use case"
                     rows={5}
                     variant="outlined"
