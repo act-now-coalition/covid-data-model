@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { Form, Field } from 'react-final-form';
-import { TextField } from 'final-form-material-ui';
+import TextField from './TextFieldWrapper';
 import { ApiKey, InputError, signupFormTheme } from './SignupForm.style';
 import { Button, Grid, ThemeProvider, Typography } from '@material-ui/core';
 
