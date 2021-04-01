@@ -136,16 +136,11 @@ const SignupForm = () => {
                       analyzing nationwide county data, an app to track covid
                       risk for friends and family, etc.)
                     </li>
-                    <li>
-                      The locations you’d like to use this for (e.g. all 50
-                      states, counties in the Florida panhandle, or just Cook
-                      County, IL)
-                    </li>
                   </ul>
                 </Grid>
                 <Grid item xs={12} xl={10}>
                   <Field<string>
-                    aria-label="How you are using the data"
+                    aria-label="How you are using the data?"
                     placeholder="How are you using the data?"
                     label="Use case"
                     rows={5}
@@ -176,7 +171,11 @@ const SignupForm = () => {
                   Get API key
                 </Button>
               </Grid>
-              {errorMessage && <InputError>{errorMessage}</InputError>}
+              {errorMessage && (
+                <Grid item xs={12}>
+                  <InputError>{errorMessage}</InputError>
+                </Grid>
+              )}
               <Grid item xs={12}>
                 {!apiKey && (
                   <p>
