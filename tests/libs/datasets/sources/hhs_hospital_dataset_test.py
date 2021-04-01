@@ -42,9 +42,8 @@ def test_hhs_hospital_dataset():
         {CommonFields.ICU_BEDS: icu_beds},
         region=pipeline.Region.from_fips("36"),
         start_date="2020-09-01",
+        static={CommonFields.ICU_BEDS: 30},
     )
-
-    expected_ds = expected_ds.latest_in_static(field=CommonFields.ICU_BEDS)
 
     test_helpers.assert_dataset_like(ds, expected_ds)
 
@@ -86,8 +85,7 @@ def test_hhs_hospital_dataset_non_default_start_date():
         {CommonFields.ICU_BEDS: icu_beds},
         region=pipeline.Region.from_fips("02"),
         start_date="2020-10-06",
+        static={CommonFields.ICU_BEDS: 30},
     )
-
-    expected_ds = expected_ds.latest_in_static(field=CommonFields.ICU_BEDS)
 
     test_helpers.assert_dataset_like(ds, expected_ds)
