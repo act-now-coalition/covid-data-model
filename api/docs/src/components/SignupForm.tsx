@@ -2,14 +2,8 @@ import React, { useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { Form, Field } from 'react-final-form';
 import { TextField } from 'final-form-material-ui';
-import {
-  InputHolder,
-  StyledNewsletter,
-  GettingStartedBox,
-  ApiKey,
-  InputError,
-} from './SignupForm.style';
-import { Button, Grid, Typography } from '@material-ui/core';
+import { ApiKey, InputError, signupFormTheme } from './SignupForm.style';
+import { Button, Grid, ThemeProvider, Typography } from '@material-ui/core';
 
 // Taken from https://ui.dev/validate-email-address-javascript/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,7 +41,7 @@ interface FormData {
 }
 
 const validate = (values: FormData) => {
-  const errors: Any = {};
+  const errors: any = {};
 
   if (!values.email) {
     errors.email = 'Required';
@@ -94,7 +88,7 @@ const SignupForm = () => {
 
   return (
     <div>
-      <StyledNewsletter>
+      <ThemeProvider theme={signupFormTheme}>
         <Form
           onSubmit={onSubmit}
           validate={validate}
@@ -103,8 +97,8 @@ const SignupForm = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Typography>
-                    There are just 2 questions we’d liked answered, and then you
-                    can immediately get started.{' '}
+                    There are just 2 questions to answer, and then you can
+                    immediately get started.{' '}
                   </Typography>
                 </Grid>
                 <Grid container item xs={12}>
@@ -174,7 +168,7 @@ const SignupForm = () => {
                     <Field<string>
                       aria-label="How you are using the data"
                       placeholder="How are you using the data"
-                      label="Use Case"
+                      label="Use case"
                       rows={5}
                       variant="outlined"
                       component={TextField}
@@ -186,16 +180,12 @@ const SignupForm = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <Typography variant="body2">
-                    By requesting an API key you agree to the terms of our{' '}
-                    <a
-                      href="https://apidocs.covidactnow.org/#license"
-                      target="_blank"
-                    >
-                      License.
-                    </a>
+                    Data usage is subject to the{' '}
+                    <a href="#license">terms of our license.</a>
                   </Typography>
                 </Grid>
-                <Grid item xs={3}>
+
+                <Grid item>
                   <Button
                     size="large"
                     variant="contained"
@@ -207,11 +197,12 @@ const SignupForm = () => {
                     Get API key
                   </Button>
                 </Grid>
+                {errorMessage && <InputError>{errorMessage}</InputError>}
                 <Grid item xs={12}>
                   {!apiKey && (
                     <p>
                       If you've previously registered for an API key, you can
-                      use the form above to retrieve it.
+                      enter your email above to retrieve it.
                     </p>
                   )}
                   {apiKey && (
@@ -221,12 +212,10 @@ const SignupForm = () => {
                   )}
                 </Grid>
               </Grid>
-
-              {errorMessage && <InputError>{errorMessage}</InputError>}
             </form>
           )}
         />
-      </StyledNewsletter>
+      </ThemeProvider>
     </div>
   );
 };
