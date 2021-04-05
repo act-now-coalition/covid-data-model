@@ -1,6 +1,7 @@
 import dataclasses
 
 import structlog
+from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 import pandas as pd
@@ -39,7 +40,11 @@ def drop_observations(
 
     ts_in = dataset.timeseries_bucketed_wide_dates
 
-    mask_selected_fields = ts_in.index.get_level_values(PdFields.VARIABLE).isin(config["fields"])
+    if "field_group" in config:
+        fields = common_fields.FIELD_GROUP_TO_LIST_FIELDS[config["field_group"]]
+    else:
+        fields = config["fields"]
+    mask_selected_fields = ts_in.index.get_level_values(PdFields.VARIABLE).isin(fields)
     ts_selected_fields = ts_in.loc[mask_selected_fields]
     ts_not_selected_fields = ts_in.loc[~mask_selected_fields]
 

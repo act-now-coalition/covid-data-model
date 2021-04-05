@@ -3,6 +3,7 @@ from typing import Any
 from typing import Dict, Type, List, NewType
 import functools
 import pathlib
+from typing import Mapping
 from typing import Optional
 from typing import TypeVar
 from typing import Union
@@ -11,6 +12,7 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldGroup
 from covidactnow.datapublic.common_fields import FieldName
 from typing_extensions import final
 
@@ -18,6 +20,7 @@ from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
+from libs.datasets import manual_filter
 from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
@@ -69,6 +72,7 @@ class DataSourceAndRegionMasks:
     data_source_cls: Type[data_source.DataSource]
     include: List[RegionMaskOrRegion]
     exclude: List[RegionMaskOrRegion]
+    manual_filter_config: Optional[Mapping]
 
     @property
     def EXPECTED_FIELDS(self):
@@ -91,6 +95,8 @@ class DataSourceAndRegionMasks:
             dataset = dataset.get_regions_subset(self.include)
         if self.exclude:
             dataset = dataset.remove_regions(self.exclude)
+        if self.manual_filter_config:
+            dataset = manual_filter.run(dataset, self.manual_filter_config)
         return dataset
 
 
@@ -112,6 +118,7 @@ def datasource_regions(
     include: Union[None, RegionMaskOrRegion, List[RegionMaskOrRegion]] = None,
     *,
     exclude: Union[None, RegionMaskOrRegion, List[RegionMaskOrRegion]] = None,
+    manual_filter: Optional[Mapping] = None,
 ) -> DataSourceAndRegionMasks:
     """Creates an instance of the `DataSourceAndRegionMasks` class."""
     assert include or exclude, (
@@ -119,7 +126,10 @@ def datasource_regions(
         "needed use the DataSource class directly."
     )
     return DataSourceAndRegionMasks(
-        data_source_cls, include=to_list(include), exclude=to_list(exclude)
+        data_source_cls,
+        include=to_list(include),
+        exclude=to_list(exclude),
+        manual_filter_config=manual_filter,
     )
 
 
@@ -136,6 +146,26 @@ FeatureDataSourceMap = NewType(
 NYTimesDatasetWithoutNYCOrIACounties = datasource_regions(
     NYTimesDataset,
     exclude=[RegionMask(level=AggregationLevel.COUNTY, states=["IA"]), *ALL_NYC_REGIONS],
+)
+
+
+HHSHospitalCountyDatasetFixed = datasource_regions(
+    HHSHospitalCountyDataset,
+    # This data source contains only county data so this include effectively includes them all.
+    include=RegionMask(AggregationLevel.COUNTY),
+    manual_filter={
+        "filters": [
+            {
+                "regions_included": [RegionMask(AggregationLevel.COUNTY)],
+                "observations_to_drop": {
+                    "start_date": "2021-04-06",
+                    "field_group": FieldGroup.HEALTHCARE_CAPACITY,
+                    "internal_note": "https://trello.com/c/Dls22XAk/1226-hhs-facility-hospital",
+                    "public_note": "Truncated data in the future",
+                },
+            },
+        ]
+    },
 )
 
 
@@ -164,27 +194,27 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperStateProviders,
         CovidTrackingDataSource,
         TexasHospitalizations,
-        HHSHospitalCountyDataset,
+        HHSHospitalCountyDatasetFixed,
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU: [
         CANScraperStateProviders,
         CovidTrackingDataSource,
         TexasHospitalizations,
-        HHSHospitalCountyDataset,
+        HHSHospitalCountyDatasetFixed,
         HHSHospitalStateDataset,
     ],
-    CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
+    CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDatasetFixed, HHSHospitalStateDataset],
     CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
     CommonFields.DEATHS: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
         NYTimesDatasetWithoutNYCOrIACounties,
     ],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDatasetFixed, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
         CANScraperStateProviders,
-        HHSHospitalCountyDataset,
+        HHSHospitalCountyDatasetFixed,
         HHSHospitalStateDataset,
     ],
     CommonFields.NEGATIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
@@ -211,7 +241,11 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
     # TODO(michael): We don't really trust the CCM bed numbers and would ideally remove them entirely.
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CovidCareMapBeds, HHSHospitalCountyDataset, HHSHospitalStateDataset],
+    CommonFields.ICU_BEDS: [
+        CovidCareMapBeds,
+        HHSHospitalCountyDatasetFixed,
+        HHSHospitalStateDataset,
+    ],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
