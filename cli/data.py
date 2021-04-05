@@ -147,6 +147,9 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
     multiregion_dataset.print_stats("CountyToCBSAAggregator")
 
+    multiregion_dataset.write_to_wide_dates_csv(
+        pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
+    )
     if aggregate_to_country:
         country_dataset = region_aggregation.aggregate_regions(
             multiregion_dataset,
