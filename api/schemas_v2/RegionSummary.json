@@ -5,7 +5,7 @@
   "properties": {
     "fips": {
       "title": "Fips",
-      "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, or 5-digit CBSA codes.",
+      "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, 5-digit CBSA codes, or 1-digit '0' for the entire USA.",
       "type": "string"
     },
     "country": {
@@ -520,6 +520,69 @@
         "typicalUsageRate"
       ]
     },
+    "DemographicDistributions": {
+      "title": "DemographicDistributions",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "age": {
+          "title": "Age",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "race": {
+          "title": "Race",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ethnicity": {
+          "title": "Ethnicity",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sex": {
+          "title": "Sex",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
     "Actuals": {
       "title": "Actuals",
       "description": "Known actuals data.",
@@ -674,6 +737,26 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinesAdministeredDemographics": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DemographicDistributions"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vaccinationsInitiatedDemographics": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DemographicDistributions"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -751,6 +834,7 @@
         "cumulative_tail_truncated",
         "cumulative_long_tail_truncated",
         "zscore_outlier",
+        "known_issue",
         "provenance",
         "source_url",
         "source"
@@ -899,15 +983,6 @@
             }
           ]
         },
-        "vaccinesAdministered": {
-          "title": "Vaccinesadministered",
-          "description": "Annotations for vaccinesAdministered",
-          "allOf": [
-            {
-              "$ref": "#/definitions/FieldAnnotations"
-            }
-          ]
-        },
         "vaccinesDistributed": {
           "title": "Vaccinesdistributed",
           "description": "Annotations for vaccinesDistributed",
@@ -929,6 +1004,15 @@
         "vaccinationsCompleted": {
           "title": "Vaccinationscompleted",
           "description": "Annotations for vaccinationsCompleted",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinesAdministered": {
+          "title": "Vaccinesadministered",
+          "description": "Annotations for vaccinesAdministered",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"

@@ -135,8 +135,10 @@ class Region:
         return None
 
     @property
-    def country(self):
-        return "USA"
+    def country(self) -> str:
+        """2-letter ISO-3166 Country code."""
+        # TODO(chris): Make more generic if we want to support other countries.
+        return "US"
 
     @property
     def level(self) -> AggregationLevel:
@@ -146,6 +148,15 @@ class Region:
             return level
 
         raise NotImplementedError("Unknown Aggregation Level")
+
+    @property
+    def fips_for_api(self) -> str:
+        """The same as `fips`, except '0' for the USA as a hack to help the frontend."""
+        if self.level is AggregationLevel.COUNTRY:
+            assert self.location_id == "iso1:us"
+            return "0"
+        else:
+            return self.fips
 
     def is_county(self):
         return self.level is AggregationLevel.COUNTY

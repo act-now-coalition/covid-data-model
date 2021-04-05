@@ -444,7 +444,7 @@ class RegionSummary(base_model.APIBaseModel):
         ...,
         description=(
             "FIPS Code. FIPS codes are either 2-digit state codes, "
-            "5-digit county codes, or 5-digit CBSA codes."
+            "5-digit county codes, 5-digit CBSA codes, or 1-digit '0' for the entire USA."
         ),
     )
     country: str = pydantic.Field(..., description="2-letter ISO-3166 Country code.")
@@ -521,7 +521,10 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     county: Optional[str] = pydantic.Field(..., description="County name")
     fips: str = pydantic.Field(
         ...,
-        description="Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
+        description=(
+            "FIPS Code. FIPS codes are either 2-digit state codes, "
+            "5-digit county codes, 5-digit CBSA codes, or 1-digit '0' for the entire USA."
+        ),
     )
     lat: Optional[float] = pydantic.Field(
         ..., description="Latitude of point within the state or county"
