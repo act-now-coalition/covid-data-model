@@ -28,7 +28,7 @@ from libs.pipeline import Region
 def test_build_summary_for_fips(
     include_model_output: bool, rt_null: bool, nyc_region, nyc_icu_dataset, nyc_rt_dataset
 ):
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    us_timeseries = combined_datasets.load_test_dataset()
 
     if include_model_output:
         if rt_null:

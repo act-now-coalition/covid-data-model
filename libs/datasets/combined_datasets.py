@@ -231,6 +231,13 @@ def load_us_timeseries_dataset(
     return MultiRegionDataset.read_from_pointer(pointer)
 
 
+@functools.lru_cache(None)
+def load_test_dataset() -> MultiRegionDataset:
+    return MultiRegionDataset.from_wide_dates_csv(
+        pathlib.Path("tests/data/test-combined-wide-dates.csv")
+    ).add_static_csv_file(pathlib.Path("tests/data/test-combined-static.csv"))
+
+
 def get_county_name(region: Region) -> Optional[str]:
     return dataset_utils.get_geo_data().at[region.location_id, CommonFields.COUNTY]
 

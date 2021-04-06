@@ -32,6 +32,8 @@ from libs.datasets import vaccine_backfills
 from libs.datasets.sources import forecast_hub
 from libs.datasets import tail_filter
 from libs.datasets.sources import zeros_filter
+from libs.pipeline import Region
+from libs.pipeline import RegionMask
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 from pyseir import DATA_DIR
 import pyseir.icu.utils
@@ -262,6 +264,22 @@ def update_case_based_icu_utilization_weights():
     _logger.info(f"Saved case-based ICU Utilization weights to {output_path}")
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2, sort_keys=True)
+
+
+@main.command()
+def update_test_combined_data():
+    us_dataset = combined_datasets.load_us_timeseries_dataset()
+    # Keep only a small subset of the regions so we have enough to exercise our code in tests.
+    test_subset = us_dataset.get_regions_subset(
+        [
+            RegionMask(states=["NY", "CA", "IL"]),
+            Region.from_fips("48201"),
+            Region.from_fips("48301"),
+        ]
+    )
+    test_combined_wide_dates = pathlib.Path("tests/data/test-combined-wide-dates.csv")
+    test_combined_static = test_combined_wide_dates.parent / "test-combined-static.csv"
+    test_subset.write_to_wide_dates_csv(test_combined_wide_dates, test_combined_static)
 
 
 def load_datasets_by_field(
