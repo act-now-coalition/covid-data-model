@@ -14,7 +14,6 @@ from api.can_api_v2_definition import RiskLevels
 from api.can_api_v2_definition import DemographicDistributions
 from api.can_api_v2_definition import Metrics
 from libs.metrics import top_level_metric_risk_levels
-from libs.datasets import combined_datasets
 from libs import build_api_v2
 from libs.pipelines import api_v2_pipeline
 from tests import test_helpers
@@ -28,7 +27,7 @@ from libs.pipeline import Region
 def test_build_summary_for_fips(
     include_model_output: bool, rt_null: bool, nyc_region, nyc_icu_dataset, nyc_rt_dataset
 ):
-    us_timeseries = combined_datasets.load_test_dataset()
+    us_timeseries = test_helpers.load_test_dataset()
 
     if include_model_output:
         if rt_null:
@@ -165,7 +164,7 @@ def test_build_summary_for_fips(
 
 
 def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_dataset):
-    us_timeseries = combined_datasets.load_test_dataset()
+    us_timeseries = test_helpers.load_test_dataset()
 
     nyc_timeseries = us_timeseries.get_one_region(nyc_region)
     nyc_latest = nyc_timeseries.latest
