@@ -76,6 +76,7 @@ def test_include_exclude_regions():
             Region.from_fips("36061"),
             RegionMask(level=AggregationLevel.COUNTY, states=["DC"]),
         ],
+        manual_filter_config=None,
     )
 
     location_ids = set(mask.make_dataset().location_ids)

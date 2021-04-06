@@ -318,11 +318,15 @@ def get_subclasses(cls) -> Iterable[Type]:
         yield subclass
 
 
-def get_concrete_subclasses(cls) -> Iterable[Type]:
-    """Yields all subclasses of `cls` that have no abstract methods and do not directly subclass
-    abc.ABC."""
+def get_concrete_subclasses_not_in_tests(cls) -> Iterable[Type]:
+    """Yields all subclasses of `cls` that have no abstract methods, do not directly subclass
+    abc.ABC and are not in a `tests` module."""
     for subcls in get_subclasses(cls):
-        if not inspect.isabstract(subcls) and abc.ABC not in subcls.__bases__:
+        if (
+            not inspect.isabstract(subcls)
+            and abc.ABC not in subcls.__bases__
+            and not subcls.__module__.startswith("tests.")
+        ):
             yield subcls
 
 
