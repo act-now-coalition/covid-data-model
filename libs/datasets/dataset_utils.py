@@ -55,6 +55,15 @@ REPO_ROOT = pathlib.Path(__file__).parent.parent.parent
 
 DATA_DIRECTORY = REPO_ROOT / "data"
 
+# TODO(tom): Clean up how the test-combined csv paths are passed around when removing
+#  DatasetPointer.
+TEST_COMBINED_WIDE_DATES_CSV_PATH = REPO_ROOT / pathlib.Path(
+    "tests/data/test-combined-wide-dates.csv"
+)
+TEST_COMBINED_STATIC_CSV_PATH = pathlib.Path(
+    str(TEST_COMBINED_WIDE_DATES_CSV_PATH).replace("-wide-dates.csv", "-static.csv")
+)
+
 
 class AggregationLevel(enum.Enum):
     COUNTRY = "country"
