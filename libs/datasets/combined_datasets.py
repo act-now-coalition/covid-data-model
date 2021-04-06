@@ -234,17 +234,11 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 def load_us_timeseries_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
 ) -> MultiRegionDataset:
+    """Returns all combined data. `load_test_dataset` is more suitable for tests."""
     filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     return MultiRegionDataset.read_from_pointer(pointer)
-
-
-@functools.lru_cache(None)
-def load_test_dataset() -> MultiRegionDataset:
-    return MultiRegionDataset.from_wide_dates_csv(
-        dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH
-    ).add_static_csv_file(dataset_utils.TEST_COMBINED_STATIC_CSV_PATH)
 
 
 def get_county_name(region: Region) -> Optional[str]:
