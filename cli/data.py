@@ -175,13 +175,18 @@ def aggregate_cbsa(output_path: pathlib.Path):
 
 
 @main.command()
-@click.argument("output_path", type=pathlib.Path)
-def aggregate_states_to_country(output_path: pathlib.Path):
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    country_dataset = region_aggregation.aggregate_regions(
-        us_timeseries, pipeline.us_states_and_territories_to_country_map(),
+def aggregate_states_to_country():
+    dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
+        pathlib.Path("data/pre-agg-wide-dates.csv")
+    ).add_static_csv_file(pathlib.Path("data/pre-agg-static.csv"))
+    dataset = region_aggregation.aggregate_regions(
+        dataset,
+        pipeline.us_states_and_territories_to_country_map(),
+        reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
     )
-    country_dataset.to_csv(output_path)
+    dataset.write_to_wide_dates_csv(
+        pathlib.Path("data/post-agg-wide-dates.csv"), pathlib.Path("data/post-agg-static.csv")
+    )
 
 
 KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
