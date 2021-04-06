@@ -52,7 +52,11 @@ def test_build_summary_for_fips(
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     assert latest_metric
     summary = build_api_v2.build_region_summary(fips_timeseries, latest_metric, risk_levels, log)
-    field_source_hhshospital = FieldSource(type=FieldSourceType.HHSHospital)
+    field_source_hhshospital = FieldSource(
+        name="Department of Health and Human Services",
+        type=FieldSourceType.OTHER,
+        url="https://healthdata.gov/Hospital/COVID-19-Reported-Patient-Impact-and-Hospital-Capa/anag-cw7u",
+    )
     expected = RegionSummary(
         population=nyc_latest["population"],
         state="NY",

@@ -233,9 +233,9 @@ def load_us_timeseries_dataset(
 
 @functools.lru_cache(None)
 def load_test_dataset() -> MultiRegionDataset:
-    return MultiRegionDataset.from_wide_dates_csv(
-        pathlib.Path("tests/data/test-combined-wide-dates.csv")
-    ).add_static_csv_file(pathlib.Path("tests/data/test-combined-static.csv"))
+    wide_dates_path = dataset_utils.REPO_ROOT / "tests/data/test-combined-wide-dates.csv"
+    static_path = pathlib.Path(str(wide_dates_path).replace("-wide-dates.csv", "-static.csv"))
+    return MultiRegionDataset.from_wide_dates_csv(wide_dates_path).add_static_csv_file(static_path)
 
 
 def get_county_name(region: Region) -> Optional[str]:
