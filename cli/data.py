@@ -105,6 +105,21 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     )
     _logger.info("Finished combining datasets")
     multiregion_dataset.print_stats("combined")
+
+    # TODO(tom): Add a clean way to store intermediate values instead of commenting out code like
+    #  this:
+    # multiregion_dataset.write_to_wide_dates_csv(
+    #     pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
+    # )
+    if aggregate_to_country:
+        country_dataset = region_aggregation.aggregate_regions(
+            multiregion_dataset,
+            pipeline.us_states_and_territories_to_country_map(),
+            reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
+        )
+        multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
+        multiregion_dataset.print_stats("aggregate_to_country")
+
     multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
     multiregion_dataset.print_stats("drop_tail")
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
@@ -149,20 +164,6 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     )
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
     multiregion_dataset.print_stats("CountyToCBSAAggregator")
-
-    # TODO(tom): Add a clean way to store intermediate values instead of commenting out code like
-    #  this:
-    # multiregion_dataset.write_to_wide_dates_csv(
-    #     pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
-    # )
-    if aggregate_to_country:
-        country_dataset = region_aggregation.aggregate_regions(
-            multiregion_dataset,
-            pipeline.us_states_and_territories_to_country_map(),
-            reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
-        )
-        multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
-        multiregion_dataset.print_stats("aggregate_to_country")
 
     multiregion_dataset = manual_filter.run(multiregion_dataset)
 
