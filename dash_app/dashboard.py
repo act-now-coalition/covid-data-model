@@ -118,16 +118,20 @@ def init(server):
                 cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
             ),
             html.H2("Source URLs"),
-            dash_table_from_data_frame(
-                source_url_value_counts, id="source_url_counts", page_size=8
-            ),
-            html.Br(),  # Give table above some space for page action controls
-            html.Br(),  # Give table above some space for page action controls
-            html.Br(),  # Give table above some space for page action controls
-            dash_table_from_data_frame(agg_level_and_field_group.has_url, id="agg_has_url"),
-            html.P("Ratio of population in county data with a URL, by variable"),
-            dash_table_from_data_frame(
-                county_variable_population_ratio, id="county_variable_population_ratio"
+            html.Details(
+                [
+                    dash_table_from_data_frame(
+                        source_url_value_counts, id="source_url_counts", page_size=8
+                    ),
+                    html.Br(),  # Give table above some space for page action controls
+                    html.Br(),  # Give table above some space for page action controls
+                    html.Br(),  # Give table above some space for page action controls
+                    dash_table_from_data_frame(agg_level_and_field_group.has_url, id="agg_has_url"),
+                    html.P("Ratio of population in county data with a URL, by variable"),
+                    dash_table_from_data_frame(
+                        county_variable_population_ratio, id="county_variable_population_ratio",
+                    ),
+                ]
             ),
             html.H2("Regions"),
             html.Div(
