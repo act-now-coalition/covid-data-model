@@ -286,9 +286,9 @@ def update_test_combined_data():
     test_subset = dataclasses.replace(
         test_subset, timeseries_bucketed=test_subset.timeseries_bucketed.loc[date_range_mask]
     )
-    test_combined_wide_dates = pathlib.Path("tests/data/test-combined-wide-dates.csv")
-    test_combined_static = test_combined_wide_dates.parent / "test-combined-static.csv"
-    test_subset.write_to_wide_dates_csv(test_combined_wide_dates, test_combined_static)
+    test_subset.write_to_wide_dates_csv(
+        dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH, dataset_utils.TEST_COMBINED_STATIC_CSV_PATH
+    )
 
 
 def load_datasets_by_field(
