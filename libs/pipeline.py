@@ -190,9 +190,9 @@ class RegionMask:
 RegionMaskOrRegion = NewType("RegionMaskOrRegion", Union[RegionMask, Region])
 
 
-def us_states_to_country_map() -> Mapping[Region, Region]:
+def us_states_and_territories_to_country_map() -> Mapping[Region, Region]:
     us_country_region = Region.from_location_id("iso1:us")
-    # Sorry US Territories, only including 50 states and DC for now.
     return {
-        Region.from_state(state): us_country_region for state in us_state_abbrev.STATES_50.values()
+        Region.from_state(state): us_country_region
+        for state in us_state_abbrev.US_STATE_ABBREV.values()
     }

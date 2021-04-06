@@ -296,6 +296,23 @@ def _aggregate_dataframe_by_region(
         )
         is_valid_reporting_ratio = weighted_reporting_ratio >= reporting_ratio_required
         long_agg = long_agg.loc[is_valid_reporting_ratio]
+        # TODO(tom): Find a way to expose the aggregation internals. For now uncomment the
+        #  following code and fire up your debugger.
+        # print(long_agg.loc[~is_valid_reporting_ratio].index)
+        # if CommonFields.DATE in groupby_columns:
+        #     print(is_valid_reporting_ratio.index)
+        #     not_aggregated = is_valid_reporting_ratio.loc[~is_valid_reporting_ratio].index
+        #     # Similar to timeseries._slice_with_labels but with a DataFrame instead of Series.
+        #     agg_not_enough_reporting = (
+        #         long_all_values.unstack("location_id")
+        #         .isna()
+        #         .reset_index()
+        #         .set_index(not_aggregated.names)
+        #         .reindex(not_aggregated)
+        #     )
+        #     # A table with a row for each aggregated location-variable that didn't have enough
+        #     # reporting inputs and column for each input location and True where the input was NA.
+        #     print(agg_not_enough_reporting)
 
     df_out = (
         long_agg.unstack()
