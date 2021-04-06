@@ -1,3 +1,4 @@
+import dataclasses
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -275,7 +276,15 @@ def update_test_combined_data():
             RegionMask(states=["NY", "CA", "IL"]),
             Region.from_fips("48201"),
             Region.from_fips("48301"),
+            Region.from_fips("20161"),
+            Region.from_state("TX"),
+            Region.from_state("KS"),
         ]
+    )
+    dates = test_subset.timeseries_bucketed.index.get_level_values(CommonFields.DATE)
+    date_range_mask = (dates >= "2021-01-01") & (dates < "2021-04-01")
+    test_subset = dataclasses.replace(
+        test_subset, timeseries_bucketed=test_subset.timeseries_bucketed.loc[date_range_mask]
     )
     test_combined_wide_dates = pathlib.Path("tests/data/test-combined-wide-dates.csv")
     test_combined_static = test_combined_wide_dates.parent / "test-combined-static.csv"
