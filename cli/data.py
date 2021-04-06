@@ -150,7 +150,8 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
     multiregion_dataset.print_stats("CountyToCBSAAggregator")
 
-    # TODO(tom): Add a clean to store intermediate values instead of commenting out code like this:
+    # TODO(tom): Add a clean way to store intermediate values instead of commenting out code like
+    #  this:
     # multiregion_dataset.write_to_wide_dates_csv(
     #     pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
     # )
@@ -178,7 +179,10 @@ def aggregate_cbsa(output_path: pathlib.Path):
     cbsa_dataset.to_csv(output_path)
 
 
-@main.command()
+@main.command(
+    help="Uncomment code that writes the `pre-agg` intermediate result in `data update` "
+    "then use this command to test state to country aggregation."
+)
 def aggregate_states_to_country():
     dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
         pathlib.Path("data/pre-agg-wide-dates.csv")
