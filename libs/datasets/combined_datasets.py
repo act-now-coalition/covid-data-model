@@ -12,7 +12,6 @@ import pandas as pd
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import FieldGroup
 from covidactnow.datapublic.common_fields import FieldName
 from typing_extensions import final
 
@@ -149,26 +148,6 @@ NYTimesDatasetWithoutNYCOrIACounties = datasource_regions(
 )
 
 
-HHSHospitalCountyDatasetFixed = datasource_regions(
-    HHSHospitalCountyDataset,
-    # This data source contains only county data so this include effectively includes them all.
-    include=RegionMask(AggregationLevel.COUNTY),
-    manual_filter={
-        "filters": [
-            {
-                "regions_included": [RegionMask(AggregationLevel.COUNTY)],
-                "observations_to_drop": {
-                    "start_date": "2021-04-06",
-                    "field_group": FieldGroup.HEALTHCARE_CAPACITY,
-                    "internal_note": "https://trello.com/c/Dls22XAk/1226-hhs-facility-hospital",
-                    "public_note": "Truncated data in the future",
-                },
-            },
-        ]
-    },
-)
-
-
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
 # support overlaying values. i.e. a row of
@@ -194,27 +173,27 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperStateProviders,
         CovidTrackingDataSource,
         TexasHospitalizations,
-        HHSHospitalCountyDatasetFixed,
+        HHSHospitalCountyDataset,
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU: [
         CANScraperStateProviders,
         CovidTrackingDataSource,
         TexasHospitalizations,
-        HHSHospitalCountyDatasetFixed,
+        HHSHospitalCountyDataset,
         HHSHospitalStateDataset,
     ],
-    CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDatasetFixed, HHSHospitalStateDataset],
+    CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
     CommonFields.DEATHS: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
         NYTimesDatasetWithoutNYCOrIACounties,
     ],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDatasetFixed, HHSHospitalStateDataset],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
         CANScraperStateProviders,
-        HHSHospitalCountyDatasetFixed,
+        HHSHospitalCountyDataset,
         HHSHospitalStateDataset,
     ],
     CommonFields.NEGATIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
@@ -241,11 +220,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
     # TODO(michael): We don't really trust the CCM bed numbers and would ideally remove them entirely.
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [
-        CovidCareMapBeds,
-        HHSHospitalCountyDatasetFixed,
-        HHSHospitalStateDataset,
-    ],
+    CommonFields.ICU_BEDS: [CovidCareMapBeds, HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
