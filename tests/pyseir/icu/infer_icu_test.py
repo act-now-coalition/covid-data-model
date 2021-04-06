@@ -1,6 +1,6 @@
 import pytest
 
-from libs.datasets import combined_datasets
+import tests.test_helpers
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
@@ -17,7 +17,7 @@ from pyseir.icu.infer_icu import ICUWeightsPath
     ],
 )
 def test_get_icu(fips):
-    test_dataset = combined_datasets.load_test_dataset()
+    test_dataset = tests.test_helpers.load_test_dataset()
     region = pipeline.Region.from_fips(fips)
     regional_combined_data_timeseries = test_dataset.get_one_region(region)
     state_combined_data_timeseries = test_dataset.get_one_region(region.get_state_region())
