@@ -161,7 +161,7 @@ def test_build_summary_for_fips(
 
 
 def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_dataset):
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    us_timeseries = combined_datasets.load_test_dataset()
 
     nyc_timeseries = us_timeseries.get_one_region(nyc_region)
     nyc_latest = nyc_timeseries.latest

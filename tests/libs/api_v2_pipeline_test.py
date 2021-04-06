@@ -26,7 +26,7 @@ from tests.test_helpers import TimeseriesLiteral
 
 @pytest.fixture
 def nyc_regional_input(nyc_region, rt_dataset, icu_dataset):
-    us_dataset = combined_datasets.load_us_timeseries_dataset()
+    us_dataset = combined_datasets.load_test_dataset()
     # Not using test_positivity because currently we don't have any data for counties
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
         nyc_region, us_dataset, rt_dataset, icu_dataset
@@ -36,7 +36,7 @@ def nyc_regional_input(nyc_region, rt_dataset, icu_dataset):
 @pytest.fixture
 def il_regional_input(rt_dataset, icu_dataset):
     region = Region.from_state("IL")
-    regional_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset([region])
+    regional_data = combined_datasets.load_test_dataset().get_regions_subset([region])
     regional_data = test_positivity.run_and_maybe_join_columns(
         regional_data, structlog.get_logger()
     )
@@ -49,7 +49,7 @@ def il_regional_input(rt_dataset, icu_dataset):
 @pytest.fixture
 def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
     region = Region.from_state("IL")
-    regional_data = combined_datasets.load_us_timeseries_dataset().get_regions_subset([region])
+    regional_data = combined_datasets.load_test_dataset().get_regions_subset([region])
     empty_test_positivity = timeseries.MultiRegionDataset.from_timeseries_df(
         pd.DataFrame(
             [], columns=[CommonFields.LOCATION_ID, CommonFields.DATE, CommonFields.TEST_POSITIVITY]
@@ -131,12 +131,8 @@ def test_build_api_output_for_state(il_regional_input, tmp_path):
 
 
 def test_output_no_timeseries_rows(nyc_regional_input, tmp_path):
-
     # Creating a new regional input with an empty timeseries dataset
-    timeseries = nyc_regional_input.timeseries
-    one_region = combined_datasets.load_us_timeseries_dataset().get_one_region(
-        nyc_regional_input.region
-    )
+    one_region = combined_datasets.load_test_dataset().get_one_region(nyc_regional_input.region)
     regional_input = api_v2_pipeline.RegionalInput(
         nyc_regional_input.region, one_region, None, None
     )
