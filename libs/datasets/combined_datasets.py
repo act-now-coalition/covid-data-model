@@ -3,6 +3,7 @@ from typing import Any
 from typing import Dict, Type, List, NewType
 import functools
 import pathlib
+from typing import Mapping
 from typing import Optional
 from typing import TypeVar
 from typing import Union
@@ -18,6 +19,7 @@ from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
+from libs.datasets import manual_filter
 from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
@@ -69,6 +71,7 @@ class DataSourceAndRegionMasks:
     data_source_cls: Type[data_source.DataSource]
     include: List[RegionMaskOrRegion]
     exclude: List[RegionMaskOrRegion]
+    manual_filter_config: Optional[Mapping]
 
     @property
     def EXPECTED_FIELDS(self):
@@ -91,6 +94,8 @@ class DataSourceAndRegionMasks:
             dataset = dataset.get_regions_subset(self.include)
         if self.exclude:
             dataset = dataset.remove_regions(self.exclude)
+        if self.manual_filter_config:
+            dataset = manual_filter.run(dataset, self.manual_filter_config)
         return dataset
 
 
@@ -112,6 +117,7 @@ def datasource_regions(
     include: Union[None, RegionMaskOrRegion, List[RegionMaskOrRegion]] = None,
     *,
     exclude: Union[None, RegionMaskOrRegion, List[RegionMaskOrRegion]] = None,
+    manual_filter: Optional[Mapping] = None,
 ) -> DataSourceAndRegionMasks:
     """Creates an instance of the `DataSourceAndRegionMasks` class."""
     assert include or exclude, (
@@ -119,7 +125,10 @@ def datasource_regions(
         "needed use the DataSource class directly."
     )
     return DataSourceAndRegionMasks(
-        data_source_cls, include=to_list(include), exclude=to_list(exclude)
+        data_source_cls,
+        include=to_list(include),
+        exclude=to_list(exclude),
+        manual_filter_config=manual_filter,
     )
 
 
@@ -229,6 +238,13 @@ def load_us_timeseries_dataset(
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
     return MultiRegionDataset.read_from_pointer(pointer)
+
+
+@functools.lru_cache(None)
+def load_test_dataset() -> MultiRegionDataset:
+    return MultiRegionDataset.from_wide_dates_csv(
+        dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH
+    ).add_static_csv_file(dataset_utils.TEST_COMBINED_STATIC_CSV_PATH)
 
 
 def get_county_name(region: Region) -> Optional[str]:

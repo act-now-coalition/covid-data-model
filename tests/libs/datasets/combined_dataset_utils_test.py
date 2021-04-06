@@ -16,7 +16,7 @@ from tests import test_helpers
 
 def test_persist_and_load_dataset(tmp_path, nyc_fips):
     region = Region.from_fips(nyc_fips)
-    dataset = combined_datasets.load_us_timeseries_dataset()
+    dataset = combined_datasets.load_test_dataset()
     timeseries_nyc = dataset.get_regions_subset([region])
 
     pointer = combined_dataset_utils.persist_dataset(timeseries_nyc, tmp_path)
@@ -31,7 +31,7 @@ def test_persist_and_load_dataset(tmp_path, nyc_fips):
 
 def test_update_and_load(tmp_path: pathlib.Path, nyc_fips, nyc_region):
     # restricting the datasets being persisted to one county to speed up tests a bit.
-    multiregion_timeseries_nyc = combined_datasets.load_us_timeseries_dataset().get_regions_subset(
+    multiregion_timeseries_nyc = combined_datasets.load_test_dataset().get_regions_subset(
         [nyc_region]
     )
     one_region_nyc = multiregion_timeseries_nyc.get_one_region(nyc_region)
@@ -76,6 +76,7 @@ def test_include_exclude_regions():
             Region.from_fips("36061"),
             RegionMask(level=AggregationLevel.COUNTY, states=["DC"]),
         ],
+        manual_filter_config=None,
     )
 
     location_ids = set(mask.make_dataset().location_ids)

@@ -28,7 +28,7 @@ from libs.pipeline import Region
 def test_build_summary_for_fips(
     include_model_output: bool, rt_null: bool, nyc_region, nyc_icu_dataset, nyc_rt_dataset
 ):
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    us_timeseries = combined_datasets.load_test_dataset()
 
     if include_model_output:
         if rt_null:
@@ -52,7 +52,11 @@ def test_build_summary_for_fips(
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     assert latest_metric
     summary = build_api_v2.build_region_summary(fips_timeseries, latest_metric, risk_levels, log)
-    field_source_hhshospital = FieldSource(type=FieldSourceType.HHSHospital)
+    field_source_hhshospital = FieldSource(
+        name="Department of Health and Human Services",
+        type=FieldSourceType.OTHER,
+        url="https://healthdata.gov/Hospital/COVID-19-Reported-Patient-Impact-and-Hospital-Capa/anag-cw7u",
+    )
     expected = RegionSummary(
         population=nyc_latest["population"],
         state="NY",
@@ -161,7 +165,7 @@ def test_build_summary_for_fips(
 
 
 def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_dataset):
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    us_timeseries = combined_datasets.load_test_dataset()
 
     nyc_timeseries = us_timeseries.get_one_region(nyc_region)
     nyc_latest = nyc_timeseries.latest

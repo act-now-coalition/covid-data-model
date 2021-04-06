@@ -96,16 +96,18 @@ Move those files to results/ folder (or folder of your choice)
 
 ## Run Tests
 
-We use [pytest](https://docs.pytest.org/en/latest/contents.html) as our test runner.
+We use [pytest](https://docs.pytest.org/) as our test runner.
 
-To run all tests:
+To run lint and all tests:
 ```
 make test
 ```
 
-To run just unittests:
+Some tests depend on a large dataset which takes about 25 seconds to load. These tests have a `@pytest.mark.slow` function decorator.
+
+To run lint and the tests that are not marked as slow:
 ```
-make unittest
+make test-fast
 ```
 
 To run just linting:

@@ -1,5 +1,6 @@
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
+from covidactnow.datapublic.common_fields import FieldGroup
 
 from libs.datasets import AggregationLevel
 from libs.datasets import manual_filter
@@ -31,7 +32,7 @@ TEST_CONFIG = {
             "regions_excluded": [Region.from_fips("40109"), Region.from_fips("40143")],
             "observations_to_drop": {
                 "start_date": "2021-03-15",
-                "fields": [CommonFields.CASES, CommonFields.DEATHS],
+                "field_group": FieldGroup.CASES_DEATHS,
                 "internal_note": "https://trello.com/c/HdAKfp49/1139",
                 "public_note": "Something broke with the OK county data.",
             },
@@ -88,6 +89,31 @@ def test_manual_filter_region_excluded():
             **other_data,
         },
         start_date="2021-03-14",
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_manual_filter_field_groups():
+    region_included = Region.from_fips("40031")
+    other_data = {CommonFields.ICU_BEDS: [3, 4, 5]}
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.DEATHS: [1, 2, 3], **other_data},
+        start_date="2021-03-14",
+        region=region_included,
+    )
+
+    ds_out = manual_filter.run(ds_in, TEST_CONFIG)
+
+    tag_expected = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE,
+        date="2021-03-15",
+        disclaimer=TEST_CONFIG["filters"][1]["observations_to_drop"]["public_note"],
+    )
+    ds_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.DEATHS: TimeseriesLiteral([1], annotation=[tag_expected]), **other_data},
+        start_date="2021-03-14",
+        region=region_included,
     )
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)

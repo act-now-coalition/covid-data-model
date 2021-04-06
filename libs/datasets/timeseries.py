@@ -867,6 +867,7 @@ class MultiRegionDataset:
 
     @staticmethod
     def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
+        # TODO(tom): Deprecate use of DatasetPointer and remove this method
         return MultiRegionDataset.from_wide_dates_csv(
             pointer.path_wide_dates()
         ).add_static_csv_file(pointer.path_static())
@@ -1160,6 +1161,7 @@ class MultiRegionDataset:
 
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
+        # TODO(tom): Deprecate use of DatasetPointer and remove this method
         return self.write_to_wide_dates_csv(pointer.path_wide_dates(), pointer.path_static())
 
     def write_to_wide_dates_csv(self, path_wide_dates: pathlib.Path, path_static: pathlib.Path):
