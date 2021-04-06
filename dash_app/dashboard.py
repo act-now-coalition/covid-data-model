@@ -79,9 +79,6 @@ def init(server):
     agg_level_and_field_group = per_timeseries_stats.aggregate(
         CommonFields.AGGREGATE_LEVEL, timeseries_stats.FIELD_GROUP
     )
-    agg_level_and_distribution = per_timeseries_stats.aggregate(
-        CommonFields.AGGREGATE_LEVEL, timeseries_stats.DISTRIBUTION
-    )
 
     source_url_value_counts = (
         ds.tag_all_bucket.loc[:, :, TagType.SOURCE_URL]
@@ -108,17 +105,18 @@ def init(server):
         children=[
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
-            html.H2("Time-series count"),
-            html.H3("By variable group"),
-            dash_table_from_data_frame(
-                agg_level_and_field_group.has_timeseries, id="agg_has_timeseries"
+            html.H2("Time-series pivot table"),
+            dcc.Markdown(
+                "Drag attributes to explore information about time-series in "
+                "this dataset. See an animated demo in the [Dash Pivottable docs]("
+                "https://github.com/plotly/dash-pivottable#readme)."
             ),
-            html.H3("By demographic distribution"),
-            dash_table_from_data_frame(
-                agg_level_and_distribution.has_timeseries, id="distribution_timeseries_count",
+            dash_pivottable.PivotTable(
+                id="pivot_table",
+                data=pivottable_data,
+                rows=[CommonFields.AGGREGATE_LEVEL],
+                cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
             ),
-            html.H2("Interactive pivot table"),
-            dash_pivottable.PivotTable(id="pivot_table", data=pivottable_data),
             html.H2("Source URLs"),
             dash_table_from_data_frame(
                 source_url_value_counts, id="source_url_counts", page_size=8
