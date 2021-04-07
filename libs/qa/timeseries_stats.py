@@ -128,6 +128,8 @@ class PerTimeseries(Aggregated):
             .count()
             .reindex(index=all_timeseries_index, fill_value=0)
         )
+        # The source type(s) of each time series, as a string that will be identical for time
+        # series with the same set of source types.
         stat_map[StatName.SOURCE_TYPE_SET] = (
             ds.tag_objects_series.loc(axis=0)[:, :, :, TagType.SOURCE]
             .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
