@@ -15,7 +15,6 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
 from typing_extensions import final
 
-from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
@@ -41,7 +40,6 @@ from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
 from libs.datasets.sources.cdc_vaccine_dataset import CDCVaccinesDataset
 from libs.pipeline import Region
-from libs.pipeline import RegionMask
 from libs.pipeline import RegionMaskOrRegion
 from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
