@@ -86,11 +86,10 @@ def test_make_from_dataset():
 
     per_timeseries.stats_for_locations(dataset.location_ids)
 
-    counties = dataset.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = timeseries_stats.PerTimeseries.make(counties).aggregate(
-        CommonFields.LOCATION_ID, PdFields.VARIABLE
-    )
-    pop_by_var_has_url = population_ratio_by_variable(counties, county_stats.has_url)
+    county_stats = per_timeseries.subset_locations(
+        aggregation_level=AggregationLevel.COUNTY
+    ).aggregate(CommonFields.LOCATION_ID, PdFields.VARIABLE)
+    pop_by_var_has_url = population_ratio_by_variable(dataset, county_stats.has_url)
     assert not pop_by_var_has_url.empty
-    pop_by_var_has_ts = population_ratio_by_variable(counties, county_stats.has_timeseries)
+    pop_by_var_has_ts = population_ratio_by_variable(dataset, county_stats.has_timeseries)
     assert not pop_by_var_has_ts.empty

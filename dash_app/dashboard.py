@@ -87,12 +87,11 @@ def init(server):
         .rename("count")
     )
 
-    counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = timeseries_stats.PerTimeseries.make(counties)
+    county_stats = per_timeseries_stats.subset_locations(aggregation_level=AggregationLevel.COUNTY)
     county_variable_population_ratio = pd.DataFrame(
         {
-            "has_url": population_ratio_by_variable(counties, county_stats.has_url),
-            "has_timeseries": population_ratio_by_variable(counties, county_stats.has_timeseries),
+            "has_url": population_ratio_by_variable(ds, county_stats.has_url),
+            "has_timeseries": population_ratio_by_variable(ds, county_stats.has_timeseries),
         }
     )
 

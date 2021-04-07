@@ -13,6 +13,7 @@ from covidactnow.datapublic.common_fields import PdFields
 from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 
+from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import demographics
 from libs.datasets import timeseries
@@ -162,6 +163,11 @@ class PerTimeseries(Aggregated):
 
     def subset_variables(self, variables: Collection[CommonFields]) -> "PerTimeseries":
         return PerTimeseries(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
+
+    def subset_locations(self, *, aggregation_level: AggregationLevel) -> "PerTimeseries":
+        return PerTimeseries(
+            stats=_xs_or_empty(self.stats, [aggregation_level.value], CommonFields.AGGREGATE_LEVEL)
+        )
 
     def aggregate(self, index: FieldName, columns: FieldName) -> Aggregated:
         return Aggregated(stats=self.stats.groupby([index, columns], as_index=True).sum())
