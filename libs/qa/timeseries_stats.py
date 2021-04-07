@@ -34,6 +34,7 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
     HAS_URL = "has_url"
     ANNOTATION_COUNT = "annotation_count"
     BUCKET_ALL_COUNT = "bucket_all_count"
+    SOURCE_TYPE_SET = "source_type_set"
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
@@ -125,6 +126,12 @@ class PerTimeseries(Aggregated):
             .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
             .count()
             .reindex(index=all_timeseries_index, fill_value=0)
+        )
+        stat_map[StatName.SOURCE_TYPE_SET] = (
+            ds.tag_objects_series.loc(axis=0)[:, :, :, TagType.SOURCE]
+            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
+            .apply(lambda sources: ";".join(sorted(set(s.type for s in sources))))
+            .reindex(index=all_timeseries_index, fill_value="")
         )
         stat_map[StatName.BUCKET_ALL_COUNT] = (
             _get_index_level_as_series(
