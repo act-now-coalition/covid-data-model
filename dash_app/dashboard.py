@@ -105,9 +105,9 @@ def init(server):
         children=[
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
-            html.H2("Time-series pivot table"),
+            html.H2("Time series pivot table"),
             dcc.Markdown(
-                "Drag attributes to explore information about time-series in "
+                "Drag attributes to explore information about time series in "
                 "this dataset. See an animated demo in the [Dash Pivottable docs]("
                 "https://github.com/plotly/dash-pivottable#readme)."
             ),
@@ -123,9 +123,10 @@ def init(server):
                     dash_table_from_data_frame(
                         source_url_value_counts, id="source_url_counts", page_size=8
                     ),
-                    html.Br(),  # Give table above some space for page action controls
-                    html.Br(),  # Give table above some space for page action controls
-                    html.Br(),  # Give table above some space for page action controls
+                    # Add some BR as a hack to give table above some space for page action controls
+                    html.Br(),
+                    html.Br(),
+                    html.Br(),
                     dash_table_from_data_frame(agg_level_and_field_group.has_url, id="agg_has_url"),
                     html.P("Ratio of population in county data with a URL, by variable"),
                     dash_table_from_data_frame(
