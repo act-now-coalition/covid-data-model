@@ -57,6 +57,10 @@ def test_make_from_dataset():
         == 2
     )
     assert per_region.annotation_count.at[region_sf.location_id, CommonFields.CASES] == 2
+    assert (
+        per_region.annotation_count.at[region_tx.location_id, CommonFields.VACCINATIONS_COMPLETED]
+        == 1
+    )
 
     cases_by_level = per_timeseries.subset_variables([CommonFields.CASES]).aggregate(
         CommonFields.AGGREGATE_LEVEL, PdFields.VARIABLE
