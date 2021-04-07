@@ -140,12 +140,7 @@ FeatureDataSourceMap = NewType(
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
 # Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
-# Also, on 2/20, NYTimes stopped updating IA counties as well, removing from NYTimes dataset
-# to rely on USA Facts.
-NYTimesDatasetWithoutNYCOrIACounties = datasource_regions(
-    NYTimesDataset,
-    exclude=[RegionMask(level=AggregationLevel.COUNTY, states=["IA"]), *ALL_NYC_REGIONS],
-)
+NYTimesDatasetWithoutNYC = datasource_regions(NYTimesDataset, exclude=[*ALL_NYC_REGIONS],)
 
 
 # Below are two instances of feature definitions. These define
@@ -164,7 +159,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutNYCOrIACounties,
+        NYTimesDatasetWithoutNYC,
     ],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
@@ -188,7 +183,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.DEATHS: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutNYCOrIACounties,
+        NYTimesDatasetWithoutNYC,
     ],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
