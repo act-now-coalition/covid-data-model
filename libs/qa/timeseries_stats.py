@@ -122,7 +122,7 @@ class PerTimeseries(Aggregated):
         )
         stat_map[StatName.ANNOTATION_COUNT] = (
             ds.tag.loc[:, :, :, timeseries.ANNOTATION_TAG_TYPES]
-            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE])
+            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
             .count()
             .reindex(index=all_timeseries_index, fill_value=0)
         )
