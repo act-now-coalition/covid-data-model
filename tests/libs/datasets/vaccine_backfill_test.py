@@ -3,6 +3,7 @@ import pytest
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 
+from libs.datasets import taglib
 from libs.pipeline import Region
 from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral
@@ -10,9 +11,10 @@ from libs.datasets import vaccine_backfills
 
 
 @pytest.mark.parametrize(
-    "initiated_values,initiated_expected", [([50, None], [50, None]), ([None, None], [50, 150])]
+    "initiated_values,initiated_expected,annotation",
+    [([50, None], [50, None], False), ([None, None], [50, 150], True)],
 )
-def test_backfill_vaccine_initiated(initiated_values, initiated_expected):
+def test_backfill_vaccine_initiated(initiated_values, initiated_expected, annotation):
     ny_region = Region.from_state("NY")
     az_region = Region.from_state("AZ")
 
@@ -32,6 +34,8 @@ def test_backfill_vaccine_initiated(initiated_values, initiated_expected):
     metrics = {ny_region: ny_metrics, az_region: az_metrics}
     dataset = test_helpers.build_dataset(metrics)
     result = vaccine_backfills.backfill_vaccination_initiated(dataset)
+    if annotation:
+        initiated_expected = TimeseriesLiteral(initiated_expected, annotation=[taglib.Derived()])
     expected_ny = {
         CommonFields.VACCINES_ADMINISTERED: [100, 200],
         CommonFields.VACCINATIONS_COMPLETED: [50, 50],

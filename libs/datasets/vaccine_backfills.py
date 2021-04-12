@@ -4,6 +4,7 @@ import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import taglib
 from libs.datasets import timeseries
 
 
@@ -79,6 +80,11 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
 
     # Compute and keep only time series with at least one real value
     computed_initiated = administered - completed
+    computed_initiated = computed_initiated.dropna(axis=1, how="all")
+    # Keep the computed initiated only where there is not already an existing time series.
+    computed_initiated = computed_initiated.loc[
+        ~computed_initiated.index.isin(existing_initiated.index)
+    ]
 
     # Use concat to prepend the VARIABLE index level, then reorder the levels to match the dataset.
     computed_initiated = pd.concat(
@@ -86,21 +92,10 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
         names=[PdFields.VARIABLE] + list(computed_initiated.index.names),
     ).reorder_levels(timeseries_wide.index.names)
 
-    timeseries_wide_combined = pd.concat([timeseries_wide, computed_initiated])
+    timeseries_wide_dates_combined = pd.concat([timeseries_wide, computed_initiated])
 
-    # https://stackoverflow.com/a/34297689
-    timeseries_wide_deduped = timeseries_wide_combined.loc[
-        ~timeseries_wide_combined.index.duplicated(keep="first")
-    ]
+    timeseries_wide_vars = timeseries_wide_dates_combined.stack().unstack(PdFields.VARIABLE)
 
-    computed_initiated = computed_initiated.dropna(axis=1, how="all")
-    computed_initiated = computed_initiated.loc[
-        ~computed_initiated.droplevel(PdFields.VARIABLE).index.isin(existing_initiated.index)
-    ]
-    timeseries_wide_deduped_2 = pd.concat([timeseries_wide, computed_initiated])
-
-    assert timeseries_wide_deduped_2.equals(timeseries_wide_deduped)
-
-    timeseries_wide_vars = timeseries_wide_deduped.stack().unstack(PdFields.VARIABLE)
-
-    return dataclasses.replace(dataset, timeseries_bucketed=timeseries_wide_vars)
+    return dataclasses.replace(dataset, timeseries_bucketed=timeseries_wide_vars).add_tag_to_subset(
+        taglib.Derived(), computed_initiated.index
+    )
