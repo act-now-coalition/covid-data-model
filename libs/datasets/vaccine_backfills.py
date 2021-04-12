@@ -73,7 +73,11 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
     completed = _xs_or_empty(
         timeseries_wide, CommonFields.VACCINATIONS_COMPLETED, level=PdFields.VARIABLE
     )
+    existing_initiated = _xs_or_empty(
+        timeseries_wide, CommonFields.VACCINATIONS_INITIATED, level=PdFields.VARIABLE
+    )
 
+    # Compute and keep only time series with at least one real value
     computed_initiated = administered - completed
 
     # Use concat to prepend the VARIABLE index level, then reorder the levels to match the dataset.
@@ -88,6 +92,14 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
     timeseries_wide_deduped = timeseries_wide_combined.loc[
         ~timeseries_wide_combined.index.duplicated(keep="first")
     ]
+
+    computed_initiated = computed_initiated.dropna(axis=1, how="all")
+    computed_initiated = computed_initiated.loc[
+        ~computed_initiated.droplevel(PdFields.VARIABLE).index.isin(existing_initiated.index)
+    ]
+    timeseries_wide_deduped_2 = pd.concat([timeseries_wide, computed_initiated])
+
+    assert timeseries_wide_deduped_2.equals(timeseries_wide_deduped)
 
     timeseries_wide_vars = timeseries_wide_deduped.stack().unstack(PdFields.VARIABLE)
 
