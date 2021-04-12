@@ -48,23 +48,25 @@ def region_table(
     ).intersection(dataset.static_and_geo_data.columns)
     regions = dataset.static_and_geo_data.loc[:, static_columns]
 
-    wide_dates = dataset.timeseries_bucketed_wide_dates.iloc(axis=1)[-14:]
-    print(f"recent days: {wide_dates.columns}")
-    recent_completed = wide_dates.xs(
+    regions = regions.join(stats.stats_for_locations(regions.index))
+
+    recent_wide_dates = dataset.timeseries_bucketed_wide_dates.iloc(axis=1)[-14:]
+    recent_vaccinations_completed = recent_wide_dates.xs(
         axis=0,
         level=[PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
         key=[CommonFields.VACCINATIONS_COMPLETED, "all"],
     )
-    recent_initiated = wide_dates.xs(
+    recent_vaccinations_initiated = recent_wide_dates.xs(
         axis=0,
         level=[PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
         key=[CommonFields.VACCINATIONS_INITIATED, "all"],
     )
-    recent_completed_ts = recent_completed / recent_initiated
-
-    regions = regions.join(stats.stats_for_locations(regions.index))
-    regions = regions.join(recent_completed_ts.max(axis=1).rename("recent_completed_max"))
-    regions = regions.join(recent_completed_ts.idxmax(axis=1).rename("recent_completed_date"))
+    if not recent_vaccinations_completed.empty and not recent_vaccinations_initiated.empty:
+        completed_initiated_ratio = recent_vaccinations_completed / recent_vaccinations_initiated
+        regions = regions.join(completed_initiated_ratio.max(axis=1).rename("recent_vac_ratio_max"))
+        regions = regions.join(
+            completed_initiated_ratio.idxmax(axis=1).rename("recent_vac_ratio_max_date")
+        )
 
     regions = regions.reset_index()  # Move location_id from the index to a regular column
     # Add location_id as the row id, used by DataTable. Maybe it makes more sense to rename the
@@ -164,6 +166,11 @@ def init(server):
                 ],
                 style=dict(display="flex"),
             ),
+            dcc.Markdown(
+                "Select a region using the radio button at the left of this table to "
+                "view its data below. recent_vac_ratio is completed / initiated and is "
+                "expected to be about 0.60 to 0.95 and never more than 1."
+            ),
             dash_table.DataTable(
                 id="datatable-regions",
                 columns=[{"name": i, "id": i} for i in region_df.columns if i != "id"],
@@ -177,10 +184,7 @@ def init(server):
                 sort_mode="multi",
                 page_action="native",
                 style_table={"height": "330px", "overflowY": "auto"},
-                # selected_row_ids=[df_regions[CommonFields.POPULATION].idxmax()],
-                selected_rows=[region_df[CommonFields.POPULATION].idxmax()],
-                # selected_rows=[0],
-                sort_by=[{"column_id": CommonFields.POPULATION, "direction": "desc"}],
+                selected_rows=[0],
             ),
             html.P(),
             html.Hr(),  # Stop graph drawing over table pageination control.
