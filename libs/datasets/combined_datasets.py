@@ -140,13 +140,16 @@ FeatureDataSourceMap = NewType(
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
 # Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
-# Also, on 2/20, NYTimes stopped updating IA counties as well, removing from NYTimes dataset
-# to rely on USA Facts.
-NYTimesDatasetWithoutNYCOrIACounties = datasource_regions(
-    NYTimesDataset,
-    exclude=[RegionMask(level=AggregationLevel.COUNTY, states=["IA"]), *ALL_NYC_REGIONS],
+NYTimesDatasetWithoutNYC = datasource_regions(NYTimesDataset, exclude=[*ALL_NYC_REGIONS],)
+
+
+CDCVaccinesCountiesDataset = datasource_regions(
+    CDCVaccinesDataset, RegionMask(AggregationLevel.COUNTY)
 )
 
+CDCVaccinesStatesDataset = datasource_regions(
+    CDCVaccinesDataset, RegionMask(AggregationLevel.STATE)
+)
 
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
@@ -164,7 +167,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutNYCOrIACounties,
+        NYTimesDatasetWithoutNYC,
     ],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
@@ -188,7 +191,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.DEATHS: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutNYCOrIACounties,
+        NYTimesDatasetWithoutNYC,
     ],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
@@ -208,10 +211,26 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
     CommonFields.TEST_POSITIVITY_14D: [CMSTestingDataset],
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
-    CommonFields.VACCINES_DISTRIBUTED: [CANScraperStateProviders, CDCVaccinesDataset],
-    CommonFields.VACCINES_ADMINISTERED: [CANScraperStateProviders, CDCVaccinesDataset],
-    CommonFields.VACCINATIONS_INITIATED: [CANScraperStateProviders, CDCVaccinesDataset],
-    CommonFields.VACCINATIONS_COMPLETED: [CANScraperStateProviders, CDCVaccinesDataset],
+    CommonFields.VACCINES_DISTRIBUTED: [
+        CDCVaccinesCountiesDataset,
+        CANScraperStateProviders,
+        CDCVaccinesStatesDataset,
+    ],
+    CommonFields.VACCINES_ADMINISTERED: [
+        CDCVaccinesCountiesDataset,
+        CANScraperStateProviders,
+        CDCVaccinesStatesDataset,
+    ],
+    CommonFields.VACCINATIONS_INITIATED: [
+        CDCVaccinesCountiesDataset,
+        CANScraperStateProviders,
+        CDCVaccinesStatesDataset,
+    ],
+    CommonFields.VACCINATIONS_COMPLETED: [
+        CDCVaccinesCountiesDataset,
+        CANScraperStateProviders,
+        CDCVaccinesStatesDataset,
+    ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [CANScraperStateProviders],
     CommonFields.VACCINATIONS_COMPLETED_PCT: [CANScraperStateProviders],
 }
