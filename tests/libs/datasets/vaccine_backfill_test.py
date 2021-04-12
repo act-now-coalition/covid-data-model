@@ -63,7 +63,10 @@ def test_backfill_vaccine_initiated_by_bucket():
     ds_expected = test_helpers.build_default_region_dataset(
         {
             CommonFields.VACCINES_ADMINISTERED: {bucket_all: [100, 200], bucket_40s: [40, 60]},
-            CommonFields.VACCINATIONS_INITIATED: {bucket_all: [50, 150], bucket_40s: [30, 40]},
+            CommonFields.VACCINATIONS_INITIATED: {
+                bucket_all: TimeseriesLiteral([50, 150], annotation=[taglib.Derived()]),
+                bucket_40s: TimeseriesLiteral([30, 40], annotation=[taglib.Derived()]),
+            },
             CommonFields.VACCINATIONS_COMPLETED: {bucket_all: [50, 50], bucket_40s: [10, 20]},
         }
     )
