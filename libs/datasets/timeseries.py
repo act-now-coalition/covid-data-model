@@ -768,11 +768,24 @@ class MultiRegionDataset:
 
     def add_tag_all_bucket(self, tag: taglib.TagInTimeseries) -> "MultiRegionDataset":
         """Returns a new object with given tag copied for every timeseries with bucket "all"."""
+        try:
+            # This is a somewhat hacky way to get an index of timeseries in bucket "all". It
+            # isn't worth trying to make it cleaner.
+            index = self.timeseries_bucketed_wide_dates.xs(
+                "all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0, drop_level=False
+            ).index
+        except KeyError:
+            return self
+        return self.add_tag_to_subset(tag, index)
+
+    def add_tag_to_subset(
+        self, tag: taglib.TagInTimeseries, index: pd.MultiIndex
+    ) -> "MultiRegionDataset":
+        """Returns a new object with `tag` copied for every timeseries in `index`."""
+        assert index.names == EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.index.names
         tag_df = pd.DataFrame(
-            {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
-            index=self.timeseries_not_bucketed_wide_dates.index,
+            {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type}, index=index,
         ).reset_index()
-        tag_df_add_all_bucket_in_place(tag_df)
         return self.append_tag_df(tag_df)
 
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
