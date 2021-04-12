@@ -280,13 +280,31 @@ def update_case_based_icu_utilization_weights():
         json.dump(output, f, indent=2, sort_keys=True)
 
 
-@main.command()
-def update_test_combined_data():
+@main.command(
+    help="Regenerate the test combined data. The options can be used to produce data for "
+    "testing or experimenting with particular subsets of the entire dataset. Use "
+    "the default options when producing test data to merge into the main branch."
+)
+@click.option(
+    "--truncate-dates/--no-truncate-dates",
+    is_flag=True,
+    help="Keep a subset of all dates to reduce the test data size",
+    default=True,
+    show_default=True,
+)
+@click.option(
+    "--state",
+    multiple=True,
+    help="State to include in test data. Repeat for multiple states: --state TX --state WI.",
+    default=["NY", "CA", "IL"],
+    show_default=True,
+)
+def update_test_combined_data(truncate_dates: bool, state: List[str]):
     us_dataset = combined_datasets.load_us_timeseries_dataset()
     # Keep only a small subset of the regions so we have enough to exercise our code in tests.
     test_subset = us_dataset.get_regions_subset(
         [
-            RegionMask(states=["NY", "CA", "IL"]),
+            RegionMask(states=[s.strip() for s in state]),
             Region.from_fips("48201"),
             Region.from_fips("48301"),
             Region.from_fips("20161"),
@@ -294,11 +312,12 @@ def update_test_combined_data():
             Region.from_state("KS"),
         ]
     )
-    dates = test_subset.timeseries_bucketed.index.get_level_values(CommonFields.DATE)
-    date_range_mask = (dates >= "2021-01-01") & (dates < "2021-04-01")
-    test_subset = dataclasses.replace(
-        test_subset, timeseries_bucketed=test_subset.timeseries_bucketed.loc[date_range_mask]
-    )
+    if truncate_dates:
+        dates = test_subset.timeseries_bucketed.index.get_level_values(CommonFields.DATE)
+        date_range_mask = (dates >= "2021-01-01") & (dates < "2021-04-01")
+        test_subset = dataclasses.replace(
+            test_subset, timeseries_bucketed=test_subset.timeseries_bucketed.loc[date_range_mask]
+        )
     test_subset.write_to_wide_dates_csv(
         dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH, dataset_utils.TEST_COMBINED_STATIC_CSV_PATH
     )
