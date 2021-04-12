@@ -48,7 +48,22 @@ def region_table(
     ).intersection(dataset.static_and_geo_data.columns)
     regions = dataset.static_and_geo_data.loc[:, static_columns]
 
+    wide_dates = dataset.timeseries_bucketed_wide_dates.iloc(axis=1)[-14:]
+    print(f"recent days: {wide_dates.columns}")
+    recent_completed = wide_dates.xs(
+        axis=0,
+        level=[PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
+        key=[CommonFields.VACCINATIONS_COMPLETED, "all"],
+    )
+    recent_initiated = wide_dates.xs(
+        axis=0,
+        level=[PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
+        key=[CommonFields.VACCINATIONS_INITIATED, "all"],
+    )
+    recent_completed_ts = recent_completed / recent_initiated
+
     regions = regions.join(stats.stats_for_locations(regions.index))
+    regions = regions.join(recent_completed_ts.max(axis=1).rename("recent_completed_max"))
 
     regions = regions.reset_index()  # Move location_id from the index to a regular column
     # Add location_id as the row id, used by DataTable. Maybe it makes more sense to rename the
