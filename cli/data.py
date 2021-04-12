@@ -280,7 +280,11 @@ def update_case_based_icu_utilization_weights():
         json.dump(output, f, indent=2, sort_keys=True)
 
 
-@main.command()
+@main.command(
+    help="Regenerate the test combined data. The options can be used to produce data for "
+    "testing or experimenting with particular subsets of the entire dataset. Use "
+    "the default options when producing test data to merge into the main branch."
+)
 @click.option(
     "--truncate-dates/--no-truncate-dates",
     is_flag=True,
