@@ -64,6 +64,7 @@ def region_table(
 
     regions = regions.join(stats.stats_for_locations(regions.index))
     regions = regions.join(recent_completed_ts.max(axis=1).rename("recent_completed_max"))
+    regions = regions.join(recent_completed_ts.idxmax(axis=1).rename("recent_completed_date"))
 
     regions = regions.reset_index()  # Move location_id from the index to a regular column
     # Add location_id as the row id, used by DataTable. Maybe it makes more sense to rename the
