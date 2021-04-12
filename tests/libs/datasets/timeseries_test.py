@@ -819,6 +819,34 @@ def test_one_region_tag_objects_series_empty():
     assert one_region.tag_objects_series.empty
 
 
+def test_timeseries_tag_objects_series():
+    values = [100, 200]
+    tag1 = test_helpers.make_tag(TagType.ZSCORE_OUTLIER, date="2020-04-01")
+    tag2a = test_helpers.make_tag(date="2020-04-02")
+    tag2b = test_helpers.make_tag(date="2020-04-03")
+    url_str = UrlStr("http://foo.com/1")
+    source_obj = taglib.Source("source_with_url", url=url_str)
+
+    ds = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral(values, annotation=[tag1]),
+            CommonFields.ICU_BEDS: TimeseriesLiteral(values, source=source_obj),
+            CommonFields.DEATHS: TimeseriesLiteral(values, annotation=[tag2a, tag2b]),
+            CommonFields.TOTAL_TESTS: values,
+        }
+    )
+
+    assert isinstance(ds.tag_objects_series, pd.Series)
+    assert ds.tag.index.equals(ds.tag_objects_series.index)
+    location_id = test_helpers.DEFAULT_REGION.location_id
+    assert set(ds.tag_objects_series.reset_index().itertuples(index=False)) == {
+        (location_id, CommonFields.CASES, DemographicBucket.ALL, tag1.tag_type, tag1),
+        (location_id, CommonFields.ICU_BEDS, DemographicBucket.ALL, TagType.SOURCE, source_obj),
+        (location_id, CommonFields.DEATHS, DemographicBucket.ALL, tag2a.tag_type, tag2a),
+        (location_id, CommonFields.DEATHS, DemographicBucket.ALL, tag2b.tag_type, tag2b),
+    }
+
+
 def test_timeseries_latest_values():
     dataset = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(

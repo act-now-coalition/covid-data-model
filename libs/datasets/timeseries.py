@@ -184,15 +184,7 @@ class OneRegionTimeseriesDataset:
     @cached_property
     def tag_objects_series(self) -> pd.Series:
         """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
-        assert self.tag.index.names[2] == TagField.TYPE
-        # Apply a function to each element in the Series self.tag with the function having access to
-        # the index of each element. From https://stackoverflow.com/a/47645833/341400.
-        # result_type reduce forces the return value to be a Series, even when tag is empty.
-        return self.tag.to_frame().apply(
-            lambda row: taglib.TagInTimeseries.make(row.name[2], content=row.content),
-            axis=1,
-            result_type="reduce",
-        )
+        return taglib.series_string_to_object(self.tag)
 
     def __post_init__(self):
         assert CommonFields.LOCATION_ID in self.data.columns
@@ -528,10 +520,16 @@ class MultiRegionDataset:
 
     @cached_property
     def tag_all_bucket(self) -> pd.Series:
+        # TODO(tom): Replace use of this property with bucket-aware use of `self.tag`
         try:
             return self.tag.xs("all", level=TagField.DEMOGRAPHIC_BUCKET)
         except KeyError:
             return _EMPTY_TAG_SERIES.droplevel(TagField.DEMOGRAPHIC_BUCKET)
+
+    @cached_property
+    def tag_objects_series(self) -> pd.Series:
+        """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
+        return taglib.series_string_to_object(self.tag)
 
     @cached_property
     def location_ids(self) -> pd.Index:

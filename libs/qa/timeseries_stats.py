@@ -13,6 +13,7 @@ from covidactnow.datapublic.common_fields import PdFields
 from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 
+from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import demographics
 from libs.datasets import timeseries
@@ -34,6 +35,7 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
     HAS_URL = "has_url"
     ANNOTATION_COUNT = "annotation_count"
     BUCKET_ALL_COUNT = "bucket_all_count"
+    SOURCE_TYPE_SET = "source_type_set"
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
@@ -126,6 +128,14 @@ class PerTimeseries(Aggregated):
             .count()
             .reindex(index=all_timeseries_index, fill_value=0)
         )
+        # The source type(s) of each time series, as a string that will be identical for time
+        # series with the same set of source types.
+        stat_map[StatName.SOURCE_TYPE_SET] = (
+            ds.tag_objects_series.loc(axis=0)[:, :, :, TagType.SOURCE]
+            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
+            .apply(lambda sources: ";".join(sorted(set(s.type for s in sources))))
+            .reindex(index=all_timeseries_index, fill_value="")
+        )
         stat_map[StatName.BUCKET_ALL_COUNT] = (
             _get_index_level_as_series(
                 ds.timeseries_bucketed_wide_dates, PdFields.DEMOGRAPHIC_BUCKET
@@ -155,6 +165,11 @@ class PerTimeseries(Aggregated):
 
     def subset_variables(self, variables: Collection[CommonFields]) -> "PerTimeseries":
         return PerTimeseries(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
+
+    def subset_locations(self, *, aggregation_level: AggregationLevel) -> "PerTimeseries":
+        return PerTimeseries(
+            stats=_xs_or_empty(self.stats, [aggregation_level.value], CommonFields.AGGREGATE_LEVEL)
+        )
 
     def aggregate(self, index: FieldName, columns: FieldName) -> Aggregated:
         return Aggregated(stats=self.stats.groupby([index, columns], as_index=True).sum())

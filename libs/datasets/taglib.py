@@ -329,3 +329,19 @@ class TagCollection:
     def as_dataframe(self) -> pd.DataFrame:
         """Returns all tags in this collection in a DataFrame."""
         return pd.DataFrame.from_records(self._as_records())
+
+
+def series_string_to_object(tag: pd.Series) -> pd.Series:
+    """Converts a Series of content strings (generally JSONs) into a Series of TagInTimeseries
+    objects."""
+    type_idx_offset = tag.index.names.index(TagField.TYPE)
+    assert type_idx_offset > 0
+    assert tag.name == TagField.CONTENT
+    # Apply a function to each element in the Series self.tag with the function having access to
+    # the index of each element. From https://stackoverflow.com/a/47645833/341400.
+    # result_type reduce forces the return value to be a Series, even when tag is empty.
+    return tag.to_frame().apply(
+        lambda row: TagInTimeseries.make(row.name[type_idx_offset], content=row.content),
+        axis=1,
+        result_type="reduce",
+    )
