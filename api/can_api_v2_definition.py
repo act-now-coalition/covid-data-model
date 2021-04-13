@@ -63,8 +63,9 @@ class NonCovidPatientsMethod(enum.Enum):
 class DemographicDistributions(base_model.APIBaseModel):
     """Distributions of demographic data.
 
-    Note that because different regions may have different demographic distributions for
-    the same field.  For instance, how age is collected is not uniform.
+    Note that different regions may have different demographic distributions for
+    the same field.  For instance, health departments in different states may report
+    different age ranges.
 
     The data provided matches the source distributions.
     """
