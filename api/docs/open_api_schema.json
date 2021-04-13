@@ -1108,7 +1108,7 @@
             }
           }
         },
-        "description": "Distributions of demographic data.\n\nNote that because different regions may have different demographic distributions for\nthe same field.  For instance, how age is collected is not uniform.\n\nThe data provided matches the source distributions."
+        "description": "Base model for API output."
       },
       "Actuals": {
         "title": "Actuals",
@@ -1276,22 +1276,24 @@
             "description": "Total number of vaccine doses administered."
           },
           "vaccinesAdministeredDemographics": {
-            "title": "Vaccinesadministereddemographics",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/DemographicDistributions"
+              },
+              {
+                "type": "null"
               }
-            ],
-            "description": "Demographic distributions for administered vaccines."
+            ]
           },
           "vaccinationsInitiatedDemographics": {
-            "title": "Vaccinationsinitiateddemographics",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/DemographicDistributions"
+              },
+              {
+                "type": "null"
               }
-            ],
-            "description": "Demographic distributions for initiated vaccinations."
+            ]
           }
         },
         "description": "Known actuals data."
@@ -1610,7 +1612,7 @@
           "fips": {
             "title": "Fips",
             "type": "string",
-            "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters."
+            "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, 5-digit CBSA codes, or 1-digit '0' for the entire USA."
           },
           "lat": {
             "title": "Lat",
@@ -2117,7 +2119,7 @@
           "fips": {
             "title": "Fips",
             "type": "string",
-            "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, or 5-digit CBSA codes."
+            "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, 5-digit CBSA codes, or 1-digit '0' for the entire USA."
           },
           "country": {
             "title": "Country",
@@ -2555,22 +2557,24 @@
             "description": "Total number of vaccine doses administered."
           },
           "vaccinesAdministeredDemographics": {
-            "title": "Vaccinesadministereddemographics",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/DemographicDistributions"
+              },
+              {
+                "type": "null"
               }
-            ],
-            "description": "Demographic distributions for administered vaccines."
+            ]
           },
           "vaccinationsInitiatedDemographics": {
-            "title": "Vaccinationsinitiateddemographics",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/DemographicDistributions"
+              },
+              {
+                "type": "null"
               }
-            ],
-            "description": "Demographic distributions for initiated vaccinations."
+            ]
           },
           "date": {
             "title": "Date",
@@ -2633,7 +2637,7 @@
           "fips": {
             "title": "Fips",
             "type": "string",
-            "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, or 5-digit CBSA codes."
+            "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, 5-digit CBSA codes, or 1-digit '0' for the entire USA."
           },
           "country": {
             "title": "Country",

@@ -69,7 +69,7 @@
     },
     "DemographicDistributions": {
       "title": "DemographicDistributions",
-      "description": "Distributions of demographic data.\n\nNote that because different regions may have different demographic distributions for\nthe same field.  For instance, how age is collected is not uniform.\n\nThe data provided matches the source distributions.",
+      "description": "Base model for API output.",
       "type": "object",
       "properties": {
         "age": {
@@ -286,20 +286,22 @@
           ]
         },
         "vaccinesAdministeredDemographics": {
-          "title": "Vaccinesadministereddemographics",
-          "description": "Demographic distributions for administered vaccines.",
-          "allOf": [
+          "anyOf": [
             {
               "$ref": "#/definitions/DemographicDistributions"
+            },
+            {
+              "type": "null"
             }
           ]
         },
         "vaccinationsInitiatedDemographics": {
-          "title": "Vaccinationsinitiateddemographics",
-          "description": "Demographic distributions for initiated vaccinations.",
-          "allOf": [
+          "anyOf": [
             {
               "$ref": "#/definitions/DemographicDistributions"
+            },
+            {
+              "type": "null"
             }
           ]
         }
@@ -617,7 +619,7 @@
         },
         "fips": {
           "title": "Fips",
-          "description": "Fips Code.  For state level data, 2 characters, for county level data, 5 characters.",
+          "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, 5-digit CBSA codes, or 1-digit '0' for the entire USA.",
           "type": "string"
         },
         "lat": {
