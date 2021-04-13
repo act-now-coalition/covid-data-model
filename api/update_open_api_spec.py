@@ -12,6 +12,7 @@ from openapi_schema_pydantic.util import construct_open_api_with_schema_class
 COUNTY_TAG = "County Data"
 STATE_TAG = "State Data"
 CBSA_TAG = "CBSA Data"
+COUNTRY_TAG = "Country Data"
 
 
 fips_parameter = {
@@ -277,6 +278,32 @@ ALL_CBSA_TIMESERIES_CSV = APIEndpoint(
 )
 
 
+US_SUMMARY = APIEndpoint(
+    endpoint="/country/US.json",
+    parameters=[],
+    tags=[COUNTRY_TAG],
+    description="Region Summary object for US.",
+    summary="US Summary",
+    schema_cls=can_api_v2_definition.RegionSummary,
+)
+US_TIMESERIES = APIEndpoint(
+    endpoint="/country/US.timeseries.json",
+    parameters=[],
+    tags=[COUNTRY_TAG],
+    description="Region Summary with Timeseries for US.",
+    summary="US Timeseries",
+    schema_cls=can_api_v2_definition.RegionSummaryWithTimeseries,
+)
+US_TIMESERIES_CSV = APIEndpoint(
+    endpoint="/country/US.timeseries.csv",
+    parameters=[],
+    tags=[COUNTRY_TAG],
+    description="Region Summary with Timeseries for US.",
+    summary="US Timeseries CSV",
+    schema_cls=can_api_v2_definition.AggregateRegionSummaryWithTimeseries,
+)
+
+
 ALL_ENDPOINTS = [
     COUNTY_SUMMARY,
     COUNTY_TIMESERIES,
@@ -285,6 +312,9 @@ ALL_ENDPOINTS = [
     STATE_TIMESERIES_CSV,
     CBSA_SUMMARY,
     CBSA_TIMESERIES,
+    US_SUMMARY,
+    US_TIMESERIES,
+    US_TIMESERIES_CSV,
     ALL_STATE_SUMMARY,
     ALL_STATE_SUMMARY_CSV,
     ALL_STATE_TIMESERIES,
@@ -388,7 +418,7 @@ Register for an API key [here](/#register).
     # `openapi_schema_pydantic` pydantic classes, so they have to be manually
     # added after the schema is built.
     spec["x-tagGroups"] = [
-        {"name": "Endpoints", "tags": [STATE_TAG, COUNTY_TAG, CBSA_TAG]},
+        {"name": "Endpoints", "tags": [STATE_TAG, COUNTY_TAG, CBSA_TAG, COUNTRY_TAG]},
         {"name": "Models", "tags": [tag["name"] for tag in MODEL_TAGS]},
     ]
     return spec

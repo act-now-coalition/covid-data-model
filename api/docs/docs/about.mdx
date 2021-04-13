@@ -33,6 +33,7 @@ Learn how to query:
 - **[Current data for all states, counties, and metros](#current-data-for-all-states-counties-or-metros)**
 - **[Historic data for all states, counties, and metros](#historic-data-for-all-states-counties-or-metros)**
 - **[Data for an individual state, county, or metro area](#data-for-individual-locations)**
+- **[Aggregated US data](#aggregated-us-data)**
 
 Details on the contents of each endpoint are available in the [API Reference](/api)
 
@@ -121,6 +122,16 @@ https://api.covidactnow.org/v2/county/{state}.json?apiKey=YOUR_KEY_HERE
 https://api.covidactnow.org/v2/county/{state}.csv?apiKey=YOUR_KEY_HERE
 https://api.covidactnow.org/v2/county/{state}.timeseries.json?apiKey=YOUR_KEY_HERE
 https://api.covidactnow.org/v2/county/{state}.timeseries.csv?apiKey=YOUR_KEY_HERE
+```
+
+#### Aggregated US data
+
+We also calculate country-wide data for the entire US.
+
+```
+https://api.covidactnow.org/v2/country/US.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/country/US.timeseries.json?apiKey=YOUR_KEY_HERE
+https://api.covidactnow.org/v2/country/US.timeseries.csv?apiKey=YOUR_KEY_HERE
 ```
 
 ## License
