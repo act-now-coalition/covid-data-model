@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+import functools
 import inspect
 import io
 from typing import Iterable
@@ -25,11 +26,13 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import combined_datasets
+from libs.datasets import dataset_utils
 from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagField
 from libs.datasets.taglib import TagType
 from libs.datasets.taglib import UrlStr
+from libs.datasets.timeseries import MultiRegionDataset
 from libs.pipeline import Region
 
 
@@ -318,11 +321,15 @@ def get_subclasses(cls) -> Iterable[Type]:
         yield subclass
 
 
-def get_concrete_subclasses(cls) -> Iterable[Type]:
-    """Yields all subclasses of `cls` that have no abstract methods and do not directly subclass
-    abc.ABC."""
+def get_concrete_subclasses_not_in_tests(cls) -> Iterable[Type]:
+    """Yields all subclasses of `cls` that have no abstract methods, do not directly subclass
+    abc.ABC and are not in a `tests` module."""
     for subcls in get_subclasses(cls):
-        if not inspect.isabstract(subcls) and abc.ABC not in subcls.__bases__:
+        if (
+            not inspect.isabstract(subcls)
+            and abc.ABC not in subcls.__bases__
+            and not subcls.__module__.startswith("tests.")
+        ):
             yield subcls
 
 
@@ -356,3 +363,10 @@ def read_csv_str(
             dtype = {}
 
     return pd.read_csv(io.StringIO(csv), parse_dates=parse_dates, dtype=dtype, low_memory=True)
+
+
+@functools.lru_cache(None)
+def load_test_dataset() -> MultiRegionDataset:
+    return MultiRegionDataset.from_wide_dates_csv(
+        dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH
+    ).add_static_csv_file(dataset_utils.TEST_COMBINED_STATIC_CSV_PATH)

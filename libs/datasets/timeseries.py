@@ -15,7 +15,6 @@ from typing import (
 import dataclasses
 import datetime
 import pathlib
-import re
 import warnings
 from dataclasses import dataclass
 from functools import lru_cache
@@ -185,15 +184,7 @@ class OneRegionTimeseriesDataset:
     @cached_property
     def tag_objects_series(self) -> pd.Series:
         """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
-        assert self.tag.index.names[2] == TagField.TYPE
-        # Apply a function to each element in the Series self.tag with the function having access to
-        # the index of each element. From https://stackoverflow.com/a/47645833/341400.
-        # result_type reduce forces the return value to be a Series, even when tag is empty.
-        return self.tag.to_frame().apply(
-            lambda row: taglib.TagInTimeseries.make(row.name[2], content=row.content),
-            axis=1,
-            result_type="reduce",
-        )
+        return taglib.series_string_to_object(self.tag)
 
     def __post_init__(self):
         assert CommonFields.LOCATION_ID in self.data.columns
@@ -529,10 +520,16 @@ class MultiRegionDataset:
 
     @cached_property
     def tag_all_bucket(self) -> pd.Series:
+        # TODO(tom): Replace use of this property with bucket-aware use of `self.tag`
         try:
             return self.tag.xs("all", level=TagField.DEMOGRAPHIC_BUCKET)
         except KeyError:
             return _EMPTY_TAG_SERIES.droplevel(TagField.DEMOGRAPHIC_BUCKET)
+
+    @cached_property
+    def tag_objects_series(self) -> pd.Series:
+        """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
+        return taglib.series_string_to_object(self.tag)
 
     @cached_property
     def location_ids(self) -> pd.Index:
@@ -823,8 +820,8 @@ class MultiRegionDataset:
         return dataset
 
     @staticmethod
-    def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
-        wide_dates_df = pd.read_csv(pointer.path_wide_dates(), low_memory=False)
+    def from_wide_dates_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
+        wide_dates_df = pd.read_csv(path_or_buf, low_memory=False)
         bucketed = PdFields.DEMOGRAPHIC_BUCKET in wide_dates_df.columns
         if bucketed:
             wide_dates_df = wide_dates_df.set_index(
@@ -854,25 +851,24 @@ class MultiRegionDataset:
         wide_dates_df.columns = pd.to_datetime(wide_dates_df.columns)
         wide_dates_df = wide_dates_df.rename_axis(columns=CommonFields.DATE)
 
-        static_df = pd.read_csv(
-            pointer.path_static(), dtype={CommonFields.FIPS: str}, low_memory=False
-        )
+        tag_df = pd.concat(tag_df_to_concat)
+        if not bucketed:
+            tag_df_add_all_bucket_in_place(tag_df)
 
-        # TODO(tom): Delete this once annotation file is retired
-        if pointer.path_annotation().is_file():
-            annotations = pd.read_csv(pointer.path_annotation(), low_memory=False)
-            tag_df_to_concat.append(annotations)
-
-        dataset = MultiRegionDataset.from_timeseries_wide_dates_df(
+        return MultiRegionDataset.from_timeseries_wide_dates_df(
             wide_dates_df, bucketed=bucketed
-        ).add_static_values(static_df)
-        if tag_df_to_concat:
-            tag_df = pd.concat(tag_df_to_concat)
-            if not bucketed:
-                tag_df_add_all_bucket_in_place(tag_df)
-            dataset = dataset.append_tag_df(tag_df)
+        ).append_tag_df(tag_df)
 
-        return dataset
+    def add_static_csv_file(self, path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
+        static_df = pd.read_csv(path_or_buf, dtype={CommonFields.FIPS: str}, low_memory=False)
+        return self.add_static_values(static_df)
+
+    @staticmethod
+    def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
+        # TODO(tom): Deprecate use of DatasetPointer and remove this method
+        return MultiRegionDataset.from_wide_dates_csv(
+            pointer.path_wide_dates()
+        ).add_static_csv_file(pointer.path_static())
 
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
@@ -1163,25 +1159,30 @@ class MultiRegionDataset:
 
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
+        # TODO(tom): Deprecate use of DatasetPointer and remove this method
+        return self.write_to_wide_dates_csv(pointer.path_wide_dates(), pointer.path_static())
+
+    def write_to_wide_dates_csv(self, path_wide_dates: pathlib.Path, path_static: pathlib.Path):
+        """Writes `self` to given file paths."""
         wide_df = self.timeseries_rows()
 
-        # 7 significant digits of precision seems like enough.
-        csv_buf = wide_df.to_csv(index=True, float_format="%.7g")
-        # Most timeseries don't go back to the oldest dates in the CSV so they are represented by
-        # a row ending in lots of commas. Remove these because CSV readers seem to handle rows
-        # with missing commas correctly.
-        csv_buf = re.sub(r",+\n", r"\n", csv_buf)
-        pointer.path_wide_dates().write_text(csv_buf)
-
-        # TODO(tom) Remove once annotations file is retired.
-        if pointer.path_annotation().exists():
-            # annotations are not written to this file any longer so remove it to avoid duplication.
-            pointer.path_annotation().unlink()
+        # The values we write are generally ratios (such as test positivity) where we only need ~5
+        # digits beyond the decimal point or integers that we'd like to preserve as an exact value.
+        # I'm concerned that a delta calculated from a rounded cumulative count may differ
+        # significantly from a delta calculated from an unrounded version of the same count. Also
+        # a timeseries delta calculated from a rounded cumulative count may include artifacts
+        # that look like the step function. %.9g preserves the exact value for US vaccine counts
+        # that are now over 100M. Unfortunately this also writes unnecessarily high precision for
+        # floats but I don't see an easy solution with to_csv float_format.
+        # https://trello.com/c/aDGn57Df/1192-change-combined-data-from-csv-to-parquet will remove
+        # the need to format values as strings.
+        csv_buf = wide_df.to_csv(index=True, float_format="%.9g")
+        path_wide_dates.write_text(csv_buf)
 
         static_sorted = common_df.index_and_sort(
             self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
         )
-        static_sorted.to_csv(pointer.path_static())
+        static_sorted.to_csv(path_static)
 
     def drop_column_if_present(self, column: CommonFields) -> "MultiRegionDataset":
         """Drops the specified column from the timeseries if it exists"""

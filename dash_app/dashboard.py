@@ -1,6 +1,7 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_pivottable
 import dash_table
 import git
 import more_itertools
@@ -19,9 +20,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagField
 from libs.datasets.tail_filter import TagType
-from libs.qa.timeseries_stats import PerRegionStats
-from libs.qa.timeseries_stats import RegionAggregationMethod
-from libs.qa.timeseries_stats import VariableAggregationMethod
+from libs.qa import timeseries_stats
 
 EXTERNAL_STYLESHEETS = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
@@ -35,7 +34,9 @@ TAG_TABLE_COLUMNS = [
 ]
 
 
-def region_table(stats: PerRegionStats, dataset: timeseries.MultiRegionDataset) -> pd.DataFrame:
+def region_table(
+    stats: timeseries_stats.PerTimeseries, dataset: timeseries.MultiRegionDataset
+) -> pd.DataFrame:
     # Use an index to preserve the order while keeping only columns actually present.
     static_columns = pd.Index(
         [
@@ -73,10 +74,10 @@ def init(server):
 
     variable_groups = ["all"] + list(common_fields.FieldGroup)
 
-    per_region_stats_all_vars = PerRegionStats.make(ds)
+    per_timeseries_stats = timeseries_stats.PerTimeseries.make(ds)
 
-    agg_stats = per_region_stats_all_vars.aggregate(
-        RegionAggregationMethod.LEVEL, VariableAggregationMethod.FIELD_GROUP
+    agg_level_and_field_group = per_timeseries_stats.aggregate(
+        CommonFields.AGGREGATE_LEVEL, timeseries_stats.FIELD_GROUP
     )
 
     source_url_value_counts = (
@@ -86,34 +87,51 @@ def init(server):
         .rename("count")
     )
 
-    counties = ds.get_subset(aggregation_level=AggregationLevel.COUNTY)
-    county_stats = PerRegionStats.make(counties)
+    county_stats = per_timeseries_stats.subset_locations(aggregation_level=AggregationLevel.COUNTY)
     county_variable_population_ratio = pd.DataFrame(
         {
-            "has_url": population_ratio_by_variable(counties, county_stats.has_url),
-            "has_timeseries": population_ratio_by_variable(counties, county_stats.has_timeseries),
+            "has_url": population_ratio_by_variable(ds, county_stats.has_url),
+            "has_timeseries": population_ratio_by_variable(ds, county_stats.has_timeseries),
         }
     )
 
-    region_df = region_table(per_region_stats_all_vars, ds)
+    region_df = region_table(per_timeseries_stats, ds)
+
+    df = per_timeseries_stats.stats.reset_index()
+    pivottable_data = [df.columns.tolist()] + df.values.tolist()
 
     dash_app.layout = html.Div(
         children=[
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
-            html.H2("Time-series count"),
-            dash_table_from_data_frame(agg_stats.has_timeseries, id="agg_has_timeseries"),
-            html.H2("Source URLs"),
-            dash_table_from_data_frame(
-                source_url_value_counts, id="source_url_counts", page_size=8
+            html.H2("Time series pivot table"),
+            dcc.Markdown(
+                "Drag attributes to explore information about time series in "
+                "this dataset. See an animated demo in the [Dash Pivottable docs]("
+                "https://github.com/plotly/dash-pivottable#readme)."
             ),
-            html.Br(),  # Give table above some space for page action controls
-            html.Br(),  # Give table above some space for page action controls
-            html.Br(),  # Give table above some space for page action controls
-            dash_table_from_data_frame(agg_stats.has_url, id="agg_has_url"),
-            html.P("Ratio of population in county data with a URL, by variable"),
-            dash_table_from_data_frame(
-                county_variable_population_ratio, id="county_variable_population_ratio"
+            dash_pivottable.PivotTable(
+                id="pivot_table",
+                data=pivottable_data,
+                rows=[CommonFields.AGGREGATE_LEVEL],
+                cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
+            ),
+            html.H2("Source URLs"),
+            html.Details(
+                [
+                    dash_table_from_data_frame(
+                        source_url_value_counts, id="source_url_counts", page_size=8
+                    ),
+                    # Add some BR as a hack to give table above some space for page action controls
+                    html.Br(),
+                    html.Br(),
+                    html.Br(),
+                    dash_table_from_data_frame(agg_level_and_field_group.has_url, id="agg_has_url"),
+                    html.P("Ratio of population in county data with a URL, by variable"),
+                    dash_table_from_data_frame(
+                        county_variable_population_ratio, id="county_variable_population_ratio",
+                    ),
+                ]
             ),
             html.H2("Regions"),
             html.Div(
@@ -157,7 +175,7 @@ def init(server):
         ]
     )
 
-    _init_callbacks(dash_app, ds, per_region_stats_all_vars, region_df["id"])
+    _init_callbacks(dash_app, ds, per_timeseries_stats, region_df["id"])
 
     return dash_app.server
 
@@ -188,7 +206,7 @@ def population_ratio_by_variable(
     zeros = pd.DataFrame(0, index=df.index, columns=df.columns)
     # Where df is True add the population, otherwise add zero. The result is a series with
     # PdFields.VARIABLE index
-    population_where_true = zeros.mask(df, population_indexed, axis=0).sum(axis=0)
+    population_where_true = zeros.mask(df.astype(bool), population_indexed, axis=0).sum(axis=0)
     population_ratio = population_where_true / population_total
     return population_ratio.rename("population_ratio")
 
@@ -196,7 +214,7 @@ def population_ratio_by_variable(
 def _init_callbacks(
     dash_app,
     ds: timeseries.MultiRegionDataset,
-    per_region_stats_all_vars: PerRegionStats,
+    per_timeseries_stats: timeseries_stats.PerTimeseries,
     region_id_series: pd.Series,
 ):
     @dash_app.callback(
@@ -206,12 +224,12 @@ def _init_callbacks(
     )
     def update_regions_table_variables(variable_dropdown_value):
         if variable_dropdown_value == "all":
-            per_region_stats = per_region_stats_all_vars
+            selected_var_stats = per_timeseries_stats
         else:
             selected_variables = common_fields.FIELD_GROUP_TO_LIST_FIELDS[variable_dropdown_value]
-            per_region_stats = per_region_stats_all_vars.subset_variables(selected_variables)
+            selected_var_stats = per_timeseries_stats.subset_variables(selected_variables)
 
-        region_df = region_table(per_region_stats, ds)
+        region_df = region_table(selected_var_stats, ds)
         columns = [{"name": i, "id": i} for i in region_df.columns if i != "id"]
         data = region_df.to_dict("records")
         return data, columns

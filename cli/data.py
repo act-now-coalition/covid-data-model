@@ -1,3 +1,4 @@
+import dataclasses
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -32,6 +33,8 @@ from libs.datasets import vaccine_backfills
 from libs.datasets.sources import forecast_hub
 from libs.datasets import tail_filter
 from libs.datasets.sources import zeros_filter
+from libs.pipeline import Region
+from libs.pipeline import RegionMask
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 from pyseir import DATA_DIR
 import pyseir.icu.utils
@@ -82,7 +85,7 @@ def update_forecasts(filename):
     "--aggregate-to-country/--no-aggregate-to-country",
     is_flag=True,
     help="Aggregate states to one USA country region",
-    default=False,
+    default=True,
 )
 @click.option("--state", type=str, help="For testing, a two letter state abbr")
 @click.option("--fips", type=str, help="For testing, a 5 digit county fips")
@@ -147,10 +150,15 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
     multiregion_dataset.print_stats("CountyToCBSAAggregator")
 
+    # TODO(tom): Add a clean way to store intermediate values instead of commenting out code like
+    #  this:
+    # multiregion_dataset.write_to_wide_dates_csv(
+    #     pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
+    # )
     if aggregate_to_country:
         country_dataset = region_aggregation.aggregate_regions(
             multiregion_dataset,
-            pipeline.us_states_to_country_map(),
+            pipeline.us_states_and_territories_to_country_map(),
             reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
@@ -171,14 +179,22 @@ def aggregate_cbsa(output_path: pathlib.Path):
     cbsa_dataset.to_csv(output_path)
 
 
-@main.command()
-@click.argument("output_path", type=pathlib.Path)
-def aggregate_states_to_country(output_path: pathlib.Path):
-    us_timeseries = combined_datasets.load_us_timeseries_dataset()
-    country_dataset = region_aggregation.aggregate_regions(
-        us_timeseries, pipeline.us_states_to_country_map(),
+@main.command(
+    help="Uncomment code that writes the `pre-agg` intermediate result in `data update` "
+    "then use this command to test state to country aggregation."
+)
+def aggregate_states_to_country():
+    dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
+        pathlib.Path("data/pre-agg-wide-dates.csv")
+    ).add_static_csv_file(pathlib.Path("data/pre-agg-static.csv"))
+    dataset = region_aggregation.aggregate_regions(
+        dataset,
+        pipeline.us_states_and_territories_to_country_map(),
+        reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
     )
-    country_dataset.to_csv(output_path)
+    dataset.write_to_wide_dates_csv(
+        pathlib.Path("data/post-agg-wide-dates.csv"), pathlib.Path("data/post-agg-static.csv")
+    )
 
 
 KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
@@ -262,6 +278,49 @@ def update_case_based_icu_utilization_weights():
     _logger.info(f"Saved case-based ICU Utilization weights to {output_path}")
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2, sort_keys=True)
+
+
+@main.command(
+    help="Regenerate the test combined data. The options can be used to produce data for "
+    "testing or experimenting with particular subsets of the entire dataset. Use "
+    "the default options when producing test data to merge into the main branch."
+)
+@click.option(
+    "--truncate-dates/--no-truncate-dates",
+    is_flag=True,
+    help="Keep a subset of all dates to reduce the test data size",
+    default=True,
+    show_default=True,
+)
+@click.option(
+    "--state",
+    multiple=True,
+    help="State to include in test data. Repeat for multiple states: --state TX --state WI.",
+    default=["NY", "CA", "IL"],
+    show_default=True,
+)
+def update_test_combined_data(truncate_dates: bool, state: List[str]):
+    us_dataset = combined_datasets.load_us_timeseries_dataset()
+    # Keep only a small subset of the regions so we have enough to exercise our code in tests.
+    test_subset = us_dataset.get_regions_subset(
+        [
+            RegionMask(states=[s.strip() for s in state]),
+            Region.from_fips("48201"),
+            Region.from_fips("48301"),
+            Region.from_fips("20161"),
+            Region.from_state("TX"),
+            Region.from_state("KS"),
+        ]
+    )
+    if truncate_dates:
+        dates = test_subset.timeseries_bucketed.index.get_level_values(CommonFields.DATE)
+        date_range_mask = (dates >= "2021-01-01") & (dates < "2021-04-01")
+        test_subset = dataclasses.replace(
+            test_subset, timeseries_bucketed=test_subset.timeseries_bucketed.loc[date_range_mask]
+        )
+    test_subset.write_to_wide_dates_csv(
+        dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH, dataset_utils.TEST_COMBINED_STATIC_CSV_PATH
+    )
 
 
 def load_datasets_by_field(

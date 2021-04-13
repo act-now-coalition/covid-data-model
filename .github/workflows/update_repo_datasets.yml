@@ -73,7 +73,7 @@ jobs:
     - name: Update and Promote dataset.
       working-directory: ./covid-data-model
       run: |
-        ./run.py data update --no-aggregate-to-country
+        ./run.py data update
 
     - name: Update External Forecasts
       working-directory: ./covid-data-model
@@ -99,10 +99,12 @@ jobs:
       with:
         args: 'Started new API build from dataset updater action.'
 
-    - name: Update Data Availability Sheet
-      working-directory: ./covid-data-model
-      run: |
-        ./run.py data update-availability-report
+    # TODO(https://trello.com/c/4dFFtQiH/1239-fix-data-availability-report-or-officially-replace-it-with-toms-dashboard)
+    # - name: Update Data Availability Sheet
+    #   working-directory: ./covid-data-model
+    #   run: |
+    #     ./run.py data update-availability-report
+
     - name: Slack notification
       if: failure()
       env:

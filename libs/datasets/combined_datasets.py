@@ -3,6 +3,7 @@ from typing import Any
 from typing import Dict, Type, List, NewType
 import functools
 import pathlib
+from typing import Mapping
 from typing import Optional
 from typing import TypeVar
 from typing import Union
@@ -18,10 +19,12 @@ from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
+from libs.datasets import manual_filter
 from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
-from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalDataset
+from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalStateDataset
+from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalCountyDataset
 from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
@@ -68,6 +71,7 @@ class DataSourceAndRegionMasks:
     data_source_cls: Type[data_source.DataSource]
     include: List[RegionMaskOrRegion]
     exclude: List[RegionMaskOrRegion]
+    manual_filter_config: Optional[Mapping]
 
     @property
     def EXPECTED_FIELDS(self):
@@ -90,6 +94,8 @@ class DataSourceAndRegionMasks:
             dataset = dataset.get_regions_subset(self.include)
         if self.exclude:
             dataset = dataset.remove_regions(self.exclude)
+        if self.manual_filter_config:
+            dataset = manual_filter.run(dataset, self.manual_filter_config)
         return dataset
 
 
@@ -111,6 +117,7 @@ def datasource_regions(
     include: Union[None, RegionMaskOrRegion, List[RegionMaskOrRegion]] = None,
     *,
     exclude: Union[None, RegionMaskOrRegion, List[RegionMaskOrRegion]] = None,
+    manual_filter: Optional[Mapping] = None,
 ) -> DataSourceAndRegionMasks:
     """Creates an instance of the `DataSourceAndRegionMasks` class."""
     assert include or exclude, (
@@ -118,7 +125,10 @@ def datasource_regions(
         "needed use the DataSource class directly."
     )
     return DataSourceAndRegionMasks(
-        data_source_cls, include=to_list(include), exclude=to_list(exclude)
+        data_source_cls,
+        include=to_list(include),
+        exclude=to_list(exclude),
+        manual_filter_config=manual_filter,
     )
 
 
@@ -130,13 +140,16 @@ FeatureDataSourceMap = NewType(
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
 # Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
-# Also, on 2/20, NYTimes stopped updating IA counties as well, removing from NYTimes dataset
-# to rely on USA Facts.
-NYTimesDatasetWithoutNYCOrIACounties = datasource_regions(
-    NYTimesDataset,
-    exclude=[RegionMask(level=AggregationLevel.COUNTY, states=["IA"]), *ALL_NYC_REGIONS],
+NYTimesDatasetWithoutNYC = datasource_regions(NYTimesDataset, exclude=[*ALL_NYC_REGIONS],)
+
+
+CDCVaccinesCountiesDataset = datasource_regions(
+    CDCVaccinesDataset, RegionMask(AggregationLevel.COUNTY)
 )
 
+CDCVaccinesStatesDataset = datasource_regions(
+    CDCVaccinesDataset, RegionMask(AggregationLevel.STATE)
+)
 
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
@@ -154,7 +167,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutNYCOrIACounties,
+        NYTimesDatasetWithoutNYC,
     ],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
@@ -163,23 +176,29 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperStateProviders,
         CovidTrackingDataSource,
         TexasHospitalizations,
-        HHSHospitalDataset,
+        HHSHospitalCountyDataset,
+        HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU: [
         CANScraperStateProviders,
         CovidTrackingDataSource,
         TexasHospitalizations,
-        HHSHospitalDataset,
+        HHSHospitalCountyDataset,
+        HHSHospitalStateDataset,
     ],
-    CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalDataset],
+    CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
     CommonFields.DEATHS: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutNYCOrIACounties,
+        NYTimesDatasetWithoutNYC,
     ],
-    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalDataset],
-    CommonFields.ICU_BEDS: [CANScraperStateProviders, HHSHospitalDataset],
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
+    CommonFields.ICU_BEDS: [
+        CANScraperStateProviders,
+        HHSHospitalCountyDataset,
+        HHSHospitalStateDataset,
+    ],
     CommonFields.NEGATIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
     CommonFields.POSITIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
     CommonFields.TOTAL_TESTS: [CovidTrackingDataSource],
@@ -192,10 +211,26 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
     CommonFields.TEST_POSITIVITY_14D: [CMSTestingDataset],
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
-    CommonFields.VACCINES_DISTRIBUTED: [CANScraperStateProviders, CDCVaccinesDataset],
-    CommonFields.VACCINES_ADMINISTERED: [CANScraperStateProviders, CDCVaccinesDataset],
-    CommonFields.VACCINATIONS_INITIATED: [CANScraperStateProviders, CDCVaccinesDataset],
-    CommonFields.VACCINATIONS_COMPLETED: [CANScraperStateProviders, CDCVaccinesDataset],
+    CommonFields.VACCINES_DISTRIBUTED: [
+        CDCVaccinesCountiesDataset,
+        CANScraperStateProviders,
+        CDCVaccinesStatesDataset,
+    ],
+    CommonFields.VACCINES_ADMINISTERED: [
+        CDCVaccinesCountiesDataset,
+        CANScraperStateProviders,
+        CDCVaccinesStatesDataset,
+    ],
+    CommonFields.VACCINATIONS_INITIATED: [
+        CDCVaccinesCountiesDataset,
+        CANScraperStateProviders,
+        CDCVaccinesStatesDataset,
+    ],
+    CommonFields.VACCINATIONS_COMPLETED: [
+        CDCVaccinesCountiesDataset,
+        CANScraperStateProviders,
+        CDCVaccinesStatesDataset,
+    ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [CANScraperStateProviders],
     CommonFields.VACCINATIONS_COMPLETED_PCT: [CANScraperStateProviders],
 }
@@ -204,7 +239,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
     # TODO(michael): We don't really trust the CCM bed numbers and would ideally remove them entirely.
     CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CovidCareMapBeds, HHSHospitalDataset],
+    CommonFields.ICU_BEDS: [CovidCareMapBeds, HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
     CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
     CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
@@ -218,6 +253,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 def load_us_timeseries_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
 ) -> MultiRegionDataset:
+    """Returns all combined data. `load_test_dataset` is more suitable for tests."""
     filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())

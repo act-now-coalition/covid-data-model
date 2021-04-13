@@ -1,6 +1,7 @@
 import dataclasses
 
 import structlog
+from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 import pandas as pd
@@ -17,20 +18,6 @@ _logger = structlog.getLogger()
 # TODO(tom): Make some kind of hierarchy of class to form a schema that can be populated by a JSON.
 CONFIG = {
     "filters": [
-        {
-            "regions_included": [
-                Region.from_fips("49009"),
-                Region.from_fips("49013"),
-                Region.from_fips("49047"),
-            ],
-            "observations_to_drop": {
-                "start_date": "2021-02-12",
-                "fields": [CommonFields.CASES, CommonFields.DEATHS],
-                "internal_note": "https://trello.com/c/aj7ep7S7/1130",
-                "public_note": "The TriCounty Health Department is focusing on vaccinations "
-                "and we have not found a new source of case counts.",
-            },
-        },
         {
             "regions_included": [RegionMask(AggregationLevel.COUNTY, states=["OK"])],
             "regions_excluded": [Region.from_fips("40109"), Region.from_fips("40143")],
@@ -53,7 +40,11 @@ def drop_observations(
 
     ts_in = dataset.timeseries_bucketed_wide_dates
 
-    mask_selected_fields = ts_in.index.get_level_values(PdFields.VARIABLE).isin(config["fields"])
+    if "field_group" in config:
+        fields = common_fields.FIELD_GROUP_TO_LIST_FIELDS[config["field_group"]]
+    else:
+        fields = config["fields"]
+    mask_selected_fields = ts_in.index.get_level_values(PdFields.VARIABLE).isin(fields)
     ts_selected_fields = ts_in.loc[mask_selected_fields]
     ts_not_selected_fields = ts_in.loc[~mask_selected_fields]
 

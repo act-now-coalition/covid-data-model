@@ -5,7 +5,7 @@ from tests import test_helpers
 
 def _get_subclass_tag_types(cls):
     """Returns a list of all TAG_TYPE subclasses of concrete subclasses of cls."""
-    return [k.TAG_TYPE for k in test_helpers.get_concrete_subclasses(cls)]
+    return [k.TAG_TYPE for k in test_helpers.get_concrete_subclasses_not_in_tests(cls)]
 
 
 def test_all_tag_subclasses_accounted_for():

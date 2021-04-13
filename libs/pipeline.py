@@ -135,8 +135,10 @@ class Region:
         return None
 
     @property
-    def country(self):
-        return "USA"
+    def country(self) -> str:
+        """2-letter ISO-3166 Country code."""
+        # TODO(chris): Make more generic if we want to support other countries.
+        return "US"
 
     @property
     def level(self) -> AggregationLevel:
@@ -146,6 +148,15 @@ class Region:
             return level
 
         raise NotImplementedError("Unknown Aggregation Level")
+
+    @property
+    def fips_for_api(self) -> str:
+        """The same as `fips`, except '0' for the USA as a hack to help the frontend."""
+        if self.level is AggregationLevel.COUNTRY:
+            assert self.location_id == "iso1:us"
+            return "0"
+        else:
+            return self.fips
 
     def is_county(self):
         return self.level is AggregationLevel.COUNTY
@@ -179,9 +190,9 @@ class RegionMask:
 RegionMaskOrRegion = NewType("RegionMaskOrRegion", Union[RegionMask, Region])
 
 
-def us_states_to_country_map() -> Mapping[Region, Region]:
+def us_states_and_territories_to_country_map() -> Mapping[Region, Region]:
     us_country_region = Region.from_location_id("iso1:us")
-    # Sorry US Territories, only including 50 states and DC for now.
     return {
-        Region.from_state(state): us_country_region for state in us_state_abbrev.STATES_50.values()
+        Region.from_state(state): us_country_region
+        for state in us_state_abbrev.US_STATE_ABBREV.values()
     }

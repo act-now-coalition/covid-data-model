@@ -152,14 +152,14 @@ def test_data_source_truncates_dates_can_scraper():
 
 def test_can_scraper_class_single_provider():
     cls: data_source.CanScraperBase
-    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+    for cls in test_helpers.get_concrete_subclasses_not_in_tests(data_source.CanScraperBase):
         providers = set(v.provider for v in cls.VARIABLES)
         assert len(providers) == 1
 
 
 def test_can_scraper_class_unique_variable_names():
     cls: data_source.CanScraperBase
-    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+    for cls in test_helpers.get_concrete_subclasses_not_in_tests(data_source.CanScraperBase):
         variables_not_none = [v for v in cls.VARIABLES if v.common_field is not None]
         # Source `variable_name` may be duplicated with different measurement or unit.
         assert len(variables_not_none) == len(
@@ -171,7 +171,7 @@ def test_can_scraper_class_unique_variable_names():
 
 def test_can_scraper_class_variable_set():
     cls: data_source.CanScraperBase
-    for cls in test_helpers.get_concrete_subclasses(data_source.CanScraperBase):
+    for cls in test_helpers.get_concrete_subclasses_not_in_tests(data_source.CanScraperBase):
         assert cls.VARIABLES
 
 
@@ -181,7 +181,7 @@ def test_can_scraper_class_expected_fields_set():
     with pytest.raises(AttributeError):
         data_source.DataSource.EXPECTED_FIELDS
     cls: data_source.DataSource
-    for cls in test_helpers.get_concrete_subclasses(data_source.DataSource):
+    for cls in test_helpers.get_concrete_subclasses_not_in_tests(data_source.DataSource):
         assert isinstance(cls.EXPECTED_FIELDS, list)
         assert cls.SOURCE_TYPE
         assert isinstance(cls.SOURCE_TYPE, str)

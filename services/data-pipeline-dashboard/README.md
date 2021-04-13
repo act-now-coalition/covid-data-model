@@ -68,5 +68,16 @@ Following https://certbot.eff.org/lets-encrypt/debianbuster-nginx
   - Make sure it is active
   - Submit
 
-Problems?
+## Problems?
+
+### Webhook problems
 - Look below `Recent Deliveries` at https://github.com/covid-projections/covid-data-model/settings/hooks/281997561 and `sudo systemctl status webhook` on the GCP instance to see how it is doing.
+
+### Server error / problems in python code
+- Look for problems on the server with `sudo systemctl status data-pipeline-dashboard --lines 30`.
+
+If the venv needs updating:
+- `cd /home/tom/covid-data-model`
+- `pyenv activate covid-data-model`
+- `pip install -r requirements.txt`
+- `sudo systemctl restart data-pipeline-dashboard`
