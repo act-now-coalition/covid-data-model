@@ -154,22 +154,20 @@
       ]
     },
     "vaccinesAdministeredDemographics": {
-      "anyOf": [
+      "title": "Vaccinesadministereddemographics",
+      "description": "Demographic distributions for administered vaccines.",
+      "allOf": [
         {
           "$ref": "#/definitions/DemographicDistributions"
-        },
-        {
-          "type": "null"
         }
       ]
     },
     "vaccinationsInitiatedDemographics": {
-      "anyOf": [
+      "title": "Vaccinationsinitiateddemographics",
+      "description": "Demographic distributions for initiated vaccinations.",
+      "allOf": [
         {
           "$ref": "#/definitions/DemographicDistributions"
-        },
-        {
-          "type": "null"
         }
       ]
     },
@@ -256,7 +254,7 @@
     },
     "DemographicDistributions": {
       "title": "DemographicDistributions",
-      "description": "Base model for API output.",
+      "description": "Distributions of demographic data.\n\nNote that different regions may have different demographic distributions for\nthe same field.  For instance, health departments in different states may report\ndifferent age ranges.\n\nThe data provided matches the source distributions.",
       "type": "object",
       "properties": {
         "age": {

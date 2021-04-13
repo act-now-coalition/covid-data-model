@@ -1,6 +1,6 @@
 {
   "title": "DemographicDistributions",
-  "description": "Distributions of demographic data.\n\nNote that because different regions may have different demographic distributions for\nthe same field.  For instance, how age is collected is not uniform.\n\nThe data provided matches the source distributions.",
+  "description": "Distributions of demographic data.\n\nNote that different regions may have different demographic distributions for\nthe same field.  For instance, health departments in different states may report\ndifferent age ranges.\n\nThe data provided matches the source distributions.",
   "type": "object",
   "properties": {
     "age": {
