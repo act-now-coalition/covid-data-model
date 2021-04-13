@@ -7,6 +7,21 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### Vaccine demographic data
+_Added on 2021-03-25_
+
+We are now starting to include vaccine demographic data; currently we are collecting two fields: `actuals.vaccinesAdministeredDemographics` and `actuals.vaccinationsInitiatedDemographics`. While we currently only have county level data in TX and PA (as of 3/25) we are working on adding more regions to provide the most complete vaccine demographic data.
+
+Note that demographic buckets may differ by jurisdiction as different states may collect and bucket
+demographic data in different ways. We surface the buckets as collected for now but this may change
+in the future.
+
+### Vaccines administered
+_Added on 2021-03-23_
+
+Added `actuals.vaccinesAdministered` to the API. This represents the total number of doses 
+administered for a region.
+
 ### New deaths column
 _Added on 2021-03-08_
 

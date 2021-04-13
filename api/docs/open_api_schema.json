@@ -1108,7 +1108,7 @@
             }
           }
         },
-        "description": "Base model for API output."
+        "description": "Distributions of demographic data.\n\nNote that different regions may have different demographic distributions for\nthe same field.  For instance, health departments in different states may report\ndifferent age ranges.\n\nThe data provided matches the source distributions."
       },
       "Actuals": {
         "title": "Actuals",
@@ -1276,24 +1276,22 @@
             "description": "Total number of vaccine doses administered."
           },
           "vaccinesAdministeredDemographics": {
-            "anyOf": [
+            "title": "Vaccinesadministereddemographics",
+            "allOf": [
               {
                 "$ref": "#/components/schemas/DemographicDistributions"
-              },
-              {
-                "type": "null"
               }
-            ]
+            ],
+            "description": "Demographic distributions for administered vaccines."
           },
           "vaccinationsInitiatedDemographics": {
-            "anyOf": [
+            "title": "Vaccinationsinitiateddemographics",
+            "allOf": [
               {
                 "$ref": "#/components/schemas/DemographicDistributions"
-              },
-              {
-                "type": "null"
               }
-            ]
+            ],
+            "description": "Demographic distributions for initiated vaccinations."
           }
         },
         "description": "Known actuals data."
@@ -2557,24 +2555,22 @@
             "description": "Total number of vaccine doses administered."
           },
           "vaccinesAdministeredDemographics": {
-            "anyOf": [
+            "title": "Vaccinesadministereddemographics",
+            "allOf": [
               {
                 "$ref": "#/components/schemas/DemographicDistributions"
-              },
-              {
-                "type": "null"
               }
-            ]
+            ],
+            "description": "Demographic distributions for administered vaccines."
           },
           "vaccinationsInitiatedDemographics": {
-            "anyOf": [
+            "title": "Vaccinationsinitiateddemographics",
+            "allOf": [
               {
                 "$ref": "#/components/schemas/DemographicDistributions"
-              },
-              {
-                "type": "null"
               }
-            ]
+            ],
+            "description": "Demographic distributions for initiated vaccinations."
           },
           "date": {
             "title": "Date",

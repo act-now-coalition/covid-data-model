@@ -179,6 +179,30 @@ number of people vaccinated with both the first and second dose.
 * CSV column names: ``actuals.vaccinationsCompleted``
 * JSON file fields: ``actuals.vaccinationsCompleted``, ``actualsTimeseries.*.vaccinationsCompleted``
 
+### Vaccines Administered
+
+  Total number of vaccine doses administered.
+
+**Where to access**  
+* CSV column names: ``actuals.vaccinesAdministered``
+* JSON file fields: ``actuals.vaccinesAdministered``, ``actualsTimeseries.*.vaccinesAdministered``
+
+### Vaccines Administered Demographics
+
+  Demographic distributions for administered vaccines.
+
+**Where to access**  
+* CSV column names: ``actuals.vaccinesAdministeredDemographics``
+* JSON file fields: ``actuals.vaccinesAdministeredDemographics``, ``actualsTimeseries.*.vaccinesAdministeredDemographics``
+
+### Vaccinations Initiated Demographics
+
+  Demographic distributions for initiated vaccinations.
+
+**Where to access**  
+* CSV column names: ``actuals.vaccinationsInitiatedDemographics``
+* JSON file fields: ``actuals.vaccinationsInitiatedDemographics``, ``actualsTimeseries.*.vaccinationsInitiatedDemographics``
+
 ### Vaccinations Initiated Ratio
 
   Ratio of population that has initiated vaccination.
