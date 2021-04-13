@@ -56,6 +56,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
     ZSCORE_OUTLIER = "zscore_outlier"
     KNOWN_ISSUE = "known_issue"
+    DERIVED = "derived"
 
     PROVENANCE = PdFields.PROVENANCE
     SOURCE_URL = "source_url"
@@ -290,6 +291,20 @@ class KnownIssue(TagInTimeseries):
         return json.dumps(d, separators=(",", ":"))
 
 
+@dataclass(frozen=True)
+class Derived(TagInTimeseries):
+    TAG_TYPE = TagType.DERIVED
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        assert content == "{}"
+        return cls()
+
+    @property
+    def content(self) -> str:
+        return "{}"
+
+
 TAG_TYPE_TO_CLASS = {
     TagType.CUMULATIVE_TAIL_TRUNCATED: CumulativeTailTruncated,
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED: CumulativeLongTailTruncated,
@@ -298,6 +313,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.SOURCE_URL: SourceUrl,
     TagType.SOURCE: Source,
     TagType.KNOWN_ISSUE: KnownIssue,
+    TagType.DERIVED: Derived,
 }
 
 

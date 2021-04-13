@@ -1833,3 +1833,26 @@ def test_static_and_geo_data():
     )
     assert ds.static_and_geo_data.loc[region_chi.location_id, CommonFields.COUNTY] == "Cook County"
     assert ds.static_and_geo_data.loc[region_chi.location_id, CommonFields.POPULATION] == 5
+
+
+def test_add_tag_all_bucket():
+    region_tx = Region.from_state("TX")
+    region_la = Region.from_fips("06037")
+    age_40s = DemographicBucket("age:40-49")
+    data_tx = {region_tx: {CommonFields.CASES: [10, 20]}}
+    data_la = {region_la: {CommonFields.CASES: {DemographicBucket.ALL: [5, 10], age_40s: [1, 2]}}}
+
+    tag = test_helpers.make_tag(date="2020-04-01")
+    ds = test_helpers.build_dataset({**data_tx, **data_la}).add_tag_all_bucket(tag)
+
+    expected_tx = {region_tx: {CommonFields.CASES: TimeseriesLiteral([10, 20], annotation=[tag])}}
+    expected_la = {
+        region_la: {
+            CommonFields.CASES: {
+                DemographicBucket.ALL: TimeseriesLiteral([5, 10], annotation=[tag]),
+                age_40s: [1, 2],
+            }
+        }
+    }
+    ds_expected = test_helpers.build_dataset({**expected_tx, **expected_la})
+    test_helpers.assert_dataset_like(ds, ds_expected)
