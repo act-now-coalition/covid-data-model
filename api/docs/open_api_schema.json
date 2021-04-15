@@ -361,7 +361,7 @@
           "Country Data"
         ],
         "summary": "US Summary",
-        "description": "Region Summary object for a single state.",
+        "description": "Region Summary object for US.",
         "responses": {
           "200": {
             "description": "",
@@ -397,7 +397,7 @@
           "Country Data"
         ],
         "summary": "US Timeseries",
-        "description": "Region Summary with Timeseries for a single state.",
+        "description": "Region Summary with Timeseries for US.",
         "responses": {
           "200": {
             "description": "",
