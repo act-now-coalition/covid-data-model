@@ -355,6 +355,114 @@
         }
       ]
     },
+    "/country/US.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "Country Data"
+        ],
+        "summary": "US Summary",
+        "description": "Region Summary object for US.",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummary"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/country/US.timeseries.json?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "Country Data"
+        ],
+        "summary": "US Timeseries",
+        "description": "Region Summary with Timeseries for US.",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSummaryWithTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/country/US.timeseries.csv?apiKey={apiKey}": {
+      "get": {
+        "tags": [
+          "Country Data"
+        ],
+        "summary": "US Timeseries CSV",
+        "description": "Region Summary with Timeseries for US.",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/AggregateRegionSummaryWithTimeseries"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "parameters": [
+        {
+          "name": "apiKey",
+          "in": "query",
+          "required": true,
+          "deprecated": false,
+          "allowEmptyValue": false,
+          "explode": false,
+          "allowReserved": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
     "/states.json?apiKey={apiKey}": {
       "get": {
         "tags": [
@@ -2825,7 +2933,8 @@
       "tags": [
         "State Data",
         "County Data",
-        "CBSA Data"
+        "CBSA Data",
+        "Country Data"
       ]
     },
     {

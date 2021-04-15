@@ -7,6 +7,11 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### Aggregated US data
+_Added on 2021-03-31_
+
+You can now query [US aggregated data](/#aggregated-us-data).
+
 ### Vaccine demographic data
 _Added on 2021-03-25_
 
