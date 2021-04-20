@@ -209,7 +209,7 @@ def deploy_single_level(
         # individual regions.
         # Currently this is slow and adds a decent amount of time to the pipeline (~10 minutes
         # I think) if ran on all regions.
-        if level is AggregationLevel.STATE:
+        if level in [AggregationLevel.STATE, AggregationLevel.COUNTRY]:
             output_path = path_builder.single_timeseries(timeseries, FileType.CSV)
             bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=[timeseries])
             flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)

@@ -40,6 +40,7 @@ def test_generate_from_loaded_data_country(tmpdir):
 
     assert json.load((output_dir / "country" / "US.json").open())
     assert json.load((output_dir / "country" / "US.timeseries.json").open())
+    assert not pd.read_csv(output_dir / "country" / "US.timeseries.csv").empty
     assert json.load((output_dir / "countries.json").open())
     assert json.load((output_dir / "countries.timeseries.json").open())
     assert not pd.read_csv(output_dir / "countries.csv").empty
