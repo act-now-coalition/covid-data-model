@@ -1493,15 +1493,6 @@ def test_multi_region_dataset_get_subset_with_buckets():
     test_helpers.assert_dataset_like(ds.remove_regions([region_tx]), ds_expected)
 
 
-def test_dataset_regions_property(nyc_region):
-    az_region = Region.from_state("AZ")
-    dataset = test_helpers.build_dataset(
-        {nyc_region: {CommonFields.CASES: [100]}, az_region: {CommonFields.CASES: [100]}}
-    )
-
-    assert dataset.timeseries_regions == set([az_region, nyc_region])
-
-
 def test_write_read_dataset_pointer_with_source_url(tmpdir):
     pointer = _make_dataset_pointer(tmpdir)
     url_str1 = UrlStr("http://foo.com/1")

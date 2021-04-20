@@ -8,7 +8,6 @@ from typing import (
     Union,
     TextIO,
     Mapping,
-    Set,
     Sequence,
     Tuple,
 )
@@ -549,13 +548,6 @@ class MultiRegionDataset:
     @cached_property
     def static_and_geo_data(self) -> pd.DataFrame:
         return self.static.join(self.geo_data)
-
-    @property
-    def timeseries_regions(self) -> Set[Region]:
-        """Returns a set of all regions in the timeseries dataset."""
-
-        location_ids = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
-        return set(Region.from_location_id(location_id) for location_id in location_ids)
 
     @cached_property
     def provenance(self) -> pd.DataFrame:
