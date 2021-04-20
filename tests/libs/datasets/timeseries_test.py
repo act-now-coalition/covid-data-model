@@ -1,7 +1,6 @@
 import datetime
 import io
 import pathlib
-import dataclasses
 import pickle
 
 import pytest
