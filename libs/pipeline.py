@@ -183,7 +183,10 @@ class Region:
 @final
 @dataclass(frozen=True)
 class RegionMask:
-    level: Optional[AggregationLevel] = None
+    """Represents attributes which may be used to select a subset of regions."""
+
+    level: Optional[AggregationLevel]
+    # An optional list of states, each a two letter string.
     states: Optional[List[str]] = None
 
 

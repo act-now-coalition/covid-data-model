@@ -109,6 +109,8 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     )
     _logger.info("Finished combining datasets")
 
+    # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
+    # need to remove CBSAs because they don't exist yet.
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     region_overrides_config = manual_filter.transform_region_overrides(
         json.load(open(REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
@@ -314,7 +316,7 @@ def update_test_combined_data(truncate_dates: bool, state: List[str]):
     # Keep only a small subset of the regions so we have enough to exercise our code in tests.
     test_subset = us_dataset.get_regions_subset(
         [
-            RegionMask(states=[s.strip() for s in state]),
+            RegionMask(level=None, states=[s.strip() for s in state]),
             Region.from_fips("48201"),
             Region.from_fips("48301"),
             Region.from_fips("20161"),

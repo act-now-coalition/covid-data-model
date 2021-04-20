@@ -218,7 +218,7 @@ def test_dataclass_include_exclude_attributes():
     orig_data_source_cls = CANScraperUSAFactsProvider
 
     ny_source = combined_datasets.datasource_regions(
-        orig_data_source_cls, RegionMask(states=["NY"])
+        orig_data_source_cls, RegionMask(level=None, states=["NY"])
     )
     # pylint: disable=E1101
     assert ny_source.SOURCE_TYPE == orig_data_source_cls.SOURCE_TYPE
@@ -248,7 +248,7 @@ def test_dataclass_include_exclude():
     assert "iso1:us#iso2:us-ny" in orig_ds.location_ids
 
     ny_source = combined_datasets.datasource_regions(
-        orig_data_source_cls, RegionMask(states=["NY"])
+        orig_data_source_cls, RegionMask(level=None, states=["NY"])
     )
     ny_ds = ny_source.make_dataset()
     assert "iso1:us#iso2:us-tx" not in ny_ds.location_ids
