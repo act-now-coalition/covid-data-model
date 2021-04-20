@@ -532,8 +532,10 @@ class MultiRegionDataset:
 
     @cached_property
     def location_ids(self) -> pd.Index:
-        return self.static.index.unique(CommonFields.LOCATION_ID).union(
-            self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID)
+        return (
+            self.static.index.unique(CommonFields.LOCATION_ID)
+            .union(self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID))
+            .union(self.tag.index.unique(CommonFields.LOCATION_ID))
         )
 
     @cached_property
@@ -780,8 +782,10 @@ class MultiRegionDataset:
 
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
         """Returns a new object containing data in self and given provenance information."""
-        if not self.provenance.empty:
-            raise NotImplementedError("TODO(tom): add support for merging provenance data")
+        if not self.tag.empty:
+            raise NotImplementedError(
+                "add_provenance_series is deprecated and only called with " "an empty tag Series."
+            )
         assert provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
         assert isinstance(provenance, pd.Series)
 
