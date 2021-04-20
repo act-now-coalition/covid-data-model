@@ -128,8 +128,16 @@ def init(server):
                 "this dataset. See an animated demo in the [Dash Pivottable docs]("
                 "https://github.com/plotly/dash-pivottable#readme)."
             ),
-            html.Button("County demographic data", id="pivot_table_btn_county_demo", n_clicks=0),
-            html.Div(id="pivot_table_parent", children="foo"),
+            html.Button(
+                "County vaccines by demographic attributes", id="pivot_table_btn_county_demo"
+            ),
+            html.Button("Sources", id="pivot_table_btn_sources"),
+            # PivotTable `rows` and `cols` properties can not be modified as dash the Output of a
+            # dash callback, see
+            # https://github.com/plotly/dash-pivottable/blob/master/README.md#references. As a
+            # work around `pivot_table_parent` is updated to add a new PivotTable when a button
+            # is clicked.
+            dcc.Loading(id="pivot_table_parent"),
             html.H2("Source URLs"),
             html.Details(
                 [
@@ -267,30 +275,43 @@ def _init_callbacks(
 
     @dash_app.callback(
         Output("pivot_table_parent", "children"),
-        # [Output("pivot_table", "rows"), Output("pivot_table", 'cols')],
-        [Input("pivot_table_btn_county_demo", "n_clicks")],
-        prevent_initial_call=False,
+        [
+            Input("pivot_table_btn_county_demo", "n_clicks"),
+            Input("pivot_table_btn_sources", "n_clicks"),
+        ],
     )
-    def pivot_table_btn_county_demo_clicked(n_clicks):
-        print(f"another click.... {n_clicks}")
-        return dash_pivottable.PivotTable(
-            id="pivot_table",
-            data=pivottable_data,
-            rows=[CommonFields.AGGREGATE_LEVEL, CommonFields.STATE],
-            cols=[timeseries_stats.DISTRIBUTION],
-        )
+    def pivot_table_btn_county_demo_clicked(btn_county_demo, btn_sources):
+        """Make a new pivot table according to the most recently clicked button.
 
-    @dash_app.callback(
-        Output("pivot_table_parent", "children"), [Input("pivot_table_parent", "loading_state")],
-    )
-    def pivot_table_loading(loading_state):
-        print(f"Loading: {loading_state}")
-        return dash_pivottable.PivotTable(
-            id="pivot_table",
-            data=pivottable_data,
-            rows=[CommonFields.AGGREGATE_LEVEL],
-            cols=[timeseries_stats.DISTRIBUTION],
-        )
+        We can't have a callback function for each button because
+        https://dash.plotly.com/callback-gotchas "A component/property pair can only be the Output
+        of one callback"."""
+
+        # From https://dash.plotly.com/advanced-callbacks "Determining which Input has fired"
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            button_id = "pivot_table_btn_sources"
+        else:
+            button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+        # Each PivotTable needs a unique id as a work around for
+        # https://github.com/plotly/dash-pivottable/issues/10
+        if button_id == "pivot_table_btn_county_demo":
+            return dash_pivottable.PivotTable(
+                id="pivot_table_county_demo",
+                data=pivottable_data,
+                rows=[CommonFields.AGGREGATE_LEVEL],
+                cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
+            )
+        elif button_id == "pivot_table_btn_sources":
+            return dash_pivottable.PivotTable(
+                id="pivot_table_sources",
+                data=pivottable_data,
+                rows=[CommonFields.AGGREGATE_LEVEL],
+                cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.StatName.SOURCE_TYPE_SET],
+            )
+        else:
+            raise ValueError(f"Unexpected button_id: {button_id}")
 
     # Input not in a list raises dash.exceptions.IncorrectTypeException: The input argument
     # `location-dropdown.value` must be a list or tuple of `dash.dependencies.Input`s.
