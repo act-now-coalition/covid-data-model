@@ -45,18 +45,28 @@ def _remove_prefix(text, prefix):
 
 @enum.unique
 class TimeSeriesPivotTablePreset(enum.Enum):
+    SOURCES = (
+        "Per source count",
+        {
+            "rows": [CommonFields.AGGREGATE_LEVEL, timeseries_stats.FIELD_GROUP],
+            "cols": [timeseries_stats.StatName.SOURCE_TYPE_SET],
+        },
+    )
+    SOURCE_BY_STATE = (
+        "Sources by state",
+        {
+            "rows": [CommonFields.AGGREGATE_LEVEL, CommonFields.STATE],
+            "cols": [timeseries_stats.FIELD_GROUP],
+            "aggregatorName": "List Unique Values",
+            "vals": [timeseries_stats.StatName.SOURCE_TYPE_SET],
+        },
+    )
     COUNTY_DEMO = (
         "County vaccines by demographic attributes",
         {
-            "rows": [CommonFields.AGGREGATE_LEVEL],
+            "rows": [CommonFields.AGGREGATE_LEVEL, CommonFields.STATE],
             "cols": [timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
-        },
-    )
-    SOURCES = (
-        "Sources",
-        {
-            "rows": [CommonFields.AGGREGATE_LEVEL],
-            "cols": [timeseries_stats.FIELD_GROUP, timeseries_stats.StatName.SOURCE_TYPE_SET],
+            "valueFilter": {timeseries_stats.DISTRIBUTION: {"all": False}},
         },
     )
 
@@ -323,7 +333,7 @@ def _init_callbacks(
         Output("pivot_table_parent", "children"),
         [Input(preset.btn_id, "n_clicks") for preset in TimeSeriesPivotTablePreset],
     )
-    def pivot_table_btn_county_demo_clicked(btn_county_demo, btn_sources):
+    def time_series_pivot_table_preset_btn_clicked(*inputs_ignored):
         """Make a new pivot table according to the most recently clicked button.
 
         We can't have a callback function for each button because
