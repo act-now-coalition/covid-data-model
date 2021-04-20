@@ -1,8 +1,12 @@
 import dataclasses
+import re
+from typing import List
+from typing import Mapping
 
 import structlog
 from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldGroup
 from covidactnow.datapublic.common_fields import PdFields
 import pandas as pd
 
@@ -96,3 +100,70 @@ def run(dataset: timeseries.MultiRegionDataset, config=CONFIG) -> timeseries.Mul
         dataset = filtered_dataset.append_regions(passed_dataset)
 
     return dataset
+
+
+# Possible values from https://github.com/covid-projections/covid-projections/blob/develop/src/cms-content/region-overrides/region-overrides.json
+_METRIC_TO_FIELDS = {
+    "metrics.caseDensity": common_fields.FIELD_GROUP_TO_LIST_FIELDS[FieldGroup.CASES_DEATHS],
+    # "metrics.infectionRate": common_fields.FieldGroup.
+    "metrics.testPositivityRatio": common_fields.FIELD_GROUP_TO_LIST_FIELDS[FieldGroup.TESTS],
+    "metrics.icuCapacityRatio": common_fields.FIELD_GROUP_TO_LIST_FIELDS[
+        FieldGroup.HEALTHCARE_CAPACITY
+    ],
+    "metrics.vaccinationsInitiatedRatio": common_fields.FIELD_GROUP_TO_LIST_FIELDS[
+        FieldGroup.VACCINES
+    ],
+}
+
+
+def _transform_one_override(
+    override: Mapping, cbsa_to_counties_map: Mapping[Region, List[Region]]
+) -> Mapping:
+    region_str = override["region"]
+    if re.fullmatch(r"[A-Z][A-Z]", region_str):
+        region = Region.from_state(region_str)
+    elif re.fullmatch(r"\d{5}", region_str):
+        region = Region.from_fips(region_str)
+    else:
+        raise ValueError(f"Invalid region: {region_str}")
+
+    include_str = override["include"]
+    if include_str == "region":
+        regions_included = [region]
+    elif include_str == "region-and-subregions":
+        if region.is_state():
+            regions_included = [RegionMask(states=[region.state])]
+        elif region.level == AggregationLevel.CBSA:
+            regions_included = [region] + cbsa_to_counties_map[region]
+        else:
+            raise ValueError("region-and-subregions only valid for a state and CBSA")
+    elif include_str == "subregions":
+        if not region.is_state():
+            raise ValueError("subregions only valid for a state")
+        regions_included = [RegionMask(AggregationLevel.COUNTY, states=[region.state])]
+    else:
+        raise ValueError(f"Invalid include_str: {include_str}")
+
+    return {
+        "regions_included": regions_included,
+        "observations_to_drop": {
+            "fields": _METRIC_TO_FIELDS[override["metric"]],
+            "internal_note": override["context"],
+            "public_note": override.get("disclaimer", ""),
+        },
+    }
+
+
+def transform_region_overrides(
+    region_overrides: Mapping, cbsa_to_counties_map: Mapping[Region, List[Region]]
+) -> Mapping:
+    filter_configs = []
+    for override in region_overrides["overrides"]:
+        if not override.get("blocked"):
+            continue
+        try:
+            filter_configs.append(_transform_one_override(override, cbsa_to_counties_map))
+        except:
+            raise ValueError(f"Problem with {override}")
+
+    return {"filters": filter_configs}
