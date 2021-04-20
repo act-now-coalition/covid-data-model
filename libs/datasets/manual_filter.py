@@ -141,7 +141,7 @@ def _transform_one_override(
             raise ValueError("subregions only valid for a state")
         regions_included = [RegionMask(AggregationLevel.COUNTY, states=[region.state])]
     else:
-        raise ValueError(f"Invalid include_str: {include_str}")
+        raise ValueError(f"Invalid include: {include_str}")
 
     return {
         "regions_included": regions_included,
