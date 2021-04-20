@@ -1,5 +1,4 @@
 import json
-import pprint
 
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
@@ -161,9 +160,9 @@ def test_manual_filter_per_bucket_tag():
     test_helpers.assert_dataset_like(ds_out, ds_expected)
 
 
-def test_region_overrides_transform():
+def test_region_overrides_transform_smoke_test():
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     transformed = manual_filter.transform_region_overrides(
         json.load(open(data.REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
     )
-    pprint.pprint(transformed)
+    # pprint.pprint(transformed)

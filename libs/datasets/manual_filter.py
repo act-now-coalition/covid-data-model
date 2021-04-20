@@ -101,10 +101,13 @@ def run(dataset: timeseries.MultiRegionDataset, config=CONFIG) -> timeseries.Mul
     return dataset
 
 
-# Possible values from https://github.com/covid-projections/covid-projections/blob/develop/src/cms-content/region-overrides/region-overrides.json
+# Possible values from
+# https://github.com/covid-projections/covid-projections/blob/develop/src/cms-content/region-overrides/region-overrides.json
 _METRIC_TO_FIELDS = {
-    "metrics.caseDensity": common_fields.FIELD_GROUP_TO_LIST_FIELDS[FieldGroup.CASES_DEATHS],
-    # "metrics.infectionRate": common_fields.FieldGroup.
+    "metrics.caseDensity": [CommonFields.CASES, CommonFields.NEW_CASES],
+    # "metrics.infectionRate" is not supported because it isn't used in the current
+    # region-overrides.json and doesn't exist as a field in the pipeline where the manual_filter
+    # is applied. Removing cases will likely cause Rt to no longer be produced for a region.
     "metrics.testPositivityRatio": common_fields.FIELD_GROUP_TO_LIST_FIELDS[FieldGroup.TESTS],
     "metrics.icuCapacityRatio": common_fields.FIELD_GROUP_TO_LIST_FIELDS[
         FieldGroup.HEALTHCARE_CAPACITY
