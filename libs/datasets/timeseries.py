@@ -911,12 +911,6 @@ class MultiRegionDataset:
         #  https://github.com/pandas-dev/pandas/issues/35992 which is fixed in pandas 1.2.0
         # assert self.tag.index.is_monotonic_increasing
         assert self.tag.name == TagField.CONTENT
-        # Check that all tag location_id are in timeseries location_id
-        assert (
-            self.tag.index.unique(TagField.LOCATION_ID)
-            .difference(self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID))
-            .empty
-        )
 
         extra_location_ids = self.location_ids.difference(dataset_utils.get_geo_data().index)
         if not extra_location_ids.empty:

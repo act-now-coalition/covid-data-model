@@ -1847,3 +1847,30 @@ def test_add_tag_all_bucket():
     }
     ds_expected = test_helpers.build_dataset({**expected_tx, **expected_la})
     test_helpers.assert_dataset_like(ds, ds_expected)
+
+
+def test_add_tag_without_timeseries(tmpdir):
+    """Create a dataset with a tag for a timeseries that doesn't exist. Make sure it survives
+    being written and read from disk."""
+    pointer = _make_dataset_pointer(tmpdir)
+
+    region_tx = Region.from_state("TX")
+    region_la = Region.from_fips("06037")
+    data_tx = {region_tx: {CommonFields.CASES: [10, 20]}}
+
+    tag_collection = taglib.TagCollection()
+    tag = test_helpers.make_tag(date="2020-04-01")
+    tag_collection.add(
+        tag,
+        location_id=region_la.location_id,
+        variable=CommonFields.CASES,
+        bucket=DemographicBucket.ALL,
+    )
+
+    dataset = test_helpers.build_dataset({**data_tx}).append_tag_df(tag_collection.as_dataframe())
+    assert set(dataset.tag_objects_series) == {tag}
+
+    dataset.write_to_dataset_pointer(pointer)
+    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
+
+    test_helpers.assert_dataset_like(dataset, dataset_read)
