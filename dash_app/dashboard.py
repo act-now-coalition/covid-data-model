@@ -179,15 +179,16 @@ def init(server):
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
             html.H2("Time series pivot table"),
+            html.P("Preset views:"),
+            *[
+                html.Button(preset.description, id=preset.btn_id)
+                for preset in TimeSeriesPivotTablePreset
+            ],
             dcc.Markdown(
                 "Drag attributes to explore information about time series in "
                 "this dataset. See an animated demo in the [Dash Pivottable docs]("
                 "https://github.com/plotly/dash-pivottable#readme)."
             ),
-            *[
-                html.Button(preset.description, id=preset.btn_id)
-                for preset in TimeSeriesPivotTablePreset
-            ],
             # PivotTable `rows` and `cols` properties can not be modified as dash the Output of a
             # dash callback, see
             # https://github.com/plotly/dash-pivottable/blob/master/README.md#references. As a
@@ -392,6 +393,8 @@ def _init_callbacks(
             tag_df = tag_df.loc[tag_df[TagField.VARIABLE].isin(selected_variables)]
 
         fig = px.scatter(interesting_ts.reset_index(), x="date", y=interesting_ts.columns.to_list())
+        # Default to comparing values on the same date.
+        fig.update_layout(hovermode="x")
         return fig, tag_df.to_dict("records")
 
 
