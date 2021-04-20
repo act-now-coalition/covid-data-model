@@ -45,14 +45,29 @@ def _remove_prefix(text, prefix):
 
 @enum.unique
 class TimeSeriesPivotTablePreset(enum.Enum):
-    COUNTY_DEMO = "County vaccines by demographic attributes"
-    SOURCES = "Sources"
+    COUNTY_DEMO = (
+        "County vaccines by demographic attributes",
+        {
+            "rows": [CommonFields.AGGREGATE_LEVEL],
+            "cols": [timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
+        },
+    )
+    SOURCES = (
+        "Sources",
+        {
+            "rows": [CommonFields.AGGREGATE_LEVEL],
+            "cols": [timeseries_stats.FIELD_GROUP, timeseries_stats.StatName.SOURCE_TYPE_SET],
+        },
+    )
 
-    def __new__(cls, description):
+    def __new__(cls, description, pivot_table_parameters):
+        # Make a unique string _value_ for each preset, mostly copied from
+        # https://docs.python.org/3/library/enum.html#using-a-custom-new
         value = str(len(cls.__members__) + 1)
         obj = object.__new__(cls)
         obj._value_ = value
         obj.description = description
+        obj.pivot_table_parameters = pivot_table_parameters
         return obj
 
     @classmethod
@@ -327,22 +342,9 @@ def _init_callbacks(
 
         # Each PivotTable needs a unique id as a work around for
         # https://github.com/plotly/dash-pivottable/issues/10
-        if preset == TimeSeriesPivotTablePreset.COUNTY_DEMO:
-            return dash_pivottable.PivotTable(
-                id=preset.tbl_id,
-                data=pivottable_data,
-                rows=[CommonFields.AGGREGATE_LEVEL],
-                cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
-            )
-        elif preset == TimeSeriesPivotTablePreset.SOURCES:
-            return dash_pivottable.PivotTable(
-                id=preset.tbl_id,
-                data=pivottable_data,
-                rows=[CommonFields.AGGREGATE_LEVEL],
-                cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.StatName.SOURCE_TYPE_SET],
-            )
-        else:
-            raise ValueError(f"Unexpected preset: {preset}")
+        return dash_pivottable.PivotTable(
+            id=preset.tbl_id, data=pivottable_data, **preset.pivot_table_parameters,
+        )
 
     # Input not in a list raises dash.exceptions.IncorrectTypeException: The input argument
     # `location-dropdown.value` must be a list or tuple of `dash.dependencies.Input`s.
