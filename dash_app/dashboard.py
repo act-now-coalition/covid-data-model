@@ -1,3 +1,4 @@
+import enum
 import os
 from textwrap import dedent
 
@@ -35,6 +36,36 @@ TAG_TABLE_COLUMNS = [
     TagField.TYPE,
     TagField.CONTENT,
 ]
+
+
+def _remove_prefix(text, prefix):
+    assert text.startswith(prefix)
+    return text[len(prefix) :]
+
+
+@enum.unique
+class TimeSeriesPivotTablePreset(enum.Enum):
+    COUNTY_DEMO = "County vaccines by demographic attributes"
+    SOURCES = "Sources"
+
+    def __new__(cls, description):
+        value = str(len(cls.__members__) + 1)
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.description = description
+        return obj
+
+    @classmethod
+    def get_by_btn_id(cls, btn_id) -> "TimeSeriesPivotTablePreset":
+        return cls._value2member_map_[_remove_prefix(btn_id, "pivot_table_btn_")]
+
+    @property
+    def btn_id(self):
+        return f"pivot_table_btn_{self._value_}"
+
+    @property
+    def tbl_id(self):
+        return f"pivot_table_{self._value_}"
 
 
 def region_table(
@@ -128,10 +159,10 @@ def init(server):
                 "this dataset. See an animated demo in the [Dash Pivottable docs]("
                 "https://github.com/plotly/dash-pivottable#readme)."
             ),
-            html.Button(
-                "County vaccines by demographic attributes", id="pivot_table_btn_county_demo"
-            ),
-            html.Button("Sources", id="pivot_table_btn_sources"),
+            *[
+                html.Button(preset.description, id=preset.btn_id)
+                for preset in TimeSeriesPivotTablePreset
+            ],
             # PivotTable `rows` and `cols` properties can not be modified as dash the Output of a
             # dash callback, see
             # https://github.com/plotly/dash-pivottable/blob/master/README.md#references. As a
@@ -275,10 +306,7 @@ def _init_callbacks(
 
     @dash_app.callback(
         Output("pivot_table_parent", "children"),
-        [
-            Input("pivot_table_btn_county_demo", "n_clicks"),
-            Input("pivot_table_btn_sources", "n_clicks"),
-        ],
+        [Input(preset.btn_id, "n_clicks") for preset in TimeSeriesPivotTablePreset],
     )
     def pivot_table_btn_county_demo_clicked(btn_county_demo, btn_sources):
         """Make a new pivot table according to the most recently clicked button.
@@ -290,28 +318,31 @@ def _init_callbacks(
         # From https://dash.plotly.com/advanced-callbacks "Determining which Input has fired"
         ctx = dash.callback_context
         if not ctx.triggered:
-            button_id = "pivot_table_btn_sources"
+            # Use the first as the default when page is loaded.
+            preset = more_itertools.first(TimeSeriesPivotTablePreset)
         else:
-            button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+            preset = TimeSeriesPivotTablePreset.get_by_btn_id(
+                ctx.triggered[0]["prop_id"].split(".")[0]
+            )
 
         # Each PivotTable needs a unique id as a work around for
         # https://github.com/plotly/dash-pivottable/issues/10
-        if button_id == "pivot_table_btn_county_demo":
+        if preset == TimeSeriesPivotTablePreset.COUNTY_DEMO:
             return dash_pivottable.PivotTable(
-                id="pivot_table_county_demo",
+                id=preset.tbl_id,
                 data=pivottable_data,
                 rows=[CommonFields.AGGREGATE_LEVEL],
                 cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
             )
-        elif button_id == "pivot_table_btn_sources":
+        elif preset == TimeSeriesPivotTablePreset.SOURCES:
             return dash_pivottable.PivotTable(
-                id="pivot_table_sources",
+                id=preset.tbl_id,
                 data=pivottable_data,
                 rows=[CommonFields.AGGREGATE_LEVEL],
                 cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.StatName.SOURCE_TYPE_SET],
             )
         else:
-            raise ValueError(f"Unexpected button_id: {button_id}")
+            raise ValueError(f"Unexpected preset: {preset}")
 
     # Input not in a list raises dash.exceptions.IncorrectTypeException: The input argument
     # `location-dropdown.value` must be a list or tuple of `dash.dependencies.Input`s.
