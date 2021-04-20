@@ -1,3 +1,6 @@
+import os
+from textwrap import dedent
+
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -115,9 +118,6 @@ def init(server):
 
     region_df = region_table(per_timeseries_stats, ds)
 
-    df = per_timeseries_stats.stats.reset_index()
-    pivottable_data = [df.columns.tolist()] + df.values.tolist()
-
     dash_app.layout = html.Div(
         children=[
             html.H1(children="CAN Data Pipeline Dashboard"),
@@ -128,12 +128,8 @@ def init(server):
                 "this dataset. See an animated demo in the [Dash Pivottable docs]("
                 "https://github.com/plotly/dash-pivottable#readme)."
             ),
-            dash_pivottable.PivotTable(
-                id="pivot_table",
-                data=pivottable_data,
-                rows=[CommonFields.AGGREGATE_LEVEL],
-                cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
-            ),
+            html.Button("County demographic data", id="pivot_table_btn_county_demo", n_clicks=0),
+            html.Div(id="pivot_table_parent", children="foo"),
             html.H2("Source URLs"),
             html.Details(
                 [
@@ -196,6 +192,7 @@ def init(server):
     )
 
     _init_callbacks(dash_app, ds, per_timeseries_stats, region_df["id"])
+    print(show_callbacks(dash_app))
 
     return dash_app.server
 
@@ -265,6 +262,36 @@ def _init_callbacks(
         selected_row = more_itertools.one(selected_rows)
         return [region_id_series.iat[selected_row]]
 
+    df = per_timeseries_stats.stats.reset_index()
+    pivottable_data = [df.columns.tolist()] + df.values.tolist()
+
+    @dash_app.callback(
+        Output("pivot_table_parent", "children"),
+        # [Output("pivot_table", "rows"), Output("pivot_table", 'cols')],
+        [Input("pivot_table_btn_county_demo", "n_clicks")],
+        prevent_initial_call=False,
+    )
+    def pivot_table_btn_county_demo_clicked(n_clicks):
+        print(f"another click.... {n_clicks}")
+        return dash_pivottable.PivotTable(
+            id="pivot_table",
+            data=pivottable_data,
+            rows=[CommonFields.AGGREGATE_LEVEL, CommonFields.STATE],
+            cols=[timeseries_stats.DISTRIBUTION],
+        )
+
+    @dash_app.callback(
+        Output("pivot_table_parent", "children"), [Input("pivot_table_parent", "loading_state")],
+    )
+    def pivot_table_loading(loading_state):
+        print(f"Loading: {loading_state}")
+        return dash_pivottable.PivotTable(
+            id="pivot_table",
+            data=pivottable_data,
+            rows=[CommonFields.AGGREGATE_LEVEL],
+            cols=[timeseries_stats.DISTRIBUTION],
+        )
+
     # Input not in a list raises dash.exceptions.IncorrectTypeException: The input argument
     # `location-dropdown.value` must be a list or tuple of `dash.dependencies.Input`s.
     # but doesn't in the docs at https://dash.plotly.com/basic-callbacks. Odd.
@@ -302,3 +329,50 @@ def _init_callbacks(
 
         fig = px.scatter(interesting_ts.reset_index(), x="date", y=interesting_ts.columns.to_list())
         return fig, tag_df.to_dict("records")
+
+
+def show_callbacks(app):
+    def wrap_list(items, padding=24):
+        return ("\n" + " " * padding).join(items)
+
+    def format_regs(registrations):
+        vals = sorted("{}.{}".format(i["id"], i["property"]) for i in registrations)
+        return wrap_list(vals)
+
+    output_list = []
+
+    for callback_id, callback in app.callback_map.items():
+        wrapped_func = callback["callback"].__wrapped__
+        inputs = callback["inputs"]
+        states = callback["state"]
+
+        if callback_id.startswith(".."):
+            outputs = callback_id.strip(".").split("...")
+        else:
+            outputs = [callback_id]
+
+        str_values = {
+            "callback": wrapped_func.__name__,
+            "outputs": wrap_list(outputs),
+            "filename": os.path.split(wrapped_func.__code__.co_filename)[-1],
+            "lineno": wrapped_func.__code__.co_firstlineno,
+            "num_inputs": len(inputs),
+            "num_states": len(states),
+            "inputs": format_regs(inputs),
+            "states": format_regs(states),
+            "num_outputs": len(outputs),
+        }
+
+        output = dedent(
+            """                                                                                                                                                                                                      
+            callback    {callback} @ {filename}:{lineno}                                                                                                                                                             
+            Outputs{num_outputs:>3}  {outputs}                                                                                                                                                                       
+            Inputs{num_inputs:>4}  {inputs}                                                                                                                                                                          
+            States{num_states:>4}  {states}                                                                                                                                                                          
+            """.format(
+                **str_values
+            )
+        )
+
+        output_list.append(output)
+    return "\n".join(output_list)
