@@ -1149,18 +1149,15 @@ def test_append_tags():
 
 
 def test_add_provenance_all_with_tags():
-    """Checks that add_provenance_all (and add_provenance_series that it calls) preserves tags."""
+    """Checks that add_provenance_all (and add_provenance_series that it calls) fails when tags
+    already exist."""
     region = Region.from_state("TX")
     cases_values = [100, 200, 300, 400]
     timeseries = TimeseriesLiteral(cases_values, annotation=[(test_helpers.make_tag())])
     dataset_in = test_helpers.build_dataset({region: {CommonFields.CASES: timeseries}})
 
-    dataset_out = dataset_in.add_provenance_all("prov_prov")
-
-    timeseries = dataclasses.replace(timeseries, provenance=["prov_prov"])
-    dataset_expected = test_helpers.build_dataset({region: {CommonFields.CASES: timeseries}})
-
-    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+    with pytest.raises(NotImplementedError):
+        dataset_in.add_provenance_all("prov_prov")
 
 
 def test_join_columns_with_tags():
@@ -1850,8 +1847,7 @@ def test_add_tag_all_bucket():
 
 
 def test_add_tag_without_timeseries(tmpdir):
-    """Create a dataset with a tag for a timeseries that doesn't exist. Make sure it survives
-    being written and read from disk."""
+    """Create a dataset with a tag for a timeseries that doesn't exist."""
     pointer = _make_dataset_pointer(tmpdir)
 
     region_tx = Region.from_state("TX")
@@ -1868,9 +1864,16 @@ def test_add_tag_without_timeseries(tmpdir):
     )
 
     dataset = test_helpers.build_dataset({**data_tx}).append_tag_df(tag_collection.as_dataframe())
-    assert set(dataset.tag_objects_series) == {tag}
 
+    # Check that the tag was created for region_la, which doesn't have any timeseries data.
+    assert set(
+        dataset.tag_objects_series.xs(region_la.location_id, level=CommonFields.LOCATION_ID)
+    ) == {tag}
+
+    # Check that tag location_id are included in location_ids property.
+    assert set(dataset.location_ids) == {region_la.location_id, region_tx.location_id}
+
+    # Check that the tag still exists after writing and reading from disk.
     dataset.write_to_dataset_pointer(pointer)
     dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
-
     test_helpers.assert_dataset_like(dataset, dataset_read)
