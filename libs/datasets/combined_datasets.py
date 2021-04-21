@@ -31,8 +31,8 @@ from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.cms_testing_dataset import CMSTestingDataset
-from libs.datasets.sources.can_scraper_providers import CANScraperCountyProviders
-from libs.datasets.sources.can_scraper_providers import CANScraperStateProviders
+from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperCountyProviders
+from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 from libs.datasets.sources.cdc_testing_dataset import CDCTestingDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
