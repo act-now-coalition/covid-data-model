@@ -10,7 +10,7 @@ from libs import pipeline
 from libs.datasets import data_source
 from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
-from libs.datasets.sources import can_scraper_state_providers
+from libs.datasets.sources import can_scraper_local_dashboard_providers
 from libs.datasets.sources import nytimes_dataset
 from libs.datasets.sources import can_scraper_usafacts
 from unittest import mock
@@ -24,9 +24,12 @@ from tests.libs.datasets.sources.can_scraper_helpers_test import build_can_scrap
 @pytest.mark.slow
 def test_state_providers_smoke_test():
     """Make sure *something* is returned without any raised exceptions."""
-    assert can_scraper_state_providers.CANScraperStateProviders.make_dataset()
-    assert can_scraper_state_providers.CANScraperStateProviders.make_dataset()
-    assert can_scraper_state_providers.CANScraperStateProviders.make_dataset.cache_info().hits > 0
+    assert can_scraper_local_dashboard_providers.CANScraperStateProviders.make_dataset()
+    assert can_scraper_local_dashboard_providers.CANScraperStateProviders.make_dataset()
+    assert (
+        can_scraper_local_dashboard_providers.CANScraperStateProviders.make_dataset.cache_info().hits
+        > 0
+    )
 
 
 @pytest.mark.parametrize("reverse_observation_order", [False, True])

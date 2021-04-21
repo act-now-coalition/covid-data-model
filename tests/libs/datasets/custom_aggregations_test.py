@@ -48,7 +48,7 @@ def test_replace_dc_county(nyc_region):
     output = custom_aggregations.replace_dc_county_with_state_data(dataset)
 
     # Verify that the regions are the same input and output
-    assert dataset.timeseries_regions == output.timeseries_regions
+    assert set(dataset.location_ids) == set(output.location_ids)
 
     # Verify that the state cases from before replacement are now the
     # same as the county cases
