@@ -10,6 +10,7 @@ from libs.datasets import AggregationLevel
 from libs.datasets import manual_filter
 from libs.datasets import statistical_areas
 from libs.datasets import taglib
+from libs.datasets import timeseries
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
 from tests import test_helpers
@@ -196,11 +197,58 @@ def test_region_overrides_transform_and_filter():
         taglib.TagType.KNOWN_ISSUE_ALL_DATES,
         disclaimer=region_overrides["overrides"][0]["disclaimer"],
     )
+    ds_expected = timeseries.MultiRegionDataset.new_without_timeseries().add_tag_to_subset(
+        tag_expected, ds_in.timeseries_bucketed_wide_dates.index
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)
+
+
+def test_region_overrides_transform_and_filter_blocked_false():
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region-and-subregions",
+                "metric": "metrics.caseDensity",
+                "region": "TX",
+                "context": "https://trello.com/c/kvjwZJJP/1005",
+                "disclaimer": "Yo, bad stuff",
+                "blocked": False,
+            }
+        ]
+    }
+
+    region_az = Region.from_state("AZ")
+    region_tx = Region.from_state("TX")
+    kids = DemographicBucket("age:0-9")
+    ds_in = test_helpers.build_dataset(
+        {
+            region_tx: {
+                CommonFields.CASES: {DemographicBucket.ALL: [6, 8], kids: [1, 2]},
+                CommonFields.ICU_BEDS: [5, 5],
+            },
+            region_az: {CommonFields.CASES: [2, 3]},
+        }
+    )
+
+    ds_out = manual_filter.run(
+        ds_in, manual_filter.transform_region_overrides(region_overrides, {})
+    )
+
+    tag = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE_ALL_DATES,
+        disclaimer=region_overrides["overrides"][0]["disclaimer"],
+    )
     ds_expected = test_helpers.build_dataset(
         {
-            region: {
-                CommonFields.CASES: TimeseriesLiteral([None, None, None], annotation=[tag_expected])
-            }
+            region_tx: {
+                CommonFields.CASES: {
+                    DemographicBucket.ALL: TimeseriesLiteral([6, 8], annotation=[tag]),
+                    kids: TimeseriesLiteral([1, 2], annotation=[tag]),
+                },
+                CommonFields.ICU_BEDS: [5, 5],
+            },
+            region_az: {CommonFields.CASES: [2, 3]},
         }
     )
 

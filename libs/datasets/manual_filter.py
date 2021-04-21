@@ -137,7 +137,15 @@ def run(
             # TODO(tom): Find a cleaner way to refer to a filter in logs.
             _logger.info("No locations matched", regions=str(filter_.regions_included))
             continue
-        filtered_dataset = drop_observations(filtered_dataset, filter_)
+        if filter_.action == Action.DROP_OBSERVATIONS:
+            filtered_dataset = drop_observations(filtered_dataset, filter_)
+        elif filter_.action == Action.ANNOTATE:
+            ts_selected_fields, _ = _partition_by_fields(
+                filtered_dataset.timeseries_bucketed_wide_dates, filter_.fields_included
+            )
+            filtered_dataset = filtered_dataset.add_tag_to_subset(
+                filter_.tag, ts_selected_fields.index
+            )
 
         dataset = filtered_dataset.append_regions(passed_dataset)
 
@@ -194,7 +202,7 @@ def _transform_one_override(
         fields_included=_METRIC_TO_FIELDS[override["metric"]],
         internal_note=override["context"],
         public_note=override.get("disclaimer", ""),
-        action=Action.DROP_OBSERVATIONS,
+        action=Action.DROP_OBSERVATIONS if override["blocked"] else Action.ANNOTATE,
     )
 
 
@@ -203,8 +211,6 @@ def transform_region_overrides(
 ) -> Config:
     filter_configs: List[Filter] = []
     for override in region_overrides["overrides"]:
-        if not override.get("blocked"):
-            continue
         try:
             filter_configs.append(_transform_one_override(override, cbsa_to_counties_map))
         except:
