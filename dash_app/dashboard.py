@@ -1,6 +1,4 @@
 import enum
-import os
-from textwrap import dedent
 
 import dash
 import dash_core_components as dcc
