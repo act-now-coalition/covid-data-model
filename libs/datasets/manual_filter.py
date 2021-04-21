@@ -108,10 +108,9 @@ def drop_observations(
     ts_results.append(ts_no_real_values_to_drop)
     index_to_tag = ts_filtered.index
 
-    new_tags = taglib.TagCollection()
-    new_tags.add_by_index(filter_.tag, index=index_to_tag)
-
-    return dataset.replace_timeseries_wide_dates(ts_results).append_tag_df(new_tags.as_dataframe())
+    return dataset.replace_timeseries_wide_dates(ts_results).add_tag_to_subset(
+        filter_.tag, index_to_tag
+    )
 
 
 def run(
