@@ -3,7 +3,11 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
+# TODO(michael): Consider centralizing this mapping of
+# variable+measurement+unit => common_field so that it can be reused across
+# other datasets more easily.
 def make_scraper_variables(provider: str):
+    """Helper to generate all variables that could be captured from a state / county dashboard."""
     return [
         ccd_helpers.ScraperVariable(variable_name="pcr_tests_negative", provider=provider),
         ccd_helpers.ScraperVariable(variable_name="unspecified_tests_total", provider=provider),
