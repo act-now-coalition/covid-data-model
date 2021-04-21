@@ -442,6 +442,21 @@ def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, buckete
     assert numeric_columns.all()
 
 
+def check_timeseries_wide_dates_structure(timeseries_wide_dates: pd.DataFrame, *, bucketed=True):
+    if bucketed:
+        assert timeseries_wide_dates.index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.VARIABLE,
+            PdFields.DEMOGRAPHIC_BUCKET,
+        ]
+    else:
+        assert timeseries_wide_dates.index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.VARIABLE,
+        ]
+    assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
+
+
 def _tag_add_all_bucket(tag: pd.Series) -> pd.Series:
     tag_bucketed = pd.concat(
         {DemographicBucket.ALL: tag}, names=[PdFields.DEMOGRAPHIC_BUCKET]
@@ -690,18 +705,7 @@ class MultiRegionDataset:
         timeseries_wide_dates: pd.DataFrame, *, bucketed=False
     ) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame as returned by timeseries_wide_dates."""
-        if bucketed:
-            assert timeseries_wide_dates.index.names == [
-                CommonFields.LOCATION_ID,
-                PdFields.VARIABLE,
-                PdFields.DEMOGRAPHIC_BUCKET,
-            ]
-        else:
-            assert timeseries_wide_dates.index.names == [
-                CommonFields.LOCATION_ID,
-                PdFields.VARIABLE,
-            ]
-        assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
+        check_timeseries_wide_dates_structure(timeseries_wide_dates, bucketed=bucketed)
         timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
             timeseries_wide_dates.columns
         )
