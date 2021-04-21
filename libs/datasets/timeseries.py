@@ -1040,11 +1040,28 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask, :]
         return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
-    def remove_regions(self, regions: Collection[RegionMaskOrRegion]) -> "MultiRegionDataset":
-        location_ids = self._regionmaskorregions_to_location_id(regions)
-        return self.remove_locations(location_ids)
+    def partition_by_region(
+        self,
+        include: Collection[RegionMaskOrRegion] = (),
+        *,
+        exclude: Collection[RegionMaskOrRegion] = (),
+    ) -> Tuple["MultiRegionDataset", "MultiRegionDataset"]:
+        """Partitions this dataset into two datasets by region. The first contains all regions in
+        any of `include` (or all regions in this dataset if `include` is empty), without any
+        regions in any of `exclude`. The second contains all regions in this dataset that are not in
+        the first."""
+        if include:
+            ds_selected = self.get_regions_subset(include)
+        else:
+            assert exclude, "At least one of include and exclude must be non-empty"
+            ds_selected = self
+        if exclude:
+            exclude_location_ids = self._regionmaskorregions_to_location_id(exclude)
+            ds_selected = ds_selected._remove_locations(exclude_location_ids)
+        ds_not_selected = self._remove_locations(ds_selected.location_ids)
+        return ds_selected, ds_not_selected
 
-    def remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
+    def _remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
         timeseries_mask = self.timeseries_bucketed.index.get_level_values(
             CommonFields.LOCATION_ID
         ).isin(location_ids)

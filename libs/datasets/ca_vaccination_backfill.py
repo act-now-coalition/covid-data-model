@@ -1,5 +1,3 @@
-import dataclasses
-import pandas as pd
 from covidactnow.datapublic.common_fields import DemographicBucket
 
 from libs.datasets.timeseries import MultiRegionDataset

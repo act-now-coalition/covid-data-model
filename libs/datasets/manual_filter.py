@@ -120,14 +120,13 @@ def run(
     dataset: timeseries.MultiRegionDataset, config: Config = CONFIG
 ) -> timeseries.MultiRegionDataset:
     for filter_ in config.filters:
-        filtered_dataset = dataset.get_regions_subset(filter_.regions_included)
-        if filter_.regions_excluded:
-            filtered_dataset = filtered_dataset.remove_regions(filter_.regions_excluded)
+        filtered_dataset, passed_dataset = dataset.partition_by_region(
+            filter_.regions_included, exclude=filter_.regions_excluded
+        )
         if filtered_dataset.location_ids.empty:
             # TODO(tom): Find a cleaner way to refer to a filter in logs.
             _logger.info("No locations matched", regions=str(filter_.regions_included))
             continue
-        passed_dataset = dataset.remove_locations(filtered_dataset.location_ids)
         filtered_dataset = drop_observations(filtered_dataset, filter_.observations_to_drop)
 
         dataset = filtered_dataset.append_regions(passed_dataset)

@@ -90,10 +90,7 @@ class DataSourceAndRegionMasks:
         """
         dataset = self.data_source_cls.make_dataset()
 
-        if self.include:
-            dataset = dataset.get_regions_subset(self.include)
-        if self.exclude:
-            dataset = dataset.remove_regions(self.exclude)
+        dataset, _ = dataset.partition_by_region(include=self.include, exclude=self.exclude)
         if self.manual_filter_config:
             dataset = manual_filter.run(dataset, self.manual_filter_config)
         return dataset

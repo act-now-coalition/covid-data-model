@@ -63,13 +63,13 @@ def replace_dc_county_with_state_data(
 
     # aggregate_regions only copies number columns. Extract them and re-add to the aggregated
     # dataset.
-    static_excluding_numbers = dataset_in.get_regions_subset(
+    dataset_with_dc_county, dataset_without_dc_county = dataset_in.partition_by_region(
         [dc_county_region]
-    ).static.select_dtypes(exclude="number")
+    )
+    static_excluding_numbers = dataset_with_dc_county.static.select_dtypes(exclude="number")
     dc_county_dataset = region_aggregation.aggregate_regions(dataset_in, dc_map).add_static_values(
         static_excluding_numbers.reset_index()
     )
-    dataset_without_dc_county = dataset_in.remove_regions([dc_county_region])
 
     return dataset_without_dc_county.append_regions(dc_county_dataset)
 
