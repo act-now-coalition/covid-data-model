@@ -8,7 +8,6 @@ from typing import (
     Union,
     TextIO,
     Mapping,
-    Set,
     Sequence,
     Tuple,
 )
@@ -533,8 +532,10 @@ class MultiRegionDataset:
 
     @cached_property
     def location_ids(self) -> pd.Index:
-        return self.static.index.unique(CommonFields.LOCATION_ID).union(
-            self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID)
+        return (
+            self.static.index.unique(CommonFields.LOCATION_ID)
+            .union(self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID))
+            .union(self.tag.index.unique(CommonFields.LOCATION_ID))
         )
 
     @cached_property
@@ -549,13 +550,6 @@ class MultiRegionDataset:
     @cached_property
     def static_and_geo_data(self) -> pd.DataFrame:
         return self.static.join(self.geo_data)
-
-    @property
-    def timeseries_regions(self) -> Set[Region]:
-        """Returns a set of all regions in the timeseries dataset."""
-
-        location_ids = self.timeseries.index.get_level_values(CommonFields.LOCATION_ID)
-        return set(Region.from_location_id(location_id) for location_id in location_ids)
 
     @cached_property
     def provenance(self) -> pd.DataFrame:
@@ -788,8 +782,10 @@ class MultiRegionDataset:
 
     def add_provenance_series(self, provenance: pd.Series) -> "MultiRegionDataset":
         """Returns a new object containing data in self and given provenance information."""
-        if not self.provenance.empty:
-            raise NotImplementedError("TODO(tom): add support for merging provenance data")
+        if not self.tag.empty:
+            raise NotImplementedError(
+                "add_provenance_series is deprecated and only called with an empty tag Series."
+            )
         assert provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
         assert isinstance(provenance, pd.Series)
 
@@ -915,12 +911,6 @@ class MultiRegionDataset:
         #  https://github.com/pandas-dev/pandas/issues/35992 which is fixed in pandas 1.2.0
         # assert self.tag.index.is_monotonic_increasing
         assert self.tag.name == TagField.CONTENT
-        # Check that all tag location_id are in timeseries location_id
-        assert (
-            self.tag.index.unique(TagField.LOCATION_ID)
-            .difference(self.timeseries_bucketed.index.unique(CommonFields.LOCATION_ID))
-            .empty
-        )
 
         extra_location_ids = self.location_ids.difference(dataset_utils.get_geo_data().index)
         if not extra_location_ids.empty:
