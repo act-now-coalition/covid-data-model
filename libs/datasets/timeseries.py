@@ -784,7 +784,7 @@ class MultiRegionDataset:
         """Returns a new object containing data in self and given provenance information."""
         if not self.tag.empty:
             raise NotImplementedError(
-                "add_provenance_series is deprecated and only called with " "an empty tag Series."
+                "add_provenance_series is deprecated and only called with an empty tag Series."
             )
         assert provenance.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
         assert isinstance(provenance, pd.Series)
