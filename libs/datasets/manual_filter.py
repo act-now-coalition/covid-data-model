@@ -75,26 +75,35 @@ def _partition_by_fields(
     return ts_selected_fields, ts_not_selected_fields
 
 
+def _filter_by_date(
+    ts_in: pd.DataFrame, *, drop_start_date: datetime.date
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    start_date = pd.to_datetime(drop_start_date)
+    obsv_selected = ts_in.loc[:, ts_in.columns >= start_date]
+    mask_has_real_value_to_drop = obsv_selected.notna().any(1)
+    ts_to_filter = ts_in.loc[mask_has_real_value_to_drop]
+    ts_no_real_values_to_drop = ts_in.loc[~mask_has_real_value_to_drop]
+    ts_filtered = ts_to_filter.loc[:, ts_to_filter.columns < start_date]
+    return ts_no_real_values_to_drop, ts_filtered
+
+
 def drop_observations(
     dataset: timeseries.MultiRegionDataset,
     fields: List[CommonFields],
     drop_start_date: datetime.date,
     public_note: str,
 ) -> timeseries.MultiRegionDataset:
-    """Drops observations according to `config` from every region in dataset."""
+    """Drops observations according to parameters from every region in `dataset`."""
     ts_selected_fields, ts_not_selected_fields = _partition_by_fields(dataset, fields)
 
-    start_date = pd.to_datetime(drop_start_date)
-    obsv_selected = ts_selected_fields.loc[:, ts_selected_fields.columns >= start_date]
-    mask_has_real_value_to_drop = obsv_selected.notna().any(1)
-    ts_to_filter = ts_selected_fields.loc[mask_has_real_value_to_drop]
-    ts_no_real_values_to_drop = ts_selected_fields.loc[~mask_has_real_value_to_drop]
-    ts_filtered = ts_to_filter.loc[:, ts_to_filter.columns < start_date]
+    ts_no_real_values_to_drop, ts_filtered = _filter_by_date(
+        ts_selected_fields, drop_start_date=drop_start_date
+    )
 
     tag = taglib.KnownIssue(date=drop_start_date, disclaimer=public_note)
 
     new_tags = taglib.TagCollection()
-    new_tags.add_by_index(tag, index=ts_to_filter.index)
+    new_tags.add_by_index(tag, index=ts_filtered.index)
 
     return dataset.replace_timeseries_bucketed(
         [ts_not_selected_fields, ts_no_real_values_to_drop, ts_filtered]
