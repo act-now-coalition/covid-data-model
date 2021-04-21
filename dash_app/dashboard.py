@@ -82,6 +82,7 @@ class TimeSeriesPivotTablePreset(enum.Enum):
 
     @classmethod
     def get_by_btn_id(cls, btn_id) -> "TimeSeriesPivotTablePreset":
+        # Not sure why lint complains but ... pylint: disable=no-member
         return cls._value2member_map_[_remove_prefix(btn_id, "pivot_table_btn_")]
 
     @property
