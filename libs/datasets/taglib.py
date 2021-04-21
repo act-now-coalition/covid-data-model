@@ -367,16 +367,6 @@ class TagCollection:
         """Returns all tags in this collection in a DataFrame."""
         return pd.DataFrame.from_records(self._as_records())
 
-    def add_by_index(self, tag: TagInTimeseries, *, index: pd.MultiIndex):
-        """Adds `tag` to each time series in `index`."""
-        assert index.names == [
-            CommonFields.LOCATION_ID,
-            PdFields.VARIABLE,
-            PdFields.DEMOGRAPHIC_BUCKET,
-        ]
-        for location_id, variable, bucket in index:
-            self.add(tag, location_id=location_id, variable=variable, bucket=bucket)
-
 
 def series_string_to_object(tag: pd.Series) -> pd.Series:
     """Converts a Series of content strings (generally JSONs) into a Series of TagInTimeseries

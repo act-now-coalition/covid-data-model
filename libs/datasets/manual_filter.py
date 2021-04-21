@@ -120,10 +120,9 @@ def drop_observations(
         # When start_date is None all of ts_selected_fields is dropped; don't append to ts_results.
         index_to_tag = ts_selected_fields.index
 
-    new_tags = taglib.TagCollection()
-    new_tags.add_by_index(filter_.tag, index=index_to_tag)
-
-    return dataset.replace_timeseries_wide_dates(ts_results).append_tag_df(new_tags.as_dataframe())
+    return dataset.replace_timeseries_wide_dates(ts_results).add_tag_to_subset(
+        filter_.tag, index_to_tag
+    )
 
 
 def run(
