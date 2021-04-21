@@ -1,5 +1,4 @@
 import datetime
-from typing import List
 from typing import Optional
 from typing import Tuple
 import re
@@ -30,7 +29,7 @@ _logger = structlog.getLogger()
 
 
 class ObservationsToDrop(pydantic.BaseModel):
-    start_date: datetime.date
+    start_date: Optional[datetime.date] = None
     drop_fields: Optional[List[CommonFields]] = None
     drop_field_group: Optional[common_fields.FieldGroup] = None
     internal_note: str
@@ -158,7 +157,7 @@ _METRIC_TO_FIELDS = {
 
 def _transform_one_override(
     override: Mapping, cbsa_to_counties_map: Mapping[Region, List[Region]]
-) -> Mapping:
+) -> Filter:
     region_str = override["region"]
     if re.fullmatch(r"[A-Z][A-Z]", region_str):
         region = Region.from_state(region_str)
@@ -184,19 +183,19 @@ def _transform_one_override(
     else:
         raise ValueError(f"Invalid include: {include_str}")
 
-    return {
-        "regions_included": regions_included,
-        "observations_to_drop": {
-            "fields": _METRIC_TO_FIELDS[override["metric"]],
-            "internal_note": override["context"],
-            "public_note": override.get("disclaimer", ""),
-        },
-    }
+    return Filter(
+        regions_included=regions_included,
+        observations_to_drop=ObservationsToDrop(
+            drop_fields=_METRIC_TO_FIELDS[override["metric"]],
+            internal_note=override["context"],
+            public_note=override.get("disclaimer", ""),
+        ),
+    )
 
 
 def transform_region_overrides(
     region_overrides: Mapping, cbsa_to_counties_map: Mapping[Region, List[Region]]
-) -> Mapping:
+) -> Config:
     filter_configs = []
     for override in region_overrides["overrides"]:
         if not override.get("blocked"):
@@ -206,4 +205,4 @@ def transform_region_overrides(
         except:
             raise ValueError(f"Problem with {override}")
 
-    return {"filters": filter_configs}
+    return Config(filter_configs)
