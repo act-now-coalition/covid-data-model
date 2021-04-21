@@ -56,6 +56,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
     ZSCORE_OUTLIER = "zscore_outlier"
     KNOWN_ISSUE = "known_issue"
+    KNOWN_ISSUE_ALL_DATES = "known_issue_all_dates"
     DERIVED = "derived"
 
     PROVENANCE = PdFields.PROVENANCE
@@ -292,6 +293,23 @@ class KnownIssue(TagInTimeseries):
 
 
 @dataclass(frozen=True)
+class KnownIssueAllDates(TagInTimeseries):
+    disclaimer: str
+
+    TAG_TYPE = TagType.KNOWN_ISSUE_ALL_DATES
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        content_parsed = json.loads(content)
+        return cls(disclaimer=content_parsed["disclaimer"])
+
+    @property
+    def content(self) -> str:
+        d = {"disclaimer": self.disclaimer}
+        return json.dumps(d, separators=(",", ":"))
+
+
+@dataclass(frozen=True)
 class Derived(TagInTimeseries):
     TAG_TYPE = TagType.DERIVED
 
@@ -313,6 +331,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.SOURCE_URL: SourceUrl,
     TagType.SOURCE: Source,
     TagType.KNOWN_ISSUE: KnownIssue,
+    TagType.KNOWN_ISSUE_ALL_DATES: KnownIssueAllDates,
     TagType.DERIVED: Derived,
 }
 

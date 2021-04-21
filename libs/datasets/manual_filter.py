@@ -40,23 +40,33 @@ def drop_observations(
     dataset: timeseries.MultiRegionDataset, config
 ) -> timeseries.MultiRegionDataset:
     """Drops observations according to `config` from every region in dataset."""
-    drop_start_date = pd.to_datetime(config["start_date"])
     ts_in = dataset.timeseries_bucketed_wide_dates
 
     if "field_group" in config:
         fields = common_fields.FIELD_GROUP_TO_LIST_FIELDS[config["field_group"]]
     else:
         fields = config["fields"]
+
+    output_ts_to_concat = []
     mask_selected_fields = ts_in.index.get_level_values(PdFields.VARIABLE).isin(fields)
     ts_selected_fields = ts_in.loc[mask_selected_fields]
-    ts_not_selected_fields = ts_in.loc[~mask_selected_fields]
+    # Time series that are not among the selected fields
+    output_ts_to_concat.append(ts_in.loc[~mask_selected_fields])
 
-    obsv_selected = ts_selected_fields.loc[:, ts_selected_fields.columns >= drop_start_date]
-    mask_has_real_value_to_drop = obsv_selected.notna().any(1)
-    ts_to_filter = ts_selected_fields.loc[mask_has_real_value_to_drop]
-    ts_no_real_values_to_drop = ts_selected_fields.loc[~mask_has_real_value_to_drop]
-
-    ts_filtered = ts_to_filter.loc[:, ts_to_filter.columns < drop_start_date]
+    if "start_date" in config:
+        drop_start_date = pd.to_datetime(config["start_date"])
+        obsv_selected = ts_selected_fields.loc[:, ts_selected_fields.columns >= drop_start_date]
+        mask_has_real_value_to_drop = obsv_selected.notna().any(1)
+        ts_to_filter = ts_selected_fields.loc[mask_has_real_value_to_drop]
+        # Time series that are in selected fields but don't have real values on or after start date
+        output_ts_to_concat.append(ts_selected_fields.loc[~mask_has_real_value_to_drop])
+        # Keep only the subset of ts_to_filter that is before the start date
+        output_ts_to_concat.append(ts_to_filter.loc[:, ts_to_filter.columns < drop_start_date])
+        tag = taglib.KnownIssue(date=drop_start_date, disclaimer=config["public_note"])
+    else:
+        output_ts_to_concat.append(ts_selected_fields)
+        ts_to_filter = ts_selected_fields
+        tag = taglib.KnownIssueAllDates(disclaimer=config["public_note"])
 
     new_tags = taglib.TagCollection()
     assert ts_to_filter.index.names == [
@@ -66,18 +76,10 @@ def drop_observations(
     ]
     for location_id, variable, bucket in ts_to_filter.index:
         new_tags.add(
-            taglib.KnownIssue(date=drop_start_date, disclaimer=config["public_note"]),
-            location_id=location_id,
-            variable=variable,
-            bucket=bucket,
+            tag, location_id=location_id, variable=variable, bucket=bucket,
         )
 
-    ts_new = (
-        pd.concat([ts_not_selected_fields, ts_no_real_values_to_drop, ts_filtered])
-        .stack()
-        .unstack(PdFields.VARIABLE)
-        .sort_index()
-    )
+    ts_new = pd.concat(output_ts_to_concat).stack().unstack(PdFields.VARIABLE).sort_index()
     return dataclasses.replace(dataset, timeseries_bucketed=ts_new).append_tag_df(
         new_tags.as_dataframe()
     )

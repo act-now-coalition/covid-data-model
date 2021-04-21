@@ -166,3 +166,39 @@ def test_region_overrides_transform_smoke_test():
         json.load(open(data.REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
     )
     # pprint.pprint(transformed)
+
+
+def test_region_overrides_transform_and_filter():
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region-and-subregions",
+                "metric": "metrics.vaccinationsInitiatedRatio",
+                "region": "WY",
+                "context": "https://trello.com/c/kvjwZJJP/1005",
+                "disclaimer": "Yo, bad stuff",
+                "blocked": True,
+            }
+        ]
+    }
+
+    region = Region.from_state("WY")
+    ds_in = test_helpers.build_dataset({region: {CommonFields.VACCINATIONS_INITIATED: [1, 2, 3]}})
+
+    ds_out = manual_filter.run(
+        ds_in, manual_filter.transform_region_overrides(region_overrides, {})
+    )
+
+    tag_expected = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE_ALL_DATES,
+        disclaimer=region_overrides["overrides"][0]["disclaimer"],
+    )
+    ds_expected = test_helpers.build_dataset(
+        {
+            region: {
+                CommonFields.CASES: TimeseriesLiteral([None, None, None], annotation=[tag_expected])
+            }
+        }
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
