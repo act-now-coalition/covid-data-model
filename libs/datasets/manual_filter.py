@@ -111,7 +111,7 @@ def drop_observations(
     new_tags = taglib.TagCollection()
     new_tags.add_by_index(tag, index=ts_filtered.index)
 
-    return dataset.replace_timeseries_bucketed(
+    return dataset.replace_timeseries_wide_dates(
         [ts_not_selected_fields, ts_no_real_values_to_drop, ts_filtered]
     ).append_tag_df(new_tags.as_dataframe())
 

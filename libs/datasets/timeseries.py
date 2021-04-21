@@ -1149,11 +1149,13 @@ class MultiRegionDataset:
         tag = _slice_with_labels(self.tag, timeseries_wide_dates.index)
         return dataclasses.replace(self, timeseries_bucketed=timeseries_wide_variables, tag=tag,)
 
-    def replace_timeseries_bucketed(
+    def replace_timeseries_wide_dates(
         self, timeseries_bucketed_to_concat: List[pd.DataFrame]
     ) -> "MultiRegionDataset":
         """Returns a new object with timeseries data copied from the given list of wide-date
         DataFrames."""
+        for df in timeseries_bucketed_to_concat:
+            check_timeseries_wide_dates_structure(df, bucketed=True)
         ts_new = (
             pd.concat(timeseries_bucketed_to_concat).stack().unstack(PdFields.VARIABLE).sort_index()
         )
