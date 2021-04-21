@@ -61,7 +61,7 @@ CONFIG = Config(
             regions_included=[RegionMask(AggregationLevel.COUNTY, states=["OK"])],
             regions_excluded=[Region.from_fips("40109"), Region.from_fips("40143")],
             fields_included=[CommonFields.CASES, CommonFields.DEATHS],
-            action=Action.ANNOTATE,
+            action=Action.DROP_OBSERVATIONS,
             start_date="2021-03-15",
             internal_note="https://trello.com/c/HdAKfp49/1139",
             public_note="Something broke with the OK county data.",
@@ -100,6 +100,9 @@ def drop_observations(
     dataset: timeseries.MultiRegionDataset, filter_: Filter
 ) -> timeseries.MultiRegionDataset:
     """Drops observations according to `config` from every region in `dataset`."""
+    assert filter_.action == Action.DROP_OBSERVATIONS
+
+    # wide-dates DataFrames that will be concat-ed to produce the result MultiRegionDataset.
     ts_results = []
     ts_selected_fields, ts_not_selected_fields = _partition_by_fields(
         dataset.timeseries_bucketed_wide_dates, filter_.fields_included
