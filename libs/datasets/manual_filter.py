@@ -38,6 +38,10 @@ class Filter(pydantic.BaseModel):
     internal_note: str
     public_note: str
 
+    @property
+    def tag(self) -> taglib.TagInTimeseries:
+        return taglib.KnownIssue(date=self.start_date, disclaimer=self.public_note)
+
 
 class Config(pydantic.BaseModel):
     filters: List[Filter]
@@ -49,7 +53,7 @@ CONFIG = Config(
             regions_included=[RegionMask(AggregationLevel.COUNTY, states=["OK"])],
             regions_excluded=[Region.from_fips("40109"), Region.from_fips("40143")],
             fields_included=[CommonFields.CASES, CommonFields.DEATHS],
-            action=Action.ANNOTATE,
+            action=Action.DROP_OBSERVATIONS,
             start_date="2021-03-15",
             internal_note="https://trello.com/c/HdAKfp49/1139",
             public_note="Something broke with the OK county data.",
@@ -88,22 +92,26 @@ def drop_observations(
     dataset: timeseries.MultiRegionDataset, filter_: Filter
 ) -> timeseries.MultiRegionDataset:
     """Drops observations according to `config` from every region in `dataset`."""
+    assert filter_.action == Action.DROP_OBSERVATIONS
+
+    # wide-dates DataFrames that will be concat-ed to produce the result MultiRegionDataset.
+    ts_results = []
     ts_selected_fields, ts_not_selected_fields = _partition_by_fields(
         dataset.timeseries_bucketed_wide_dates, filter_.fields_included
     )
+    ts_results.append(ts_not_selected_fields)
 
     ts_filtered, ts_no_real_values_to_drop = _filter_by_date(
         ts_selected_fields, drop_start_date=filter_.start_date
     )
-
-    tag = taglib.KnownIssue(date=filter_.start_date, disclaimer=filter_.public_note)
+    ts_results.append(ts_filtered)
+    ts_results.append(ts_no_real_values_to_drop)
+    index_to_tag = ts_filtered.index
 
     new_tags = taglib.TagCollection()
-    new_tags.add_by_index(tag, index=ts_filtered.index)
+    new_tags.add_by_index(filter_.tag, index=index_to_tag)
 
-    return dataset.replace_timeseries_wide_dates(
-        [ts_not_selected_fields, ts_no_real_values_to_drop, ts_filtered]
-    ).append_tag_df(new_tags.as_dataframe())
+    return dataset.replace_timeseries_wide_dates(ts_results).append_tag_df(new_tags.as_dataframe())
 
 
 def run(
