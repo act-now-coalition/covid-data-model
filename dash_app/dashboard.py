@@ -1,3 +1,5 @@
+import enum
+
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -32,6 +34,62 @@ TAG_TABLE_COLUMNS = [
     TagField.TYPE,
     TagField.CONTENT,
 ]
+
+
+def _remove_prefix(text, prefix):
+    assert text.startswith(prefix)
+    return text[len(prefix) :]
+
+
+@enum.unique
+class TimeSeriesPivotTablePreset(enum.Enum):
+    SOURCES = (
+        "Per source count",
+        {
+            "rows": [CommonFields.AGGREGATE_LEVEL, timeseries_stats.FIELD_GROUP],
+            "cols": [timeseries_stats.StatName.SOURCE_TYPE_SET],
+        },
+    )
+    SOURCE_BY_STATE = (
+        "Sources by state",
+        {
+            "rows": [CommonFields.AGGREGATE_LEVEL, CommonFields.STATE],
+            "cols": [timeseries_stats.FIELD_GROUP],
+            "aggregatorName": "List Unique Values",
+            "vals": [timeseries_stats.StatName.SOURCE_TYPE_SET],
+        },
+    )
+    COUNTY_DEMO = (
+        "County vaccines by demographic attributes",
+        {
+            "rows": [CommonFields.AGGREGATE_LEVEL, CommonFields.STATE],
+            "cols": [timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
+            "valueFilter": {timeseries_stats.DISTRIBUTION: {"all": False}},
+        },
+    )
+
+    def __new__(cls, description, pivot_table_parameters):
+        # Make a unique string _value_ for each preset, mostly copied from
+        # https://docs.python.org/3/library/enum.html#using-a-custom-new
+        value = str(len(cls.__members__) + 1)
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.description = description
+        obj.pivot_table_parameters = pivot_table_parameters
+        return obj
+
+    @classmethod
+    def get_by_btn_id(cls, btn_id) -> "TimeSeriesPivotTablePreset":
+        # Not sure why lint complains but ... pylint: disable=no-member
+        return cls._value2member_map_[_remove_prefix(btn_id, "pivot_table_btn_")]
+
+    @property
+    def btn_id(self):
+        return f"pivot_table_btn_{self._value_}"
+
+    @property
+    def tbl_id(self):
+        return f"pivot_table_{self._value_}"
 
 
 def region_table(
@@ -115,25 +173,27 @@ def init(server):
 
     region_df = region_table(per_timeseries_stats, ds)
 
-    df = per_timeseries_stats.stats.reset_index()
-    pivottable_data = [df.columns.tolist()] + df.values.tolist()
-
     dash_app.layout = html.Div(
         children=[
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
             html.H2("Time series pivot table"),
+            html.P("Preset views:"),
+            *[
+                html.Button(preset.description, id=preset.btn_id)
+                for preset in TimeSeriesPivotTablePreset
+            ],
             dcc.Markdown(
                 "Drag attributes to explore information about time series in "
                 "this dataset. See an animated demo in the [Dash Pivottable docs]("
                 "https://github.com/plotly/dash-pivottable#readme)."
             ),
-            dash_pivottable.PivotTable(
-                id="pivot_table",
-                data=pivottable_data,
-                rows=[CommonFields.AGGREGATE_LEVEL],
-                cols=[timeseries_stats.FIELD_GROUP, timeseries_stats.DISTRIBUTION],
-            ),
+            # PivotTable `rows` and `cols` properties can not be modified by dash on an existing
+            # object, see
+            # https://github.com/plotly/dash-pivottable/blob/master/README.md#references. As a
+            # work around `pivot_table_parent` is updated to add a new PivotTable when a button
+            # is clicked.
+            dcc.Loading(id="pivot_table_parent"),
             html.H2("Source URLs"),
             html.Details(
                 [
@@ -265,6 +325,36 @@ def _init_callbacks(
         selected_row = more_itertools.one(selected_rows)
         return [region_id_series.iat[selected_row]]
 
+    df = per_timeseries_stats.stats.reset_index()
+    pivottable_data = [df.columns.tolist()] + df.values.tolist()
+
+    @dash_app.callback(
+        Output("pivot_table_parent", "children"),
+        [Input(preset.btn_id, "n_clicks") for preset in TimeSeriesPivotTablePreset],
+    )
+    def time_series_pivot_table_preset_btn_clicked(*inputs_ignored):
+        """Make a new pivot table according to the most recently clicked button.
+
+        We can't have a callback function for each button because
+        https://dash.plotly.com/callback-gotchas "A component/property pair can only be the Output
+        of one callback"."""
+
+        # From https://dash.plotly.com/advanced-callbacks "Determining which Input has fired"
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            # Use the first as the default when page is loaded.
+            preset = more_itertools.first(TimeSeriesPivotTablePreset)
+        else:
+            preset = TimeSeriesPivotTablePreset.get_by_btn_id(
+                ctx.triggered[0]["prop_id"].split(".")[0]
+            )
+
+        # Each PivotTable needs a unique id as a work around for
+        # https://github.com/plotly/dash-pivottable/issues/10
+        return dash_pivottable.PivotTable(
+            id=preset.tbl_id, data=pivottable_data, **preset.pivot_table_parameters,
+        )
+
     # Input not in a list raises dash.exceptions.IncorrectTypeException: The input argument
     # `location-dropdown.value` must be a list or tuple of `dash.dependencies.Input`s.
     # but doesn't in the docs at https://dash.plotly.com/basic-callbacks. Odd.
@@ -301,4 +391,6 @@ def _init_callbacks(
             tag_df = tag_df.loc[tag_df[TagField.VARIABLE].isin(selected_variables)]
 
         fig = px.scatter(interesting_ts.reset_index(), x="date", y=interesting_ts.columns.to_list())
+        # Default to comparing values on the same date.
+        fig.update_layout(hovermode="x")
         return fig, tag_df.to_dict("records")
