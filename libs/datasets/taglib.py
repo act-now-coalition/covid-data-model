@@ -1,5 +1,6 @@
 import collections
 import dataclasses
+import datetime
 import enum
 import json
 from abc import ABC
@@ -275,7 +276,7 @@ class ZScoreOutlier(AnnotationWithDate):
 @dataclass(frozen=True)
 class KnownIssue(TagInTimeseries):
     disclaimer: str
-    date: pd.Timestamp
+    date: datetime.date
 
     TAG_TYPE = TagType.KNOWN_ISSUE
 
@@ -283,12 +284,13 @@ class KnownIssue(TagInTimeseries):
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
         content_parsed = json.loads(content)
         return cls(
-            disclaimer=content_parsed["disclaimer"], date=pd.to_datetime(content_parsed["date"]),
+            disclaimer=content_parsed["disclaimer"],
+            date=datetime.date.fromisoformat(content_parsed["date"]),
         )
 
     @property
     def content(self) -> str:
-        d = {"disclaimer": self.disclaimer, "date": self.date.date().isoformat()}
+        d = {"disclaimer": self.disclaimer, "date": self.date.isoformat()}
         return json.dumps(d, separators=(",", ":"))
 
 
@@ -364,6 +366,16 @@ class TagCollection:
     def as_dataframe(self) -> pd.DataFrame:
         """Returns all tags in this collection in a DataFrame."""
         return pd.DataFrame.from_records(self._as_records())
+
+    def add_by_index(self, tag: TagInTimeseries, *, index: pd.MultiIndex):
+        """Adds `tag` to each time series in `index`."""
+        assert index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.VARIABLE,
+            PdFields.DEMOGRAPHIC_BUCKET,
+        ]
+        for location_id, variable, bucket in index:
+            self.add(tag, location_id=location_id, variable=variable, bucket=bucket)
 
 
 def series_string_to_object(tag: pd.Series) -> pd.Series:

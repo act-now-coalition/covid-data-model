@@ -1490,7 +1490,7 @@ def test_multi_region_dataset_get_subset_with_buckets():
 
     ds_expected = test_helpers.build_dataset({**data_us, **data_la})
     test_helpers.assert_dataset_like(ds.get_regions_subset([region_us, region_la]), ds_expected)
-    test_helpers.assert_dataset_like(ds.remove_regions([region_tx]), ds_expected)
+    test_helpers.assert_dataset_like(ds.partition_by_region(exclude=[region_tx])[0], ds_expected)
 
 
 def test_dataset_regions_property(nyc_region):

@@ -71,7 +71,7 @@ def test_include_exclude_regions():
     mask = combined_datasets.DataSourceAndRegionMasks(
         DataSourceForTest,
         include=[],
-        exclude=[Region.from_fips("36061"), RegionMask(AggregationLevel.COUNTY, states=["DC"]),],
+        exclude=[Region.from_fips("36061"), RegionMask(AggregationLevel.COUNTY, states=["DC"])],
         manual_filter_config=None,
     )
 

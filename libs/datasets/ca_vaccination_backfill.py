@@ -1,5 +1,3 @@
-import dataclasses
-import pandas as pd
 from covidactnow.datapublic.common_fields import DemographicBucket
 
 from libs.datasets.timeseries import MultiRegionDataset
@@ -81,11 +79,6 @@ def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDatase
     all_wide = ds_in.timeseries_bucketed_wide_dates
     # Because we assert that existing dataset does not have CA county VACCINATIONS_COMPLETED_PCT
     # or VACCINATIONS_INITIATED_PCT we can safely combine the existing rows with new derived rows
-    combined = pd.concat([vaccines_completed_pct, vaccines_initiated_pct, all_wide])
-
-    return dataclasses.replace(
-        ds_in,
-        timeseries_bucketed=MultiRegionDataset.from_timeseries_wide_dates_df(
-            combined, bucketed=True
-        ).timeseries_bucketed,
+    return ds_in.replace_timeseries_wide_dates(
+        [vaccines_completed_pct, vaccines_initiated_pct, all_wide]
     )
