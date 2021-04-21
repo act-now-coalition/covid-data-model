@@ -1,4 +1,5 @@
 import datetime
+import enum
 from typing import Optional
 from typing import Tuple
 import re
@@ -24,32 +25,30 @@ _logger = structlog.getLogger()
 
 
 # The manual filter config is defined with pydantic instead of standard dataclasses to get support
-# for parsing from json, automatic conversion of fields to the expected type and fields that default
-# to None. pydantic reserves the field name 'fields'.
+# for parsing from json, automatic conversion of fields to the expected type and avoiding the
+# dreaded "TypeError: non-default argument ...". pydantic reserves the field name 'fields'.
 
 
-class ObservationsToDrop(pydantic.BaseModel):
-    start_date: Optional[datetime.date] = None
-    drop_fields: Optional[List[CommonFields]] = None
-    drop_field_group: Optional[common_fields.FieldGroup] = None
-    internal_note: str
-    public_note: str
-
-    @property
-    def drop_field_list(self) -> List[CommonFields]:
-        if self.drop_fields is not None:
-            assert self.drop_field_group is None
-            return self.drop_fields
-        else:
-            # self.drop_fields is None
-            assert self.drop_field_group is not None
-            return common_fields.FIELD_GROUP_TO_LIST_FIELDS[self.drop_field_group]
+class Action(enum.Enum):
+    DROP_OBSERVATIONS = enum.auto()
+    ANNOTATE = enum.auto()
 
 
 class Filter(pydantic.BaseModel):
     regions_included: List[RegionMaskOrRegion]
     regions_excluded: Optional[List[RegionMaskOrRegion]] = None
-    observations_to_drop: ObservationsToDrop
+    fields_included: List[CommonFields]
+    action: Action
+    start_date: Optional[datetime.date] = None
+    internal_note: str
+    public_note: str
+
+    @property
+    def tag(self) -> taglib.TagInTimeseries:
+        if self.start_date:
+            return taglib.KnownIssue(date=self.start_date, disclaimer=self.public_note)
+        else:
+            return taglib.KnownIssueAllDates(disclaimer=self.public_note)
 
 
 class Config(pydantic.BaseModel):
@@ -61,12 +60,11 @@ CONFIG = Config(
         Filter(
             regions_included=[RegionMask(AggregationLevel.COUNTY, states=["OK"])],
             regions_excluded=[Region.from_fips("40109"), Region.from_fips("40143")],
-            observations_to_drop=ObservationsToDrop(
-                start_date="2021-03-15",
-                drop_fields=[CommonFields.CASES, CommonFields.DEATHS],
-                internal_note="https://trello.com/c/HdAKfp49/1139",
-                public_note="Something broke with the OK county data.",
-            ),
+            fields_included=[CommonFields.CASES, CommonFields.DEATHS],
+            action=Action.ANNOTATE,
+            start_date="2021-03-15",
+            internal_note="https://trello.com/c/HdAKfp49/1139",
+            public_note="Something broke with the OK county data.",
         )
     ]
 )
@@ -99,25 +97,30 @@ def _filter_by_date(
 
 
 def drop_observations(
-    dataset: timeseries.MultiRegionDataset, config: ObservationsToDrop
+    dataset: timeseries.MultiRegionDataset, filter_: Filter
 ) -> timeseries.MultiRegionDataset:
     """Drops observations according to `config` from every region in `dataset`."""
+    ts_results = []
     ts_selected_fields, ts_not_selected_fields = _partition_by_fields(
-        dataset.timeseries_bucketed_wide_dates, config.drop_field_list
+        dataset.timeseries_bucketed_wide_dates, filter_.fields_included
     )
+    ts_results.append(ts_not_selected_fields)
 
-    ts_filtered, ts_no_real_values_to_drop = _filter_by_date(
-        ts_selected_fields, drop_start_date=config.start_date
-    )
-
-    tag = taglib.KnownIssue(date=config.start_date, disclaimer=config.public_note)
+    if filter_.start_date:
+        ts_filtered, ts_no_real_values_to_drop = _filter_by_date(
+            ts_selected_fields, drop_start_date=filter_.start_date
+        )
+        ts_results.append(ts_filtered)
+        ts_results.append(ts_no_real_values_to_drop)
+        index_to_tag = ts_filtered.index
+    else:
+        # When start_date is None all of ts_selected_fields is dropped; don't append to ts_results.
+        index_to_tag = ts_selected_fields.index
 
     new_tags = taglib.TagCollection()
-    new_tags.add_by_index(tag, index=ts_filtered.index)
+    new_tags.add_by_index(filter_.tag, index=index_to_tag)
 
-    return dataset.replace_timeseries_wide_dates(
-        [ts_not_selected_fields, ts_no_real_values_to_drop, ts_filtered]
-    ).append_tag_df(new_tags.as_dataframe())
+    return dataset.replace_timeseries_wide_dates(ts_results).append_tag_df(new_tags.as_dataframe())
 
 
 def run(
@@ -131,7 +134,7 @@ def run(
             # TODO(tom): Find a cleaner way to refer to a filter in logs.
             _logger.info("No locations matched", regions=str(filter_.regions_included))
             continue
-        filtered_dataset = drop_observations(filtered_dataset, filter_.observations_to_drop)
+        filtered_dataset = drop_observations(filtered_dataset, filter_)
 
         dataset = filtered_dataset.append_regions(passed_dataset)
 
@@ -185,18 +188,17 @@ def _transform_one_override(
 
     return Filter(
         regions_included=regions_included,
-        observations_to_drop=ObservationsToDrop(
-            drop_fields=_METRIC_TO_FIELDS[override["metric"]],
-            internal_note=override["context"],
-            public_note=override.get("disclaimer", ""),
-        ),
+        fields_included=_METRIC_TO_FIELDS[override["metric"]],
+        internal_note=override["context"],
+        public_note=override.get("disclaimer", ""),
+        action=Action.DROP_OBSERVATIONS,
     )
 
 
 def transform_region_overrides(
     region_overrides: Mapping, cbsa_to_counties_map: Mapping[Region, List[Region]]
 ) -> Config:
-    filter_configs = []
+    filter_configs: List[Filter] = []
     for override in region_overrides["overrides"]:
         if not override.get("blocked"):
             continue
@@ -205,4 +207,4 @@ def transform_region_overrides(
         except:
             raise ValueError(f"Problem with {override}")
 
-    return Config(filter_configs)
+    return Config(filters=filter_configs)
