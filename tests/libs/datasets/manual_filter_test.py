@@ -21,7 +21,7 @@ TEST_CONFIG = {
             ],
             "observations_to_drop": {
                 "start_date": "2021-02-12",
-                "fields": [CommonFields.CASES, CommonFields.DEATHS],
+                "drop_fields": [CommonFields.CASES, CommonFields.DEATHS],
                 "internal_note": "https://trello.com/c/aj7ep7S7/1130",
                 "public_note": "The TriCounty Health Department is focusing on vaccinations "
                 "and we have not found a new source of case counts.",
@@ -32,7 +32,7 @@ TEST_CONFIG = {
             "regions_excluded": [Region.from_fips("40109"), Region.from_fips("40143")],
             "observations_to_drop": {
                 "start_date": "2021-03-15",
-                "field_group": FieldGroup.CASES_DEATHS,
+                "drop_field_group": FieldGroup.CASES_DEATHS,
                 "internal_note": "https://trello.com/c/HdAKfp49/1139",
                 "public_note": "Something broke with the OK county data.",
             },
