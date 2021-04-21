@@ -1,3 +1,4 @@
+from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldGroup
@@ -20,23 +21,23 @@ TEST_CONFIG = manual_filter.Config.parse_obj(
                     Region.from_fips("49013"),
                     Region.from_fips("49047"),
                 ],
-                "observations_to_drop": {
-                    "start_date": "2021-02-12",
-                    "drop_fields": [CommonFields.CASES, CommonFields.DEATHS],
-                    "internal_note": "https://trello.com/c/aj7ep7S7/1130",
-                    "public_note": "The TriCounty Health Department is focusing on vaccinations "
-                    "and we have not found a new source of case counts.",
-                },
+                "start_date": "2021-02-12",
+                "fields_included": [CommonFields.CASES, CommonFields.DEATHS],
+                "internal_note": "https://trello.com/c/aj7ep7S7/1130",
+                "public_note": "The TriCounty Health Department is focusing on vaccinations "
+                "and we have not found a new source of case counts.",
+                "action": manual_filter.Action.DROP_OBSERVATIONS,
             },
             {
                 "regions_included": [RegionMask(AggregationLevel.COUNTY, states=["OK"])],
                 "regions_excluded": [Region.from_fips("40109"), Region.from_fips("40143")],
-                "observations_to_drop": {
-                    "start_date": "2021-03-15",
-                    "drop_field_group": FieldGroup.CASES_DEATHS,
-                    "internal_note": "https://trello.com/c/HdAKfp49/1139",
-                    "public_note": "Something broke with the OK county data.",
-                },
+                "start_date": "2021-03-15",
+                "fields_included": common_fields.FIELD_GROUP_TO_LIST_FIELDS[
+                    FieldGroup.CASES_DEATHS
+                ],
+                "internal_note": "https://trello.com/c/HdAKfp49/1139",
+                "public_note": "Something broke with the OK county data.",
+                "action": manual_filter.Action.DROP_OBSERVATIONS,
             },
         ]
     }
@@ -55,7 +56,7 @@ def test_manual_filter():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-02-12",
-        disclaimer=TEST_CONFIG.filters[0].observations_to_drop.public_note,
+        disclaimer=TEST_CONFIG.filters[0].public_note,
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -81,7 +82,7 @@ def test_manual_filter_region_excluded():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=TEST_CONFIG.filters[1].observations_to_drop.public_note,
+        disclaimer=TEST_CONFIG.filters[1].public_note,
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -110,7 +111,7 @@ def test_manual_filter_field_groups():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=TEST_CONFIG.filters[1].observations_to_drop.public_note,
+        disclaimer=TEST_CONFIG.filters[1].public_note,
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {CommonFields.DEATHS: TimeseriesLiteral([1], annotation=[tag_expected]), **other_data},
@@ -141,7 +142,7 @@ def test_manual_filter_per_bucket_tag():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=TEST_CONFIG.filters[1].observations_to_drop.public_note,
+        disclaimer=TEST_CONFIG.filters[1].public_note,
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {
