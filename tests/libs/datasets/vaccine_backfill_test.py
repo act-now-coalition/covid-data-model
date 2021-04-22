@@ -118,3 +118,21 @@ def test_derive_vaccine_pct():
     )
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_derive_vaccine_pct_least_stale():
+    ts_metrics_in = {
+        CommonFields.VACCINATIONS_INITIATED: [500, 600, 700],
+        CommonFields.VACCINATIONS_INITIATED_PCT: [51, 61, 71],
+        CommonFields.VACCINATIONS_COMPLETED: [700, 800, 900],
+        CommonFields.VACCINATIONS_COMPLETED_PCT: [71, 81, None],
+    }
+    static = {CommonFields.POPULATION: 1_000}
+    ds_in = test_helpers.build_default_region_dataset(ts_metrics_in, static=static,)
+
+    ds_out = vaccine_backfills.derive_vaccine_pct(ds_in)
+
+    ts_metrics_out = {**ts_metrics_in, CommonFields.VACCINATIONS_COMPLETED_PCT: [70, 80, 90]}
+    ds_expected = test_helpers.build_default_region_dataset(ts_metrics_out, static=static,)
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
