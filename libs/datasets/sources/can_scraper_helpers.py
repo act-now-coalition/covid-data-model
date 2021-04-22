@@ -80,7 +80,7 @@ def _fips_from_int(param: pd.Series):
 
     Copied from covid-data-public/scripts/helpers.py
     """
-    return param.apply(lambda v: f"{v:0>{2 if v < 100 else 5}}")
+    return param.apply(lambda v: f"{v:0>{1 if v == 0 else 2 if v < 100 else 5}}")
 
 
 DEMOGRAPHIC_FIELDS = [Fields.AGE, Fields.RACE, Fields.ETHNICITY, Fields.SEX]
