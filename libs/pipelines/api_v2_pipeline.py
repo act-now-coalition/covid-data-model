@@ -23,7 +23,6 @@ from libs import pipeline
 from libs import build_api_v2
 
 from libs.datasets import timeseries
-from libs.datasets import vaccine_backfills
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets import AggregationLevel
