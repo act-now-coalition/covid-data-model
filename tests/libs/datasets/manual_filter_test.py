@@ -253,3 +253,28 @@ def test_region_overrides_transform_and_filter_blocked_false():
     )
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_region_overrides_transform_and_filter_rt():
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region",
+                "metric": "metrics.infectionRate",
+                "region": "TX",
+                "context": "https://foo.com/",
+                "disclaimer": "Blah",
+                "blocked": True,
+            }
+        ]
+    }
+
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: [6, 8]}, region=Region.from_state("TX")
+    )
+
+    ds_out = manual_filter.run(
+        ds_in, manual_filter.transform_region_overrides(region_overrides, {})
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_in)
