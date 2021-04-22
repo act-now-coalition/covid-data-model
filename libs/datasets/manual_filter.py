@@ -16,20 +16,7 @@ _logger = structlog.getLogger()
 
 
 # TODO(tom): Make some kind of hierarchy of class to form a schema that can be populated by a JSON.
-CONFIG = {
-    "filters": [
-        {
-            "regions_included": [RegionMask(AggregationLevel.COUNTY, states=["OK"])],
-            "regions_excluded": [Region.from_fips("40109"), Region.from_fips("40143")],
-            "observations_to_drop": {
-                "start_date": "2021-03-15",
-                "fields": [CommonFields.CASES, CommonFields.DEATHS],
-                "internal_note": "https://trello.com/c/HdAKfp49/1139",
-                "public_note": "Something broke with the OK county data.",
-            },
-        },
-    ]
-}
+CONFIG = {"filters": []}
 
 
 def drop_observations(
