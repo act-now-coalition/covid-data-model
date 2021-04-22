@@ -316,7 +316,7 @@ def update_test_combined_data(truncate_dates: bool, state: List[str]):
     # Keep only a small subset of the regions so we have enough to exercise our code in tests.
     test_subset = us_dataset.get_regions_subset(
         [
-            RegionMask(level=None, states=[s.strip() for s in state]),
+            RegionMask(states=[s.strip() for s in state]),
             Region.from_fips("48201"),
             Region.from_fips("48301"),
             Region.from_fips("20161"),
