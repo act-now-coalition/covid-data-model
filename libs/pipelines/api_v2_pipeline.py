@@ -310,8 +310,6 @@ def generate_from_loaded_data(
     log.info("Running test positivity.")
     regions_data = test_positivity.run_and_maybe_join_columns(selected_dataset, log)
 
-    regions_data = vaccine_backfills.derive_vaccine_pct(regions_data)
-
     log.info(f"Joining inputs by region.")
     icu_data_map = dict(model_output.icu.iter_one_regions())
     rt_data_map = dict(model_output.infection_rate.iter_one_regions())
