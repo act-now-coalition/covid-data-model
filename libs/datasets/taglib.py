@@ -1,5 +1,6 @@
 import collections
 import dataclasses
+import datetime
 import enum
 import json
 from abc import ABC
@@ -274,7 +275,7 @@ class ZScoreOutlier(AnnotationWithDate):
 @dataclass(frozen=True)
 class KnownIssue(TagInTimeseries):
     disclaimer: str
-    date: pd.Timestamp
+    date: datetime.date
 
     TAG_TYPE = TagType.KNOWN_ISSUE
 
@@ -282,12 +283,13 @@ class KnownIssue(TagInTimeseries):
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
         content_parsed = json.loads(content)
         return cls(
-            disclaimer=content_parsed["disclaimer"], date=pd.to_datetime(content_parsed["date"]),
+            disclaimer=content_parsed["disclaimer"],
+            date=datetime.date.fromisoformat(content_parsed["date"]),
         )
 
     @property
     def content(self) -> str:
-        d = {"disclaimer": self.disclaimer, "date": self.date.date().isoformat()}
+        d = {"disclaimer": self.disclaimer, "date": self.date.isoformat()}
         return json.dumps(d, separators=(",", ":"))
 
 

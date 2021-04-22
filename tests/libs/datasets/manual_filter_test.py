@@ -1,3 +1,5 @@
+import pytest
+from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldGroup
@@ -11,34 +13,57 @@ from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral
 
 
-TEST_CONFIG = {
-    "filters": [
-        {
-            "regions_included": [
-                Region.from_fips("49009"),
-                Region.from_fips("49013"),
-                Region.from_fips("49047"),
-            ],
-            "observations_to_drop": {
+TEST_CONFIG = manual_filter.Config.parse_obj(
+    {
+        "filters": [
+            {
+                "regions_included": [
+                    Region.from_fips("49009"),
+                    Region.from_fips("49013"),
+                    Region.from_fips("49047"),
+                ],
                 "start_date": "2021-02-12",
-                "fields": [CommonFields.CASES, CommonFields.DEATHS],
+                "fields_included": [CommonFields.CASES, CommonFields.DEATHS],
                 "internal_note": "https://trello.com/c/aj7ep7S7/1130",
                 "public_note": "The TriCounty Health Department is focusing on vaccinations "
                 "and we have not found a new source of case counts.",
+                "drop_observations": True,
             },
-        },
-        {
-            "regions_included": [RegionMask(AggregationLevel.COUNTY, states=["OK"])],
-            "regions_excluded": [Region.from_fips("40109"), Region.from_fips("40143")],
-            "observations_to_drop": {
+            {
+                "regions_included": [RegionMask(AggregationLevel.COUNTY, states=["OK"])],
+                "regions_excluded": [Region.from_fips("40109"), Region.from_fips("40143")],
                 "start_date": "2021-03-15",
-                "field_group": FieldGroup.CASES_DEATHS,
+                "fields_included": common_fields.FIELD_GROUP_TO_LIST_FIELDS[
+                    FieldGroup.CASES_DEATHS
+                ],
                 "internal_note": "https://trello.com/c/HdAKfp49/1139",
                 "public_note": "Something broke with the OK county data.",
+                "drop_observations": True,
             },
-        },
-    ]
-}
+        ]
+    }
+)
+
+
+def test_filter_config_check():
+    with pytest.raises(Exception, match="doesn't drop observations or add a public_note"):
+        manual_filter.Filter(
+            regions_included=[],
+            fields_included=[],
+            internal_note="",
+            public_note="",
+            drop_observations=False,
+        )
+
+    with pytest.raises(Exception, match="start_date without dropping"):
+        manual_filter.Filter(
+            regions_included=[],
+            fields_included=[],
+            internal_note="",
+            public_note="We did something",
+            start_date="2020-04-01",
+            drop_observations=False,
+        )
 
 
 def test_manual_filter():
@@ -53,7 +78,7 @@ def test_manual_filter():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-02-12",
-        disclaimer=TEST_CONFIG["filters"][0]["observations_to_drop"]["public_note"],
+        disclaimer=TEST_CONFIG.filters[0].public_note,
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -79,7 +104,7 @@ def test_manual_filter_region_excluded():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=TEST_CONFIG["filters"][1]["observations_to_drop"]["public_note"],
+        disclaimer=TEST_CONFIG.filters[1].public_note,
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -108,7 +133,7 @@ def test_manual_filter_field_groups():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=TEST_CONFIG["filters"][1]["observations_to_drop"]["public_note"],
+        disclaimer=TEST_CONFIG.filters[1].public_note,
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {CommonFields.DEATHS: TimeseriesLiteral([1], annotation=[tag_expected]), **other_data},
@@ -139,7 +164,7 @@ def test_manual_filter_per_bucket_tag():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=TEST_CONFIG["filters"][1]["observations_to_drop"]["public_note"],
+        disclaimer=TEST_CONFIG.filters[1].public_note,
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {

@@ -441,6 +441,21 @@ def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, buckete
     assert numeric_columns.all()
 
 
+def check_timeseries_wide_dates_structure(timeseries_wide_dates: pd.DataFrame, *, bucketed=True):
+    if bucketed:
+        assert timeseries_wide_dates.index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.VARIABLE,
+            PdFields.DEMOGRAPHIC_BUCKET,
+        ]
+    else:
+        assert timeseries_wide_dates.index.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.VARIABLE,
+        ]
+    assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
+
+
 def _tag_add_all_bucket(tag: pd.Series) -> pd.Series:
     tag_bucketed = pd.concat(
         {DemographicBucket.ALL: tag}, names=[PdFields.DEMOGRAPHIC_BUCKET]
@@ -684,18 +699,7 @@ class MultiRegionDataset:
         timeseries_wide_dates: pd.DataFrame, *, bucketed=False
     ) -> "MultiRegionDataset":
         """Make a new dataset from a DataFrame as returned by timeseries_wide_dates."""
-        if bucketed:
-            assert timeseries_wide_dates.index.names == [
-                CommonFields.LOCATION_ID,
-                PdFields.VARIABLE,
-                PdFields.DEMOGRAPHIC_BUCKET,
-            ]
-        else:
-            assert timeseries_wide_dates.index.names == [
-                CommonFields.LOCATION_ID,
-                PdFields.VARIABLE,
-            ]
-        assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
+        check_timeseries_wide_dates_structure(timeseries_wide_dates, bucketed=bucketed)
         timeseries_wide_dates.columns: pd.DatetimeIndex = pd.to_datetime(
             timeseries_wide_dates.columns
         )
@@ -1026,11 +1030,28 @@ class MultiRegionDataset:
         tag = self.tag.loc[tag_mask, :]
         return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
-    def remove_regions(self, regions: Collection[RegionMaskOrRegion]) -> "MultiRegionDataset":
-        location_ids = self._regionmaskorregions_to_location_id(regions)
-        return self.remove_locations(location_ids)
+    def partition_by_region(
+        self,
+        include: Collection[RegionMaskOrRegion] = (),
+        *,
+        exclude: Collection[RegionMaskOrRegion] = (),
+    ) -> Tuple["MultiRegionDataset", "MultiRegionDataset"]:
+        """Partitions this dataset into two datasets by region. The first contains all regions in
+        any of `include` (or all regions in this dataset if `include` is empty), without any
+        regions in any of `exclude`. The second contains all regions in this dataset that are not in
+        the first."""
+        if include:
+            ds_selected = self.get_regions_subset(include)
+        else:
+            assert exclude, "At least one of include and exclude must be non-empty"
+            ds_selected = self
+        if exclude:
+            exclude_location_ids = self._regionmaskorregions_to_location_id(exclude)
+            ds_selected = ds_selected._remove_locations(exclude_location_ids)
+        ds_not_selected = self._remove_locations(ds_selected.location_ids)
+        return ds_selected, ds_not_selected
 
-    def remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
+    def _remove_locations(self, location_ids: Collection[str]) -> "MultiRegionDataset":
         timeseries_mask = self.timeseries_bucketed.index.get_level_values(
             CommonFields.LOCATION_ID
         ).isin(location_ids)
@@ -1134,6 +1155,18 @@ class MultiRegionDataset:
         # Only keep tag information for timeseries in the new timeseries_wide_dates.
         tag = _slice_with_labels(self.tag, timeseries_wide_dates.index)
         return dataclasses.replace(self, timeseries_bucketed=timeseries_wide_variables, tag=tag,)
+
+    def replace_timeseries_wide_dates(
+        self, timeseries_bucketed_to_concat: List[pd.DataFrame]
+    ) -> "MultiRegionDataset":
+        """Returns a new object with timeseries data copied from the given list of wide-date
+        DataFrames."""
+        for df in timeseries_bucketed_to_concat:
+            check_timeseries_wide_dates_structure(df, bucketed=True)
+        ts_new = (
+            pd.concat(timeseries_bucketed_to_concat).stack().unstack(PdFields.VARIABLE).sort_index()
+        )
+        return dataclasses.replace(self, timeseries_bucketed=ts_new)
 
     def to_csv(self, path: pathlib.Path, include_latest=True):
         """Persists timeseries to CSV.
