@@ -9,10 +9,8 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 import pandas as pd
 
-from libs.datasets import AggregationLevel
 from libs.datasets import taglib
 from libs.datasets import timeseries
-from libs.pipeline import Region, RegionMask
 from libs.pipeline import RegionMaskOrRegion
 
 _logger = structlog.getLogger()
@@ -57,19 +55,7 @@ class Config(pydantic.BaseModel):
     filters: List[Filter]
 
 
-CONFIG = Config(
-    filters=[
-        Filter(
-            regions_included=[RegionMask(AggregationLevel.COUNTY, states=["OK"])],
-            regions_excluded=[Region.from_fips("40109"), Region.from_fips("40143")],
-            fields_included=[CommonFields.CASES, CommonFields.DEATHS],
-            drop_observations=True,
-            start_date="2021-03-15",
-            internal_note="https://trello.com/c/HdAKfp49/1139",
-            public_note="Something broke with the OK county data.",
-        )
-    ]
-)
+CONFIG = Config(filters=[])
 
 
 def _partition_by_fields(
