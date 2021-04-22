@@ -1,5 +1,3 @@
-import dataclasses
-
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
