@@ -1,3 +1,4 @@
+import pytest
 from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
@@ -26,7 +27,7 @@ TEST_CONFIG = manual_filter.Config.parse_obj(
                 "internal_note": "https://trello.com/c/aj7ep7S7/1130",
                 "public_note": "The TriCounty Health Department is focusing on vaccinations "
                 "and we have not found a new source of case counts.",
-                "action": manual_filter.Action.DROP_OBSERVATIONS,
+                "drop_observations": True,
             },
             {
                 "regions_included": [RegionMask(AggregationLevel.COUNTY, states=["OK"])],
@@ -37,11 +38,32 @@ TEST_CONFIG = manual_filter.Config.parse_obj(
                 ],
                 "internal_note": "https://trello.com/c/HdAKfp49/1139",
                 "public_note": "Something broke with the OK county data.",
-                "action": manual_filter.Action.DROP_OBSERVATIONS,
+                "drop_observations": True,
             },
         ]
     }
 )
+
+
+def test_filter_config_check():
+    with pytest.raises(Exception, match="doesn't drop observations or add a public_note"):
+        manual_filter.Filter(
+            regions_included=[],
+            fields_included=[],
+            internal_note="",
+            public_note="",
+            drop_observations=False,
+        )
+
+    with pytest.raises(Exception, match="start_date without dropping"):
+        manual_filter.Filter(
+            regions_included=[],
+            fields_included=[],
+            internal_note="",
+            public_note="We did something",
+            start_date="2020-04-01",
+            drop_observations=False,
+        )
 
 
 def test_manual_filter():

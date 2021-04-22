@@ -1,5 +1,4 @@
 import datetime
-import enum
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -24,23 +23,34 @@ _logger = structlog.getLogger()
 # dreaded "TypeError: non-default argument ...". pydantic reserves the field name 'fields'.
 
 
-class Action(enum.Enum):
-    DROP_OBSERVATIONS = enum.auto()
-    ANNOTATE = enum.auto()
-
-
 class Filter(pydantic.BaseModel):
     regions_included: List[RegionMaskOrRegion]
     regions_excluded: Optional[List[RegionMaskOrRegion]] = None
     fields_included: List[CommonFields]
-    action: Action
     start_date: Optional[datetime.date] = None
+    drop_observations: bool
     internal_note: str
+    # public_note may be any empty string
     public_note: str
 
     @property
     def tag(self) -> taglib.TagInTimeseries:
         return taglib.KnownIssue(date=self.start_date, disclaimer=self.public_note)
+
+    # From https://github.com/samuelcolvin/pydantic/issues/568 ... pylint: disable=no-self-argument
+    @pydantic.root_validator()
+    def check(cls, values):
+        if not values["drop_observations"]:
+            if values["public_note"] == "":
+                raise ValueError(
+                    "Filter doesn't drop observations or add a public_note. What does it do?"
+                )
+            if values["start_date"]:
+                raise ValueError(
+                    "Filter including start_date without dropping observations "
+                    "doesn't make sense."
+                )
+        return values
 
 
 class Config(pydantic.BaseModel):
@@ -53,7 +63,7 @@ CONFIG = Config(
             regions_included=[RegionMask(AggregationLevel.COUNTY, states=["OK"])],
             regions_excluded=[Region.from_fips("40109"), Region.from_fips("40143")],
             fields_included=[CommonFields.CASES, CommonFields.DEATHS],
-            action=Action.DROP_OBSERVATIONS,
+            drop_observations=True,
             start_date="2021-03-15",
             internal_note="https://trello.com/c/HdAKfp49/1139",
             public_note="Something broke with the OK county data.",
@@ -91,8 +101,8 @@ def _filter_by_date(
 def drop_observations(
     dataset: timeseries.MultiRegionDataset, filter_: Filter
 ) -> timeseries.MultiRegionDataset:
-    """Drops observations according to `config` from every region in `dataset`."""
-    assert filter_.action == Action.DROP_OBSERVATIONS
+    """Drops observations according to `filter_` from every region in `dataset`."""
+    assert filter_.drop_observations
 
     # wide-dates DataFrames that will be concat-ed to produce the result MultiRegionDataset.
     ts_results = []
