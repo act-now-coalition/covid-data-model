@@ -17,7 +17,6 @@ from libs import google_sheet_helpers
 from libs import pipeline
 from libs.datasets import combined_dataset_utils
 from libs.datasets import custom_aggregations
-from libs.datasets import manual_filter
 from libs.datasets import statistical_areas
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
@@ -163,8 +162,6 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
         )
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
         multiregion_dataset.print_stats("aggregate_to_country")
-
-    multiregion_dataset = manual_filter.run(multiregion_dataset)
 
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
     multiregion_dataset.print_stats("persist")
