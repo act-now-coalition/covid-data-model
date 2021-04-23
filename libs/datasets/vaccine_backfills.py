@@ -21,6 +21,7 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     ts_in_all_variable_index = ts_in_all.index.get_level_values(PdFields.VARIABLE)
     ts_in_people = ts_in_all.loc[ts_in_all_variable_index.isin(field_map.keys())]
     ts_in_pcts = ts_in_all.loc[ts_in_all_variable_index.isin(field_map.values())]
+    ts_in_without_pcts = ts_in_all.loc[~ts_in_all_variable_index.isin(field_map.values())]
 
     # TODO(tom): Preserve provenance and other tags from the original vaccination fields.
     # ds_in_wide_dates / dataset.static.loc[:, CommonFields.POPULATION] doesn't seem to align the
@@ -35,14 +36,30 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     )
     derived_pct_df = derived_pct_df.rename(index=field_map, level=PdFields.VARIABLE)
 
-    # TODO(tom): Compare derived_pct_df and ts_in_pcts to pick least stale.
-    # Drop derived percentages where ts_in_pcts already has a timeseries with the same index.
-    derived_pct_without_in_pcts = derived_pct_df.loc[~derived_pct_df.index.isin(ts_in_pcts.index)]
-    # Double check that there is no overlap between the percentages that will be added and the
-    # existing data.
-    assert ts_in_all.index.intersection(derived_pct_without_in_pcts.index).empty
+    def append_most_recent_date_index_level(df: pd.DataFrame) -> pd.DataFrame:
+        """Appends most recent date with real (not NA) value as a new index level."""
+        most_recent_date = df.apply(pd.Series.last_valid_index, axis=1)
+        return df.assign(most_recent_date=most_recent_date).set_index(
+            "most_recent_date", append=True
+        )
 
-    return ds_in.replace_timeseries_wide_dates([ts_in_all, derived_pct_without_in_pcts])
+    derived_pct_df = append_most_recent_date_index_level(derived_pct_df)
+    ts_in_pcts = append_most_recent_date_index_level(ts_in_pcts)
+
+    # Combine the input and derived percentage time series into one DataFrame, sort by most recent
+    # date and drop duplicates except for the last/most recent.
+    combined_pcts = (
+        derived_pct_df.append(ts_in_pcts)
+        .sort_index(level="most_recent_date")
+        .droplevel("most_recent_date")
+    )
+    most_recent_pcts = combined_pcts.loc[~combined_pcts.index.duplicated(keep="last")]
+
+    # Double check that there is no overlap between the time series in most_recent_pcts and
+    # ts_in_without_pcts.
+    assert ts_in_without_pcts.index.intersection(most_recent_pcts.index).empty
+
+    return ds_in.replace_timeseries_wide_dates([ts_in_without_pcts, most_recent_pcts])
 
 
 def _xs_or_empty(df: pd.DataFrame, key, *, level) -> pd.DataFrame:
