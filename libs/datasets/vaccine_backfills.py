@@ -10,8 +10,8 @@ MultiRegionDataset = timeseries.MultiRegionDataset
 
 
 def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
-    """Returns a new dataset containing everything all the input and vaccination percentage
-    metrics derived from the corresponding non-percentage field where not already set."""
+    """Returns a new dataset with vaccination percentage metrics derived from their
+    corresponding non-percentage fields where the percentage metric is missing or less fresh."""
     field_map = {
         CommonFields.VACCINATIONS_INITIATED: CommonFields.VACCINATIONS_INITIATED_PCT,
         CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_COMPLETED_PCT,
@@ -19,15 +19,15 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 
     ts_in_all = ds_in.timeseries_bucketed_wide_dates
     ts_in_all_variable_index = ts_in_all.index.get_level_values(PdFields.VARIABLE)
-    ts_counts = ts_in_all.loc(axis=0)[ts_in_all_variable_index.isin(field_map.keys())]
-    ts_in_pcts = ts_in_all.loc(axis=0)[ts_in_all_variable_index.isin(field_map.values())]
-    ts_in_without_pcts = ts_in_all.loc(axis=0)[~ts_in_all_variable_index.isin(field_map.values())]
+    ts_in_people = ts_in_all.loc[ts_in_all_variable_index.isin(field_map.keys())]
+    ts_in_pcts = ts_in_all.loc[ts_in_all_variable_index.isin(field_map.values())]
+    ts_in_without_pcts = ts_in_all.loc[~ts_in_all_variable_index.isin(field_map.values())]
 
     # TODO(tom): Preserve provenance and other tags from the original vaccination fields.
     # ds_in_wide_dates / dataset.static.loc[:, CommonFields.POPULATION] doesn't seem to align the
     # location_id correctly so be more explicit with `div`:
     derived_pct_df = (
-        ts_counts.div(
+        ts_in_people.div(
             ds_in.static.loc[:, CommonFields.POPULATION],
             level=CommonFields.LOCATION_ID,
             axis="index",
