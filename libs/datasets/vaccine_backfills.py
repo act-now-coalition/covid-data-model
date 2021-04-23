@@ -37,7 +37,7 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     derived_pct_df = derived_pct_df.rename(index=field_map, level=PdFields.VARIABLE)
 
     def append_most_recent_date_index_level(df: pd.DataFrame) -> pd.DataFrame:
-        """Appends most recent date with NA value as a new index level."""
+        """Appends most recent date with real (not NA) value as a new index level."""
         most_recent_date = df.apply(pd.Series.last_valid_index, axis=1)
         return df.assign(most_recent_date=most_recent_date).set_index(
             "most_recent_date", append=True
@@ -46,8 +46,8 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     derived_pct_df = append_most_recent_date_index_level(derived_pct_df)
     ts_in_pcts = append_most_recent_date_index_level(ts_in_pcts)
 
-    # Combined the input and derived percentage time series into one DataFrame, sort by most
-    # recent date and drop duplicates except for the last/most recent.
+    # Combine the input and derived percentage time series into one DataFrame, sort by most recent
+    # date and drop duplicates except for the last/most recent.
     combined_pcts = (
         derived_pct_df.append(ts_in_pcts)
         .sort_index(level="most_recent_date")
@@ -55,7 +55,7 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     )
     most_recent_pcts = combined_pcts.loc[~combined_pcts.index.duplicated(keep="last")]
 
-    # Double check that there is no overlap between the timeseries in most_recent_pcts and
+    # Double check that there is no overlap between the time series in most_recent_pcts and
     # ts_in_without_pcts.
     assert ts_in_without_pcts.index.intersection(most_recent_pcts.index).empty
 

@@ -121,18 +121,23 @@ def test_derive_vaccine_pct():
 
 
 def test_derive_vaccine_pct_least_stale():
+    # Test data with cumulative people counts and percentages having slightly different values so
+    # that they can be differentiated.
     ts_metrics_in = {
+        # These two have the same freshness so the percentage is left untouched.
         CommonFields.VACCINATIONS_INITIATED: [500, 600, 700],
         CommonFields.VACCINATIONS_INITIATED_PCT: [51, 61, 71],
+        # The completed percentage is less fresh (NA for most recent date) so will be overwritten
+        # by a time series derived from the cumulative people count.
         CommonFields.VACCINATIONS_COMPLETED: [700, 800, 900],
         CommonFields.VACCINATIONS_COMPLETED_PCT: [71, 81, None],
     }
     static = {CommonFields.POPULATION: 1_000}
-    ds_in = test_helpers.build_default_region_dataset(ts_metrics_in, static=static,)
+    ds_in = test_helpers.build_default_region_dataset(ts_metrics_in, static=static)
 
     ds_out = vaccine_backfills.derive_vaccine_pct(ds_in)
 
-    ts_metrics_out = {**ts_metrics_in, CommonFields.VACCINATIONS_COMPLETED_PCT: [70, 80, 90]}
-    ds_expected = test_helpers.build_default_region_dataset(ts_metrics_out, static=static,)
+    ts_metrics_expected = {**ts_metrics_in, CommonFields.VACCINATIONS_COMPLETED_PCT: [70, 80, 90]}
+    ds_expected = test_helpers.build_default_region_dataset(ts_metrics_expected, static=static)
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
