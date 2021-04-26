@@ -1,5 +1,3 @@
-import dataclasses
-
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
@@ -12,21 +10,24 @@ MultiRegionDataset = timeseries.MultiRegionDataset
 
 
 def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
-    """Returns a new dataset containing everything all the input and vaccination percentage
-    metrics derived from the corresponding non-percentage field where not already set."""
+    """Returns a new dataset with vaccination percentage metrics derived from their
+    corresponding non-percentage fields where the percentage metric is missing or less fresh."""
     field_map = {
         CommonFields.VACCINATIONS_INITIATED: CommonFields.VACCINATIONS_INITIATED_PCT,
         CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_COMPLETED_PCT,
     }
-    ds_in_wide_dates = ds_in.timeseries_not_bucketed_wide_dates
-    ds_in_wide_dates = ds_in_wide_dates.loc[
-        ds_in_wide_dates.index.get_level_values(PdFields.VARIABLE).isin(field_map.keys())
-    ]
+
+    ts_in_all = ds_in.timeseries_bucketed_wide_dates
+    ts_in_all_variable_index = ts_in_all.index.get_level_values(PdFields.VARIABLE)
+    ts_in_people = ts_in_all.loc[ts_in_all_variable_index.isin(field_map.keys())]
+    ts_in_pcts = ts_in_all.loc[ts_in_all_variable_index.isin(field_map.values())]
+    ts_in_without_pcts = ts_in_all.loc[~ts_in_all_variable_index.isin(field_map.values())]
+
     # TODO(tom): Preserve provenance and other tags from the original vaccination fields.
     # ds_in_wide_dates / dataset.static.loc[:, CommonFields.POPULATION] doesn't seem to align the
     # location_id correctly so be more explicit with `div`:
     derived_pct_df = (
-        ds_in_wide_dates.div(
+        ts_in_people.div(
             ds_in.static.loc[:, CommonFields.POPULATION],
             level=CommonFields.LOCATION_ID,
             axis="index",
@@ -34,20 +35,31 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
         * 100.0
     )
     derived_pct_df = derived_pct_df.rename(index=field_map, level=PdFields.VARIABLE)
-    # Make a dataset containing only the derived percentage metrics.
-    ds_derived_pct = MultiRegionDataset.from_timeseries_wide_dates_df(derived_pct_df)
 
-    # Combine the derived percentage with any percentages in ds_in to make a dataset containing
-    # only the percentage metrics.
-    # Possible optimization: Replace the combine+drop+join with a single function that copies from
-    # ds_derived_pct only where a timeseries is all NaN in the original dataset.
-    ds_list = [ds_in, ds_derived_pct]
-    ds_all_pct = timeseries.combined_datasets(
-        {field_pct: ds_list for field_pct in field_map.values()}, {}
+    def append_most_recent_date_index_level(df: pd.DataFrame) -> pd.DataFrame:
+        """Appends most recent date with real (not NA) value as a new index level."""
+        most_recent_date = df.apply(pd.Series.last_valid_index, axis=1)
+        return df.assign(most_recent_date=most_recent_date).set_index(
+            "most_recent_date", append=True
+        )
+
+    derived_pct_df = append_most_recent_date_index_level(derived_pct_df)
+    ts_in_pcts = append_most_recent_date_index_level(ts_in_pcts)
+
+    # Combine the input and derived percentage time series into one DataFrame, sort by most recent
+    # date and drop duplicates except for the last/most recent.
+    combined_pcts = (
+        derived_pct_df.append(ts_in_pcts)
+        .sort_index(level="most_recent_date")
+        .droplevel("most_recent_date")
     )
+    most_recent_pcts = combined_pcts.loc[~combined_pcts.index.duplicated(keep="last")]
 
-    dataset_without_pct = ds_in.drop_columns_if_present(list(field_map.values()))
-    return dataset_without_pct.join_columns(ds_all_pct)
+    # Double check that there is no overlap between the time series in most_recent_pcts and
+    # ts_in_without_pcts.
+    assert ts_in_without_pcts.index.intersection(most_recent_pcts.index).empty
+
+    return ds_in.replace_timeseries_wide_dates([ts_in_without_pcts, most_recent_pcts])
 
 
 def _xs_or_empty(df: pd.DataFrame, key, *, level) -> pd.DataFrame:
@@ -92,10 +104,6 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
         names=[PdFields.VARIABLE] + list(computed_initiated.index.names),
     ).reorder_levels(timeseries_wide.index.names)
 
-    timeseries_wide_dates_combined = pd.concat([timeseries_wide, computed_initiated])
-
-    timeseries_wide_vars = timeseries_wide_dates_combined.stack().unstack(PdFields.VARIABLE)
-
-    return dataclasses.replace(dataset, timeseries_bucketed=timeseries_wide_vars).add_tag_to_subset(
-        taglib.Derived(), computed_initiated.index
-    )
+    return dataset.replace_timeseries_wide_dates(
+        [timeseries_wide, computed_initiated]
+    ).add_tag_to_subset(taglib.Derived(), computed_initiated.index)

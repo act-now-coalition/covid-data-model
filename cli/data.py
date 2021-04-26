@@ -176,8 +176,6 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
         multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
         multiregion_dataset.print_stats("aggregate_to_country")
 
-    multiregion_dataset = manual_filter.run(multiregion_dataset)
-
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
     multiregion_dataset.print_stats("persist")
 
