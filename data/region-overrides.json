@@ -73,6 +73,34 @@
       "blocked": true,
       "region": "15009",
       "context": "https://trello.com/c/O7Cqn1p7/1181-pegged-100-icu-capacity-in-maui"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "region": "01097",
+      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "region": "33660",
+      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.infectionRate",
+      "blocked": true,
+      "region": "01097",
+      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.infectionRate",
+      "blocked": true,
+      "region": "33660",
+      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
     }
   ]
 }
