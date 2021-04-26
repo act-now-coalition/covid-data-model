@@ -303,3 +303,36 @@ def test_region_overrides_transform_and_filter_infection_rate():
     )
 
     test_helpers.assert_dataset_like(ds_out, ds_in)
+
+
+def test_block_removes_existing_source_tag():
+    source = taglib.Source("TestSource")
+    other_metris = {CommonFields.DEATHS: [0, 0]}
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: TimeseriesLiteral([1, 2], source=source), **other_metris}
+    )
+
+    config = manual_filter.Config(
+        filters=[
+            manual_filter.Filter(
+                regions_included=[test_helpers.DEFAULT_REGION],
+                fields_included=[CommonFields.CASES],
+                drop_observations=True,
+                internal_note="",
+                public_note="We fixed it",
+            )
+        ]
+    )
+    ds_out = manual_filter.run(ds_in, config)
+
+    tag_expected = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE_NO_DATE, disclaimer=config.filters[0].public_note
+    )
+    ds_expected = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral([None, None], annotation=[tag_expected]),
+            **other_metris,
+        }
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)

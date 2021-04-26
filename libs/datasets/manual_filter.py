@@ -111,16 +111,18 @@ def drop_observations(
         ts_filtered, ts_no_real_values_to_drop = _filter_by_date(
             ts_selected_fields, drop_start_date=filter_.start_date
         )
-        ts_results.append(ts_filtered)
-        ts_results.append(ts_no_real_values_to_drop)
-        index_to_tag = ts_filtered.index
+        return dataset.replace_timeseries_wide_dates(
+            [ts_not_selected_fields, ts_filtered, ts_no_real_values_to_drop]
+        ).add_tag_to_subset(filter_.tag, ts_filtered.index)
     else:
-        # When start_date is None all of ts_selected_fields is dropped; don't append to ts_results.
-        index_to_tag = ts_selected_fields.index
-
-    return dataset.replace_timeseries_wide_dates(ts_results).add_tag_to_subset(
-        filter_.tag, index_to_tag
-    )
+        # When start_date is None all of ts_selected_fields is dropped; only the not selected
+        # fields are kept.
+        selected_index = ts_selected_fields.index
+        return (
+            dataset.replace_timeseries_wide_dates([ts_not_selected_fields])
+            .rm_tags_from_timeseries_subset(selected_index)
+            .add_tag_to_subset(filter_.tag, selected_index)
+        )
 
 
 def run(
