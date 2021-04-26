@@ -784,7 +784,7 @@ class MultiRegionDataset:
         ).reset_index()
         return self.append_tag_df(tag_df)
 
-    def rm_tags_from_timeseries_subset(self, index: pd.MultiIndex) -> "MultiRegionDataset":
+    def remove_tags_from_subset(self, index: pd.MultiIndex) -> "MultiRegionDataset":
         """Returns a new object with all tags remove from every timeseries in `index`."""
         assert index.names == EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.index.names
         new_tag_series = self.tag.loc[~self.tag.index.droplevel(TagField.TYPE).isin(index)]

@@ -219,7 +219,7 @@ def test_region_overrides_transform_and_filter():
 
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE_NO_DATE,
-        disclaimer=region_overrides["overrides"][0]["disclaimer"],
+        public_note=region_overrides["overrides"][0]["disclaimer"],
     )
     ds_expected = timeseries.MultiRegionDataset.new_without_timeseries().add_tag_to_subset(
         tag_expected, ds_in.timeseries_bucketed_wide_dates.index
@@ -261,7 +261,7 @@ def test_region_overrides_transform_and_filter_blocked_false():
 
     tag = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE_NO_DATE,
-        disclaimer=region_overrides["overrides"][0]["disclaimer"],
+        public_note=region_overrides["overrides"][0]["disclaimer"],
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -326,7 +326,7 @@ def test_block_removes_existing_source_tag():
     ds_out = manual_filter.run(ds_in, config)
 
     tag_expected = test_helpers.make_tag(
-        taglib.TagType.KNOWN_ISSUE_NO_DATE, disclaimer=config.filters[0].public_note
+        taglib.TagType.KNOWN_ISSUE_NO_DATE, public_note=config.filters[0].public_note,
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {

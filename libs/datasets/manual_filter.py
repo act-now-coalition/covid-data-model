@@ -43,7 +43,7 @@ class Filter(pydantic.BaseModel):
         if self.start_date:
             return taglib.KnownIssue(date=self.start_date, disclaimer=self.public_note)
         else:
-            return taglib.KnownIssueNoDate(disclaimer=self.public_note)
+            return taglib.KnownIssueNoDate(public_note=self.public_note)
 
     # From https://github.com/samuelcolvin/pydantic/issues/568 ... pylint: disable=no-self-argument
     @pydantic.root_validator()
@@ -120,7 +120,7 @@ def drop_observations(
         selected_index = ts_selected_fields.index
         return (
             dataset.replace_timeseries_wide_dates([ts_not_selected_fields])
-            .rm_tags_from_timeseries_subset(selected_index)
+            .remove_tags_from_subset(selected_index)
             .add_tag_to_subset(filter_.tag, selected_index)
         )
 
@@ -151,8 +151,7 @@ def run(
     return dataset
 
 
-# Possible values from
-# https://github.com/covid-projections/covid-projections/blob/develop/src/cms-content/region-overrides/region-overrides.json
+# Possible values from data/region-overrides.json
 _METRIC_TO_FIELDS = {
     "metrics.caseDensity": [CommonFields.CASES, CommonFields.NEW_CASES],
     # infectionRate is ignored without error. It isn't used in the current region-overrides.json and
