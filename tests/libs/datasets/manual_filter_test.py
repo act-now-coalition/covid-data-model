@@ -192,6 +192,7 @@ def test_region_overrides_transform_smoke_test():
     transformed = manual_filter.transform_region_overrides(
         json.load(open(data.REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
     )
+    assert transformed.filters
     # pprint.pprint(transformed)
 
 
@@ -217,7 +218,7 @@ def test_region_overrides_transform_and_filter():
     )
 
     tag_expected = test_helpers.make_tag(
-        taglib.TagType.KNOWN_ISSUE_ALL_DATES,
+        taglib.TagType.KNOWN_ISSUE_NO_DATE,
         disclaimer=region_overrides["overrides"][0]["disclaimer"],
     )
     ds_expected = timeseries.MultiRegionDataset.new_without_timeseries().add_tag_to_subset(
@@ -241,16 +242,16 @@ def test_region_overrides_transform_and_filter_blocked_false():
         ]
     }
 
-    region_az = Region.from_state("AZ")
     region_tx = Region.from_state("TX")
     kids = DemographicBucket("age:0-9")
+    other_region_metrics = {Region.from_state("AZ"): {CommonFields.CASES: [2, 3]}}
     ds_in = test_helpers.build_dataset(
         {
             region_tx: {
                 CommonFields.CASES: {DemographicBucket.ALL: [6, 8], kids: [1, 2]},
                 CommonFields.ICU_BEDS: [5, 5],
             },
-            region_az: {CommonFields.CASES: [2, 3]},
+            **other_region_metrics,
         }
     )
 
@@ -259,7 +260,7 @@ def test_region_overrides_transform_and_filter_blocked_false():
     )
 
     tag = test_helpers.make_tag(
-        taglib.TagType.KNOWN_ISSUE_ALL_DATES,
+        taglib.TagType.KNOWN_ISSUE_NO_DATE,
         disclaimer=region_overrides["overrides"][0]["disclaimer"],
     )
     ds_expected = test_helpers.build_dataset(
@@ -271,14 +272,15 @@ def test_region_overrides_transform_and_filter_blocked_false():
                 },
                 CommonFields.ICU_BEDS: [5, 5],
             },
-            region_az: {CommonFields.CASES: [2, 3]},
+            **other_region_metrics,
         }
     )
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
 
 
-def test_region_overrides_transform_and_filter_rt():
+def test_region_overrides_transform_and_filter_infection_rate():
+    """Test that metrics.infectionRate doesn't cause a crash."""
     region_overrides = {
         "overrides": [
             {

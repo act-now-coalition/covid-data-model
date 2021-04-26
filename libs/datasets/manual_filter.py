@@ -43,7 +43,7 @@ class Filter(pydantic.BaseModel):
         if self.start_date:
             return taglib.KnownIssue(date=self.start_date, disclaimer=self.public_note)
         else:
-            return taglib.KnownIssueAllDates(disclaimer=self.public_note)
+            return taglib.KnownIssueNoDate(disclaimer=self.public_note)
 
     # From https://github.com/samuelcolvin/pydantic/issues/568 ... pylint: disable=no-self-argument
     @pydantic.root_validator()

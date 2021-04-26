@@ -57,7 +57,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
     ZSCORE_OUTLIER = "zscore_outlier"
     KNOWN_ISSUE = "known_issue"
-    KNOWN_ISSUE_ALL_DATES = "known_issue_all_dates"
+    KNOWN_ISSUE_NO_DATE = "known_issue_no_date"
     DERIVED = "derived"
 
     PROVENANCE = PdFields.PROVENANCE
@@ -295,10 +295,10 @@ class KnownIssue(TagInTimeseries):
 
 
 @dataclass(frozen=True)
-class KnownIssueAllDates(TagInTimeseries):
+class KnownIssueNoDate(TagInTimeseries):
     disclaimer: str
 
-    TAG_TYPE = TagType.KNOWN_ISSUE_ALL_DATES
+    TAG_TYPE = TagType.KNOWN_ISSUE_NO_DATE
 
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
@@ -333,7 +333,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.SOURCE_URL: SourceUrl,
     TagType.SOURCE: Source,
     TagType.KNOWN_ISSUE: KnownIssue,
-    TagType.KNOWN_ISSUE_ALL_DATES: KnownIssueAllDates,
+    TagType.KNOWN_ISSUE_NO_DATE: KnownIssueNoDate,
     TagType.DERIVED: Derived,
 }
 
