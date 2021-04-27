@@ -1,6 +1,7 @@
 import enum
 from dataclasses import dataclass
 from typing import Collection
+from typing import Sequence
 
 import more_itertools
 import pandas as pd
@@ -21,6 +22,7 @@ from libs.datasets.tail_filter import TagType
 
 DISTRIBUTION = FieldName("distribution")
 FIELD_GROUP = FieldName("field_group")
+SOURCE_TYPE_SET = FieldName("source_type_set")
 
 
 def _get_index_level_as_series(df: pd.DataFrame, level: FieldName) -> pd.Series:
@@ -35,20 +37,22 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
     HAS_URL = "has_url"
     ANNOTATION_COUNT = "annotation_count"
     BUCKET_ALL_COUNT = "bucket_all_count"
-    SOURCE_TYPE_SET = "source_type_set"
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class Aggregated:
-    """Aggregated statistics grouped by region and variable, or collections of them."""
+    """Aggregated statistics, optionally grouped by region and variable."""
 
+    # Numeric statistics
     stats: pd.DataFrame
+    # A DataFrame containing the source type as a string, or an empty DataFrame
+    # TODO(tom): Change this to make more sense in aggregated instances, perhaps keeping the
+    #  source types in a set.
+    source_type: pd.DataFrame
 
     def __post_init__(self):
         # index level 0 is a location_id or some kind of aggregated region kind of thing
         assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, CommonFields.AGGREGATE_LEVEL]
-        # index level 1 is a variable (cases, deaths, ...) or some kind of aggregated variable
-        assert self.stats.index.names[1] in [PdFields.VARIABLE, FIELD_GROUP, DISTRIBUTION]
         assert self.stats.columns.to_list() == [
             StatName.HAS_TIMESERIES,
             StatName.HAS_URL,
@@ -56,10 +60,20 @@ class Aggregated:
             StatName.BUCKET_ALL_COUNT,
         ]
         assert is_numeric_dtype(more_itertools.one(set(self.stats.dtypes)))
+        assert self.source_type.index.equals(self.stats.index)
+        assert self.source_type.columns.to_list() in ([SOURCE_TYPE_SET], [])
+
+    @property
+    def pivottable_data(self) -> pd.DataFrame:
+        df = pd.concat([self.stats, self.source_type], axis=1).reset_index()
+        return [df.columns.tolist()] + df.values.tolist()
 
     @cached_property
     def stats_by_region_variable(self) -> pd.DataFrame:
         """A DataFrame with location index and column levels CommonField and StatName"""
+        # index level 1 is a variable (cases, deaths, ...) or some kind of aggregated variable
+        assert self.stats.index.names[1] in [PdFields.VARIABLE, FIELD_GROUP, DISTRIBUTION]
+
         # The names of index levels 0 and 1 may vary. There doesn't seem to be a way to pass the
         # index level numbers to groupby so lookup the names.
         groupby = [self.stats.index.names[0], self.stats.index.names[1]]
@@ -93,6 +107,7 @@ class PerTimeseries(Aggregated):
     levels that are used by various groupby operations."""
 
     def __post_init__(self):
+        super().__post_init__()
         assert self.stats.index.names == [
             CommonFields.LOCATION_ID,
             PdFields.VARIABLE,
@@ -128,14 +143,6 @@ class PerTimeseries(Aggregated):
             .count()
             .reindex(index=all_timeseries_index, fill_value=0)
         )
-        # The source type(s) of each time series, as a string that will be identical for time
-        # series with the same set of source types.
-        stat_map[StatName.SOURCE_TYPE_SET] = (
-            ds.tag_objects_series.loc(axis=0)[:, :, :, TagType.SOURCE]
-            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
-            .apply(lambda sources: ";".join(sorted(set(s.type for s in sources))))
-            .reindex(index=all_timeseries_index, fill_value="")
-        )
         stat_map[StatName.BUCKET_ALL_COUNT] = (
             _get_index_level_as_series(
                 ds.timeseries_bucketed_wide_dates, PdFields.DEMOGRAPHIC_BUCKET
@@ -160,28 +167,47 @@ class PerTimeseries(Aggregated):
         stats = pd.DataFrame({**stat_map, **stat_extra_index}).set_index(
             list(stat_extra_index.keys()), append=True
         )
-
-        return PerTimeseries(stats=stats)
-
-    def subset_variables(self, variables: Collection[CommonFields]) -> "PerTimeseries":
-        return PerTimeseries(stats=_xs_or_empty(self.stats, variables, PdFields.VARIABLE))
-
-    def subset_locations(self, *, aggregation_level: AggregationLevel) -> "PerTimeseries":
-        return PerTimeseries(
-            stats=_xs_or_empty(self.stats, [aggregation_level.value], CommonFields.AGGREGATE_LEVEL)
+        # The source type(s) of each time series, as a string that will be identical for time
+        # series with the same set of source types.
+        source_type_set = (
+            ds.tag_objects_series.loc(axis=0)[:, :, :, TagType.SOURCE]
+            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
+            .apply(lambda sources: ";".join(sorted(set(s.type for s in sources))))
+            .reindex(index=all_timeseries_index, fill_value="")
+            .to_frame(name=SOURCE_TYPE_SET)
+            .set_index(stats.index)
         )
 
-    def aggregate(self, index: FieldName, columns: FieldName) -> Aggregated:
-        return Aggregated(stats=self.stats.groupby([index, columns], as_index=True).sum())
+        return PerTimeseries(stats=stats, source_type=source_type_set)
+
+    def _subset(self, field: FieldName, values: Collection) -> "PerTimeseries":
+        assert field in self.stats.index.names
+        return PerTimeseries(
+            stats=_xs_or_empty(self.stats, values, field),
+            source_type=_xs_or_empty(self.source_type, values, field),
+        )
+
+    def subset_variables(self, variables: Collection[CommonFields]) -> "PerTimeseries":
+        return self._subset(PdFields.VARIABLE, variables)
+
+    def subset_locations(self, *, aggregation_level: AggregationLevel) -> "PerTimeseries":
+        return self._subset(CommonFields.AGGREGATE_LEVEL, [aggregation_level.value])
+
+    def aggregate(self, *fields: Sequence[FieldName]) -> Aggregated:
+        # Make sure fields is a list. aggregate(a, b) produces a tuple which trips up groupby.
+        fields = list(fields)
+        return Aggregated(
+            stats=self.stats.groupby(fields, as_index=True).sum(),
+            source_type=self.source_type.groupby(fields, as_index=True).sum(),
+        )
 
     def stats_for_locations(self, location_ids: pd.Index) -> pd.DataFrame:
         """Returns a DataFrame of statistics with `location_ids` as the index."""
         assert location_ids.names == [CommonFields.LOCATION_ID]
+        aggregated_by_location = self.aggregate(CommonFields.LOCATION_ID)
         # The stats likely don't have a value for every region. Replace any NAs with 0 so that
         # subtracting them produces a real value.
-        df = (
-            self.stats.groupby(CommonFields.LOCATION_ID).sum().reindex(index=location_ids).fillna(0)
-        )
+        df = aggregated_by_location.stats.reindex(index=location_ids).fillna(0)
         df["no_url_count"] = df[StatName.HAS_TIMESERIES] - df[StatName.HAS_URL]
         df["bucket_not_all"] = df[StatName.HAS_TIMESERIES] - df[StatName.BUCKET_ALL_COUNT]
         return df

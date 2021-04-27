@@ -85,6 +85,7 @@ def test_make_from_dataset():
     )
 
     per_timeseries.stats_for_locations(dataset.location_ids)
+    assert per_timeseries.pivottable_data
 
     county_stats = per_timeseries.subset_locations(
         aggregation_level=AggregationLevel.COUNTY
