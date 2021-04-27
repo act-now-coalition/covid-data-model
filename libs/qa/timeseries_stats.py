@@ -16,6 +16,7 @@ from pandas.core.dtypes.common import is_numeric_dtype
 from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import demographics
+from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagType
 
@@ -36,6 +37,14 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
     ANNOTATION_COUNT = "annotation_count"
     BUCKET_ALL_COUNT = "bucket_all_count"
     SOURCE_TYPE_SET = "source_type_set"
+    CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
+    CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
+    ZSCORE_OUTLIER = "zscore_outlier"
+    KNOWN_ISSUE = "known_issue"
+    DERIVED = "derived"
+    PROVENANCE = "provenance"
+    SOURCE_URL = "source_url"
+    SOURCE = "source"
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
@@ -49,12 +58,7 @@ class Aggregated:
         assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, CommonFields.AGGREGATE_LEVEL]
         # index level 1 is a variable (cases, deaths, ...) or some kind of aggregated variable
         assert self.stats.index.names[1] in [PdFields.VARIABLE, FIELD_GROUP, DISTRIBUTION]
-        assert self.stats.columns.to_list() == [
-            StatName.HAS_TIMESERIES,
-            StatName.HAS_URL,
-            StatName.ANNOTATION_COUNT,
-            StatName.BUCKET_ALL_COUNT,
-        ]
+        assert self.stats.columns.to_list() == list(StatName)
         assert is_numeric_dtype(more_itertools.one(set(self.stats.dtypes)))
 
     @cached_property
@@ -128,6 +132,12 @@ class PerTimeseries(Aggregated):
             .count()
             .reindex(index=all_timeseries_index, fill_value=0)
         )
+        stat_map[StatName.BUCKET_ALL_COUNT] = (
+            _get_index_level_as_series(
+                ds.timeseries_bucketed_wide_dates, PdFields.DEMOGRAPHIC_BUCKET
+            )
+            == DemographicBucket.ALL
+        ).astype(int)
         # The source type(s) of each time series, as a string that will be identical for time
         # series with the same set of source types.
         stat_map[StatName.SOURCE_TYPE_SET] = (
@@ -136,12 +146,22 @@ class PerTimeseries(Aggregated):
             .apply(lambda sources: ";".join(sorted(set(s.type for s in sources))))
             .reindex(index=all_timeseries_index, fill_value="")
         )
-        stat_map[StatName.BUCKET_ALL_COUNT] = (
-            _get_index_level_as_series(
-                ds.timeseries_bucketed_wide_dates, PdFields.DEMOGRAPHIC_BUCKET
+        tag_count = (
+            ds.tag.groupby(
+                [
+                    CommonFields.LOCATION_ID,
+                    PdFields.VARIABLE,
+                    PdFields.DEMOGRAPHIC_BUCKET,
+                    taglib.TagField.TYPE,
+                ]
             )
-            == DemographicBucket.ALL
-        ).astype(int)
+            .count()
+            .unstack(taglib.TagField.TYPE, fill_value=0)
+            .reindex(columns=list(taglib.TagType), fill_value=0)
+            .reindex(index=all_timeseries_index, fill_value=0)
+        )
+        for tag_type in taglib.TagType:
+            stat_map[StatName._value2member_map_[tag_type]] = tag_count[tag_type]
         location_id_index = all_timeseries_index.get_level_values(CommonFields.LOCATION_ID)
         stat_extra_index = {
             DISTRIBUTION: all_timeseries_index.get_level_values(PdFields.DEMOGRAPHIC_BUCKET).map(
