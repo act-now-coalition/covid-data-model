@@ -1,0 +1,127 @@
+{
+  "overrides": [
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "region": "CT",
+      "context": "[michael] Ongoing issue with CT dashboard including antigen tests.",
+      "disclaimer": "There is a known discrepancy between our data and the Connecticut state dashboard. The state dashboard includes antigen tests in the calculation while we exclude antigen tests.",
+      "blocked": false
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "region": "CA",
+      "context": "[michael] https://www.cdph.ca.gov/Programs/CID/DCDC/Pages/COVID-19/COVID19CountyMonitoringOverview.aspx",
+      "disclaimer": "Note that our daily new cases per 100k metric is different than the \"adjusted case rate\" metric used by California for determining reopening tier assignments. Their adjusted case rate is adjusted to account for testing levels.",
+      "blocked": false
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.testPositivityRatio",
+      "region": "NY",
+      "context": "[michael] NY dashboard uses \"testing encounters\" instead of \"PCR test specimens\"",
+      "disclaimer": "There is a known discrepancy between our data and the New York state dashboard. We calculate test positivity rate based on positive PCR test specimens, while the state dashboard rate is based on individuals testing positive.",
+      "blocked": false
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "region": "IL",
+      "context": "https://trello.com/c/buXoYmKy/1140-il-county-first-doses-underreporting",
+      "disclaimer": "Note that Illinois does not report enough information to correctly distinguish between administration of one dose vaccines and two dose vaccines, and therefore our \"1+ dose\" data above may be an underestimation of the true number of people receiving at least one dose.",
+      "blocked": false
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "region": "WY",
+      "context": "https://trello.com/c/kvjwZJJP/1005-disabled-wyoming-counties-vaccine-data-due-to-anomalous-drop-off",
+      "blocked": true
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "42101",
+      "context": "https://trello.com/c/GjrTXF0m/1012-philadelphia-vaccination-confusion-between-town-county-federal"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "GA",
+      "context": "https://trello.com/c/ep4D6Fob/1223-georgia-county-data-not-updating"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "04013",
+      "context": "https://trello.com/c/gLXOYZdT/1159-maricopa-county-az-fully-vaccinated-exceeds-partially-vaccinated"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "16180",
+      "context": "https://trello.com/c/J0tFdcUV/1221-disabled-carson-city-nv-had-huge-drop-in-vaccination-data"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "region": "15009",
+      "context": "https://trello.com/c/O7Cqn1p7/1181-pegged-100-icu-capacity-in-maui"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "region": "01097",
+      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "region": "33660",
+      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.infectionRate",
+      "blocked": true,
+      "region": "01097",
+      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.infectionRate",
+      "blocked": true,
+      "region": "33660",
+      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "region": "01097",
+      "context": "https://trello.com/c/qPpRRjqw/1295-disabled-mobile-county-metro-al-test-positivity-spike"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "region": "33660",
+      "context": "https://trello.com/c/qPpRRjqw/1295-disabled-mobile-county-metro-al-test-positivity-spike"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "NJ",
+      "context": "https://trello.com/c/bHALf4Ic/1296-disabled-new-jersey-county-vaccine-data-has-large-spikes-drop-offs"
+    }
+  ]
+}

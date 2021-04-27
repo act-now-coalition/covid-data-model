@@ -1,3 +1,4 @@
+import collections
 from dataclasses import dataclass
 from typing import List
 from typing import Mapping
@@ -8,6 +9,7 @@ from libs.datasets.timeseries import MultiRegionDataset
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import region_aggregation
+from libs.pipeline import Region
 
 CBSA_LIST_PATH = "data/census-msa/list1_2020.xls"
 
@@ -27,18 +29,27 @@ class CountyToCBSAAggregator:
         region_aggregation.StaticWeightedAverageAggregation
     ] = region_aggregation.WEIGHTED_AGGREGATIONS
 
-    def aggregate(
-        self, dataset_in: MultiRegionDataset, reporting_ratio_required_to_aggregate=None
-    ) -> MultiRegionDataset:
-        """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
-        region_map = {
+    @property
+    def county_to_cbsa_region_map(self) -> Mapping[Region, Region]:
+        return {
             pipeline.Region.from_fips(fips): pipeline.Region.from_cbsa_code(cbsa_code)
             for fips, cbsa_code in self.county_map.items()
         }
 
+    @property
+    def cbsa_to_counties_region_map(self) -> Mapping[Region, List[Region]]:
+        cbsa_to_counties = collections.defaultdict(list)
+        for county, cbsa in self.county_to_cbsa_region_map.items():
+            cbsa_to_counties[cbsa].append(county)
+        return cbsa_to_counties
+
+    def aggregate(
+        self, dataset_in: MultiRegionDataset, reporting_ratio_required_to_aggregate=None
+    ) -> MultiRegionDataset:
+        """Returns a dataset of CBSA regions, created by aggregating counties in the input data."""
         return region_aggregation.aggregate_regions(
             dataset_in,
-            region_map,
+            self.county_to_cbsa_region_map,
             self.aggregations,
             reporting_ratio_required_to_aggregate=reporting_ratio_required_to_aggregate,
         )

@@ -17,6 +17,7 @@ from libs import google_sheet_helpers
 from libs import pipeline
 from libs.datasets import combined_dataset_utils
 from libs.datasets import custom_aggregations
+from libs.datasets import manual_filter
 from libs.datasets import statistical_areas
 from libs.datasets.combined_datasets import (
     ALL_TIMESERIES_FEATURE_DEFINITION,
@@ -29,6 +30,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets import new_cases_and_deaths
 from libs.datasets import vaccine_backfills
+from libs.datasets.dataset_utils import DATA_DIRECTORY
 from libs.datasets.sources import forecast_hub
 from libs.datasets import tail_filter
 from libs.datasets.sources import zeros_filter
@@ -61,6 +63,9 @@ PROD_BUCKET = "data.covidactnow.org"
 DEFAULT_REPORTING_RATIO = 0.95
 
 _logger = logging.getLogger(__name__)
+
+
+REGION_OVERRIDES_JSON = DATA_DIRECTORY / "region-overrides.json"
 
 
 @click.group("data")
@@ -103,6 +108,15 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
         timeseries_field_datasets, static_field_datasets
     )
     _logger.info("Finished combining datasets")
+
+    # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
+    # need to remove CBSAs because they don't exist yet.
+    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    region_overrides_config = manual_filter.transform_region_overrides(
+        json.load(open(REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
+    )
+    multiregion_dataset = manual_filter.run(multiregion_dataset, region_overrides_config)
+
     multiregion_dataset.print_stats("combined")
     multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
     multiregion_dataset.print_stats("drop_tail")
@@ -142,7 +156,6 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(multiregion_dataset)
     multiregion_dataset.print_stats("replace_dc_county_with_state_data")
 
-    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     cbsa_dataset = aggregator.aggregate(
         multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
     )
