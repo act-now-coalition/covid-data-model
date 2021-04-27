@@ -53,12 +53,7 @@ class Aggregated:
     def __post_init__(self):
         # index level 0 is a location_id or some kind of aggregated region kind of thing
         assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, CommonFields.AGGREGATE_LEVEL]
-        assert self.stats.columns.to_list() == [
-            StatName.HAS_TIMESERIES,
-            StatName.HAS_URL,
-            StatName.ANNOTATION_COUNT,
-            StatName.BUCKET_ALL_COUNT,
-        ]
+        assert self.stats.columns.to_list() == list(StatName)
         assert is_numeric_dtype(more_itertools.one(set(self.stats.dtypes)))
         assert self.source_type.index.equals(self.stats.index)
         assert self.source_type.columns.to_list() in ([SOURCE_TYPE_SET], [])
