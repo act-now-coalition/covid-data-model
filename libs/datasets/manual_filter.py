@@ -1,16 +1,23 @@
 import datetime
-from typing import List
 from typing import Optional
 from typing import Tuple
+import re
+from typing import List
+from typing import Mapping
+
 
 import pydantic
 import structlog
+from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import FieldGroup
 from covidactnow.datapublic.common_fields import PdFields
 import pandas as pd
 
+from libs.datasets import AggregationLevel
 from libs.datasets import taglib
 from libs.datasets import timeseries
+from libs.pipeline import Region, RegionMask
 from libs.pipeline import RegionMaskOrRegion
 
 _logger = structlog.getLogger()
@@ -33,7 +40,10 @@ class Filter(pydantic.BaseModel):
 
     @property
     def tag(self) -> taglib.TagInTimeseries:
-        return taglib.KnownIssue(date=self.start_date, disclaimer=self.public_note)
+        if self.start_date:
+            return taglib.KnownIssue(date=self.start_date, disclaimer=self.public_note)
+        else:
+            return taglib.KnownIssueNoDate(public_note=self.public_note)
 
     # From https://github.com/samuelcolvin/pydantic/issues/568 ... pylint: disable=no-self-argument
     @pydantic.root_validator()
@@ -97,16 +107,22 @@ def drop_observations(
     )
     ts_results.append(ts_not_selected_fields)
 
-    ts_filtered, ts_no_real_values_to_drop = _filter_by_date(
-        ts_selected_fields, drop_start_date=filter_.start_date
-    )
-    ts_results.append(ts_filtered)
-    ts_results.append(ts_no_real_values_to_drop)
-    index_to_tag = ts_filtered.index
-
-    return dataset.replace_timeseries_wide_dates(ts_results).add_tag_to_subset(
-        filter_.tag, index_to_tag
-    )
+    if filter_.start_date:
+        ts_filtered, ts_no_real_values_to_drop = _filter_by_date(
+            ts_selected_fields, drop_start_date=filter_.start_date
+        )
+        return dataset.replace_timeseries_wide_dates(
+            [ts_not_selected_fields, ts_filtered, ts_no_real_values_to_drop]
+        ).add_tag_to_subset(filter_.tag, ts_filtered.index)
+    else:
+        # When start_date is None all of ts_selected_fields is dropped; only the not selected
+        # fields are kept.
+        selected_index = ts_selected_fields.index
+        return (
+            dataset.replace_timeseries_wide_dates([ts_not_selected_fields])
+            .remove_tags_from_subset(selected_index)
+            .add_tag_to_subset(filter_.tag, selected_index)
+        )
 
 
 def run(
@@ -120,8 +136,83 @@ def run(
             # TODO(tom): Find a cleaner way to refer to a filter in logs.
             _logger.info("No locations matched", regions=str(filter_.regions_included))
             continue
-        filtered_dataset = drop_observations(filtered_dataset, filter_)
+        if filter_.drop_observations:
+            filtered_dataset = drop_observations(filtered_dataset, filter_)
+        else:
+            ts_selected_fields, _ = _partition_by_fields(
+                filtered_dataset.timeseries_bucketed_wide_dates, filter_.fields_included
+            )
+            filtered_dataset = filtered_dataset.add_tag_to_subset(
+                filter_.tag, ts_selected_fields.index
+            )
 
         dataset = filtered_dataset.append_regions(passed_dataset)
 
     return dataset
+
+
+# Possible values from data/region-overrides.json
+_METRIC_TO_FIELDS = {
+    "metrics.caseDensity": [CommonFields.CASES, CommonFields.NEW_CASES],
+    # infectionRate is ignored without error. It isn't used in the current region-overrides.json and
+    # doesn't exist as a field in the pipeline where the manual_filter is applied. Removing cases
+    # will likely cause Rt to no longer be produced for a region.
+    "metrics.infectionRate": [],
+    "metrics.testPositivityRatio": common_fields.FIELD_GROUP_TO_LIST_FIELDS[FieldGroup.TESTS],
+    "metrics.icuCapacityRatio": common_fields.FIELD_GROUP_TO_LIST_FIELDS[
+        FieldGroup.HEALTHCARE_CAPACITY
+    ],
+    "metrics.vaccinationsInitiatedRatio": common_fields.FIELD_GROUP_TO_LIST_FIELDS[
+        FieldGroup.VACCINES
+    ],
+}
+
+
+def _transform_one_override(
+    override: Mapping, cbsa_to_counties_map: Mapping[Region, List[Region]]
+) -> Filter:
+    region_str = override["region"]
+    if re.fullmatch(r"[A-Z][A-Z]", region_str):
+        region = Region.from_state(region_str)
+    elif re.fullmatch(r"\d{5}", region_str):
+        region = Region.from_fips(region_str)
+    else:
+        raise ValueError(f"Invalid region: {region_str}")
+
+    include_str = override["include"]
+    if include_str == "region":
+        regions_included = [region]
+    elif include_str == "region-and-subregions":
+        if region.is_state():
+            regions_included = [RegionMask(states=[region.state])]
+        elif region.level == AggregationLevel.CBSA:
+            regions_included = [region] + cbsa_to_counties_map[region]
+        else:
+            raise ValueError("region-and-subregions only valid for a state and CBSA")
+    elif include_str == "subregions":
+        if not region.is_state():
+            raise ValueError("subregions only valid for a state")
+        regions_included = [RegionMask(AggregationLevel.COUNTY, states=[region.state])]
+    else:
+        raise ValueError(f"Invalid include: {include_str}")
+
+    return Filter(
+        regions_included=regions_included,
+        fields_included=_METRIC_TO_FIELDS[override["metric"]],
+        internal_note=override["context"],
+        public_note=override.get("disclaimer", ""),
+        drop_observations=bool(override["blocked"]),
+    )
+
+
+def transform_region_overrides(
+    region_overrides: Mapping, cbsa_to_counties_map: Mapping[Region, List[Region]]
+) -> Config:
+    filter_configs: List[Filter] = []
+    for override in region_overrides["overrides"]:
+        try:
+            filter_configs.append(_transform_one_override(override, cbsa_to_counties_map))
+        except:
+            raise ValueError(f"Problem with {override}")
+
+    return Config(filters=filter_configs)

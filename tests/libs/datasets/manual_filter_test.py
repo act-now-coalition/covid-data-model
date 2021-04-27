@@ -1,12 +1,18 @@
+import json
+
 import pytest
 from covidactnow.datapublic import common_fields
+
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldGroup
 
+from cli import data
 from libs.datasets import AggregationLevel
 from libs.datasets import manual_filter
+from libs.datasets import statistical_areas
 from libs.datasets import taglib
+from libs.datasets import timeseries
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
 from tests import test_helpers
@@ -179,3 +185,154 @@ def test_manual_filter_per_bucket_tag():
     )
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_region_overrides_transform_smoke_test():
+    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    transformed = manual_filter.transform_region_overrides(
+        json.load(open(data.REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
+    )
+    assert transformed.filters
+    # pprint.pprint(transformed)
+
+
+def test_region_overrides_transform_and_filter():
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region-and-subregions",
+                "metric": "metrics.vaccinationsInitiatedRatio",
+                "region": "WY",
+                "context": "https://trello.com/c/kvjwZJJP/1005",
+                "disclaimer": "Yo, bad stuff",
+                "blocked": True,
+            }
+        ]
+    }
+
+    region = Region.from_state("WY")
+    ds_in = test_helpers.build_dataset({region: {CommonFields.VACCINATIONS_INITIATED: [1, 2, 3]}})
+
+    ds_out = manual_filter.run(
+        ds_in, manual_filter.transform_region_overrides(region_overrides, {})
+    )
+
+    tag_expected = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE_NO_DATE,
+        public_note=region_overrides["overrides"][0]["disclaimer"],
+    )
+    ds_expected = timeseries.MultiRegionDataset.new_without_timeseries().add_tag_to_subset(
+        tag_expected, ds_in.timeseries_bucketed_wide_dates.index
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)
+
+
+def test_region_overrides_transform_and_filter_blocked_false():
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region-and-subregions",
+                "metric": "metrics.caseDensity",
+                "region": "TX",
+                "context": "https://trello.com/c/kvjwZJJP/1005",
+                "disclaimer": "Yo, bad stuff",
+                "blocked": False,
+            }
+        ]
+    }
+
+    region_tx = Region.from_state("TX")
+    kids = DemographicBucket("age:0-9")
+    other_region_metrics = {Region.from_state("AZ"): {CommonFields.CASES: [2, 3]}}
+    ds_in = test_helpers.build_dataset(
+        {
+            region_tx: {
+                CommonFields.CASES: {DemographicBucket.ALL: [6, 8], kids: [1, 2]},
+                CommonFields.ICU_BEDS: [5, 5],
+            },
+            **other_region_metrics,
+        }
+    )
+
+    ds_out = manual_filter.run(
+        ds_in, manual_filter.transform_region_overrides(region_overrides, {})
+    )
+
+    tag = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE_NO_DATE,
+        public_note=region_overrides["overrides"][0]["disclaimer"],
+    )
+    ds_expected = test_helpers.build_dataset(
+        {
+            region_tx: {
+                CommonFields.CASES: {
+                    DemographicBucket.ALL: TimeseriesLiteral([6, 8], annotation=[tag]),
+                    kids: TimeseriesLiteral([1, 2], annotation=[tag]),
+                },
+                CommonFields.ICU_BEDS: [5, 5],
+            },
+            **other_region_metrics,
+        }
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_region_overrides_transform_and_filter_infection_rate():
+    """Test that metrics.infectionRate doesn't cause a crash."""
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region",
+                "metric": "metrics.infectionRate",
+                "region": "TX",
+                "context": "https://foo.com/",
+                "disclaimer": "Blah",
+                "blocked": True,
+            }
+        ]
+    }
+
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: [6, 8]}, region=Region.from_state("TX")
+    )
+
+    ds_out = manual_filter.run(
+        ds_in, manual_filter.transform_region_overrides(region_overrides, {})
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_in)
+
+
+def test_block_removes_existing_source_tag():
+    source = taglib.Source("TestSource")
+    other_metris = {CommonFields.DEATHS: [0, 0]}
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: TimeseriesLiteral([1, 2], source=source), **other_metris}
+    )
+
+    config = manual_filter.Config(
+        filters=[
+            manual_filter.Filter(
+                regions_included=[test_helpers.DEFAULT_REGION],
+                fields_included=[CommonFields.CASES],
+                drop_observations=True,
+                internal_note="",
+                public_note="We fixed it",
+            )
+        ]
+    )
+    ds_out = manual_filter.run(ds_in, config)
+
+    tag_expected = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE_NO_DATE, public_note=config.filters[0].public_note,
+    )
+    ds_expected = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral([None, None], annotation=[tag_expected]),
+            **other_metris,
+        }
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)

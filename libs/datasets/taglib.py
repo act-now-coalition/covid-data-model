@@ -57,6 +57,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
     ZSCORE_OUTLIER = "zscore_outlier"
     KNOWN_ISSUE = "known_issue"
+    KNOWN_ISSUE_NO_DATE = "known_issue_no_date"
     DERIVED = "derived"
 
     PROVENANCE = PdFields.PROVENANCE
@@ -274,7 +275,7 @@ class ZScoreOutlier(AnnotationWithDate):
 
 @dataclass(frozen=True)
 class KnownIssue(TagInTimeseries):
-    disclaimer: str
+    disclaimer: str  # TODO(tom): Rename to public_note, to be consistent with KnownIssueNoDate
     date: datetime.date
 
     TAG_TYPE = TagType.KNOWN_ISSUE
@@ -290,6 +291,23 @@ class KnownIssue(TagInTimeseries):
     @property
     def content(self) -> str:
         d = {"disclaimer": self.disclaimer, "date": self.date.isoformat()}
+        return json.dumps(d, separators=(",", ":"))
+
+
+@dataclass(frozen=True)
+class KnownIssueNoDate(TagInTimeseries):
+    public_note: str
+
+    TAG_TYPE = TagType.KNOWN_ISSUE_NO_DATE
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        content_parsed = json.loads(content)
+        return cls(public_note=content_parsed["public_note"])
+
+    @property
+    def content(self) -> str:
+        d = {"public_note": self.public_note}
         return json.dumps(d, separators=(",", ":"))
 
 
@@ -315,6 +333,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.SOURCE_URL: SourceUrl,
     TagType.SOURCE: Source,
     TagType.KNOWN_ISSUE: KnownIssue,
+    TagType.KNOWN_ISSUE_NO_DATE: KnownIssueNoDate,
     TagType.DERIVED: Derived,
 }
 
