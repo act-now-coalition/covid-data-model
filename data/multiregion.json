@@ -4,12 +4,12 @@
   "data_git_info": {
     "sha": "973e0680ba2c35c7a5ac939c60d37f1b28f05477",
     "branch": "main",
-    "is_dirty": false
+    "is_dirty": true
   },
   "model_git_info": {
-    "sha": "1aa2bf41fa2af5a0fee88423839336ab78b23877",
+    "sha": "c9e536f4aafd3a3a98df9530da62e4e4f3a412aa",
     "branch": "main",
     "is_dirty": false
   },
-  "updated_at": "2021-04-26T11:58:33.668214"
+  "updated_at": "2021-04-27T00:41:12.632254"
 }
