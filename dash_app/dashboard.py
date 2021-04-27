@@ -281,7 +281,6 @@ def population_ratio_by_variable(
 ) -> pd.DataFrame:
     """Finds the ratio of the population where df is True, broken down by column/variable."""
     assert df.index.names == [CommonFields.LOCATION_ID]
-    print(df.columns.names)
     assert df.columns.names == [PdFields.VARIABLE]
     population_indexed = dataset.static[CommonFields.POPULATION].reindex(df.index)
     population_total = population_indexed.sum()
