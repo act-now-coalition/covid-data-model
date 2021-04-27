@@ -184,7 +184,7 @@ def _transform_one_override(
         regions_included = [region]
     elif include_str == "region-and-subregions":
         if region.is_state():
-            regions_included = [RegionMask(level=None, states=[region.state])]
+            regions_included = [RegionMask(states=[region.state])]
         elif region.level == AggregationLevel.CBSA:
             regions_included = [region] + cbsa_to_counties_map[region]
         else:
