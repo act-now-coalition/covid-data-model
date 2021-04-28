@@ -17,6 +17,7 @@ from pandas.core.dtypes.common import is_numeric_dtype
 from libs.datasets import AggregationLevel
 from libs.datasets import dataset_utils
 from libs.datasets import demographics
+from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagType
 
@@ -37,6 +38,16 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
     HAS_URL = "has_url"
     ANNOTATION_COUNT = "annotation_count"
     BUCKET_ALL_COUNT = "bucket_all_count"
+    # Count of each tag type
+    CUMULATIVE_TAIL_TRUNCATED = TagType.CUMULATIVE_TAIL_TRUNCATED
+    CUMULATIVE_LONG_TAIL_TRUNCATED = TagType.CUMULATIVE_LONG_TAIL_TRUNCATED
+    ZSCORE_OUTLIER = TagType.ZSCORE_OUTLIER
+    KNOWN_ISSUE = TagType.KNOWN_ISSUE
+    KNOWN_ISSUE_NO_DATE = TagType.KNOWN_ISSUE_NO_DATE
+    DERIVED = TagType.DERIVED
+    PROVENANCE = TagType.PROVENANCE
+    SOURCE_URL = TagType.SOURCE_URL
+    SOURCE = TagType.SOURCE
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
@@ -144,6 +155,23 @@ class PerTimeseries(Aggregated):
             )
             == DemographicBucket.ALL
         ).astype(int)
+        tag_count = (
+            ds.tag.groupby(
+                [
+                    CommonFields.LOCATION_ID,
+                    PdFields.VARIABLE,
+                    PdFields.DEMOGRAPHIC_BUCKET,
+                    taglib.TagField.TYPE,
+                ]
+            )
+            .count()
+            .unstack(taglib.TagField.TYPE, fill_value=0)
+            .reindex(columns=list(taglib.TagType), fill_value=0)
+            .reindex(index=all_timeseries_index, fill_value=0)
+        )
+        for tag_type in taglib.TagType:
+            # Not sure why lint complains but ... pylint: disable=no-member
+            stat_map[StatName._value2member_map_[tag_type]] = tag_count[tag_type]
         location_id_index = all_timeseries_index.get_level_values(CommonFields.LOCATION_ID)
         stat_extra_index = {
             DISTRIBUTION: all_timeseries_index.get_level_values(PdFields.DEMOGRAPHIC_BUCKET).map(

@@ -1,8 +1,10 @@
 import abc
 import dataclasses
+import enum
 import functools
 import inspect
 import io
+from typing import Collection
 from typing import Iterable
 from typing import List
 
@@ -104,6 +106,22 @@ def make_tag(
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02")).date()
 
     return taglib.TAG_TYPE_TO_CLASS[tag_type](**kwargs)
+
+
+def flatten_3_nested_dict(
+    nested: Mapping[Any, Mapping[Any, Mapping[Any, Any]]], index_names: Sequence[str]
+) -> pd.Series:
+    """Returns a Series with MultiIndex created from the keys of a nested dictionary."""
+    # I was attempting to use this in build_dataset but was foiled by the access to
+    # region.location_id when making the MultiIndex.
+    dict_tuple_to_value = {
+        (key1, key2, key3): value
+        for key1 in nested.keys()
+        for key2 in nested[key1].keys()
+        for key3, value in nested[key1][key2].items()
+    }
+    index = pd.MultiIndex.from_tuples(dict_tuple_to_value.keys(), names=index_names)
+    return pd.Series(list(dict_tuple_to_value.values()), index=index)
 
 
 SingleOrBucketedTimeseriesLiteral = NewType(
@@ -370,3 +388,16 @@ def load_test_dataset() -> MultiRegionDataset:
     return MultiRegionDataset.from_wide_dates_csv(
         dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH
     ).add_static_csv_file(dataset_utils.TEST_COMBINED_STATIC_CSV_PATH)
+
+
+def assert_enum_names_match_values(enum_cls: Type[enum.Enum], exceptions: Collection = ()):
+    mismatches = []
+    for val in enum_cls:
+        if val in exceptions:
+            continue
+        if val.name.lower() != val.value:
+            mismatches.append(val)
+    if mismatches:
+        suggestion = "\n".join(f"    {v.name} = {repr(v.name.lower())}" for v in mismatches)
+        print(f"fix for enum name and value mismatches:\n{suggestion}")
+    assert mismatches == []
