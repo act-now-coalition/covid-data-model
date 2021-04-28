@@ -1,10 +1,12 @@
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import AggregationLevel
 from libs.datasets import taglib
 from libs.datasets import timeseries
-
+from libs.pipeline import Region
 
 MultiRegionDataset = timeseries.MultiRegionDataset
 
@@ -107,3 +109,60 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
     return dataset.replace_timeseries_wide_dates(
         [timeseries_wide, computed_initiated]
     ).add_tag_to_subset(taglib.Derived(), computed_initiated.index)
+
+
+STATE_LOCATION_ID = "state_location_id"
+
+
+def add_state_location_id_index_level(df: pd.DataFrame) -> pd.DataFrame:
+    """Returns df with the location_id of the state in a new level STATE_LOCATION_ID."""
+    state_index = (
+        df.index.get_level_values(CommonFields.LOCATION_ID)
+        .map(lambda loc_id: Region.from_location_id(loc_id).get_state_region().location_id)
+        .rename(STATE_LOCATION_ID)
+    )
+    return df.set_index(state_index, append=True)
+
+
+def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+    idx = pd.IndexSlice
+    ts_states = ds_in.get_subset(
+        AggregationLevel.STATE
+    ).timeseries_not_bucketed_wide_dates.reorder_levels(
+        [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+    )
+    ts_state_level_ratios = (
+        # ts.loc(axis=0)[field] returns a DataFrame with only one level in axis 0, an index
+        # of location_ids.
+        ts_states.loc(axis=0)[CommonFields.VACCINATIONS_INITIATED]
+        / ts_states.loc(axis=0)[CommonFields.VACCINATIONS_COMPLETED]
+    )
+    ts_state_level_ratios = ts_state_level_ratios.rename_axis(
+        index={CommonFields.LOCATION_ID: STATE_LOCATION_ID}
+    )
+    ts_counties = ds_in.get_subset(
+        AggregationLevel.COUNTY
+    ).timeseries_not_bucketed_wide_dates.reorder_levels(
+        [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+    )
+    ts_counties_initiated = ts_counties.loc(axis=0)[CommonFields.VACCINATIONS_INITIATED]
+    ts_counties_completed = ts_counties.loc(axis=0)[CommonFields.VACCINATIONS_COMPLETED]
+    counties_to_fix = ts_counties_completed.index.difference(ts_counties_initiated.index)
+    ts_counties_completed_to_fix = add_state_location_id_index_level(
+        ts_counties_completed.reindex(counties_to_fix)
+    )
+    ts_counties_initiated_est = ts_counties_completed_to_fix.mul(
+        ts_state_level_ratios, level=STATE_LOCATION_ID
+    ).droplevel(STATE_LOCATION_ID)
+    ts_counties_initiated_est.index = pd.MultiIndex.from_product(
+        (
+            ts_counties_initiated_est.index,
+            [CommonFields.VACCINATIONS_INITIATED],
+            [DemographicBucket.ALL],
+        ),
+        names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
+    )
+
+    return ds_in.replace_timeseries_wide_dates(
+        [ds_in.timeseries_bucketed_wide_dates, ts_counties_initiated_est]
+    )
