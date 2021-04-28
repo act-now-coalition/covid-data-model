@@ -125,7 +125,9 @@ def add_state_location_id_index_level(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegionDataset:
-    idx = pd.IndexSlice
+    """Returns a new dataset with county vaccinations initiated estimated from vaccinations
+    completed, assuming the ratio is similar for within a state."""
+    # Calculate time-varying ratios per state.
     ts_states = ds_in.get_subset(
         AggregationLevel.STATE
     ).timeseries_not_bucketed_wide_dates.reorder_levels(
@@ -140,6 +142,11 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
     ts_state_level_ratios = ts_state_level_ratios.rename_axis(
         index={CommonFields.LOCATION_ID: STATE_LOCATION_ID}
     )
+    assert ts_state_level_ratios.index.names == [STATE_LOCATION_ID]
+    assert ts_state_level_ratios.columns.names == [CommonFields.DATE]
+
+    # Find counties that have vaccinations completed but not initiated. These are the only
+    # counties that will be modified.
     ts_counties = ds_in.get_subset(
         AggregationLevel.COUNTY
     ).timeseries_not_bucketed_wide_dates.reorder_levels(
@@ -147,13 +154,24 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
     )
     ts_counties_initiated = ts_counties.loc(axis=0)[CommonFields.VACCINATIONS_INITIATED]
     ts_counties_completed = ts_counties.loc(axis=0)[CommonFields.VACCINATIONS_COMPLETED]
-    counties_to_fix = ts_counties_completed.index.difference(ts_counties_initiated.index)
-    ts_counties_completed_to_fix = add_state_location_id_index_level(
-        ts_counties_completed.reindex(counties_to_fix)
+    counties_to_modify = ts_counties_completed.index.difference(ts_counties_initiated.index)
+    ts_counties_completed_to_modify = add_state_location_id_index_level(
+        ts_counties_completed.reindex(counties_to_modify)
     )
-    ts_counties_initiated_est = ts_counties_completed_to_fix.mul(
+    assert ts_counties_completed_to_modify.index.names == [
+        CommonFields.LOCATION_ID,
+        STATE_LOCATION_ID,
+    ]
+    assert ts_state_level_ratios.columns.names == [CommonFields.DATE]
+
+    # Multiple the time series in ts_state_level_ratios and ts_counties_completed_to_modify using
+    # the index level STATE_LOCATION_ID. This produces an estimate for the vaccinations initiated
+    # in each county.
+    ts_counties_initiated_est = ts_counties_completed_to_modify.mul(
         ts_state_level_ratios, level=STATE_LOCATION_ID
     ).droplevel(STATE_LOCATION_ID)
+    # Append the variable name and bucket to the index so that ts_counties_initiated_est can be
+    # passed to replace_timeseries_wide_dates.
     ts_counties_initiated_est.index = pd.MultiIndex.from_product(
         (
             ts_counties_initiated_est.index,
@@ -165,4 +183,4 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
 
     return ds_in.replace_timeseries_wide_dates(
         [ds_in.timeseries_bucketed_wide_dates, ts_counties_initiated_est]
-    )
+    ).add_tag_to_subset(taglib.Derived(), ts_counties_initiated_est.index)

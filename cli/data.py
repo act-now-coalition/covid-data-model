@@ -136,6 +136,9 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = vaccine_backfills.backfill_vaccination_initiated(multiregion_dataset)
     multiregion_dataset.print_stats("backfill_vaccination_initiated")
 
+    multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(multiregion_dataset)
+    multiregion_dataset.print_stats("estimate_initiated_from_state_ratio")
+
     multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
     multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
 

@@ -4,6 +4,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 
 from libs.datasets import taglib
+from libs.datasets.taglib import TagType
 from libs.pipeline import Region
 from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral
@@ -151,8 +152,8 @@ def test_estimate_initiated_from_state_ratio():
             CommonFields.VACCINATIONS_COMPLETED: [100, 200],
             CommonFields.VACCINATIONS_INITIATED: [50, 150],
         },
-        # Another region. The code raises a KeyError if there are no counties with
-        # VACCINATIONS_INITIATED.
+        # Another region. A KeyError is raised if there are no counties with
+        # VACCINATIONS_INITIATED so I've put one here.
         Region.from_fips("06075"): {
             CommonFields.VACCINATIONS_COMPLETED: [3, 4],
             CommonFields.VACCINATIONS_INITIATED: [1, 2],
@@ -160,7 +161,7 @@ def test_estimate_initiated_from_state_ratio():
     }
 
     ds_in = test_helpers.build_dataset(
-        {**metrics_unmodified_regions, region_no: {CommonFields.VACCINATIONS_COMPLETED: [20, 40],}}
+        {**metrics_unmodified_regions, region_no: {CommonFields.VACCINATIONS_COMPLETED: [20, 40]}}
     )
 
     ds_result = vaccine_backfills.estimate_initiated_from_state_ratio(ds_in)
@@ -169,7 +170,10 @@ def test_estimate_initiated_from_state_ratio():
             **metrics_unmodified_regions,
             region_no: {
                 CommonFields.VACCINATIONS_COMPLETED: [20, 40],
-                CommonFields.VACCINATIONS_INITIATED: [10, 30],
+                CommonFields.VACCINATIONS_INITIATED: TimeseriesLiteral(
+                    [10, 30], annotation=[test_helpers.make_tag(TagType.DERIVED)]
+                ),
             },
         }
     )
+    test_helpers.assert_dataset_like(ds_result, ds_expected)
