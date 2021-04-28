@@ -24,3 +24,8 @@ def test_tag_type_to_class():
     assert set(taglib.TAG_TYPE_TO_CLASS.keys()) == set(taglib.TagType)
     for tag_type, tag_type_class in taglib.TAG_TYPE_TO_CLASS.items():
         assert tag_type_class.TAG_TYPE is tag_type
+
+
+def test_enum_names_match_values():
+    test_helpers.assert_enum_names_match_values(taglib.TagType)
+    test_helpers.assert_enum_names_match_values(taglib.TagField, exceptions={taglib.TagField.TYPE})

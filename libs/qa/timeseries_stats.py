@@ -38,11 +38,11 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
     HAS_URL = "has_url"
     ANNOTATION_COUNT = "annotation_count"
     BUCKET_ALL_COUNT = "bucket_all_count"
-    SOURCE_TYPE_SET = "source_type_set"
     CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
     CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
     ZSCORE_OUTLIER = "zscore_outlier"
     KNOWN_ISSUE = "known_issue"
+    KNOWN_ISSUE_NO_DATE = TagType.KNOWN_ISSUE_NO_DATE
     DERIVED = "derived"
     PROVENANCE = "provenance"
     SOURCE_URL = "source_url"
@@ -148,6 +148,12 @@ class PerTimeseries(Aggregated):
             .count()
             .reindex(index=all_timeseries_index, fill_value=0)
         )
+        stat_map[StatName.BUCKET_ALL_COUNT] = (
+            _get_index_level_as_series(
+                ds.timeseries_bucketed_wide_dates, PdFields.DEMOGRAPHIC_BUCKET
+            )
+            == DemographicBucket.ALL
+        ).astype(int)
         tag_count = (
             ds.tag.groupby(
                 [
@@ -163,6 +169,7 @@ class PerTimeseries(Aggregated):
             .reindex(index=all_timeseries_index, fill_value=0)
         )
         for tag_type in taglib.TagType:
+            # Not sure why lint complains but ... pylint: disable=no-member
             stat_map[StatName._value2member_map_[tag_type]] = tag_count[tag_type]
         location_id_index = all_timeseries_index.get_level_values(CommonFields.LOCATION_ID)
         stat_extra_index = {

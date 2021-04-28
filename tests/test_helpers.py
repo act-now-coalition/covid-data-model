@@ -1,8 +1,10 @@
 import abc
 import dataclasses
+import enum
 import functools
 import inspect
 import io
+from typing import Collection
 from typing import Iterable
 from typing import List
 
@@ -370,3 +372,16 @@ def load_test_dataset() -> MultiRegionDataset:
     return MultiRegionDataset.from_wide_dates_csv(
         dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH
     ).add_static_csv_file(dataset_utils.TEST_COMBINED_STATIC_CSV_PATH)
+
+
+def assert_enum_names_match_values(enum_cls: Type[enum.Enum], exceptions: Collection = ()):
+    mismatches = []
+    for val in enum_cls:
+        if val in exceptions:
+            continue
+        if val.name.lower() != val.value:
+            mismatches.append(val)
+    if mismatches:
+        suggestion = "\n".join(f"    {v.name} = {repr(v.name.lower())}" for v in mismatches)
+        print(f"fix for enum name and value mismatches:\n{suggestion}")
+    assert mismatches == []

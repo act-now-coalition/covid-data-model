@@ -94,3 +94,7 @@ def test_make_from_dataset():
     assert not pop_by_var_has_url.empty
     pop_by_var_has_ts = population_ratio_by_variable(dataset, county_stats.has_timeseries)
     assert not pop_by_var_has_ts.empty
+
+
+def test_enum_names_match_values():
+    test_helpers.assert_enum_names_match_values(timeseries_stats.StatName)
