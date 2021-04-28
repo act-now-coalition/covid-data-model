@@ -38,15 +38,16 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
     HAS_URL = "has_url"
     ANNOTATION_COUNT = "annotation_count"
     BUCKET_ALL_COUNT = "bucket_all_count"
-    CUMULATIVE_TAIL_TRUNCATED = "cumulative_tail_truncated"
-    CUMULATIVE_LONG_TAIL_TRUNCATED = "cumulative_long_tail_truncated"
-    ZSCORE_OUTLIER = "zscore_outlier"
-    KNOWN_ISSUE = "known_issue"
+    # Count of each tag type
+    CUMULATIVE_TAIL_TRUNCATED = TagType.CUMULATIVE_TAIL_TRUNCATED
+    CUMULATIVE_LONG_TAIL_TRUNCATED = TagType.CUMULATIVE_LONG_TAIL_TRUNCATED
+    ZSCORE_OUTLIER = TagType.ZSCORE_OUTLIER
+    KNOWN_ISSUE = TagType.KNOWN_ISSUE
     KNOWN_ISSUE_NO_DATE = TagType.KNOWN_ISSUE_NO_DATE
-    DERIVED = "derived"
-    PROVENANCE = "provenance"
-    SOURCE_URL = "source_url"
-    SOURCE = "source"
+    DERIVED = TagType.DERIVED
+    PROVENANCE = TagType.PROVENANCE
+    SOURCE_URL = TagType.SOURCE_URL
+    SOURCE = TagType.SOURCE
 
 
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value

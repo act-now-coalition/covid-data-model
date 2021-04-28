@@ -108,6 +108,22 @@ def make_tag(
     return taglib.TAG_TYPE_TO_CLASS[tag_type](**kwargs)
 
 
+def flatten_3_nested_dict(
+    nested: Mapping[Any, Mapping[Any, Mapping[Any, Any]]], index_names: Sequence[str]
+) -> pd.Series:
+    """Returns a Series with MultiIndex created from the keys of a nested dictionary."""
+    # I was attempting to use this in build_dataset but was foiled by the access to
+    # region.location_id when making the MultiIndex.
+    dict_tuple_to_value = {
+        (key1, key2, key3): value
+        for key1 in nested.keys()
+        for key2 in nested[key1].keys()
+        for key3, value in nested[key1][key2].items()
+    }
+    index = pd.MultiIndex.from_tuples(dict_tuple_to_value.keys(), names=index_names)
+    return pd.Series(list(dict_tuple_to_value.values()), index=index)
+
+
 SingleOrBucketedTimeseriesLiteral = NewType(
     "SingleOrBucketedTimeseriesLiteral",
     Union[

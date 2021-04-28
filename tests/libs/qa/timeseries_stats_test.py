@@ -12,6 +12,8 @@ from libs.pipeline import Region
 from libs.qa import timeseries_stats
 from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral
+import pandas as pd
+import numpy as np
 
 
 def test_make_from_dataset():
@@ -98,3 +100,47 @@ def test_make_from_dataset():
 
 def test_enum_names_match_values():
     test_helpers.assert_enum_names_match_values(timeseries_stats.StatName)
+
+
+def test_tag_type_counts():
+    bucket_40s = DemographicBucket("age:40-49")
+    tag1 = test_helpers.make_tag(taglib.TagType.CUMULATIVE_TAIL_TRUNCATED, date="2020-04-01")
+    tag2 = test_helpers.make_tag(taglib.TagType.ZSCORE_OUTLIER)
+    source = taglib.Source("NYTimes", url=UrlStr("http://datasource.co/"))
+
+    dataset = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {
+                DemographicBucket.ALL: TimeseriesLiteral([1], source=source),
+                bucket_40s: TimeseriesLiteral([1], annotation=[tag1, tag2]),
+            },
+            CommonFields.ICU_BEDS: TimeseriesLiteral([1], annotation=[tag1, tag1]),
+        }
+    )
+    dataset = timeseries.make_source_url_tags(dataset)
+
+    stats = timeseries_stats.PerTimeseries.make(dataset)
+
+    tag_stats_expected = test_helpers.flatten_3_nested_dict(
+        {
+            CommonFields.CASES: {
+                DemographicBucket.ALL: {taglib.TagType.SOURCE: 1, taglib.TagType.SOURCE_URL: 1},
+                bucket_40s: {tag1.tag_type: 1, tag2.tag_type: 1},
+            },
+            CommonFields.ICU_BEDS: {DemographicBucket.ALL: {tag1.tag_type: 2}},
+        },
+        index_names=[PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET, "stat_name"],
+    ).sort_index()
+
+    tag_stats = (
+        stats.stats.loc[:, list(taglib.TagType)]
+        .rename_axis(columns="stat_name")
+        .stack()
+        .replace({0: np.nan})
+        .dropna()
+    ).sort_index()
+    tag_stats = tag_stats.droplevel(
+        tag_stats.index.names.difference(tag_stats_expected.index.names)
+    )
+
+    pd.testing.assert_series_equal(tag_stats, tag_stats_expected, check_dtype=False)
