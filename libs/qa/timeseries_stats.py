@@ -156,6 +156,8 @@ class PerTimeseries(Aggregated):
             == DemographicBucket.ALL
         ).astype(int)
         tag_count = (
+            # This groupby(...).count() could be replaced by `tag.index.value_counts(sort=False)`
+            # but value_count drops the index names.
             ds.tag.groupby(
                 [
                     CommonFields.LOCATION_ID,
