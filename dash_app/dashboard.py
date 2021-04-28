@@ -47,7 +47,7 @@ class TimeSeriesPivotTablePreset(enum.Enum):
         "Per source count",
         {
             "rows": [CommonFields.AGGREGATE_LEVEL, timeseries_stats.FIELD_GROUP],
-            "cols": [timeseries_stats.StatName.SOURCE_TYPE_SET],
+            "cols": [timeseries_stats.SOURCE_TYPE_SET],
         },
     )
     SOURCE_BY_STATE = (
@@ -56,7 +56,7 @@ class TimeSeriesPivotTablePreset(enum.Enum):
             "rows": [CommonFields.AGGREGATE_LEVEL, CommonFields.STATE],
             "cols": [timeseries_stats.FIELD_GROUP],
             "aggregatorName": "List Unique Values",
-            "vals": [timeseries_stats.StatName.SOURCE_TYPE_SET],
+            "vals": [timeseries_stats.SOURCE_TYPE_SET],
         },
     )
     COUNTY_DEMO = (
@@ -163,7 +163,9 @@ def init(server):
         .rename("count")
     )
 
-    county_stats = per_timeseries_stats.subset_locations(aggregation_level=AggregationLevel.COUNTY)
+    county_stats = per_timeseries_stats.subset_locations(
+        aggregation_level=AggregationLevel.COUNTY
+    ).aggregate(CommonFields.LOCATION_ID, PdFields.VARIABLE)
     county_variable_population_ratio = pd.DataFrame(
         {
             "has_url": population_ratio_by_variable(ds, county_stats.has_url),
@@ -325,9 +327,6 @@ def _init_callbacks(
         selected_row = more_itertools.one(selected_rows)
         return [region_id_series.iat[selected_row]]
 
-    df = per_timeseries_stats.stats.reset_index()
-    pivottable_data = [df.columns.tolist()] + df.values.tolist()
-
     @dash_app.callback(
         Output("pivot_table_parent", "children"),
         [Input(preset.btn_id, "n_clicks") for preset in TimeSeriesPivotTablePreset],
@@ -352,7 +351,9 @@ def _init_callbacks(
         # Each PivotTable needs a unique id as a work around for
         # https://github.com/plotly/dash-pivottable/issues/10
         return dash_pivottable.PivotTable(
-            id=preset.tbl_id, data=pivottable_data, **preset.pivot_table_parameters,
+            id=preset.tbl_id,
+            data=per_timeseries_stats.pivottable_data,
+            **preset.pivot_table_parameters,
         )
 
     # Input not in a list raises dash.exceptions.IncorrectTypeException: The input argument
