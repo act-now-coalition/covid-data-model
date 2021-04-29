@@ -94,7 +94,7 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
 
     # Compute and keep only time series with at least one real value
     computed_initiated = administered - completed
-    computed_initiated = computed_initiated.dropna(axis=1, how="all")
+    computed_initiated = computed_initiated.dropna(axis=0, how="all")
     # Keep the computed initiated only where there is not already an existing time series.
     computed_initiated = computed_initiated.loc[
         ~computed_initiated.index.isin(existing_initiated.index)
