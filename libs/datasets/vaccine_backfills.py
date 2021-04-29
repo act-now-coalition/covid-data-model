@@ -112,7 +112,8 @@ def add_state_location_id_index_level(df: pd.DataFrame) -> pd.DataFrame:
 
 def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     """Returns a new dataset with county vaccinations initiated estimated from vaccinations
-    completed, assuming the ratio is similar for within a state."""
+    completed, based on the assumption that the county-level ratios will be similar to the
+    state-level ratio."""
     # Calculate time-varying ratios per state.
     ds_states = ds_in.get_subset(AggregationLevel.STATE)
     ts_state_level_ratios = ds_states.get_timeseries_not_bucketed_wide_dates(
