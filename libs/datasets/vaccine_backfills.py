@@ -1,12 +1,9 @@
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import PdFields
 
-from libs.datasets import AggregationLevel
 from libs.datasets import taglib
 from libs.datasets import timeseries
-from libs.pipeline import Region
 
 MultiRegionDataset = timeseries.MultiRegionDataset
 
@@ -64,14 +61,6 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     return ds_in.replace_timeseries_wide_dates([ts_in_without_pcts, most_recent_pcts])
 
 
-def _xs_or_empty(df: pd.DataFrame, key, *, level) -> pd.DataFrame:
-    """Similar to df.xs(key, level=level, drop_level=True) but returns an empty DataFrame instead of
-    raising KeyError when key is not found."""
-    index_mask = df.index.get_level_values(level) == key
-    rows = df.loc(axis=0)[index_mask]
-    return rows.droplevel(level)
-
-
 def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDataset:
     """Backfills vaccination initiated data from total doses administered and total completed.
 
@@ -80,16 +69,10 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
 
     Returns: New dataset with backfilled data.
     """
-    timeseries_wide = dataset.timeseries_bucketed_wide_dates.dropna(axis=1, how="all")
-
-    administered = _xs_or_empty(
-        timeseries_wide, CommonFields.VACCINES_ADMINISTERED, level=PdFields.VARIABLE
-    )
-    completed = _xs_or_empty(
-        timeseries_wide, CommonFields.VACCINATIONS_COMPLETED, level=PdFields.VARIABLE
-    )
-    existing_initiated = _xs_or_empty(
-        timeseries_wide, CommonFields.VACCINATIONS_INITIATED, level=PdFields.VARIABLE
+    administered = dataset.get_timeseries_bucketed_wide_dates(CommonFields.VACCINES_ADMINISTERED)
+    completed = dataset.get_timeseries_bucketed_wide_dates(CommonFields.VACCINATIONS_COMPLETED)
+    existing_initiated = dataset.get_timeseries_bucketed_wide_dates(
+        CommonFields.VACCINATIONS_INITIATED
     )
 
     # Compute and keep only time series with at least one real value
@@ -104,10 +87,10 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
     computed_initiated = pd.concat(
         {CommonFields.VACCINATIONS_INITIATED: computed_initiated},
         names=[PdFields.VARIABLE] + list(computed_initiated.index.names),
-    ).reorder_levels(timeseries_wide.index.names)
+    ).reorder_levels(timeseries.EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.index.names)
 
     return dataset.replace_timeseries_wide_dates(
-        [timeseries_wide, computed_initiated]
+        [dataset.timeseries_bucketed_wide_dates, computed_initiated]
     ).add_tag_to_subset(
         taglib.Derived(f="backfill_vaccination_initiated"), computed_initiated.index
     )
