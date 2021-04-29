@@ -108,7 +108,9 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
 
     return dataset.replace_timeseries_wide_dates(
         [timeseries_wide, computed_initiated]
-    ).add_tag_to_subset(taglib.Derived(), computed_initiated.index)
+    ).add_tag_to_subset(
+        taglib.Derived(f="backfill_vaccination_initiated"), computed_initiated.index
+    )
 
 
 STATE_LOCATION_ID = "state_location_id"
@@ -183,4 +185,6 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
 
     return ds_in.replace_timeseries_wide_dates(
         [ds_in.timeseries_bucketed_wide_dates, ts_counties_initiated_est]
-    ).add_tag_to_subset(taglib.Derived(), ts_counties_initiated_est.index)
+    ).add_tag_to_subset(
+        taglib.Derived(f="estimate_initiated_from_state_ratio"), ts_counties_initiated_est.index
+    )
