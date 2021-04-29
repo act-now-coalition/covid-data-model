@@ -74,6 +74,17 @@ def test_backfill_vaccine_initiated_by_bucket():
     test_helpers.assert_dataset_like(ds_result, ds_expected)
 
 
+def test_backfill_vaccine_without_completed():
+    """Make sure nothing is changed when VACCINATIONS_COMPLETED is incomplete."""
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.VACCINES_ADMINISTERED: [100, 200],}
+    )
+
+    ds_result = vaccine_backfills.backfill_vaccination_initiated(ds_in)
+
+    test_helpers.assert_dataset_like(ds_result, ds_in)
+
+
 def test_derive_vaccine_pct():
     region_tx = Region.from_state("TX")
     region_sf = Region.from_fips("06075")
