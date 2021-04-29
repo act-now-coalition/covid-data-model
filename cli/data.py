@@ -91,9 +91,12 @@ def update_forecasts(filename):
     help="Aggregate states to one USA country region",
     default=True,
 )
+@click.option("--vaccine-estimate/--no-vaccine-estimate", is_flag=True, default=True)
 @click.option("--state", type=str, help="For testing, a two letter state abbr")
 @click.option("--fips", type=str, help="For testing, a 5 digit county fips")
-def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]):
+def update(
+    aggregate_to_country: bool, vaccine_estimate: bool, state: Optional[str], fips: Optional[str]
+):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -136,8 +139,11 @@ def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]
     multiregion_dataset = vaccine_backfills.backfill_vaccination_initiated(multiregion_dataset)
     multiregion_dataset.print_stats("backfill_vaccination_initiated")
 
-    multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(multiregion_dataset)
-    multiregion_dataset.print_stats("estimate_initiated_from_state_ratio")
+    if vaccine_estimate:
+        multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(
+            multiregion_dataset
+        )
+        multiregion_dataset.print_stats("estimate_initiated_from_state_ratio")
 
     multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
     multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
