@@ -33,27 +33,6 @@
       "blocked": false
     },
     {
-      "include": "subregions",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "region": "WY",
-      "context": "https://trello.com/c/kvjwZJJP/1005-disabled-wyoming-counties-vaccine-data-due-to-anomalous-drop-off",
-      "blocked": true
-    },
-    {
-      "include": "region",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "region": "42101",
-      "context": "https://trello.com/c/GjrTXF0m/1012-philadelphia-vaccination-confusion-between-town-county-federal"
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "region": "GA",
-      "context": "https://trello.com/c/ep4D6Fob/1223-georgia-county-data-not-updating"
-    },
-    {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
@@ -76,52 +55,10 @@
     },
     {
       "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "region": "01097",
-      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "region": "33660",
-      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.infectionRate",
-      "blocked": true,
-      "region": "01097",
-      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.infectionRate",
-      "blocked": true,
-      "region": "33660",
-      "context": "https://trello.com/c/oHUFzfnb/1282-disabled-large-outlier-in-mobile-county-al-daily-new-cases"
-    },
-    {
-      "include": "region",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "region": "01097",
       "context": "https://trello.com/c/qPpRRjqw/1295-disabled-mobile-county-metro-al-test-positivity-spike"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": true,
-      "region": "33660",
-      "context": "https://trello.com/c/qPpRRjqw/1295-disabled-mobile-county-metro-al-test-positivity-spike"
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "region": "NJ",
-      "context": "https://trello.com/c/bHALf4Ic/1296-disabled-new-jersey-county-vaccine-data-has-large-spikes-drop-offs"
     }
   ]
 }
