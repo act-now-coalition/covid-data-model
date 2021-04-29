@@ -658,6 +658,17 @@ class MultiRegionDataset:
         except KeyError:
             return EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF
 
+    def get_timeseries_wide_dates(self, field: FieldName, *, bucketed: bool) -> pd.DataFrame:
+        """Returns a DataFrame with LOCATION_ID index and DATE columns"""
+        if bucketed:
+            raise NotImplementedError()
+        try:
+            return self.timeseries_not_bucketed_wide_dates.xs(
+                field, level=PdFields.VARIABLE, axis=0
+            )
+        except KeyError:
+            return EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF.droplevel(PdFields.VARIABLE)
+
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
 

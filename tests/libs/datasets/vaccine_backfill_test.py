@@ -153,12 +153,6 @@ def test_estimate_initiated_from_state_ratio():
             CommonFields.VACCINATIONS_COMPLETED: [100, 200],
             CommonFields.VACCINATIONS_INITIATED: [50, 150],
         },
-        # Another region. A KeyError is raised if there are no counties with
-        # VACCINATIONS_INITIATED so I've put one here.
-        Region.from_fips("06075"): {
-            CommonFields.VACCINATIONS_COMPLETED: [3, 4],
-            CommonFields.VACCINATIONS_INITIATED: [1, 2],
-        },
     }
 
     ds_in = test_helpers.build_dataset(

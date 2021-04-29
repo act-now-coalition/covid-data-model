@@ -130,17 +130,10 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
     """Returns a new dataset with county vaccinations initiated estimated from vaccinations
     completed, assuming the ratio is similar for within a state."""
     # Calculate time-varying ratios per state.
-    ts_states = ds_in.get_subset(
-        AggregationLevel.STATE
-    ).timeseries_not_bucketed_wide_dates.reorder_levels(
-        [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-    )
-    ts_state_level_ratios = (
-        # ts.loc(axis=0)[field] returns a DataFrame with only one level in axis 0, an index
-        # of location_ids.
-        ts_states.loc(axis=0)[CommonFields.VACCINATIONS_INITIATED]
-        / ts_states.loc(axis=0)[CommonFields.VACCINATIONS_COMPLETED]
-    )
+    ds_states = ds_in.get_subset(AggregationLevel.STATE)
+    ts_state_level_ratios = ds_states.get_timeseries_wide_dates(
+        CommonFields.VACCINATIONS_INITIATED, bucketed=False
+    ) / ds_states.get_timeseries_wide_dates(CommonFields.VACCINATIONS_COMPLETED, bucketed=False)
     ts_state_level_ratios = ts_state_level_ratios.rename_axis(
         index={CommonFields.LOCATION_ID: STATE_LOCATION_ID}
     )
@@ -149,13 +142,13 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
 
     # Find counties that have vaccinations completed but not initiated. These are the only
     # counties that will be modified.
-    ts_counties = ds_in.get_subset(
-        AggregationLevel.COUNTY
-    ).timeseries_not_bucketed_wide_dates.reorder_levels(
-        [PdFields.VARIABLE, CommonFields.LOCATION_ID]
+    ds_counties = ds_in.get_subset(AggregationLevel.COUNTY)
+    ts_counties_initiated = ds_counties.get_timeseries_wide_dates(
+        CommonFields.VACCINATIONS_INITIATED, bucketed=False
     )
-    ts_counties_initiated = ts_counties.loc(axis=0)[CommonFields.VACCINATIONS_INITIATED]
-    ts_counties_completed = ts_counties.loc(axis=0)[CommonFields.VACCINATIONS_COMPLETED]
+    ts_counties_completed = ds_counties.get_timeseries_wide_dates(
+        CommonFields.VACCINATIONS_COMPLETED, bucketed=False
+    )
     counties_to_modify = ts_counties_completed.index.difference(ts_counties_initiated.index)
     ts_counties_completed_to_modify = add_state_location_id_index_level(
         ts_counties_completed.reindex(counties_to_modify)
