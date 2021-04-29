@@ -1,10 +1,12 @@
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import AggregationLevel
 from libs.datasets import taglib
 from libs.datasets import timeseries
-
+from libs.pipeline import Region
 
 MultiRegionDataset = timeseries.MultiRegionDataset
 
@@ -106,4 +108,6 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
 
     return dataset.replace_timeseries_wide_dates(
         [timeseries_wide, computed_initiated]
-    ).add_tag_to_subset(taglib.Derived(), computed_initiated.index)
+    ).add_tag_to_subset(
+        taglib.Derived(f="backfill_vaccination_initiated"), computed_initiated.index
+    )
