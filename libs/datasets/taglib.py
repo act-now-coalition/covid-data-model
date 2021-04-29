@@ -314,6 +314,7 @@ class KnownIssueNoDate(TagInTimeseries):
 @dataclass(frozen=True)
 class Derived(TagInTimeseries):
     TAG_TYPE = TagType.DERIVED
+    # Name of the function which added this derived tag.
     f: str
 
     @classmethod
