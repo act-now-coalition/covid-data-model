@@ -34,7 +34,7 @@ def test_backfill_vaccine_initiated(initiated_values, initiated_expected, annota
     metrics = {ny_region: ny_metrics, az_region: az_metrics}
     dataset = test_helpers.build_dataset(metrics)
     result = vaccine_backfills.backfill_vaccination_initiated(dataset)
-    derived = test_helpers.make_tag(TagType.DERIVED, f="backfill_vaccination_initiated")
+    derived = test_helpers.make_tag(TagType.DERIVED, function_name="backfill_vaccination_initiated")
     if annotation:
         initiated_expected = TimeseriesLiteral(initiated_expected, annotation=[derived])
     expected_ny = {
@@ -51,7 +51,7 @@ def test_backfill_vaccine_initiated(initiated_values, initiated_expected, annota
 def test_backfill_vaccine_initiated_by_bucket():
     bucket_all = DemographicBucket.ALL
     bucket_40s = DemographicBucket("age:40-49")
-    derived = test_helpers.make_tag(TagType.DERIVED, f="backfill_vaccination_initiated")
+    derived = test_helpers.make_tag(TagType.DERIVED, function_name="backfill_vaccination_initiated")
 
     ds_in = test_helpers.build_default_region_dataset(
         {
@@ -92,7 +92,7 @@ def test_backfill_vaccine_without_completed():
 
     ds_result = vaccine_backfills.backfill_vaccination_initiated(ds_in)
 
-    derived = test_helpers.make_tag(TagType.DERIVED, f="backfill_vaccination_initiated")
+    derived = test_helpers.make_tag(TagType.DERIVED, function_name="backfill_vaccination_initiated")
     ds_expected = test_helpers.build_dataset(
         {
             region_tx: metrics_tx,

@@ -91,6 +91,4 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
 
     return dataset.replace_timeseries_wide_dates(
         [dataset.timeseries_bucketed_wide_dates, computed_initiated]
-    ).add_tag_to_subset(
-        taglib.Derived(f="backfill_vaccination_initiated"), computed_initiated.index
-    )
+    ).add_tag_to_subset(taglib.Derived("backfill_vaccination_initiated"), computed_initiated.index)
