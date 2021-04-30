@@ -120,7 +120,7 @@ def _make_output_dataset(
     # `locations` is used to build provenance information for only timeseries in the returned
     # MultiRegionDataset.
     wide_date_df = wide_date_df.dropna("rows", "all")
-    locations = wide_date_df.index.get_level_values(CommonFields.LOCATION_ID)
+    locations = wide_date_df.index.unique(CommonFields.LOCATION_ID)
     _append_variable_index_level(wide_date_df, output_metric)
 
     assert dataset_in.tag_all_bucket.index.names == [
@@ -169,15 +169,20 @@ class DivisionMethod(Method, _DivisionMethodAttributes):
     def calculate(
         self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
-        delta_df = dataset.timeseries_not_bucketed_wide_dates.reorder_levels(
-            [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-        ).diff(periods=diff_days, axis=1)
-        assert delta_df.columns.names == [CommonFields.DATE]
-        assert delta_df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-        # delta_df has the field name as the first level of the index. delta_df.loc[field, :] returns a
-        # DataFrame without the field label so operators such as `/` are calculated for each
-        # region/state and date.
-        wide_date_df = delta_df.loc[self._numerator, :] / delta_df.loc[self._denominator, :]
+        numerator_delta = dataset.get_timeseries_not_bucketed_wide_dates(self._numerator).diff(
+            periods=diff_days, axis=1
+        )
+        assert numerator_delta.index.names == [CommonFields.LOCATION_ID]
+        assert numerator_delta.columns.names == [CommonFields.DATE]
+
+        denomintaor_delta = dataset.get_timeseries_not_bucketed_wide_dates(self._denominator).diff(
+            periods=diff_days, axis=1
+        )
+        assert denomintaor_delta.index.names == [CommonFields.LOCATION_ID]
+        assert denomintaor_delta.columns.names == [CommonFields.DATE]
+
+        # `/` is calculated for each region/state and date.
+        wide_date_df = numerator_delta / denomintaor_delta
 
         all_output = _make_output_dataset(
             dataset, self.columns, wide_date_df, CommonFields.TEST_POSITIVITY,
@@ -212,14 +217,10 @@ class PassThruMethod(Method, _PassThruMethodAttributes):
     def calculate(
         self, dataset: MultiRegionDataset, diff_days: int, most_recent_date: pd.Timestamp
     ) -> MethodOutput:
-        df = dataset.timeseries_not_bucketed_wide_dates.reorder_levels(
-            [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-        )
-        assert df.columns.names == [CommonFields.DATE]
-        assert df.index.names == [PdFields.VARIABLE, CommonFields.LOCATION_ID]
-        # df has the field name as the first level of the index. delta_df.loc[field, :] returns a
-        # DataFrame without the field label
-        wide_date_df = df.loc[self._column, :]
+        wide_date_df = dataset.get_timeseries_not_bucketed_wide_dates(self._column)
+        assert wide_date_df.index.names == [CommonFields.LOCATION_ID]
+        assert wide_date_df.columns.names == [CommonFields.DATE]
+
         # Optional optimization: The following likely adds the variable/field/column name back in
         # to the index which was just taken out. Consider skipping reindexing.
 
@@ -339,14 +340,14 @@ class AllMethods:
         if not relevant_columns:
             raise NoMethodsWithRelevantColumns()
 
-        input_wide = dataset_in.timeseries_not_bucketed_wide_dates
+        input_wide = dataset_in.timeseries_bucketed_wide_dates
         if input_wide.empty:
             raise NoRealTimeseriesValuesException()
-        dates = input_wide.columns.get_level_values(CommonFields.DATE)
+        dates = input_wide.columns.unique(CommonFields.DATE)
         most_recent_date = dates.max()
 
         methods_with_data = AllMethods._methods_with_columns_available(
-            methods, input_wide.index.get_level_values(PdFields.VARIABLE).unique()
+            methods, input_wide.index.unique(PdFields.VARIABLE)
         )
         if not methods_with_data:
             raise NoColumnsWithDataException()

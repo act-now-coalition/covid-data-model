@@ -5,6 +5,7 @@ import pickle
 
 import pytest
 import pandas as pd
+import numpy as np
 import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
@@ -458,19 +459,19 @@ def test_timeseries_bucketed_long():
 
 
 def test_timeseries_wide_dates():
-    ds = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,county,aggregate_level,m1,m2\n"
-            "iso1:us#cbsa:10100,2020-04-02,,,,2\n"
-            "iso1:us#cbsa:10100,2020-04-03,,,,3\n"
-            "iso1:us#cbsa:10100,,,,,3\n"
-            "iso1:us#fips:97111,2020-04-02,Bar County,county,2,\n"
-            "iso1:us#fips:97111,2020-04-04,Bar County,county,4,\n"
-            "iso1:us#fips:97111,,Bar County,county,4,\n"
-        )
+    region_cbsa = Region.from_cbsa_code("10100")
+    region_fips = Region.from_fips("97111")
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+    ds = test_helpers.build_dataset(
+        {region_cbsa: {m2: [2, 3]}, region_fips: {m1: [2, None, 4]}},
+        static_by_region_then_field_name={region_fips: {CommonFields.COUNTY: "Bar County", m1: 4}},
+        start_date="2020-04-02",
     )
 
-    ds_wide = ds.timeseries_not_bucketed_wide_dates
+    # TODO(tom): Delete this test of _timeseries_not_bucketed_wide_dates which is no longer
+    #  accessed from outside timeseries when there are other tests for from_timeseries_wide_dates_df
+    ds_wide = ds._timeseries_not_bucketed_wide_dates
     assert ds_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
     assert ds_wide.columns.names == [CommonFields.DATE]
 
@@ -496,9 +497,17 @@ def test_timeseries_wide_dates():
     ).add_static_values(ds.static.reset_index())
     test_helpers.assert_dataset_like(ds, ds_recreated)
 
+    assert ds.get_timeseries_not_bucketed_wide_dates(m1).loc[region_fips.location_id, :].replace(
+        {np.nan: None}
+    ).to_list() == [2, None, 4]
+    assert ds.get_timeseries_bucketed_wide_dates(m1).loc[
+        (region_fips.location_id, DemographicBucket.ALL), :
+    ].replace({np.nan: None}).to_list() == [2, None, 4]
+
 
 def test_timeseries_wide_dates_empty():
-    ts = timeseries.MultiRegionDataset.from_csv(
+    m1 = FieldName("m1")
+    ds = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,county,aggregate_level,m1,m2\n"
             "iso1:us#cbsa:10100,,,,,3\n"
@@ -506,10 +515,10 @@ def test_timeseries_wide_dates_empty():
         )
     )
 
-    timeseries_wide = ts.timeseries_not_bucketed_wide_dates
-    assert timeseries_wide.index.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
-    assert timeseries_wide.columns.names == [CommonFields.DATE]
-    assert timeseries_wide.empty
+    assert ds.get_timeseries_not_bucketed_wide_dates(m1).empty
+    assert ds.get_timeseries_bucketed_wide_dates(m1).empty
+    assert ds.get_timeseries_not_bucketed_wide_dates(CommonFields.CASES).empty
+    assert ds.get_timeseries_bucketed_wide_dates(CommonFields.CASES).empty
 
 
 def test_write_read_wide_dates_csv_compare_literal(tmpdir):
