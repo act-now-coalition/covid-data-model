@@ -192,7 +192,9 @@ def test_estimate_initiated_from_state_ratio():
     )
 
     ds_result = vaccine_backfills.estimate_initiated_from_state_ratio(ds_in)
-    derived = test_helpers.make_tag(TagType.DERIVED, f="estimate_initiated_from_state_ratio")
+    derived = test_helpers.make_tag(
+        TagType.DERIVED, function_name="estimate_initiated_from_state_ratio"
+    )
     ds_expected = test_helpers.build_dataset(
         {
             **metrics_unmodified_regions,

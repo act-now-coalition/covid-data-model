@@ -115,9 +115,9 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
     completed, assuming the ratio is similar for within a state."""
     # Calculate time-varying ratios per state.
     ds_states = ds_in.get_subset(AggregationLevel.STATE)
-    ts_state_level_ratios = ds_states.get_timeseries_wide_dates(
-        CommonFields.VACCINATIONS_INITIATED, bucketed=False
-    ) / ds_states.get_timeseries_wide_dates(CommonFields.VACCINATIONS_COMPLETED, bucketed=False)
+    ts_state_level_ratios = ds_states.get_timeseries_not_bucketed_wide_dates(
+        CommonFields.VACCINATIONS_INITIATED
+    ) / ds_states.get_timeseries_not_bucketed_wide_dates(CommonFields.VACCINATIONS_COMPLETED)
     ts_state_level_ratios = ts_state_level_ratios.rename_axis(
         index={CommonFields.LOCATION_ID: STATE_LOCATION_ID}
     )
@@ -127,11 +127,11 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
     # Find counties that have vaccinations completed but not initiated. These are the only
     # counties that will be modified.
     ds_counties = ds_in.get_subset(AggregationLevel.COUNTY)
-    ts_counties_initiated = ds_counties.get_timeseries_wide_dates(
-        CommonFields.VACCINATIONS_INITIATED, bucketed=False
+    ts_counties_initiated = ds_counties.get_timeseries_not_bucketed_wide_dates(
+        CommonFields.VACCINATIONS_INITIATED
     )
-    ts_counties_completed = ds_counties.get_timeseries_wide_dates(
-        CommonFields.VACCINATIONS_COMPLETED, bucketed=False
+    ts_counties_completed = ds_counties.get_timeseries_not_bucketed_wide_dates(
+        CommonFields.VACCINATIONS_COMPLETED
     )
     counties_to_modify = ts_counties_completed.index.difference(ts_counties_initiated.index)
     ts_counties_completed_to_modify = add_state_location_id_index_level(
