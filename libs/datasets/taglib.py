@@ -314,15 +314,18 @@ class KnownIssueNoDate(TagInTimeseries):
 @dataclass(frozen=True)
 class Derived(TagInTimeseries):
     TAG_TYPE = TagType.DERIVED
+    # Name of the function which added this derived tag.
+    function_name: str
 
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        assert content == "{}"
-        return cls()
+        content_parsed = json.loads(content)
+        return cls(function_name=content_parsed.get("f", ""))
 
     @property
     def content(self) -> str:
-        return "{}"
+        d = {"f": self.function_name}
+        return json.dumps(d, separators=(",", ":"))
 
 
 TAG_TYPE_TO_CLASS = {

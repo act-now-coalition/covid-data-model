@@ -648,15 +648,31 @@ class MultiRegionDataset:
         print(f"Dataset {name}:\n{count}")
 
     @cached_property
-    def timeseries_not_bucketed_wide_dates(self) -> pd.DataFrame:
+    def _timeseries_not_bucketed_wide_dates(self) -> pd.DataFrame:
         """Returns the timeseries in a DataFrame with LOCATION_ID, VARIABLE index and DATE columns."""
-        # TODO(tom): Replace all calls to this function with calls to timeseries_bucketed_wide_dates
         try:
             return self.timeseries_bucketed_wide_dates.xs(
                 "all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0
             )
         except KeyError:
             return EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF
+
+    def get_timeseries_not_bucketed_wide_dates(self, field: FieldName) -> pd.DataFrame:
+        """Returns a field in a wide-dates DataFrame with LOCATION_ID index and DATE columns"""
+        try:
+            return self._timeseries_not_bucketed_wide_dates.xs(
+                field, level=PdFields.VARIABLE, axis=0
+            )
+        except KeyError:
+            return EMPTY_TIMESERIES_NOT_BUCKETED_WIDE_DATES_DF.droplevel(PdFields.VARIABLE)
+
+    def get_timeseries_bucketed_wide_dates(self, field: FieldName) -> pd.DataFrame:
+        """Returns a field in a wide-dates DataFrame with LOCATION_ID, DEMOGRAPHIC_BUCKET index and
+        DATE columns"""
+        try:
+            return self.timeseries_bucketed_wide_dates.xs(field, level=PdFields.VARIABLE, axis=0)
+        except KeyError:
+            return EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.droplevel(PdFields.VARIABLE)
 
     def _timeseries_latest_values(self) -> pd.DataFrame:
         """Returns the latest value for every region and metric, derived from timeseries."""
@@ -758,7 +774,7 @@ class MultiRegionDataset:
         """Returns a new object with given provenance string for every timeseries."""
         return self.add_provenance_series(
             pd.Series([], dtype=str, name=PdFields.PROVENANCE).reindex(
-                self.timeseries_not_bucketed_wide_dates.index, fill_value=provenance
+                self._timeseries_not_bucketed_wide_dates.index, fill_value=provenance
             )
         )
 
