@@ -1,9 +1,12 @@
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
+from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import PdFields
 
+from libs.datasets import AggregationLevel
 from libs.datasets import taglib
 from libs.datasets import timeseries
+from libs.pipeline import Region
 
 MultiRegionDataset = timeseries.MultiRegionDataset
 
@@ -92,3 +95,74 @@ def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDa
     return dataset.replace_timeseries_wide_dates(
         [dataset.timeseries_bucketed_wide_dates, computed_initiated]
     ).add_tag_to_subset(taglib.Derived("backfill_vaccination_initiated"), computed_initiated.index)
+
+
+STATE_LOCATION_ID = "state_location_id"
+
+
+def add_state_location_id_index_level(df: pd.DataFrame) -> pd.DataFrame:
+    """Returns df with the location_id of the state in a new level STATE_LOCATION_ID."""
+    state_index = (
+        df.index.get_level_values(CommonFields.LOCATION_ID)
+        .map(lambda loc_id: Region.from_location_id(loc_id).get_state_region().location_id)
+        .rename(STATE_LOCATION_ID)
+    )
+    return df.set_index(state_index, append=True)
+
+
+def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+    """Returns a new dataset with county vaccinations initiated estimated from vaccinations
+    completed, based on the assumption that the county-level ratios will be similar to the
+    state-level ratio."""
+    # Calculate time-varying ratios per state.
+    ds_states = ds_in.get_subset(AggregationLevel.STATE)
+    ts_state_level_ratios = ds_states.get_timeseries_not_bucketed_wide_dates(
+        CommonFields.VACCINATIONS_INITIATED
+    ) / ds_states.get_timeseries_not_bucketed_wide_dates(CommonFields.VACCINATIONS_COMPLETED)
+    ts_state_level_ratios = ts_state_level_ratios.rename_axis(
+        index={CommonFields.LOCATION_ID: STATE_LOCATION_ID}
+    )
+    assert ts_state_level_ratios.index.names == [STATE_LOCATION_ID]
+    assert ts_state_level_ratios.columns.names == [CommonFields.DATE]
+
+    # Find counties that have vaccinations completed but not initiated. These are the only
+    # counties that will be modified.
+    ds_counties = ds_in.get_subset(AggregationLevel.COUNTY)
+    ts_counties_initiated = ds_counties.get_timeseries_not_bucketed_wide_dates(
+        CommonFields.VACCINATIONS_INITIATED
+    )
+    ts_counties_completed = ds_counties.get_timeseries_not_bucketed_wide_dates(
+        CommonFields.VACCINATIONS_COMPLETED
+    )
+    counties_to_modify = ts_counties_completed.index.difference(ts_counties_initiated.index)
+    ts_counties_completed_to_modify = add_state_location_id_index_level(
+        ts_counties_completed.reindex(counties_to_modify)
+    )
+    assert ts_counties_completed_to_modify.index.names == [
+        CommonFields.LOCATION_ID,
+        STATE_LOCATION_ID,
+    ]
+    assert ts_state_level_ratios.columns.names == [CommonFields.DATE]
+
+    # Multiple the time series in ts_state_level_ratios and ts_counties_completed_to_modify using
+    # the index level STATE_LOCATION_ID. This produces an estimate for the vaccinations initiated
+    # in each county.
+    ts_counties_initiated_est = ts_counties_completed_to_modify.mul(
+        ts_state_level_ratios, level=STATE_LOCATION_ID
+    ).droplevel(STATE_LOCATION_ID)
+    # Append the variable name and bucket to the index so that ts_counties_initiated_est can be
+    # passed to replace_timeseries_wide_dates.
+    ts_counties_initiated_est.index = pd.MultiIndex.from_product(
+        (
+            ts_counties_initiated_est.index,
+            [CommonFields.VACCINATIONS_INITIATED],
+            [DemographicBucket.ALL],
+        ),
+        names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
+    )
+
+    return ds_in.replace_timeseries_wide_dates(
+        [ds_in.timeseries_bucketed_wide_dates, ts_counties_initiated_est]
+    ).add_tag_to_subset(
+        taglib.Derived("estimate_initiated_from_state_ratio"), ts_counties_initiated_est.index
+    )

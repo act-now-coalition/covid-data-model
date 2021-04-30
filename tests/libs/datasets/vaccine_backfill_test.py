@@ -175,3 +175,35 @@ def test_derive_vaccine_pct_least_stale():
     ds_expected = test_helpers.build_default_region_dataset(ts_metrics_expected, static=static)
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_estimate_initiated_from_state_ratio():
+    region_no = Region.from_fips("22071")  # Orleans Parish
+    metrics_unmodified_regions = {
+        # State of Louisiana, used to estimate region_no vaccinations
+        Region.from_state("LA"): {
+            CommonFields.VACCINATIONS_COMPLETED: [100, 200],
+            CommonFields.VACCINATIONS_INITIATED: [50, 150],
+        },
+    }
+
+    ds_in = test_helpers.build_dataset(
+        {**metrics_unmodified_regions, region_no: {CommonFields.VACCINATIONS_COMPLETED: [20, 40]}}
+    )
+
+    ds_result = vaccine_backfills.estimate_initiated_from_state_ratio(ds_in)
+    derived = test_helpers.make_tag(
+        TagType.DERIVED, function_name="estimate_initiated_from_state_ratio"
+    )
+    ds_expected = test_helpers.build_dataset(
+        {
+            **metrics_unmodified_regions,
+            region_no: {
+                CommonFields.VACCINATIONS_COMPLETED: [20, 40],
+                CommonFields.VACCINATIONS_INITIATED: TimeseriesLiteral(
+                    [10, 30], annotation=[derived]
+                ),
+            },
+        }
+    )
+    test_helpers.assert_dataset_like(ds_result, ds_expected)
