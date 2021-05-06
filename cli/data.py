@@ -62,6 +62,9 @@ PROD_BUCKET = "data.covidactnow.org"
 # By default require 0.95 of populations from regions to include a data point in aggregate.
 DEFAULT_REPORTING_RATIO = 0.95
 
+
+US_AGGREGATED_VARIABLES_TO_DROP = []
+
 _logger = logging.getLogger(__name__)
 
 
@@ -175,20 +178,36 @@ def update(
 
     # TODO(tom): Add a clean way to store intermediate values instead of commenting out code like
     #  this:
-    # multiregion_dataset.write_to_wide_dates_csv(
-    #     pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
-    # )
+    multiregion_dataset.write_to_wide_dates_csv(
+        pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
+    )
     if aggregate_to_country:
-        country_dataset = region_aggregation.aggregate_regions(
-            multiregion_dataset,
-            pipeline.us_states_and_territories_to_country_map(),
-            reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
-        )
-        multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
+        multiregion_dataset = run_aggregate_to_country(multiregion_dataset)
         multiregion_dataset.print_stats("aggregate_to_country")
 
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
     multiregion_dataset.print_stats("persist")
+
+
+def run_aggregate_to_country(multiregion_dataset: timeseries.MultiRegionDataset):
+    region_us = Region.from_location_id("iso1:us")
+    unaggregated_us = multiregion_dataset.get_regions_subset([region_us])
+    aggregated_us = region_aggregation.aggregate_regions(
+        multiregion_dataset,
+        pipeline.us_states_and_territories_to_country_map(),
+        reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
+    )
+    variables_to_drop = aggregated_us.variables.intersection(unaggregated_us.variables)
+    unexpected_drops = variables_to_drop.difference(US_AGGREGATED_VARIABLES_TO_DROP)
+    if not unexpected_drops.empty:
+        log = structlog.get_logger()
+        log.warn(
+            "Unexpected variable found in source and aggregated country data.",
+            variable=unexpected_drops,
+        )
+    aggregated_us = aggregated_us.drop_columns_if_present(variables_to_drop)
+    multiregion_dataset = multiregion_dataset.append_regions(aggregated_us)
+    return multiregion_dataset
 
 
 @main.command()
@@ -208,11 +227,7 @@ def aggregate_states_to_country():
     dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
         pathlib.Path("data/pre-agg-wide-dates.csv")
     ).add_static_csv_file(pathlib.Path("data/pre-agg-static.csv"))
-    dataset = region_aggregation.aggregate_regions(
-        dataset,
-        pipeline.us_states_and_territories_to_country_map(),
-        reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
-    )
+    dataset = run_aggregate_to_country(dataset)
     dataset.write_to_wide_dates_csv(
         pathlib.Path("data/post-agg-wide-dates.csv"), pathlib.Path("data/post-agg-static.csv")
     )
