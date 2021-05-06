@@ -650,7 +650,6 @@ class MultiRegionDataset:
             self.timeseries_bucketed_long.index.get_level_values(CommonFields.LOCATION_ID)
             .map(dataset_utils.get_geo_data()[CommonFields.AGGREGATE_LEVEL])
             .value_counts()
-            .rename(None)
         )
         stats_in_text = "\n".join(
             [
