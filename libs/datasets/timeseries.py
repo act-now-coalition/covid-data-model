@@ -1,3 +1,4 @@
+import textwrap
 from typing import (
     Any,
     Collection,
@@ -645,7 +646,20 @@ class MultiRegionDataset:
             .groupby(common_fields.COMMON_FIELD_TO_GROUP, sort=False)
             .sum()
         )
-        print(f"Dataset {name}:\n{count}")
+        by_level = (
+            self.timeseries_bucketed_long.index.get_level_values(CommonFields.LOCATION_ID)
+            .map(dataset_utils.get_geo_data()[CommonFields.AGGREGATE_LEVEL])
+            .value_counts()
+        )
+        stats_in_text = "\n".join(
+            [
+                "By bucket:",
+                textwrap.indent(count.to_string(), "  "),
+                "By level:",
+                textwrap.indent(by_level.to_string(), "  "),
+            ]
+        )
+        print(f"Observations in dataset {name}:\n" + textwrap.indent(stats_in_text, "  "))
 
     @cached_property
     def _timeseries_not_bucketed_wide_dates(self) -> pd.DataFrame:
@@ -1307,20 +1321,19 @@ def _remove_padded_nans(df, columns):
 
 
 def drop_regions_without_population(
-    mrts: MultiRegionDataset,
+    dataset: MultiRegionDataset,
     known_location_id_to_drop: Sequence[str],
     log: Union[structlog.BoundLoggerBase, structlog._config.BoundLoggerLazyProxy],
 ) -> MultiRegionDataset:
-    assert mrts.static.index.names == [CommonFields.LOCATION_ID]
-    latest_population = mrts.static[CommonFields.POPULATION]
-    locations_with_population = mrts.static.loc[latest_population.notna()].index
-    locations_without_population = mrts.static.loc[latest_population.isna()].index
-    unexpected_drops = set(locations_without_population) - set(known_location_id_to_drop)
+    location_id_with_population = dataset.static[CommonFields.POPULATION].dropna().index
+    assert location_id_with_population.names == [CommonFields.LOCATION_ID]
+    location_id_without_population = dataset.location_ids.difference(location_id_with_population)
+    unexpected_drops = set(location_id_without_population) - set(known_location_id_to_drop)
     if unexpected_drops:
         log.warning(
             "Dropping unexpected regions without populaton", location_ids=sorted(unexpected_drops)
         )
-    return mrts.get_locations_subset(locations_with_population)
+    return dataset.get_locations_subset(location_id_with_population)
 
 
 class DatasetName(str):
