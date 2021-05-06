@@ -1877,3 +1877,29 @@ def test_add_tag_without_timeseries(tmpdir):
     dataset.write_to_dataset_pointer(pointer)
     dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
     test_helpers.assert_dataset_like(dataset, dataset_read)
+
+
+def test_variables():
+    # Make a dataset with CASES, DEATHS and ICU_BEDS each appearing in only one of timeseries,
+    # static and tag data. This make sure variable names are merged from all three places.
+    region_97111 = Region.from_fips("97111")
+    tag_collection = taglib.TagCollection()
+    tag_collection.add(
+        test_helpers.make_tag(),
+        location_id=region_97111.location_id,
+        variable=CommonFields.DEATHS,
+        bucket=DemographicBucket.ALL,
+    )
+    ds = test_helpers.build_dataset(
+        {region_97111: {CommonFields.CASES: [1, 2, None]}},
+        static_by_region_then_field_name={region_97111: {CommonFields.ICU_BEDS: 10}},
+    ).append_tag_df(tag_collection.as_dataframe())
+    assert set(ds.variables.to_list()) == {
+        CommonFields.CASES,
+        CommonFields.ICU_BEDS,
+        CommonFields.DEATHS,
+    }
+
+
+def test_variables_empty():
+    assert timeseries.MultiRegionDataset.new_without_timeseries().variables.to_list() == []

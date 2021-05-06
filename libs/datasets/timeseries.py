@@ -555,6 +555,12 @@ class MultiRegionDataset:
         )
 
     @cached_property
+    def variables(self) -> pd.Index:
+        return self.static.columns.union(self.timeseries.columns).union(
+            self.tag.index.unique(PdFields.VARIABLE)
+        )
+
+    @cached_property
     def geo_data(self) -> pd.DataFrame:
         location_ids = self.location_ids
         geo_data = dataset_utils.get_geo_data()
