@@ -147,9 +147,11 @@ def update(
 
     multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
     multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
+    multiregion_dataset.print_stats("new_cases_and_deaths")
 
     multiregion_dataset = outlier_detection.drop_new_case_outliers(multiregion_dataset)
     multiregion_dataset = outlier_detection.drop_new_deaths_outliers(multiregion_dataset)
+    multiregion_dataset.print_stats("outlier_detection")
 
     multiregion_dataset = timeseries.drop_regions_without_population(
         multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()

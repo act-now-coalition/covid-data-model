@@ -1083,37 +1083,29 @@ def test_iter_one_region():
 
 
 def test_drop_regions_without_population():
-    # Only regions with location_id containing 1 have population, those with 2 don't
-    ts_in = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,county,aggregate_level,population,m1\n"
-            "iso1:us#cbsa:10100,2020-04-02,,,,\n"
-            "iso1:us#cbsa:10100,,,,80000,\n"
-            "iso1:us#fips:97111,2020-04-02,Bar County,county,,2\n"
-            "iso1:us#fips:97111,,Bar County,county,40000,4\n"
-            "iso1:us#cbsa:20300,2020-04-02,,,,\n"
-            "iso1:us#cbsa:20300,,,,,\n"
-            "iso1:us#fips:97222,2020-04-02,Bar County,county,,2\n"
-            "iso1:us#fips:97222,,Bar County,county,,4\n"
-        )
+    cbsa_with_pop = Region.from_cbsa_code("10100")
+    fips_with_pop = Region.from_fips("97111")
+    cbsa_without_pop = Region.from_cbsa_code("20300")
+    fips_without_pop = Region.from_fips("97222")
+    m1 = FieldName("m1")
+    regions_with_pop = [cbsa_with_pop, fips_with_pop]
+    all_regions = regions_with_pop + [cbsa_without_pop, fips_without_pop]
+    static_populations = {r: {CommonFields.POPULATION: 80_000} for r in regions_with_pop}
+    ts_in = test_helpers.build_dataset(
+        {r: {m1: [1]} for r in all_regions}, static_by_region_then_field_name=static_populations,
     )
-    ts_expected = timeseries.MultiRegionDataset.from_csv(
-        io.StringIO(
-            "location_id,date,county,aggregate_level,population,m1\n"
-            "iso1:us#cbsa:10100,2020-04-02,,,,\n"
-            "iso1:us#cbsa:10100,,,,80000,\n"
-            "iso1:us#fips:97111,2020-04-02,Bar County,county,,2\n"
-            "iso1:us#fips:97111,,Bar County,county,40000,4\n"
-        )
+    ts_expected = test_helpers.build_dataset(
+        {r: {m1: [1]} for r in regions_with_pop},
+        static_by_region_then_field_name=static_populations,
     )
     with structlog.testing.capture_logs() as logs:
         ts_out = timeseries.drop_regions_without_population(
-            ts_in, ["iso1:us#fips:97222"], structlog.get_logger()
+            ts_in, [fips_without_pop.location_id], structlog.get_logger()
         )
     test_helpers.assert_dataset_like(ts_out, ts_expected)
 
     assert [l["event"] for l in logs] == ["Dropping unexpected regions without populaton"]
-    assert [l["location_ids"] for l in logs] == [["iso1:us#cbsa:20300"]]
+    assert [l["location_ids"] for l in logs] == [[cbsa_without_pop.location_id]]
 
 
 def test_merge_provenance():
