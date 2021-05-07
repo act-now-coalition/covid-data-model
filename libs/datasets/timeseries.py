@@ -1273,6 +1273,23 @@ class MultiRegionDataset:
         tag = self.tag[~self.tag.index.get_level_values(PdFields.VARIABLE).isin(columns)]
         return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
+    def drop_na_columns(self) -> "MultiRegionDataset":
+        # Find time series columns that have at least one real value,
+        timeseries_bucketed_na_column_mask = self.timeseries_bucketed.isna().all(axis="index")
+        timeseries_bucketed = self.timeseries_bucketed.loc(axis="columns")[
+            ~timeseries_bucketed_na_column_mask
+        ]
+        static = self.static.dropna(axis="columns", how="all")
+        not_dropped_variables = timeseries_bucketed_na_column_mask[
+            ~timeseries_bucketed_na_column_mask
+        ].index
+        assert self.tag.index.names[1] == PdFields.VARIABLE
+        # I was expecting self.tag.loc to raise a KeyError when an element of
+        # `not_dropped_variables` is not found in tag.index, but it doesn't happen. If it does add
+        # `.intersection(self.tag.index.unique(PdFields.VARIABLE))`.
+        tag = self.tag.loc[:, not_dropped_variables.to_list()]
+        return MultiRegionDataset(timeseries_bucketed=timeseries_bucketed, static=static, tag=tag)
+
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
         """Returns a dataset with fields of self and other, which must be disjoint, joined.
 

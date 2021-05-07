@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import io
 import pathlib
@@ -1203,6 +1204,60 @@ def test_drop_column_with_tags():
 
     assert len(dataset_out.tag) == 1
     dataset_expected = test_helpers.build_dataset({region: {CommonFields.CASES: ts_lit}})
+    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+
+
+def test_drop_na_columns():
+    tag = test_helpers.make_tag()
+    timeseries_real = {
+        CommonFields.CASES: TimeseriesLiteral([1, 2], annotation=[tag]),
+    }
+    static_real = {CommonFields.STAFFED_BEDS: 3}
+    ds = test_helpers.build_default_region_dataset(
+        # Adds CASES with real values, which won't be dropped, and a tag for DEATHS, that will be
+        # dropped.
+        {**timeseries_real, CommonFields.DEATHS: TimeseriesLiteral([], annotation=[tag])},
+        static=static_real,
+    )
+    # The test_helper functions don't do a good job of creating fields that are all NA so the
+    # following inserts time series DEATHS and static ICU_BEDS, then asserts that they were
+    # inserted.
+    timeseries_bucketed_with_na = ds.timeseries_bucketed.copy()
+    timeseries_bucketed_with_na.loc[:, CommonFields.DEATHS] = np.nan
+    static_with_na = ds.static.copy()
+    static_with_na.loc[:, CommonFields.ICU_BEDS] = np.nan
+    ds = dataclasses.replace(
+        ds, timeseries_bucketed=timeseries_bucketed_with_na, static=static_with_na
+    )
+    assert CommonFields.DEATHS in ds.timeseries_bucketed.columns
+    assert CommonFields.ICU_BEDS in ds.static.columns
+
+    dataset_out = ds.drop_na_columns()
+
+    dataset_expected = test_helpers.build_default_region_dataset(
+        timeseries_real, static=static_real
+    )
+    test_helpers.assert_dataset_like(dataset_out, dataset_expected)
+
+
+def test_drop_na_columns_no_tags():
+    timeseries_real = {CommonFields.CASES: [1, 2]}
+    tag = test_helpers.make_tag()
+    ds = test_helpers.build_default_region_dataset(
+        # Add a tag for DEATHS, that will be dropped.
+        {**timeseries_real, CommonFields.DEATHS: TimeseriesLiteral([], annotation=[tag])}
+    )
+    # The test_helper functions don't do a good job of creating fields that are all NA so the
+    # following inserts time series DEATHS and static ICU_BEDS, then asserts that they were
+    # inserted.
+    timeseries_bucketed_with_na = ds.timeseries_bucketed.copy()
+    timeseries_bucketed_with_na.loc[:, CommonFields.DEATHS] = np.nan
+    ds = dataclasses.replace(ds, timeseries_bucketed=timeseries_bucketed_with_na)
+    assert CommonFields.DEATHS in ds.timeseries_bucketed.columns
+
+    dataset_out = ds.drop_na_columns()
+
+    dataset_expected = test_helpers.build_default_region_dataset(timeseries_real)
     test_helpers.assert_dataset_like(dataset_out, dataset_expected)
 
 

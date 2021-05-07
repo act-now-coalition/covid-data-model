@@ -1,4 +1,5 @@
 import dataclasses
+from typing import Collection
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -12,7 +13,6 @@ import structlog
 import click
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import PdFields
 
 from libs import google_sheet_helpers
 from libs import pipeline
@@ -64,7 +64,7 @@ PROD_BUCKET = "data.covidactnow.org"
 DEFAULT_REPORTING_RATIO = 0.95
 
 
-US_AGGREGATED_VARIABLES_TO_DROP = []
+US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP = []
 
 _logger = logging.getLogger(__name__)
 
@@ -190,6 +190,16 @@ def update(
     multiregion_dataset.print_stats("persist")
 
 
+def _log_unexpected_aggregated_variables_to_drop(variables_to_drop: Collection[CommonFields]):
+    unexpected_drops = variables_to_drop.difference(US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP)
+    if not unexpected_drops.empty:
+        log = structlog.get_logger()
+        log.warn(
+            "Unexpected variable found in source and aggregated country data.",
+            variable=unexpected_drops,
+        )
+
+
 def run_aggregate_to_country(dataset_in: timeseries.MultiRegionDataset):
     region_us = Region.from_location_id("iso1:us")
     unaggregated_us, others = dataset_in.partition_by_region([region_us])
@@ -198,24 +208,15 @@ def run_aggregate_to_country(dataset_in: timeseries.MultiRegionDataset):
         pipeline.us_states_and_territories_to_country_map(),
         reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
     )
-    unaggregated_notna_variables = unaggregated_us.timeseries_bucketed_wide_dates.index.unique(
-        PdFields.VARIABLE
-    ).union(unaggregated_us.static.dropna(axis="columns", how="all").columns)
-    unaggregated_drop_variables = unaggregated_us.variables.difference(unaggregated_notna_variables)
-    unaggregated_us_interesting = unaggregated_us.drop_columns_if_present(
-        unaggregated_drop_variables.to_list()
-    )
-    variables_to_drop = aggregated_us.variables.intersection(unaggregated_us_interesting.variables)
-    unexpected_drops = variables_to_drop.difference(US_AGGREGATED_VARIABLES_TO_DROP)
-    if not unexpected_drops.empty:
-        log = structlog.get_logger()
-        log.warn(
-            "Unexpected variable found in source and aggregated country data.",
-            variable=unexpected_drops,
-        )
+    # Prioritize unaggregated over aggregated. This could be done using
+    # timeseries.combined_datasets but what I'm doing here seems more straight-forward and more
+    # likely to preserve tags.
+    # Any variables that have both a US country level real value in the unaggregated data and
+    # aggregated_us are dropped from the aggregated data.
+    unaggregated_us_real = unaggregated_us.drop_na_columns()
+    variables_to_drop = aggregated_us.variables.intersection(unaggregated_us_real.variables)
     aggregated_us = aggregated_us.drop_columns_if_present(variables_to_drop)
-    log.info("US aggregated variables", variables=aggregated_us.timeseries.columns)
-    joined_us = unaggregated_us_interesting.join_columns(aggregated_us)
+    joined_us = unaggregated_us_real.join_columns(aggregated_us)
     return others.append_regions(joined_us)
 
 
