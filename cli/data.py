@@ -12,6 +12,7 @@ import structlog
 import click
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import FieldName
+from covidactnow.datapublic.common_fields import PdFields
 
 from libs import google_sheet_helpers
 from libs import pipeline
@@ -189,15 +190,22 @@ def update(
     multiregion_dataset.print_stats("persist")
 
 
-def run_aggregate_to_country(multiregion_dataset: timeseries.MultiRegionDataset):
+def run_aggregate_to_country(dataset_in: timeseries.MultiRegionDataset):
     region_us = Region.from_location_id("iso1:us")
-    unaggregated_us = multiregion_dataset.get_regions_subset([region_us])
+    unaggregated_us, others = dataset_in.partition_by_region([region_us])
     aggregated_us = region_aggregation.aggregate_regions(
-        multiregion_dataset,
+        others,
         pipeline.us_states_and_territories_to_country_map(),
         reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
     )
-    variables_to_drop = aggregated_us.variables.intersection(unaggregated_us.variables)
+    unaggregated_notna_variables = unaggregated_us.timeseries_bucketed_wide_dates.index.unique(
+        PdFields.VARIABLE
+    ).union(unaggregated_us.static.dropna(axis="columns", how="all").columns)
+    unaggregated_drop_variables = unaggregated_us.variables.difference(unaggregated_notna_variables)
+    unaggregated_us_interesting = unaggregated_us.drop_columns_if_present(
+        unaggregated_drop_variables.to_list()
+    )
+    variables_to_drop = aggregated_us.variables.intersection(unaggregated_us_interesting.variables)
     unexpected_drops = variables_to_drop.difference(US_AGGREGATED_VARIABLES_TO_DROP)
     if not unexpected_drops.empty:
         log = structlog.get_logger()
@@ -206,8 +214,9 @@ def run_aggregate_to_country(multiregion_dataset: timeseries.MultiRegionDataset)
             variable=unexpected_drops,
         )
     aggregated_us = aggregated_us.drop_columns_if_present(variables_to_drop)
-    multiregion_dataset = multiregion_dataset.append_regions(aggregated_us)
-    return multiregion_dataset
+    log.info("US aggregated variables", variables=aggregated_us.timeseries.columns)
+    joined_us = unaggregated_us_interesting.join_columns(aggregated_us)
+    return others.append_regions(joined_us)
 
 
 @main.command()
