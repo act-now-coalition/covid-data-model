@@ -7,7 +7,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import timeseries
-from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_FIPS, ABBREV_US_UNKNOWN_COUNTY_FIPS
+from libs.us_state_abbrev import ABBREV_US_FIPS, ABBREV_US_UNKNOWN_COUNTY_FIPS
 from libs.datasets.dataset_utils import AggregationLevel
 
 CURRENT_FOLDER = pathlib.Path(__file__).parent
