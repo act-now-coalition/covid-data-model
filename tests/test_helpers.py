@@ -167,20 +167,28 @@ def build_dataset(
         for bucket_name, bucket_ts in iter_buckets(var_buckets)
     }
 
-    # Find the longest sequence in region_var_bucket_seq.values(). Make a DatetimeIndex with that
-    # many dates.
-    sequence_lengths = max(len(seq) for seq in region_var_bucket_seq.values())
-    dates = pd.date_range(start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE)
+    if region_var_bucket_seq:
+        # Find the longest sequence in region_var_bucket_seq.values(). Make a DatetimeIndex with that
+        # many dates.
+        sequence_lengths = max(len(seq) for seq in region_var_bucket_seq.values())
+        dates = pd.date_range(
+            start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE
+        )
 
-    index = pd.MultiIndex.from_tuples(
-        [(region.location_id, var, bucket) for region, var, bucket in region_var_bucket_seq.keys()],
-        names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
-    )
+        index = pd.MultiIndex.from_tuples(
+            [
+                (region.location_id, var, bucket)
+                for region, var, bucket in region_var_bucket_seq.keys()
+            ],
+            names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
+        )
 
-    df = pd.DataFrame(list(region_var_bucket_seq.values()), index=index, columns=dates)
-    df = df.fillna(np.nan).apply(pd.to_numeric)
+        df = pd.DataFrame(list(region_var_bucket_seq.values()), index=index, columns=dates)
+        df = df.fillna(np.nan).apply(pd.to_numeric)
 
-    dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df, bucketed=True)
+        dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df, bucketed=True)
+    else:
+        dataset = timeseries.MultiRegionDataset.new_without_timeseries()
 
     if timeseries_columns:
         new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
