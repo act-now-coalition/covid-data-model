@@ -1273,18 +1273,15 @@ class MultiRegionDataset:
         Args:
             other: The dataset to join with `self`.
         """
-        common_static_colmuns = set(self.static.columns.intersection(other.static.columns))
+        common_static_colmuns = set(self.static.columns) & set(other.static.columns)
         if common_static_colmuns:
-            raise NotImplementedError(
-                f"join with common static columns {common_static_colmuns} not supported"
-            )
+            raise ValueError(f"join_columns static columns not disjoint: {common_static_colmuns}")
         combined_static = pd.concat([self.static, other.static], axis=1)
-        common_ts_columns = set(
-            other.timeseries_bucketed.columns.intersection(self.timeseries_bucketed.columns)
+        common_ts_columns = set(other.timeseries_bucketed.columns) & set(
+            self.timeseries_bucketed.columns
         )
         if common_ts_columns:
-            # columns to be joined need to be disjoint
-            raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
+            raise ValueError(f"join_columns time series columns not disjoint: {common_ts_columns}")
         combined_df = pd.concat([self.timeseries_bucketed, other.timeseries_bucketed], axis=1)
         combined_tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(
