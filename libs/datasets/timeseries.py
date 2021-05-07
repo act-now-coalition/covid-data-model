@@ -1268,19 +1268,19 @@ class MultiRegionDataset:
         return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
-        """Joins the timeseries columns in `other` with those in `self`.
+        """Returns a dataset with fields of self and other, which must be disjoint, joined.
 
         Args:
-            other: The timeseries dataset to join with `self`. all columns except the "geo" columns
-                   will be joined into `self`.
+            other: The dataset to join with `self`.
         """
-        other_non_geo_attributes = set(other.static.columns) - set(GEO_DATA_COLUMNS)
-        if other_non_geo_attributes:
+        common_static_colmuns = set(self.static.columns.intersection(other.static.columns))
+        if common_static_colmuns:
             raise NotImplementedError(
-                f"join with other with attributes {other_non_geo_attributes} not supported"
+                f"join with common static columns {common_static_colmuns} not supported"
             )
-        common_ts_columns = set(other.timeseries_bucketed.columns) & set(
-            self.timeseries_bucketed.columns
+        combined_static = pd.concat([self.static, other.static], axis=1)
+        common_ts_columns = set(
+            other.timeseries_bucketed.columns.intersection(self.timeseries_bucketed.columns)
         )
         if common_ts_columns:
             # columns to be joined need to be disjoint
@@ -1288,7 +1288,7 @@ class MultiRegionDataset:
         combined_df = pd.concat([self.timeseries_bucketed, other.timeseries_bucketed], axis=1)
         combined_tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(
-            timeseries_bucketed=combined_df, static=self.static, tag=combined_tag
+            timeseries_bucketed=combined_df, static=combined_static, tag=combined_tag
         )
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:

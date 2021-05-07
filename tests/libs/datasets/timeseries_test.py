@@ -983,8 +983,8 @@ def test_join_columns():
     ts_joined = ts_1.join_columns(ts_2)
     test_helpers.assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
 
-    with pytest.raises(NotImplementedError):
-        ts_2.join_columns(ts_1)
+    ts_joined = ts_2.join_columns(ts_1)
+    test_helpers.assert_dataset_like(ts_joined, ts_expected, drop_na_latest=True)
 
     with pytest.raises(ValueError):
         # Raises because the same column is in both datasets
@@ -1050,6 +1050,25 @@ def test_join_columns_with_buckets():
     ds_expected = test_helpers.build_default_region_dataset({**m1_data, **m2_data})
 
     ds_joined = ds_1.join_columns(ds_2)
+    test_helpers.assert_dataset_like(ds_joined, ds_expected)
+
+
+def test_join_columns_with_static():
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+
+    ds_1 = test_helpers.build_default_region_dataset({}, static={m1: 1})
+    ds_2 = test_helpers.build_default_region_dataset({}, static={m2: 2})
+
+    with pytest.raises(NotImplementedError):
+        ds_1.join_columns(ds_1)
+
+    ds_expected = test_helpers.build_default_region_dataset({}, static={m1: 1, m2: 2})
+
+    ds_joined = ds_1.join_columns(ds_2)
+    test_helpers.assert_dataset_like(ds_joined, ds_expected)
+
+    ds_joined = ds_2.join_columns(ds_1)
     test_helpers.assert_dataset_like(ds_joined, ds_expected)
 
 
