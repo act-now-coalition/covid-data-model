@@ -1053,6 +1053,25 @@ def test_join_columns_with_buckets():
     test_helpers.assert_dataset_like(ds_joined, ds_expected)
 
 
+def test_join_columns_with_static():
+    m1 = FieldName("m1")
+    m2 = FieldName("m2")
+
+    ds_1 = test_helpers.build_default_region_dataset({}, static={m1: 1})
+    ds_2 = test_helpers.build_default_region_dataset({}, static={m2: 2})
+
+    with pytest.raises(ValueError):
+        ds_1.join_columns(ds_1)
+
+    ds_expected = test_helpers.build_default_region_dataset({}, static={m1: 1, m2: 2})
+
+    ds_joined = ds_1.join_columns(ds_2)
+    test_helpers.assert_dataset_like(ds_joined, ds_expected)
+
+    ds_joined = ds_2.join_columns(ds_1)
+    test_helpers.assert_dataset_like(ds_joined, ds_expected)
+
+
 def test_iter_one_region():
     ts = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
