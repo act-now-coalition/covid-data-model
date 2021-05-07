@@ -990,16 +990,8 @@ def test_join_columns():
         # Raises because the same column is in both datasets
         ts_2.join_columns(ts_2)
 
-    # Checking geo attributes is currently disabled.
-    # ts_2_variation_df = ts_2.combined_df.copy()
-    # ts_2_variation_df.loc[
-    #     ts_2_variation_df[CommonFields.COUNTY] == "Bar County", CommonFields.COUNTY
-    # ] = "Bart County"
-    # ts_2_variation = timeseries.MultiRegionDataset.from_combined_dataframe(
-    #     ts_2_variation_df
-    # )
-    # with pytest.raises(ValueError):
-    #     ts_1.join_columns(ts_2_variation)
+    # geo attributes, such as aggregation level and county name, generally appear in geo-data.csv
+    # instead of MultiRegionDataset so they don't need special handling in join_columns.
 
 
 def test_join_columns_missing_regions():
@@ -1060,7 +1052,7 @@ def test_join_columns_with_static():
     ds_1 = test_helpers.build_default_region_dataset({}, static={m1: 1})
     ds_2 = test_helpers.build_default_region_dataset({}, static={m2: 2})
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValueError):
         ds_1.join_columns(ds_1)
 
     ds_expected = test_helpers.build_default_region_dataset({}, static={m1: 1, m2: 2})
