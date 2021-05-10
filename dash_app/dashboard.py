@@ -207,6 +207,9 @@ def init(server):
                 sort_mode="multi",
                 page_action="native",
                 style_table={"height": "330px", "overflowY": "auto"},
+                # selected_row_ids so `update_figure` gets the correct value when first called.
+                selected_row_ids=[region_df["id"].iat[0]],
+                # selected_rows so the row is rendered as selected in the UI.
                 selected_rows=[0],
             ),
             html.P(),
@@ -301,11 +304,8 @@ def _init_callbacks(
         prevent_initial_call=False,
     )
     def update_figure(selected_row_ids, variable_dropdown_value):
-        # Not sure why this isn't consistent but oh well
-        if isinstance(selected_row_ids, str):
-            selected_row_id = selected_row_ids
-        else:
-            selected_row_id = more_itertools.one(selected_row_ids)
+        selected_row_id = more_itertools.one(selected_row_ids)
+        assert isinstance(selected_row_id, str)
         one_region = ds.get_one_region(pipeline.Region.from_location_id(selected_row_id))
         interesting_ts = one_region.data.set_index(CommonFields.DATE).select_dtypes(
             include="number"
