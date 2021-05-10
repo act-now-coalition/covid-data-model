@@ -8,7 +8,6 @@ import os
 import json
 import shutil
 import structlog
-import pandas as pd
 
 import click
 from covidactnow.datapublic.common_fields import CommonFields
@@ -26,7 +25,6 @@ from libs.datasets.combined_datasets import (
 )
 from libs.datasets import timeseries
 from libs.datasets import outlier_detection
-from libs.datasets import region_aggregation
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets import new_cases_and_deaths
@@ -63,18 +61,6 @@ PROD_BUCKET = "data.covidactnow.org"
 
 # By default require 0.95 of populations from regions to include a data point in aggregate.
 DEFAULT_REPORTING_RATIO = 0.95
-
-US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP = [
-    CommonFields.CASES,
-    CommonFields.NEW_CASES,
-    CommonFields.DEATHS,
-    CommonFields.NEW_DEATHS,
-    CommonFields.POPULATION,
-]
-
-US_AGGREGATED_VARIABLE_DROP_MESSAGE = (
-    "Unexpected variable found in source and aggregated country data."
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -193,41 +179,13 @@ def update(
     #     pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
     # )
     if aggregate_to_country:
-        multiregion_dataset = run_aggregate_to_country(multiregion_dataset)
+        multiregion_dataset = custom_aggregations.aggregate_to_country(
+            multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+        )
         multiregion_dataset.print_stats("aggregate_to_country")
 
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
     multiregion_dataset.print_stats("persist")
-
-
-def _log_unexpected_aggregated_variables_to_drop(variables_to_drop: pd.Index):
-    unexpected_drops = variables_to_drop.difference(US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP)
-    if not unexpected_drops.empty:
-        log = structlog.get_logger()
-        log.warn(
-            US_AGGREGATED_VARIABLE_DROP_MESSAGE, variable=unexpected_drops.to_list(),
-        )
-
-
-def run_aggregate_to_country(dataset_in: timeseries.MultiRegionDataset):
-    region_us = Region.from_location_id("iso1:us")
-    unaggregated_us, others = dataset_in.partition_by_region([region_us])
-    aggregated_us = region_aggregation.aggregate_regions(
-        others,
-        pipeline.us_states_and_territories_to_country_map(),
-        reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
-    )
-    # Prioritize unaggregated over aggregated. This could be done using
-    # timeseries.combined_datasets but what I'm doing here seems more straight-forward and more
-    # likely to preserve tags.
-    # Any variables that have both a US country level real value in the unaggregated data and
-    # aggregated_us are dropped from the aggregated data.
-    unaggregated_us_real = unaggregated_us.drop_na_columns()
-    variables_to_drop = aggregated_us.variables.intersection(unaggregated_us_real.variables)
-    _log_unexpected_aggregated_variables_to_drop(variables_to_drop)
-    aggregated_us = aggregated_us.drop_columns_if_present(variables_to_drop)
-    joined_us = unaggregated_us_real.join_columns(aggregated_us)
-    return others.append_regions(joined_us)
 
 
 @main.command()
@@ -247,7 +205,9 @@ def aggregate_states_to_country():
     dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
         pathlib.Path("data/pre-agg-wide-dates.csv")
     ).add_static_csv_file(pathlib.Path("data/pre-agg-static.csv"))
-    dataset = run_aggregate_to_country(dataset)
+    dataset = custom_aggregations.aggregate_to_country(
+        dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+    )
     dataset.write_to_wide_dates_csv(
         pathlib.Path("data/post-agg-wide-dates.csv"), pathlib.Path("data/post-agg-static.csv")
     )
