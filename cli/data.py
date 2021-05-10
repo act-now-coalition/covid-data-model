@@ -189,9 +189,9 @@ def update(
 
     # TODO(tom): Add a clean way to store intermediate values instead of commenting out code like
     #  this:
-    multiregion_dataset.write_to_wide_dates_csv(
-        pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
-    )
+    # multiregion_dataset.write_to_wide_dates_csv(
+    #     pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
+    # )
     if aggregate_to_country:
         multiregion_dataset = run_aggregate_to_country(multiregion_dataset)
         multiregion_dataset.print_stats("aggregate_to_country")
