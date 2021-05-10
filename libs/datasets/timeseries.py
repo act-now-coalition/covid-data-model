@@ -943,6 +943,7 @@ class MultiRegionDataset:
         assert self.static.index.is_unique
         assert self.static.index.is_monotonic_increasing
         assert self.static.columns.intersection(GEO_DATA_COLUMNS).empty
+        assert self.static.columns.is_unique
 
         assert isinstance(self.tag, pd.Series)
         assert self.tag.index.names == _TAG_INDEX_FIELDS
@@ -1268,27 +1269,26 @@ class MultiRegionDataset:
         return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
     def join_columns(self, other: "MultiRegionDataset") -> "MultiRegionDataset":
-        """Joins the timeseries columns in `other` with those in `self`.
+        """Returns a dataset with fields of self and other, which must be disjoint, joined.
 
         Args:
-            other: The timeseries dataset to join with `self`. all columns except the "geo" columns
-                   will be joined into `self`.
+            other: The dataset to join with `self`.
         """
-        other_non_geo_attributes = set(other.static.columns) - set(GEO_DATA_COLUMNS)
-        if other_non_geo_attributes:
-            raise NotImplementedError(
-                f"join with other with attributes {other_non_geo_attributes} not supported"
-            )
+        common_static_colmuns = set(self.static.columns) & set(other.static.columns)
+        if common_static_colmuns:
+            raise ValueError(f"join_columns static columns not disjoint: {common_static_colmuns}")
+        combined_static = pd.concat([self.static, other.static], axis="columns")
         common_ts_columns = set(other.timeseries_bucketed.columns) & set(
             self.timeseries_bucketed.columns
         )
         if common_ts_columns:
-            # columns to be joined need to be disjoint
-            raise ValueError(f"Columns are in both dataset: {common_ts_columns}")
-        combined_df = pd.concat([self.timeseries_bucketed, other.timeseries_bucketed], axis=1)
+            raise ValueError(f"join_columns time series columns not disjoint: {common_ts_columns}")
+        combined_df = pd.concat(
+            [self.timeseries_bucketed, other.timeseries_bucketed], axis="columns"
+        )
         combined_tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(
-            timeseries_bucketed=combined_df, static=self.static, tag=combined_tag
+            timeseries_bucketed=combined_df, static=combined_static, tag=combined_tag
         )
 
     def iter_one_regions(self) -> Iterable[Tuple[Region, OneRegionTimeseriesDataset]]:
