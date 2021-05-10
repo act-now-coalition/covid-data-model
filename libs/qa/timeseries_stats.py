@@ -5,7 +5,6 @@ from typing import Sequence
 
 import more_itertools
 import pandas as pd
-from backports.cached_property import cached_property
 from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
