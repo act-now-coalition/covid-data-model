@@ -207,10 +207,11 @@ def init(server):
                 sort_mode="multi",
                 page_action="native",
                 style_table={"height": "330px", "overflowY": "auto"},
-                # selected_row_ids so `update_figure` gets the correct value when first called.
-                selected_row_ids=[region_df["id"].iat[0]],
-                # selected_rows so the row is rendered as selected in the UI.
+                # Default to the first row of `region_df`.
+                # As a work around for https://github.com/plotly/dash-table/issues/707 pass the
+                # selected row offset integer (for the UI) and row id string (for `update_figure`).
                 selected_rows=[0],
+                selected_row_ids=[region_df["id"].iat[0]],
             ),
             html.P(),
             html.Hr(),  # Stop graph drawing over table pageination control.
