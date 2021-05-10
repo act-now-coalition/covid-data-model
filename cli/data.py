@@ -69,6 +69,7 @@ US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP = [
     CommonFields.NEW_CASES,
     CommonFields.DEATHS,
     CommonFields.NEW_DEATHS,
+    CommonFields.POPULATION,
 ]
 
 US_AGGREGATED_VARIABLE_DROP_MESSAGE = (
@@ -204,7 +205,7 @@ def _log_unexpected_aggregated_variables_to_drop(variables_to_drop: pd.Index):
     if not unexpected_drops.empty:
         log = structlog.get_logger()
         log.warn(
-            US_AGGREGATED_VARIABLE_DROP_MESSAGE, variable=unexpected_drops,
+            US_AGGREGATED_VARIABLE_DROP_MESSAGE, variable=unexpected_drops.to_list(),
         )
 
 
