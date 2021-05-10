@@ -1,5 +1,4 @@
 import dataclasses
-from typing import Collection
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -9,6 +8,7 @@ import os
 import json
 import shutil
 import structlog
+import pandas as pd
 
 import click
 from covidactnow.datapublic.common_fields import CommonFields
@@ -42,6 +42,7 @@ from pyseir import DATA_DIR
 import pyseir.icu.utils
 from pyseir.icu import infer_icu
 
+
 TailFilter = tail_filter.TailFilter
 
 
@@ -63,8 +64,16 @@ PROD_BUCKET = "data.covidactnow.org"
 # By default require 0.95 of populations from regions to include a data point in aggregate.
 DEFAULT_REPORTING_RATIO = 0.95
 
+US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP = [
+    CommonFields.CASES,
+    CommonFields.NEW_CASES,
+    CommonFields.DEATHS,
+    CommonFields.NEW_DEATHS,
+]
 
-US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP = []
+US_AGGREGATED_VARIABLE_DROP_MESSAGE = (
+    "Unexpected variable found in source and aggregated country data."
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -190,13 +199,12 @@ def update(
     multiregion_dataset.print_stats("persist")
 
 
-def _log_unexpected_aggregated_variables_to_drop(variables_to_drop: Collection[CommonFields]):
+def _log_unexpected_aggregated_variables_to_drop(variables_to_drop: pd.Index):
     unexpected_drops = variables_to_drop.difference(US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP)
     if not unexpected_drops.empty:
         log = structlog.get_logger()
         log.warn(
-            "Unexpected variable found in source and aggregated country data.",
-            variable=unexpected_drops,
+            US_AGGREGATED_VARIABLE_DROP_MESSAGE, variable=unexpected_drops,
         )
 
 
@@ -215,6 +223,7 @@ def run_aggregate_to_country(dataset_in: timeseries.MultiRegionDataset):
     # aggregated_us are dropped from the aggregated data.
     unaggregated_us_real = unaggregated_us.drop_na_columns()
     variables_to_drop = aggregated_us.variables.intersection(unaggregated_us_real.variables)
+    _log_unexpected_aggregated_variables_to_drop(variables_to_drop)
     aggregated_us = aggregated_us.drop_columns_if_present(variables_to_drop)
     joined_us = unaggregated_us_real.join_columns(aggregated_us)
     return others.append_regions(joined_us)
