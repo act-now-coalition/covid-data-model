@@ -50,6 +50,17 @@ class StatName(ValueAsStrMixin, str, enum.Enum):
     SOURCE = TagType.SOURCE
 
 
+_PER_TIMESERIES_INDEX_LEVELS = [
+    CommonFields.LOCATION_ID,
+    PdFields.VARIABLE,
+    PdFields.DEMOGRAPHIC_BUCKET,
+    DISTRIBUTION,
+    CommonFields.AGGREGATE_LEVEL,
+    CommonFields.STATE,
+    FIELD_GROUP,
+]
+
+
 @dataclass(frozen=True, eq=False)  # Instances are large so compare by id instead of value
 class Aggregated:
     """Aggregated statistics, optionally grouped by region and variable."""
@@ -63,7 +74,7 @@ class Aggregated:
 
     def __post_init__(self):
         # index level 0 is a location_id or some kind of aggregated region kind of thing
-        assert self.stats.index.names[0] in [CommonFields.LOCATION_ID, CommonFields.AGGREGATE_LEVEL]
+        assert set(self.stats.index.names).issubset(_PER_TIMESERIES_INDEX_LEVELS)
         assert self.stats.columns.to_list() == list(StatName)
         assert is_numeric_dtype(more_itertools.one(set(self.stats.dtypes)))
         assert self.source_type.index.equals(self.stats.index)
@@ -73,32 +84,6 @@ class Aggregated:
     def pivottable_data(self) -> pd.DataFrame:
         df = pd.concat([self.stats, self.source_type], axis=1).reset_index()
         return [df.columns.tolist()] + df.values.tolist()
-
-    @cached_property
-    def stats_by_region_variable(self) -> pd.DataFrame:
-        """A DataFrame with location index and column levels CommonField and StatName"""
-        # index level 1 is a variable (cases, deaths, ...) or some kind of aggregated variable
-        assert self.stats.index.names[1] in [PdFields.VARIABLE, FIELD_GROUP, DISTRIBUTION]
-
-        # The names of index levels 0 and 1 may vary. There doesn't seem to be a way to pass the
-        # index level numbers to groupby so lookup the names.
-        groupby = [self.stats.index.names[0], self.stats.index.names[1]]
-        return self.stats.groupby(groupby, as_index=True).sum().unstack(1)
-
-    @property
-    def has_timeseries(self):
-        """DataFrame with column per VARIABLE or FIELD_GROUP"""
-        return self.stats_by_region_variable.loc(axis=1)[StatName.HAS_TIMESERIES]
-
-    @property
-    def has_url(self):
-        """DataFrame with column per VARIABLE or FIELD_GROUP"""
-        return self.stats_by_region_variable.loc(axis=1)[StatName.HAS_URL]
-
-    @property
-    def annotation_count(self):
-        """DataFrame with column per VARIABLE or FIELD_GROUP"""
-        return self.stats_by_region_variable.loc(axis=1)[StatName.ANNOTATION_COUNT]
 
 
 def _xs_or_empty(df: pd.DataFrame, key: Collection[str], level: str) -> pd.DataFrame:
@@ -114,15 +99,7 @@ class PerTimeseries(Aggregated):
 
     def __post_init__(self):
         super().__post_init__()
-        assert self.stats.index.names == [
-            CommonFields.LOCATION_ID,
-            PdFields.VARIABLE,
-            PdFields.DEMOGRAPHIC_BUCKET,
-            DISTRIBUTION,
-            CommonFields.AGGREGATE_LEVEL,
-            CommonFields.STATE,
-            FIELD_GROUP,
-        ]
+        assert self.stats.index.names == _PER_TIMESERIES_INDEX_LEVELS
 
     @staticmethod
     def make(ds: timeseries.MultiRegionDataset) -> "PerTimeseries":
