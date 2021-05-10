@@ -1,14 +1,15 @@
 from typing import Mapping
 import dataclasses
 import pandas as pd
+import structlog
 
 from covidactnow.datapublic.common_fields import CommonFields
 
 from libs import pipeline
-from libs.datasets import timeseries
 from libs.datasets import region_aggregation
 from libs.datasets import AggregationLevel
-
+from libs.datasets import timeseries
+from libs.pipeline import Region
 
 NEW_YORK_COUNTY = "New York County"
 NEW_YORK_COUNTY_FIPS = "36061"
@@ -106,3 +107,47 @@ def _aggregate_ignoring_nas(df_in: pd.DataFrame) -> Mapping:
         else:
             aggregated[field] = df_in[field].sum()
     return aggregated
+
+
+US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP = [
+    CommonFields.CASES,
+    CommonFields.NEW_CASES,
+    CommonFields.DEATHS,
+    CommonFields.NEW_DEATHS,
+    CommonFields.POPULATION,
+]
+US_AGGREGATED_VARIABLE_DROP_MESSAGE = (
+    "Unexpected variable found in source and aggregated country data."
+)
+
+
+def _log_unexpected_aggregated_variables_to_drop(variables_to_drop: pd.Index):
+    unexpected_drops = variables_to_drop.difference(US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP)
+    if not unexpected_drops.empty:
+        log = structlog.get_logger()
+        log.warn(
+            US_AGGREGATED_VARIABLE_DROP_MESSAGE, variable=unexpected_drops.to_list(),
+        )
+
+
+def aggregate_to_country(
+    dataset_in: timeseries.MultiRegionDataset, *, reporting_ratio_required_to_aggregate: float
+):
+    region_us = Region.from_location_id("iso1:us")
+    unaggregated_us, others = dataset_in.partition_by_region([region_us])
+    aggregated_us = region_aggregation.aggregate_regions(
+        others,
+        pipeline.us_states_and_territories_to_country_map(),
+        reporting_ratio_required_to_aggregate=reporting_ratio_required_to_aggregate,
+    )
+    # Prioritize unaggregated over aggregated. This could be done using
+    # timeseries.combined_datasets but what I'm doing here seems more straight-forward and more
+    # likely to preserve tags.
+    # Any variables that have both a US country level real value in the unaggregated data and
+    # aggregated_us are dropped from the aggregated data.
+    unaggregated_us_real = unaggregated_us.drop_na_columns()
+    variables_to_drop = aggregated_us.variables.intersection(unaggregated_us_real.variables)
+    _log_unexpected_aggregated_variables_to_drop(variables_to_drop)
+    aggregated_us = aggregated_us.drop_columns_if_present(variables_to_drop)
+    joined_us = unaggregated_us_real.join_columns(aggregated_us)
+    return others.append_regions(joined_us)

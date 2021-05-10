@@ -25,7 +25,6 @@ from libs.datasets.combined_datasets import (
 )
 from libs.datasets import timeseries
 from libs.datasets import outlier_detection
-from libs.datasets import region_aggregation
 from libs.datasets import dataset_utils
 from libs.datasets import combined_datasets
 from libs.datasets import new_cases_and_deaths
@@ -40,6 +39,7 @@ from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
 from pyseir import DATA_DIR
 import pyseir.icu.utils
 from pyseir.icu import infer_icu
+
 
 TailFilter = tail_filter.TailFilter
 
@@ -179,12 +179,9 @@ def update(
     #     pathlib.Path("data/pre-agg-wide-dates.csv"), pathlib.Path("data/pre-agg-static.csv")
     # )
     if aggregate_to_country:
-        country_dataset = region_aggregation.aggregate_regions(
-            multiregion_dataset,
-            pipeline.us_states_and_territories_to_country_map(),
-            reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
+        multiregion_dataset = custom_aggregations.aggregate_to_country(
+            multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
         )
-        multiregion_dataset = multiregion_dataset.append_regions(country_dataset)
         multiregion_dataset.print_stats("aggregate_to_country")
 
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
@@ -208,10 +205,8 @@ def aggregate_states_to_country():
     dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
         pathlib.Path("data/pre-agg-wide-dates.csv")
     ).add_static_csv_file(pathlib.Path("data/pre-agg-static.csv"))
-    dataset = region_aggregation.aggregate_regions(
-        dataset,
-        pipeline.us_states_and_territories_to_country_map(),
-        reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO,
+    dataset = custom_aggregations.aggregate_to_country(
+        dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
     )
     dataset.write_to_wide_dates_csv(
         pathlib.Path("data/post-agg-wide-dates.csv"), pathlib.Path("data/post-agg-static.csv")
