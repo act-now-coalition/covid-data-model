@@ -1969,3 +1969,11 @@ def test_variables():
 
 def test_variables_empty():
     assert timeseries.MultiRegionDataset.new_without_timeseries().variables.to_list() == []
+
+
+def test_pickle_test_dataset_size():
+    test_dataset = test_helpers.load_test_dataset()
+    assert len(pickle.dumps(test_dataset)) < 1_000_000
+
+    # pickle.dumps(test_dataset.timeseries_bucketed_long.values, protocol=4) is smallest,
+    # about same as CSV
