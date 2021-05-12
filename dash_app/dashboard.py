@@ -11,6 +11,7 @@ import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import PdFields
+from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from dash.dependencies import Input
 from dash.dependencies import Output
 from plotly import express as px
@@ -40,6 +41,15 @@ VARIABLE_GROUPS = ["all"] + list(common_fields.FieldGroup)
 def _remove_prefix(text, prefix):
     assert text.startswith(prefix)
     return text[len(prefix) :]
+
+
+@enum.unique
+class Id(ValueAsStrMixin, str, enum.Enum):
+    def _generate_next_value_(name, start, count, last_values):
+        return name
+
+    DATASET_PAGE_CONTENT = enum.auto()
+    URL = enum.auto()
 
 
 @enum.unique
@@ -151,78 +161,16 @@ def init(server):
 
     per_timeseries_stats = timeseries_stats.PerTimeseries.make(ds)
 
-    region_df = region_table(per_timeseries_stats, ds)
-
     dash_app.layout = html.Div(
-        children=[
+        [
+            dcc.Location(id=Id.URL, refresh=False),
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
-            html.H2("Time series pivot table"),
-            html.P("Preset views:"),
-            *[
-                html.Button(preset.description, id=preset.btn_id)
-                for preset in TimeSeriesPivotTablePreset
-            ],
-            dcc.Markdown(
-                "Drag attributes to explore information about time series in "
-                "this dataset. See an animated demo in the [Dash Pivottable docs]("
-                "https://github.com/plotly/dash-pivottable#readme)."
-            ),
-            # PivotTable `rows` and `cols` properties can not be modified by dash on an existing
-            # object, see
-            # https://github.com/plotly/dash-pivottable/blob/master/README.md#references. As a
-            # work around `pivot_table_parent` is updated to add a new PivotTable when a button
-            # is clicked.
-            dcc.Loading(id="pivot_table_parent"),
-            html.H2("Regions"),
-            html.Div(
-                [
-                    html.Div("Select variables: "),
-                    dcc.Dropdown(
-                        id="regions-variable-dropdown",
-                        options=[{"label": n, "value": n} for n in VARIABLE_GROUPS],
-                        value="all",
-                        clearable=False,
-                        # From https://stackoverflow.com/a/55755387/341400
-                        style=dict(width="40%"),
-                    ),
-                ],
-                style=dict(display="flex"),
-            ),
-            dcc.Markdown(
-                "Select a region using the radio button at the left of this table to "
-                "view its data below. recent_vac_ratio is completed / initiated and is "
-                "expected to be about 0.60 to 0.95 and never more than 1."
-            ),
-            dash_table.DataTable(
-                id="datatable-regions",
-                columns=[{"name": i, "id": i} for i in region_df.columns if i != "id"],
-                cell_selectable=False,
-                page_size=8,
-                row_selectable="single",
-                data=region_df.to_dict("records"),
-                editable=False,
-                filter_action="native",
-                sort_action="native",
-                sort_mode="multi",
-                page_action="native",
-                style_table={"height": "330px", "overflowY": "auto"},
-                # Default to the first row of `region_df`.
-                # As a work around for https://github.com/plotly/dash-table/issues/707 pass the
-                # selected row offset integer (for the UI) and row id string (for `update_figure`).
-                selected_rows=[0],
-                selected_row_ids=[region_df["id"].iat[0]],
-            ),
-            html.P(),
-            html.Hr(),  # Stop graph drawing over table pageination control.
-            dcc.Graph(id="region-graph",),
-            dash_table.DataTable(
-                id="region-tag-table", columns=[{"name": i, "id": i} for i in TAG_TABLE_COLUMNS]
-            ),
+            html.Div(id=Id.DATASET_PAGE_CONTENT),
         ]
     )
 
-    _init_callbacks(dash_app, ds, per_timeseries_stats, region_df["id"])
+    _init_callbacks(dash_app, ds, per_timeseries_stats)
 
     return dash_app.server
 
@@ -245,8 +193,78 @@ def _init_callbacks(
     dash_app,
     ds: timeseries.MultiRegionDataset,
     per_timeseries_stats: timeseries_stats.PerTimeseries,
-    region_id_series: pd.Series,
 ):
+    region_df = region_table(per_timeseries_stats, ds)
+
+    @dash_app.callback(Output(Id.DATASET_PAGE_CONTENT, "children"), [Input(Id.URL, "pathname")])
+    def update_dataset_page_content(pathname):
+        return html.Div(
+            [
+                html.H2("Time series pivot table"),
+                html.P("Preset views:"),
+                *[
+                    html.Button(preset.description, id=preset.btn_id)
+                    for preset in TimeSeriesPivotTablePreset
+                ],
+                dcc.Markdown(
+                    "Drag attributes to explore information about time series in "
+                    "this dataset. See an animated demo in the [Dash Pivottable docs]("
+                    "https://github.com/plotly/dash-pivottable#readme)."
+                ),
+                # PivotTable `rows` and `cols` properties can not be modified by dash on an existing
+                # object, see
+                # https://github.com/plotly/dash-pivottable/blob/master/README.md#references. As a
+                # work around `pivot_table_parent` is updated to add a new PivotTable when a button
+                # is clicked.
+                dcc.Loading(id="pivot_table_parent"),
+                html.H2("Regions"),
+                html.Div(
+                    [
+                        html.Div("Select variables: "),
+                        dcc.Dropdown(
+                            id="regions-variable-dropdown",
+                            options=[{"label": n, "value": n} for n in VARIABLE_GROUPS],
+                            value="all",
+                            clearable=False,
+                            # From https://stackoverflow.com/a/55755387/341400
+                            style=dict(width="40%"),
+                        ),
+                    ],
+                    style=dict(display="flex"),
+                ),
+                dcc.Markdown(
+                    "Select a region using the radio button at the left of this table to "
+                    "view its data below. recent_vac_ratio is completed / initiated and is "
+                    "expected to be about 0.60 to 0.95 and never more than 1."
+                ),
+                dash_table.DataTable(
+                    id="datatable-regions",
+                    columns=[{"name": i, "id": i} for i in region_df.columns if i != "id"],
+                    cell_selectable=False,
+                    page_size=8,
+                    row_selectable="single",
+                    data=region_df.to_dict("records"),
+                    editable=False,
+                    filter_action="native",
+                    sort_action="native",
+                    sort_mode="multi",
+                    page_action="native",
+                    style_table={"height": "330px", "overflowY": "auto"},
+                    # Default to the first row of `region_df`.
+                    # As a work around for https://github.com/plotly/dash-table/issues/707 pass the
+                    # selected row offset integer (for the UI) and row id string (for `update_figure`).
+                    selected_rows=[0],
+                    selected_row_ids=[region_df["id"].iat[0]],
+                ),
+                html.P(),
+                html.Hr(),  # Stop graph drawing over table pageination control.
+                dcc.Graph(id="region-graph",),
+                dash_table.DataTable(
+                    id="region-tag-table", columns=[{"name": i, "id": i} for i in TAG_TABLE_COLUMNS]
+                ),
+            ]
+        )
+
     @dash_app.callback(
         [Output("datatable-regions", "data"), Output("datatable-regions", "columns")],
         [Input("regions-variable-dropdown", "value")],
