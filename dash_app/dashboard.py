@@ -45,11 +45,17 @@ def _remove_prefix(text, prefix):
 
 @enum.unique
 class Id(ValueAsStrMixin, str, enum.Enum):
-    def _generate_next_value_(name, start, count, last_values):
+    def _generate_next_value_(name, start, count, last_values):  # pylint: disable=no-self-argument
+        """Returns the name of the enum as it's value"""
         return name
 
     DATASET_PAGE_CONTENT = enum.auto()
     URL = enum.auto()
+    PIVOT_TABLE_PARENT = enum.auto()
+    REGION_GRAPH = enum.auto()
+    REGION_TAG_TABLE = enum.auto()
+    DATATABLE_REGIONS = enum.auto()
+    # TODO(tom): Add remained of dash ids to this enum.
 
 
 @enum.unique
@@ -216,7 +222,7 @@ def _init_callbacks(
                 # https://github.com/plotly/dash-pivottable/blob/master/README.md#references. As a
                 # work around `pivot_table_parent` is updated to add a new PivotTable when a button
                 # is clicked.
-                dcc.Loading(id="pivot_table_parent"),
+                dcc.Loading(id=Id.PIVOT_TABLE_PARENT),
                 html.H2("Regions"),
                 html.Div(
                     [
@@ -238,7 +244,7 @@ def _init_callbacks(
                     "expected to be about 0.60 to 0.95 and never more than 1."
                 ),
                 dash_table.DataTable(
-                    id="datatable-regions",
+                    id=Id.DATATABLE_REGIONS,
                     columns=[{"name": i, "id": i} for i in region_df.columns if i != "id"],
                     cell_selectable=False,
                     page_size=8,
@@ -258,15 +264,16 @@ def _init_callbacks(
                 ),
                 html.P(),
                 html.Hr(),  # Stop graph drawing over table pageination control.
-                dcc.Graph(id="region-graph",),
+                dcc.Graph(id=Id.REGION_GRAPH),
                 dash_table.DataTable(
-                    id="region-tag-table", columns=[{"name": i, "id": i} for i in TAG_TABLE_COLUMNS]
+                    id=Id.REGION_TAG_TABLE,
+                    columns=[{"name": i, "id": i} for i in TAG_TABLE_COLUMNS],
                 ),
             ]
         )
 
     @dash_app.callback(
-        [Output("datatable-regions", "data"), Output("datatable-regions", "columns")],
+        [Output(Id.DATATABLE_REGIONS, "data"), Output(Id.DATATABLE_REGIONS, "columns")],
         [Input("regions-variable-dropdown", "value")],
         prevent_initial_call=True,
     )
@@ -283,7 +290,7 @@ def _init_callbacks(
         return data, columns
 
     @dash_app.callback(
-        Output("pivot_table_parent", "children"),
+        Output(Id.PIVOT_TABLE_PARENT, "children"),
         [Input(preset.btn_id, "n_clicks") for preset in TimeSeriesPivotTablePreset],
     )
     def time_series_pivot_table_preset_btn_clicked(*inputs_ignored):
@@ -315,9 +322,9 @@ def _init_callbacks(
     # `location-dropdown.value` must be a list or tuple of `dash.dependencies.Input`s.
     # but doesn't in the docs at https://dash.plotly.com/basic-callbacks. Odd.
     @dash_app.callback(
-        [Output("region-graph", "figure"), Output("region-tag-table", "data")],
+        [Output(Id.REGION_GRAPH, "figure"), Output(Id.REGION_TAG_TABLE, "data")],
         [
-            Input("datatable-regions", "selected_row_ids"),
+            Input(Id.DATATABLE_REGIONS, "selected_row_ids"),
             Input("regions-variable-dropdown", "value"),
         ],
         prevent_initial_call=False,
