@@ -27,6 +27,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
+from pandas.core.generic import FrameOrSeries
 from pandas.core.dtypes.common import is_numeric_dtype
 from pandas.core.dtypes.common import is_bool_dtype
 from typing_extensions import final
@@ -382,6 +383,12 @@ EMPTY_STATIC_DF = pd.DataFrame(
     columns=pd.Index([], name=PdFields.VARIABLE),
 )
 
+EMPTY_STATIC_LONG = pd.Series(
+    [],
+    dtype=float,
+    index=pd.MultiIndex.from_tuples([], names=[CommonFields.LOCATION_ID, PdFields.VARIABLE]),
+    name=PdFields.VALUE,
+)
 
 # An empty DataFrame with the expected index names for a timeseries with row labels <location_id,
 # variable, bucket> and column labels <date>.
@@ -591,6 +598,15 @@ class MultiRegionDataset:
             self._timeseries_latest_values().reset_index(), self.static_and_geo_data.reset_index()
         )
 
+    @property
+    def static_long(self) -> pd.Series:
+        """All not-NA/real static values in one series"""
+        if self.static.empty:
+            return EMPTY_STATIC_LONG
+        else:
+            # Is it worth adding a PdFields.STATIC_VALUE? Doesn't seem like it yet.
+            return self.static.stack(dropna=True).rename(PdFields.VALUE).sort_index()
+
     @cached_property
     def timeseries_bucketed_long(self) -> pd.Series:
         """A Series with MultiIndex LOCATION_ID, DEMOGRAPHIC_BUCKET, DATE, VARIABLE"""
@@ -770,6 +786,11 @@ class MultiRegionDataset:
         return MultiRegionDataset(timeseries=timeseries_df)
 
     def add_fips_static_df(self, latest_df: pd.DataFrame) -> "MultiRegionDataset":
+        # This function is only called on empty datasets and is very unlikely to get any new
+        # callers. This is a useful constraint when simplifying add_static_values.
+        # TODO(tom): Uncomment after fixing test_multi_region_to_from_timeseries_and_latest_values
+        # assert self.timeseries_bucketed.empty
+        assert self.static.empty
         latest_df = _add_location_id(latest_df)
         return self.add_static_values(latest_df)
 
@@ -778,6 +799,9 @@ class MultiRegionDataset:
         scalars_without_geodata = attributes_df.loc[
             :, attributes_df.columns.difference(GEO_DATA_COLUMNS)
         ]
+        # TODO(tom): Assuming this assert doesn't fail see if _merge_attributes can be simplified,
+        #  maybe even replaced by pd.concat.
+        assert self.static.columns.intersection(scalars_without_geodata.columns).empty
         combined_attributes = _merge_attributes(self.static.reset_index(), scalars_without_geodata)
         assert combined_attributes.index.names == [CommonFields.LOCATION_ID]
         return dataclasses.replace(self, static=combined_attributes)
@@ -915,6 +939,7 @@ class MultiRegionDataset:
         ).append_tag_df(tag_df)
 
     def add_static_csv_file(self, path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
+        assert self.static.empty
         static_df = pd.read_csv(path_or_buf, dtype={CommonFields.FIPS: str}, low_memory=False)
         return self.add_static_values(static_df)
 
@@ -950,6 +975,7 @@ class MultiRegionDataset:
         assert self.static.index.is_monotonic_increasing
         assert self.static.columns.intersection(GEO_DATA_COLUMNS).empty
         assert self.static.columns.is_unique
+        assert self.static.columns.names == [PdFields.VARIABLE]
 
         assert isinstance(self.tag, pd.Series)
         assert self.tag.index.names == _TAG_INDEX_FIELDS
@@ -967,14 +993,19 @@ class MultiRegionDataset:
         common_location_id = self.location_ids.intersection(other.location_ids)
         if not common_location_id.empty:
             raise ValueError("Do not use append_regions with duplicate location_id")
-        # TODO(tom): check if rename_axis is needed once we have
+        # TODO(tom): Once we have
         #  https://pandas.pydata.org/docs/whatsnew/v1.2.0.html#index-column-name-preservation-when-aggregating
+        #  consider removing each call to rename_axis.
         timeseries_df = (
             pd.concat([self.timeseries_bucketed, other.timeseries_bucketed])
             .sort_index()
             .rename_axis(columns=PdFields.VARIABLE)
         )
-        static_df = pd.concat([self.static, other.static]).sort_index()
+        static_df = (
+            pd.concat([self.static, other.static])
+            .sort_index()
+            .rename_axis(columns=PdFields.VARIABLE)
+        )
         tag = pd.concat([self.tag, other.tag]).sort_index()
         return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
@@ -1433,7 +1464,7 @@ def combined_datasets(
     if static_series:
         output_static_df = pd.concat(
             static_series, axis=1, sort=True, verify_integrity=True
-        ).rename_axis(index=CommonFields.LOCATION_ID)
+        ).rename_axis(index=CommonFields.LOCATION_ID, columns=PdFields.VARIABLE)
     else:
         output_static_df = EMPTY_STATIC_DF
 
@@ -1571,3 +1602,43 @@ def make_source_url_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     )
     source_url[TagField.TYPE] = TagType.SOURCE_URL
     return ds_in.append_tag_df(source_url)
+
+
+# eq=False because instances are large and we want to compare by id instead of value
+@final
+@dataclasses.dataclass(frozen=True, eq=False)
+class MultiRegionDatasetDiff:
+    """Represents a delta/diff between two MultiRegionDataset objects."""
+
+    old: MultiRegionDataset
+    new: MultiRegionDataset
+
+    @staticmethod
+    def make(*, old, new) -> "MultiRegionDatasetDiff":
+        return MultiRegionDatasetDiff(old=old, new=new)
+
+    @property
+    def timeseries_removed(self) -> MultiRegionDataset:
+        """A dataset containing time series, tags and static values in old but not new.
+
+        A time series is considered removed if it has at least one real (not-NA) value in
+        `old` and no real values (all NA) in `new`. Changes in the set of dates with a real value
+        and changes in the values themselves are ignored.
+        """
+        # removed is currently calculated when accessed but it may make sense to move this to
+        # `make` depending on future uses of MultiRegionDatasetDiff.
+        def removed(old: FrameOrSeries, new: FrameOrSeries) -> FrameOrSeries:
+            removed_mask = ~old.index.isin(new.index)
+            return old.loc[removed_mask]
+
+        ts_wide_dates = removed(
+            self.old.timeseries_bucketed_wide_dates, self.new.timeseries_bucketed_wide_dates
+        )
+        tags = removed(self.old.tag, self.new.tag)
+        static_long = removed(self.old.static_long, self.new.static_long)
+
+        return (
+            MultiRegionDataset.from_timeseries_wide_dates_df(ts_wide_dates, bucketed=True)
+            .append_tag_df(tags.reset_index())
+            .add_static_values(static_long.unstack(level=PdFields.VARIABLE).reset_index())
+        )
