@@ -169,6 +169,7 @@ def init(server):
 
     dash_app.layout = html.Div(
         [
+            # TODO(tom): Add a mechanism to modify the URL
             dcc.Location(id=Id.URL, refresh=False),
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(commit_str),
@@ -204,6 +205,7 @@ def _init_callbacks(
 
     @dash_app.callback(Output(Id.DATASET_PAGE_CONTENT, "children"), [Input(Id.URL, "pathname")])
     def update_dataset_page_content(pathname):
+        # TODO(tom): Add a mechanism for changing the dataset, which will update this content.
         return html.Div(
             [
                 html.H2("Time series pivot table"),
