@@ -3,13 +3,13 @@ from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldGroup
 from covidactnow.datapublic.common_fields import PdFields
 
-from dash_app.dashboard import population_ratio_by_variable
 from libs.datasets import AggregationLevel
 from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.datasets.taglib import UrlStr
 from libs.pipeline import Region
 from libs.qa import timeseries_stats
+from libs.qa.timeseries_stats import StatName
 from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral
 import pandas as pd
@@ -52,50 +52,26 @@ def test_make_from_dataset():
     dataset = timeseries.make_source_url_tags(dataset)
 
     per_timeseries = timeseries_stats.PerTimeseries.make(dataset)
-    per_region = per_timeseries.aggregate(CommonFields.LOCATION_ID, PdFields.VARIABLE)
 
-    assert (
-        per_region.has_timeseries.at[region_tx.location_id, CommonFields.VACCINATIONS_COMPLETED]
-        == 2
-    )
-    assert per_region.annotation_count.at[region_sf.location_id, CommonFields.CASES] == 2
-    assert (
-        per_region.annotation_count.at[region_tx.location_id, CommonFields.VACCINATIONS_COMPLETED]
-        == 1
-    )
+    per_region = per_timeseries.aggregate(CommonFields.LOCATION_ID)
+    assert per_region.stats.at[region_tx.location_id, StatName.HAS_TIMESERIES] == 3
+    assert per_region.stats.at[region_sf.location_id, StatName.ANNOTATION_COUNT] == 2
+    assert per_region.stats.at[region_tx.location_id, StatName.ANNOTATION_COUNT] == 1
 
     cases_by_level = per_timeseries.subset_variables([CommonFields.CASES]).aggregate(
-        CommonFields.AGGREGATE_LEVEL, PdFields.VARIABLE
+        CommonFields.AGGREGATE_LEVEL
     )
-    assert cases_by_level.has_timeseries.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 2
-    assert cases_by_level.has_url.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 1
-    assert (
-        cases_by_level.annotation_count.at[AggregationLevel.COUNTY.value, CommonFields.CASES] == 2
-    )
+    assert cases_by_level.stats.at[AggregationLevel.COUNTY.value, StatName.HAS_TIMESERIES] == 2
+    assert cases_by_level.stats.at[AggregationLevel.COUNTY.value, StatName.HAS_URL] == 1
+    assert cases_by_level.stats.at[AggregationLevel.COUNTY.value, StatName.ANNOTATION_COUNT] == 2
 
-    cases_by_group = per_timeseries.subset_variables([CommonFields.CASES]).aggregate(
-        CommonFields.AGGREGATE_LEVEL, timeseries_stats.FIELD_GROUP
-    )
-    assert (
-        cases_by_group.has_timeseries.at[AggregationLevel.COUNTY.value, FieldGroup.CASES_DEATHS]
-        == 2
-    )
-    assert cases_by_group.has_url.at[AggregationLevel.COUNTY.value, FieldGroup.CASES_DEATHS] == 1
-    assert (
-        cases_by_group.annotation_count.at[AggregationLevel.COUNTY.value, FieldGroup.CASES_DEATHS]
-        == 2
-    )
+    by_fieldgroup = per_timeseries.aggregate(timeseries_stats.FIELD_GROUP)
+    assert by_fieldgroup.stats.at[FieldGroup.CASES_DEATHS, StatName.HAS_TIMESERIES] == 3
+    assert by_fieldgroup.stats.at[FieldGroup.CASES_DEATHS, StatName.HAS_URL] == 1
+    assert by_fieldgroup.stats.at[FieldGroup.CASES_DEATHS, StatName.ANNOTATION_COUNT] == 2
 
-    per_timeseries.stats_for_locations(dataset.location_ids)
+    assert not per_timeseries.stats_for_locations(dataset.location_ids).empty
     assert per_timeseries.pivottable_data
-
-    county_stats = per_timeseries.subset_locations(
-        aggregation_level=AggregationLevel.COUNTY
-    ).aggregate(CommonFields.LOCATION_ID, PdFields.VARIABLE)
-    pop_by_var_has_url = population_ratio_by_variable(dataset, county_stats.has_url)
-    assert not pop_by_var_has_url.empty
-    pop_by_var_has_ts = population_ratio_by_variable(dataset, county_stats.has_timeseries)
-    assert not pop_by_var_has_ts.empty
 
 
 def test_enum_names_match_values():
