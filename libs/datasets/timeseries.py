@@ -20,7 +20,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 from itertools import chain
 from collections import defaultdict
-from typing import TypeVar
 
 import more_itertools
 from covidactnow.datapublic import common_fields
@@ -28,6 +27,7 @@ from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import FieldName
 from covidactnow.datapublic.common_fields import PdFields
+from pandas.core.generic import FrameOrSeries
 from pandas.core.dtypes.common import is_numeric_dtype
 from pandas.core.dtypes.common import is_bool_dtype
 from typing_extensions import final
@@ -799,7 +799,8 @@ class MultiRegionDataset:
         scalars_without_geodata = attributes_df.loc[
             :, attributes_df.columns.difference(GEO_DATA_COLUMNS)
         ]
-        # TODO(tom): When this assert always passes remove all the junk in _merge_attributes.
+        # TODO(tom): Assuming this assert doesn't fail see if _merge_attributes can be simplified,
+        #  maybe even replaced by pd.concat.
         assert self.static.columns.intersection(scalars_without_geodata.columns).empty
         combined_attributes = _merge_attributes(self.static.reset_index(), scalars_without_geodata)
         assert combined_attributes.index.names == [CommonFields.LOCATION_ID]
@@ -992,15 +993,14 @@ class MultiRegionDataset:
         common_location_id = self.location_ids.intersection(other.location_ids)
         if not common_location_id.empty:
             raise ValueError("Do not use append_regions with duplicate location_id")
-        # TODO(tom): check if rename_axis is needed once we have
+        # TODO(tom): Once we have
         #  https://pandas.pydata.org/docs/whatsnew/v1.2.0.html#index-column-name-preservation-when-aggregating
+        #  consider removing each call to rename_axis.
         timeseries_df = (
             pd.concat([self.timeseries_bucketed, other.timeseries_bucketed])
             .sort_index()
             .rename_axis(columns=PdFields.VARIABLE)
         )
-        # TODO(tom): rename_axis can likely be removed with Pandas 1.2 because concat preserves the
-        #  names passed to it.
         static_df = (
             pd.concat([self.static, other.static])
             .sort_index()
@@ -1604,8 +1604,6 @@ def make_source_url_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     return ds_in.append_tag_df(source_url)
 
 
-T_SERIES_OR_DATAFRAME = TypeVar("T_SERIES_OR_DATAFRAME", pd.Series, pd.DataFrame)
-
 # eq=False because instances are large and we want to compare by id instead of value
 @final
 @dataclasses.dataclass(frozen=True, eq=False)
@@ -1624,9 +1622,7 @@ class MultiRegionDatasetDelta:
         """A dataset containing time series, tags and static values in old but not new."""
         # removed is currently calculated when accessed but it may make sense to move this to
         # `make` depending on future uses of MultiRegionDatasetDelta.
-        def removed(
-            old: T_SERIES_OR_DATAFRAME, new: T_SERIES_OR_DATAFRAME
-        ) -> T_SERIES_OR_DATAFRAME:
+        def removed(old: FrameOrSeries, new: FrameOrSeries) -> FrameOrSeries:
             removed_mask = ~old.index.isin(new.index)
             return old.loc[removed_mask]
 
