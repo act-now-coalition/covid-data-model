@@ -1607,21 +1607,26 @@ def make_source_url_tags(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 # eq=False because instances are large and we want to compare by id instead of value
 @final
 @dataclasses.dataclass(frozen=True, eq=False)
-class MultiRegionDatasetDelta:
+class MultiRegionDatasetDiff:
     """Represents a delta/diff between two MultiRegionDataset objects."""
 
     old: MultiRegionDataset
     new: MultiRegionDataset
 
     @staticmethod
-    def make(*, old, new) -> "MultiRegionDatasetDelta":
-        return MultiRegionDatasetDelta(old=old, new=new)
+    def make(*, old, new) -> "MultiRegionDatasetDiff":
+        return MultiRegionDatasetDiff(old=old, new=new)
 
     @property
     def timeseries_removed(self) -> MultiRegionDataset:
-        """A dataset containing time series, tags and static values in old but not new."""
+        """A dataset containing time series, tags and static values in old but not new.
+
+        A time series is considered removed if it has at least one real (not-NA) value in
+        `old` and no real values (all NA) in `new`. Changes in the set of dates with a real value
+        and changes in the values themselves are ignored.
+        """
         # removed is currently calculated when accessed but it may make sense to move this to
-        # `make` depending on future uses of MultiRegionDatasetDelta.
+        # `make` depending on future uses of MultiRegionDatasetDiff.
         def removed(old: FrameOrSeries, new: FrameOrSeries) -> FrameOrSeries:
             removed_mask = ~old.index.isin(new.index)
             return old.loc[removed_mask]

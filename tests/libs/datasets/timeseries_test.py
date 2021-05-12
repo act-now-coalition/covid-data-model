@@ -2012,7 +2012,7 @@ def test_delta_timeseries_removed():
     data_la_b = {region_la: {CommonFields.CASES: {DemographicBucket.ALL: [5, 10]}}}
     ds_b = test_helpers.build_dataset({**data_tx, **data_la_b})
 
-    delta = timeseries.MultiRegionDatasetDelta(old=ds_a, new=ds_b)
+    delta = timeseries.MultiRegionDatasetDiff(old=ds_a, new=ds_b)
     ds_out = delta.timeseries_removed
 
     ds_expected = test_helpers.build_dataset({region_la: {CommonFields.CASES: {age_40s: [1, 2]}}})
