@@ -1979,13 +1979,19 @@ def test_static_long():
     ds = test_helpers.build_dataset(
         {},
         static_by_region_then_field_name={
-            region_fips: {CommonFields.COUNTY: "Bar County", m1: 4},
+            region_fips: {CommonFields.CAN_LOCATION_PAGE_URL: "http://can.do", m1: 4},
             region_cbsa: {CommonFields.CASES: 3},
         },
     )
-    assert ds.static_long.at[region_fips.location_id, CommonFields.COUNTY] == "Bar County"
-    assert ds.static_long.at[region_fips.location_id, m1] == 4
-    assert ds.static_long.at[region_cbsa.location_id, CommonFields.CASES] == 3
+    # Use loc[level0].at[level1] as work-around for
+    # https://github.com/pandas-dev/pandas/issues/26989
+    # TODO(tom): Change to `at[level0, level1]` after upgrading to Pandas >=1.1
+    assert (
+        ds.static_long.loc[region_fips.location_id].at[CommonFields.CAN_LOCATION_PAGE_URL]
+        == "http://can.do"
+    )
+    assert ds.static_long.loc[region_fips.location_id].at[m1] == 4
+    assert ds.static_long.loc[region_cbsa.location_id].at[CommonFields.CASES] == 3
 
     ds_empty_static = timeseries.MultiRegionDataset.new_without_timeseries()
     assert ds_empty_static.static_long.empty
