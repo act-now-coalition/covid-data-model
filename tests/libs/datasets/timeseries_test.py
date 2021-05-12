@@ -72,6 +72,7 @@ def test_remove_padded_nans(include_na_at_end):
 
 
 def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Path):
+    # TODO(tom): Replace csv with test_helpers builders and uncomment assert in add_fips_static_df
     ts_df = read_csv_and_index_fips_date(
         "fips,county,aggregate_level,date,m1,m2\n"
         "97111,Bar County,county,2020-04-02,2,\n"
@@ -1969,3 +1970,45 @@ def test_variables():
 
 def test_variables_empty():
     assert timeseries.MultiRegionDataset.new_without_timeseries().variables.to_list() == []
+
+
+def test_static_long():
+    region_cbsa = Region.from_cbsa_code("10100")
+    region_fips = Region.from_fips("97111")
+    m1 = FieldName("m1")
+    ds = test_helpers.build_dataset(
+        {},
+        static_by_region_then_field_name={
+            region_fips: {CommonFields.COUNTY: "Bar County", m1: 4},
+            region_cbsa: {CommonFields.CASES: 3},
+        },
+    )
+    assert ds.static_long.at[region_fips.location_id, CommonFields.COUNTY] == "Bar County"
+    assert ds.static_long.at[region_fips.location_id, m1] == 4
+    assert ds.static_long.at[region_cbsa.location_id, CommonFields.CASES] == 3
+
+    ds_empty_static = timeseries.MultiRegionDataset.new_without_timeseries()
+    assert ds_empty_static.static_long.empty
+    assert ds_empty_static.static_long.name == ds.static_long.name
+    assert ds_empty_static.static_long.index.names == ds.static_long.index.names
+
+
+def test_delta_timeseries_removed():
+    # This tests time series being removed only, not tags or static values.
+    region_tx = Region.from_state("TX")
+    region_la = Region.from_fips("06037")
+    age_40s = DemographicBucket("age:40-49")
+    data_tx = {region_tx: {CommonFields.CASES: [10, 20]}}
+    data_la_a = {region_la: {CommonFields.CASES: {DemographicBucket.ALL: [5, 10], age_40s: [1, 2]}}}
+
+    ds_a = test_helpers.build_dataset({**data_tx, **data_la_a})
+
+    data_la_b = {region_la: {CommonFields.CASES: {DemographicBucket.ALL: [5, 10]}}}
+    ds_b = test_helpers.build_dataset({**data_tx, **data_la_b})
+
+    delta = timeseries.MultiRegionDatasetDelta(old=ds_a, new=ds_b)
+    ds_out = delta.timeseries_removed
+
+    ds_expected = test_helpers.build_dataset({region_la: {CommonFields.CASES: {age_40s: [1, 2]}}})
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
