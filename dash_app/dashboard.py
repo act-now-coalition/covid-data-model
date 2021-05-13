@@ -277,7 +277,7 @@ def _init_callbacks(dash_app, repo: RepoWrapper):
         Output(Id.DATASET_PAGE_CONTENT, "children"), [Input(Id.DATASETS_DROPDOWN, "value")]
     )
     def update_dataset_page_content(datasets_dropdown_value):
-        dashboard_file = DashboardFile(datasets_dropdown_value)
+        dashboard_file = DashboardFile.get(datasets_dropdown_value)
         per_timeseries_stats = repo.get_stats(dashboard_file)
         region_df = region_table(per_timeseries_stats)
         if region_df.index.empty:
@@ -352,7 +352,7 @@ def _init_callbacks(dash_app, repo: RepoWrapper):
         prevent_initial_call=True,
     )
     def update_regions_table_variables(variable_dropdown_value, datasets_dropdown_value):
-        per_timeseries_stats = repo.get_stats(DashboardFile(datasets_dropdown_value))
+        per_timeseries_stats = repo.get_stats(DashboardFile.get(datasets_dropdown_value))
         if variable_dropdown_value == "all":
             selected_var_stats = per_timeseries_stats
         else:
@@ -372,7 +372,7 @@ def _init_callbacks(dash_app, repo: RepoWrapper):
         pivot_table_presets_dropdown_value, datasets_dropdown_value
     ):
         """Make a new pivot table according to ..."""
-        per_timeseries_stats = repo.get_stats(DashboardFile(datasets_dropdown_value))
+        per_timeseries_stats = repo.get_stats(DashboardFile.get(datasets_dropdown_value))
         preset = TimeSeriesPivotTablePreset.get_by_btn_id(pivot_table_presets_dropdown_value)
         # Each PivotTable needs a unique id as a work around for
         # https://github.com/plotly/dash-pivottable/issues/10
@@ -395,7 +395,7 @@ def _init_callbacks(dash_app, repo: RepoWrapper):
         prevent_initial_call=False,
     )
     def update_figure(selected_row_ids, variable_dropdown_value, datasets_dropdown_value):
-        per_timeseries_stats = repo.get_stats(DashboardFile(datasets_dropdown_value))
+        per_timeseries_stats = repo.get_stats(DashboardFile.get(datasets_dropdown_value))
         ds = per_timeseries_stats.dataset
         selected_row_id = more_itertools.one(selected_row_ids)
         assert isinstance(selected_row_id, str)
