@@ -64,6 +64,9 @@ TEST_COMBINED_STATIC_CSV_PATH = pathlib.Path(
     str(TEST_COMBINED_WIDE_DATES_CSV_PATH).replace("-wide-dates.csv", "-static.csv")
 )
 
+MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH = DATA_DIRECTORY / "manual_filter_removed-wide-dates.csv"
+MANUAL_FILTER_REMOVED_STATIC_CSV_PATH = DATA_DIRECTORY / "manual_filter_removed-static.csv"
+
 
 class AggregationLevel(enum.Enum):
     COUNTRY = "country"
