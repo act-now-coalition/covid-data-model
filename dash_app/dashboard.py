@@ -1,5 +1,6 @@
 import dataclasses
 import enum
+from functools import lru_cache
 from typing import List
 from typing import Mapping
 
@@ -13,6 +14,7 @@ import more_itertools
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_fields
+from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import PdFields
 from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from dash.dependencies import Input
@@ -65,9 +67,21 @@ class Id(ValueAsStrMixin, str, enum.Enum):
 
 
 @enum.unique
-class DashboardFile(ValueAsStrMixin, str, enum.Enum):
-    COMBINED_DATA = "Combined data"
-    MANUAL_FILTER_REMOVED = "Manual filter removed timeseries"
+class DashboardFile(GetByValueMixin, str, enum.Enum):
+    # Define a custom __new__ so DashboardFile instances use 'filename' as their value and have a
+    # description.
+    def __new__(cls, filename, description):
+        # Initialize super class (str) with filename.
+        obj = super().__new__(cls, filename)
+        # _value_ is a special name of enum. Set it here so enum code doesn't attempt to call
+        # str(filename, description).
+        obj._value_ = filename
+        obj.description = description
+        obj.filename = filename
+        return obj
+
+    COMBINED_DATA = "multiregion-wide-date", "Combined data"
+    MANUAL_FILTER_REMOVED = "manual_filter_removed", "Manual filter removed timeseries"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -88,18 +102,19 @@ class RepoWrapper:
 
         return RepoWrapper(repo, commit_str, combined_datasets.load_us_timeseries_dataset())
 
+    @lru_cache(None)
     def get_stats(self, dataset_name: DashboardFile) -> timeseries_stats.PerTimeseries:
         if dataset_name is DashboardFile.COMBINED_DATA:
-            ds = self._working_copy_dataset.get_subset(exclude_county_999=True)
+            dataset = self._working_copy_dataset.get_subset(exclude_county_999=True)
         elif dataset_name is DashboardFile.MANUAL_FILTER_REMOVED:
-            ds = timeseries.MultiRegionDataset.from_wide_dates_csv(
+            dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
                 dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH
             ).add_static_csv_file(dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH)
         else:
             raise ValueError(f"Bad {dataset_name}")
 
-        ds = timeseries.make_source_url_tags(ds)
-        return timeseries_stats.PerTimeseries.make(ds)
+        dataset = timeseries.make_source_url_tags(dataset)
+        return timeseries_stats.PerTimeseries.make(dataset)
 
 
 @enum.unique
@@ -155,8 +170,9 @@ class TimeSeriesPivotTablePreset(enum.Enum):
 
 def region_table(stats: timeseries_stats.PerTimeseries) -> pd.DataFrame:
     dataset = stats.dataset
+    # `geo_data` includes all locations in stats. `static` may have only a subset of locations.
     static_and_geo_data = dataset.geo_data.join(dataset.static)
-    # Use an index to preserve the order while keeping only columns actually present.
+    # Use an index to preserve the order while keeping only columns actually in static_and_geo_data.
     static_columns = pd.Index(
         [
             CommonFields.LOCATION_ID,
@@ -205,14 +221,15 @@ def init(server):
 
     dash_app.layout = html.Div(
         [
-            # TODO(tom): Add a mechanism to modify the URL
+            # TODO(tom): Add a mechanism to modify the URL, perhaps using
+            #  https://dash-bootstrap-components.opensource.faculty.ai/examples/simple-sidebar/
             dcc.Location(id=Id.URL, refresh=False),
             html.H1(children="CAN Data Pipeline Dashboard"),
             html.P(repo.head_commit_str),
             dropdown_select(
                 "Select dataset: ",
                 id=Id.DATASETS_DROPDOWN,
-                options=[{"label": n, "value": n} for n in DashboardFile],
+                options=[{"label": n.description, "value": n.filename} for n in DashboardFile],
             ),
             html.Div(id=Id.DATASET_PAGE_CONTENT),
         ]
@@ -260,7 +277,8 @@ def _init_callbacks(dash_app, repo: RepoWrapper):
         Output(Id.DATASET_PAGE_CONTENT, "children"), [Input(Id.DATASETS_DROPDOWN, "value")]
     )
     def update_dataset_page_content(datasets_dropdown_value):
-        per_timeseries_stats = repo.get_stats(DashboardFile(datasets_dropdown_value))
+        dashboard_file = DashboardFile(datasets_dropdown_value)
+        per_timeseries_stats = repo.get_stats(dashboard_file)
         region_df = region_table(per_timeseries_stats)
         if region_df.index.empty:
             raise ValueError("Unexpected empty dataset")
