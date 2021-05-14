@@ -50,6 +50,8 @@ def _remove_prefix(text, prefix):
 
 @enum.unique
 class Id(ValueAsStrMixin, str, enum.Enum):
+    """Dash component ids. Use members of this enum as the string id."""
+
     def _generate_next_value_(name, start, count, last_values):  # pylint: disable=no-self-argument
         """Returns the name of the enum as it's value"""
         return name
@@ -61,13 +63,14 @@ class Id(ValueAsStrMixin, str, enum.Enum):
     REGION_TAG_TABLE = enum.auto()
     DATATABLE_REGIONS = enum.auto()
     DATASETS_DROPDOWN = enum.auto()
-    # TODO(tom): Add remained of dash ids to this enum.
     REGIONS_VARIABLE_DROPDOWN = enum.auto()
     PIVOT_TABLE_PRESETS_DROPDOWN = enum.auto()
 
 
 @enum.unique
 class DashboardFile(GetByValueMixin, str, enum.Enum):
+    """Enum of files that may be displayed in the dashboard."""
+
     # Define a custom __new__ so DashboardFile instances use 'filename' as their value and have a
     # description.
     def __new__(cls, filename, description):
