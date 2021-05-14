@@ -358,6 +358,8 @@ def test_touched_subset():
     ds_in = test_helpers.build_default_region_dataset(
         {CommonFields.CASES: TimeseriesLiteral([1, 2], source=source), **other_metrics}
     )
+    # Add 2 known issue tags for the same time series and check that touched_subset still produces
+    # the expected output.
     known_issue_1 = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE, disclaimer="foo", date="2021-04-01"
     )
