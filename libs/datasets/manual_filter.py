@@ -67,9 +67,6 @@ class Config(pydantic.BaseModel):
     filters: List[Filter]
 
 
-CONFIG = Config(filters=[])
-
-
 def _partition_by_fields(
     ts_in: pd.DataFrame, fields: List[CommonFields]
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -127,9 +124,7 @@ def drop_observations(
         )
 
 
-def run(
-    dataset: timeseries.MultiRegionDataset, config: Config = CONFIG
-) -> timeseries.MultiRegionDataset:
+def run(dataset: timeseries.MultiRegionDataset, config: Config) -> timeseries.MultiRegionDataset:
     for filter_ in config.filters:
         assert filter_.tag.TAG_TYPE in _EXPECTED_TYPES
         filtered_dataset, passed_dataset = dataset.partition_by_region(
@@ -162,15 +157,16 @@ def touched_subset(
     # Expected tags do not appear in the input
     assert ds_in.tag.index.unique(taglib.TagField.TYPE).intersection(_EXPECTED_TYPES).empty
     tag_mask = ds_out.tag.index.get_level_values(taglib.TagField.TYPE).isin(_EXPECTED_TYPES)
+    # touch_index identifies the subset of time series rows that have an _EXPECTED_TYPES tag.
     touch_index = ds_out.tag.index[tag_mask].droplevel(taglib.TagField.TYPE).unique()
     wide_dates_in_df = ds_in.timeseries_bucketed_wide_dates
+    assert wide_dates_in_df.index.names == touch_index.names
+    assert touch_index.isin(wide_dates_in_df.index).all()
     # Get all ds_in.tag associated with any time series in touch_index
     tag_in = ds_in.tag.loc[ds_in.tag.index.droplevel(taglib.TagField.TYPE).isin(touch_index)]
     # Get only the ds_out.tag where the type is _EXPECTED_TYPES. These are the tags added by
     # `run` and not in ds_in.tag.
     tag_out = ds_out.tag.loc[tag_mask]
-    assert wide_dates_in_df.index.names == touch_index.names
-    assert touch_index.isin(wide_dates_in_df.index).all()
     return (
         timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(
             wide_dates_in_df.reindex(touch_index), bucketed=True
