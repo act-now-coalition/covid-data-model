@@ -149,6 +149,14 @@ def test_manual_filter_field_groups():
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
 
+    ds_out_touched = manual_filter.touched_subset(ds_in, ds_out)
+    ds_expected_touched = test_helpers.build_default_region_dataset(
+        {CommonFields.DEATHS: TimeseriesLiteral([1, 2, 3], annotation=[tag_expected])},
+        start_date="2021-03-14",
+        region=region_included,
+    )
+    test_helpers.assert_dataset_like(ds_out_touched, ds_expected_touched)
+
 
 def test_manual_filter_per_bucket_tag():
     region = Region.from_fips("40031")
@@ -307,9 +315,9 @@ def test_region_overrides_transform_and_filter_infection_rate():
 
 def test_block_removes_existing_source_tag():
     source = taglib.Source("TestSource")
-    other_metris = {CommonFields.DEATHS: [0, 0]}
+    other_metrics = {CommonFields.DEATHS: [0, 0]}
     ds_in = test_helpers.build_default_region_dataset(
-        {CommonFields.CASES: TimeseriesLiteral([1, 2], source=source), **other_metris}
+        {CommonFields.CASES: TimeseriesLiteral([1, 2], source=source), **other_metrics}
     )
 
     config = manual_filter.Config(
@@ -331,8 +339,45 @@ def test_block_removes_existing_source_tag():
     ds_expected = test_helpers.build_default_region_dataset(
         {
             CommonFields.CASES: TimeseriesLiteral([None, None], annotation=[tag_expected]),
-            **other_metris,
+            **other_metrics,
         }
     )
 
     test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)
+
+    ds_touched = manual_filter.touched_subset(ds_in, ds_out)
+    ds_touched_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: TimeseriesLiteral([1, 2], source=source, annotation=[tag_expected])}
+    )
+    test_helpers.assert_dataset_like(ds_touched, ds_touched_expected)
+
+
+def test_touched_subset():
+    source = taglib.Source("TestSource")
+    other_metrics = {CommonFields.DEATHS: [0, 0]}
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: TimeseriesLiteral([1, 2], source=source), **other_metrics}
+    )
+    known_issue_1 = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE, disclaimer="foo", date="2021-04-01"
+    )
+    known_issue_2 = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE, disclaimer="foo", date="2021-04-02"
+    )
+    ds_out = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral(
+                [1, None], source=source, annotation=[known_issue_1, known_issue_2]
+            ),
+            **other_metrics,
+        }
+    )
+    ds_touched = manual_filter.touched_subset(ds_in, ds_out)
+    ds_touched_expected = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: TimeseriesLiteral(
+                [1, 2], source=source, annotation=[known_issue_1, known_issue_2]
+            )
+        }
+    )
+    test_helpers.assert_dataset_like(ds_touched, ds_touched_expected)
