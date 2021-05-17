@@ -111,6 +111,8 @@ def update(
         timeseries_field_datasets, static_field_datasets
     )
     _logger.info("Finished combining datasets")
+    multiregion_dataset.to_compressed_pickle(dataset_utils.DATA_DIRECTORY / "combined-raw.pkl.gz")
+    _logger.info("Saved combined raw dataset")
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
     # need to remove CBSAs because they don't exist yet.
