@@ -33,10 +33,9 @@ def _get_index_level_as_series(df: pd.DataFrame, level: FieldName) -> pd.Series:
 class StatName(ValueAsStrMixin, str, enum.Enum):
     # Count of timeseries
     HAS_TIMESERIES = "has_timeseries"
-    # Count of URLs
-    HAS_URL = "has_url"
     ANNOTATION_COUNT = "annotation_count"
     BUCKET_ALL_COUNT = "bucket_all_count"
+    OBSERVATION_COUNT = "observation_count"
     # Count of each tag type
     CUMULATIVE_TAIL_TRUNCATED = TagType.CUMULATIVE_TAIL_TRUNCATED
     CUMULATIVE_LONG_TAIL_TRUNCATED = TagType.CUMULATIVE_LONG_TAIL_TRUNCATED
@@ -96,6 +95,8 @@ class PerTimeseries(Aggregated):
     """Instances of AggregatedStats where each row represents one timeseries. The index has many
     levels that are used by various groupby operations."""
 
+    dataset: timeseries.MultiRegionDataset
+
     def __post_init__(self):
         super().__post_init__()
         assert self.stats.index.names == _PER_TIMESERIES_INDEX_LEVELS
@@ -113,12 +114,6 @@ class PerTimeseries(Aggregated):
             .astype(int)
             .reindex(index=all_timeseries_index, fill_value=0)
         )
-        stat_map[StatName.HAS_URL] = (
-            ds.tag.loc[:, :, :, TagType.SOURCE_URL]
-            .notnull()
-            .astype(int)
-            .reindex(index=all_timeseries_index, fill_value=0)
-        )
         stat_map[StatName.ANNOTATION_COUNT] = (
             ds.tag.loc[:, :, :, timeseries.ANNOTATION_TAG_TYPES]
             .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET])
@@ -131,6 +126,12 @@ class PerTimeseries(Aggregated):
             )
             == DemographicBucket.ALL
         ).astype(int)
+        stat_map[StatName.OBSERVATION_COUNT] = (
+            ds.timeseries_bucketed_wide_dates.notnull()
+            .sum(1)
+            .astype(int)
+            .reindex(index=all_timeseries_index, fill_value=0)
+        )
         tag_count = (
             # This groupby(...).count() could be replaced by `tag.index.value_counts(sort=False)`
             # but value_count drops the index names.
@@ -179,13 +180,14 @@ class PerTimeseries(Aggregated):
             .set_index(stats.index)
         )
 
-        return PerTimeseries(stats=stats, source_type=source_type_set)
+        return PerTimeseries(stats=stats, source_type=source_type_set, dataset=ds)
 
     def _subset(self, field: FieldName, values: Collection) -> "PerTimeseries":
         assert field in self.stats.index.names
         return PerTimeseries(
             stats=_xs_or_empty(self.stats, values, field),
             source_type=_xs_or_empty(self.source_type, values, field),
+            dataset=self.dataset,
         )
 
     def subset_variables(self, variables: Collection[CommonFields]) -> "PerTimeseries":
@@ -209,6 +211,5 @@ class PerTimeseries(Aggregated):
         # The stats likely don't have a value for every region. Replace any NAs with 0 so that
         # subtracting them produces a real value.
         df = aggregated_by_location.stats.reindex(index=location_ids).fillna(0)
-        df["no_url_count"] = df[StatName.HAS_TIMESERIES] - df[StatName.HAS_URL]
         df["bucket_not_all"] = df[StatName.HAS_TIMESERIES] - df[StatName.BUCKET_ALL_COUNT]
         return df

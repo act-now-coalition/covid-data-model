@@ -55,14 +55,16 @@ REPO_ROOT = pathlib.Path(__file__).parent.parent.parent
 
 DATA_DIRECTORY = REPO_ROOT / "data"
 
-# TODO(tom): Clean up how the test-combined csv paths are passed around when removing
-#  DatasetPointer.
+# TODO(tom): Clean up how the wide-dates and static csv paths are passed around when removing
+#  DatasetPointer. See also enum `DashboardFile` in dashboard.py.
 TEST_COMBINED_WIDE_DATES_CSV_PATH = REPO_ROOT / pathlib.Path(
     "tests/data/test-combined-wide-dates.csv"
 )
 TEST_COMBINED_STATIC_CSV_PATH = pathlib.Path(
     str(TEST_COMBINED_WIDE_DATES_CSV_PATH).replace("-wide-dates.csv", "-static.csv")
 )
+MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH = DATA_DIRECTORY / "manual_filter_removed-wide-dates.csv"
+MANUAL_FILTER_REMOVED_STATIC_CSV_PATH = DATA_DIRECTORY / "manual_filter_removed-static.csv"
 
 
 class AggregationLevel(enum.Enum):
