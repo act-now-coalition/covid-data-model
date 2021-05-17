@@ -1,5 +1,4 @@
 import dataclasses
-import pickle
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -119,9 +118,15 @@ def update(
     region_overrides_config = manual_filter.transform_region_overrides(
         json.load(open(REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
     )
-    pickle.dump(multiregion_dataset, open("data/pre-filter.pkl", "wb"), protocol=4)
+    before_manual_filter = multiregion_dataset
     multiregion_dataset = manual_filter.run(multiregion_dataset, region_overrides_config)
-    pickle.dump(multiregion_dataset, open("data/post-filter.pkl", "wb"), protocol=4)
+    delta = timeseries.MultiRegionDatasetDiff.make(
+        old=before_manual_filter, new=multiregion_dataset
+    )
+    delta.timeseries_removed.write_to_wide_dates_csv(
+        pathlib.Path("data/manual_filter_removed-wide-dates.csv"),
+        pathlib.Path("data/manual_filter_removed-static.csv"),
+    )
 
     multiregion_dataset.print_stats("combined")
     multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)

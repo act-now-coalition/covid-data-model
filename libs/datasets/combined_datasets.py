@@ -145,9 +145,10 @@ CDCVaccinesCountiesDataset = datasource_regions(
     CDCVaccinesDataset, RegionMask(AggregationLevel.COUNTY)
 )
 
-CDCVaccinesStatesDataset = datasource_regions(
-    CDCVaccinesDataset, RegionMask(AggregationLevel.STATE)
+CDCVaccinesStatesAndNationDataset = datasource_regions(
+    CDCVaccinesDataset, [RegionMask(AggregationLevel.STATE), RegionMask(AggregationLevel.COUNTRY)]
 )
+
 
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
@@ -213,25 +214,25 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CDCVaccinesCountiesDataset,
         CANScraperStateProviders,
         CANScraperCountyProviders,
-        CDCVaccinesStatesDataset,
+        CDCVaccinesStatesAndNationDataset,
     ],
     CommonFields.VACCINES_ADMINISTERED: [
         CDCVaccinesCountiesDataset,
         CANScraperStateProviders,
         CANScraperCountyProviders,
-        CDCVaccinesStatesDataset,
+        CDCVaccinesStatesAndNationDataset,
     ],
     CommonFields.VACCINATIONS_INITIATED: [
         CDCVaccinesCountiesDataset,
         CANScraperStateProviders,
         CANScraperCountyProviders,
-        CDCVaccinesStatesDataset,
+        CDCVaccinesStatesAndNationDataset,
     ],
     CommonFields.VACCINATIONS_COMPLETED: [
         CDCVaccinesCountiesDataset,
         CANScraperStateProviders,
         CANScraperCountyProviders,
-        CDCVaccinesStatesDataset,
+        CDCVaccinesStatesAndNationDataset,
     ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [CANScraperStateProviders, CANScraperCountyProviders],
     CommonFields.VACCINATIONS_COMPLETED_PCT: [CANScraperStateProviders, CANScraperCountyProviders],
