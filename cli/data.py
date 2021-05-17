@@ -208,6 +208,24 @@ def aggregate_cbsa(output_path: pathlib.Path):
 
 
 @main.command(
+    short_help="Copy data from a gzipped pickle to wide dates CSV",
+    help="Copy data from a gzipped pickle with path ending ....pkl.gz to a CSV with \n"
+    "path argument ending ...-wide-dates.csv and ...-static.csv (derived from \n"
+    "argument).\n"
+    "Example: `data pickle-to-csv data/test.pkl.gz data/test-wide-dates.csv`",
+)
+@click.argument("pkl_gz_input", type=pathlib.Path)
+@click.argument("wide_dates_csv_output", type=pathlib.Path)
+def pickle_to_csv(pkl_gz_input: pathlib.Path, wide_dates_csv_output):
+    assert wide_dates_csv_output.name.endswith("-wide-dates.csv")
+    static_csv_output = pathlib.Path(
+        str(wide_dates_csv_output).replace("-wide-dates.csv", "-static.csv")
+    )
+    dataset = timeseries.MultiRegionDataset.from_compressed_pickle(pkl_gz_input)
+    dataset.write_to_wide_dates_csv(wide_dates_csv_output, static_csv_output)
+
+
+@main.command(
     help="Uncomment code that writes the `pre-agg` intermediate result in `data update` "
     "then use this command to test state to country aggregation."
 )
