@@ -120,10 +120,8 @@ def update(
     )
     before_manual_filter = multiregion_dataset
     multiregion_dataset = manual_filter.run(multiregion_dataset, region_overrides_config)
-    delta = timeseries.MultiRegionDatasetDiff.make(
-        old=before_manual_filter, new=multiregion_dataset
-    )
-    delta.timeseries_removed.write_to_wide_dates_csv(
+    manual_filter_touched = manual_filter.touched_subset(before_manual_filter, multiregion_dataset)
+    manual_filter_touched.write_to_wide_dates_csv(
         dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH,
         dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH,
     )
