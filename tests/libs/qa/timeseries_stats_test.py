@@ -57,18 +57,21 @@ def test_make_from_dataset():
     assert per_region.stats.at[region_tx.location_id, StatName.HAS_TIMESERIES] == 3
     assert per_region.stats.at[region_sf.location_id, StatName.ANNOTATION_COUNT] == 2
     assert per_region.stats.at[region_tx.location_id, StatName.ANNOTATION_COUNT] == 1
+    assert per_region.stats.at[region_tx.location_id, StatName.OBSERVATION_COUNT] == 8
+    assert per_region.stats.at[region_la.location_id, StatName.OBSERVATION_COUNT] == 2
 
     cases_by_level = per_timeseries.subset_variables([CommonFields.CASES]).aggregate(
         CommonFields.AGGREGATE_LEVEL
     )
     assert cases_by_level.stats.at[AggregationLevel.COUNTY.value, StatName.HAS_TIMESERIES] == 2
-    assert cases_by_level.stats.at[AggregationLevel.COUNTY.value, StatName.HAS_URL] == 1
+    assert cases_by_level.stats.at[AggregationLevel.COUNTY.value, StatName.SOURCE] == 1
     assert cases_by_level.stats.at[AggregationLevel.COUNTY.value, StatName.ANNOTATION_COUNT] == 2
 
     by_fieldgroup = per_timeseries.aggregate(timeseries_stats.FIELD_GROUP)
     assert by_fieldgroup.stats.at[FieldGroup.CASES_DEATHS, StatName.HAS_TIMESERIES] == 3
-    assert by_fieldgroup.stats.at[FieldGroup.CASES_DEATHS, StatName.HAS_URL] == 1
+    assert by_fieldgroup.stats.at[FieldGroup.CASES_DEATHS, StatName.SOURCE] == 1
     assert by_fieldgroup.stats.at[FieldGroup.CASES_DEATHS, StatName.ANNOTATION_COUNT] == 2
+    assert by_fieldgroup.stats.at[FieldGroup.VACCINES, StatName.OBSERVATION_COUNT] == 5
 
     assert not per_timeseries.stats_for_locations(dataset.location_ids).empty
     assert per_timeseries.pivottable_data

@@ -1,4 +1,8 @@
+import dataclasses
 import enum
+from functools import lru_cache
+from typing import List
+from typing import Mapping
 
 import dash
 import dash_core_components as dcc
@@ -10,6 +14,7 @@ import more_itertools
 import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic import common_fields
+from covidactnow.datapublic.common_fields import GetByValueMixin
 from covidactnow.datapublic.common_fields import PdFields
 from covidactnow.datapublic.common_fields import ValueAsStrMixin
 from dash.dependencies import Input
@@ -45,6 +50,8 @@ def _remove_prefix(text, prefix):
 
 @enum.unique
 class Id(ValueAsStrMixin, str, enum.Enum):
+    """Dash component ids. Use members of this enum as the string id."""
+
     def _generate_next_value_(name, start, count, last_values):  # pylint: disable=no-self-argument
         """Returns the name of the enum as it's value"""
         return name
@@ -55,7 +62,65 @@ class Id(ValueAsStrMixin, str, enum.Enum):
     REGION_GRAPH = enum.auto()
     REGION_TAG_TABLE = enum.auto()
     DATATABLE_REGIONS = enum.auto()
-    # TODO(tom): Add remained of dash ids to this enum.
+    DATASETS_DROPDOWN = enum.auto()
+    REGIONS_VARIABLE_DROPDOWN = enum.auto()
+    PIVOT_TABLE_PRESETS_DROPDOWN = enum.auto()
+
+
+@enum.unique
+class DashboardFile(GetByValueMixin, str, enum.Enum):
+    """Enum of files that may be displayed in the dashboard.
+
+    This is very de-coupled from the code that creates these files and will likely remain that
+    way unless/until DatasetPointer is cleaned up. See also the TODO in dataset_utils.py."""
+
+    # Define a custom __new__ so DashboardFile instances use 'file_key' as their value and have a
+    # description.
+    def __new__(cls, file_key, description):
+        # Initialize super class (str) with file_key.
+        obj = super().__new__(cls, file_key)
+        # _value_ is a special name of enum. Set it here so enum code doesn't attempt to call
+        # str(file_key, description).
+        obj._value_ = file_key
+        obj.description = description
+        obj.file_key = file_key
+        return obj
+
+    COMBINED_DATA = "multiregion-wide-date", "Combined data"
+    MANUAL_FILTER_REMOVED = "manual_filter_removed", "Manual filter removed timeseries"
+
+
+@dataclasses.dataclass(frozen=True)
+class RepoWrapper:
+    # If you read files using _repo watch out for a nasty API where streams must be read in
+    # order. See https://github.com/gitpython-developers/GitPython/issues/642#issuecomment-614588349
+    _repo: git.Repo
+    head_commit_str: str
+    _working_copy_dataset: timeseries.MultiRegionDataset
+
+    @staticmethod
+    def make() -> "RepoWrapper":
+        repo = git.Repo(dataset_utils.REPO_ROOT)
+        commit = repo.head.commit
+        commit_str = (
+            f"commit {commit.hexsha} at {commit.committed_datetime.isoformat()}: {commit.summary}"
+        )
+
+        return RepoWrapper(repo, commit_str, combined_datasets.load_us_timeseries_dataset())
+
+    @lru_cache(None)
+    def get_stats(self, dataset_name: DashboardFile) -> timeseries_stats.PerTimeseries:
+        if dataset_name is DashboardFile.COMBINED_DATA:
+            dataset = self._working_copy_dataset.get_subset(exclude_county_999=True)
+        elif dataset_name is DashboardFile.MANUAL_FILTER_REMOVED:
+            dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
+                dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH
+            ).add_static_csv_file(dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH)
+        else:
+            raise ValueError(f"Bad {dataset_name}")
+
+        dataset = timeseries.make_source_url_tags(dataset)
+        return timeseries_stats.PerTimeseries.make(dataset)
 
 
 @enum.unique
@@ -109,10 +174,11 @@ class TimeSeriesPivotTablePreset(enum.Enum):
         return f"pivot_table_{self._value_}"
 
 
-def region_table(
-    stats: timeseries_stats.PerTimeseries, dataset: timeseries.MultiRegionDataset
-) -> pd.DataFrame:
-    # Use an index to preserve the order while keeping only columns actually present.
+def region_table(stats: timeseries_stats.PerTimeseries) -> pd.DataFrame:
+    dataset = stats.dataset
+    # `geo_data` includes all locations in stats. `static` may have only a subset of locations.
+    static_and_geo_data = dataset.geo_data.join(dataset.static)
+    # Use an index to preserve the order while keeping only columns actually in static_and_geo_data.
     static_columns = pd.Index(
         [
             CommonFields.LOCATION_ID,
@@ -120,8 +186,8 @@ def region_table(
             CommonFields.STATE,
             CommonFields.POPULATION,
         ]
-    ).intersection(dataset.static_and_geo_data.columns)
-    regions = dataset.static_and_geo_data.loc[:, static_columns]
+    ).intersection(static_and_geo_data.columns)
+    regions = static_and_geo_data.loc[:, static_columns]
 
     regions = regions.join(stats.stats_for_locations(regions.index))
 
@@ -157,29 +223,45 @@ def init(server):
     dash_app.css.config.serve_locally = True
     dash_app.scripts.config.serve_locally = True
 
-    commit = git.Repo(dataset_utils.REPO_ROOT).head.commit
-    commit_str = (
-        f"commit {commit.hexsha} at {commit.committed_datetime.isoformat()}: {commit.summary}"
-    )
-
-    ds = combined_datasets.load_us_timeseries_dataset().get_subset(exclude_county_999=True)
-    ds = timeseries.make_source_url_tags(ds)
-
-    per_timeseries_stats = timeseries_stats.PerTimeseries.make(ds)
+    repo = RepoWrapper.make()
 
     dash_app.layout = html.Div(
         [
-            # TODO(tom): Add a mechanism to modify the URL
+            # TODO(tom): Add a mechanism to modify the URL, perhaps using
+            #  https://dash-bootstrap-components.opensource.faculty.ai/examples/simple-sidebar/
             dcc.Location(id=Id.URL, refresh=False),
             html.H1(children="CAN Data Pipeline Dashboard"),
-            html.P(commit_str),
+            html.P(repo.head_commit_str),
+            dropdown_select(
+                "Select dataset: ",
+                id=Id.DATASETS_DROPDOWN,
+                options=[{"label": n.description, "value": n.file_key} for n in DashboardFile],
+            ),
             html.Div(id=Id.DATASET_PAGE_CONTENT),
         ]
     )
 
-    _init_callbacks(dash_app, ds, per_timeseries_stats)
+    _init_callbacks(dash_app, repo)
 
     return dash_app.server
+
+
+def dropdown_select(text: str, *, id: Id, options: List[Mapping]) -> html.Div:
+    """Returns `text` next to a dropdown with options mappings having 'label' and 'value' keys."""
+    return html.Div(
+        [
+            html.Div(text),
+            dcc.Dropdown(
+                id=id,
+                options=options,
+                value=more_itertools.first(options)["value"],
+                clearable=False,
+                # From https://stackoverflow.com/a/55755387/341400
+                style=dict(width="40%"),
+            ),
+        ],
+        style=dict(display="flex"),
+    )
 
 
 def dash_table_from_data_frame(df: pd.DataFrame, *, id, **kwargs):
@@ -196,24 +278,29 @@ def dash_table_from_data_frame(df: pd.DataFrame, *, id, **kwargs):
     )
 
 
-def _init_callbacks(
-    dash_app,
-    ds: timeseries.MultiRegionDataset,
-    per_timeseries_stats: timeseries_stats.PerTimeseries,
-):
-    region_df = region_table(per_timeseries_stats, ds)
+def _init_callbacks(dash_app, repo: RepoWrapper):
+    @dash_app.callback(
+        Output(Id.DATASET_PAGE_CONTENT, "children"), [Input(Id.DATASETS_DROPDOWN, "value")]
+    )
+    def update_dataset_page_content(datasets_dropdown_value):
+        dashboard_file = DashboardFile.get(datasets_dropdown_value)
+        per_timeseries_stats = repo.get_stats(dashboard_file)
+        region_df = region_table(per_timeseries_stats)
+        if region_df.index.empty:
+            raise ValueError("Unexpected empty dataset")
 
-    @dash_app.callback(Output(Id.DATASET_PAGE_CONTENT, "children"), [Input(Id.URL, "pathname")])
-    def update_dataset_page_content(pathname):
-        # TODO(tom): Add a mechanism for changing the dataset, which will update this content.
         return html.Div(
             [
                 html.H2("Time series pivot table"),
-                html.P("Preset views:"),
-                *[
-                    html.Button(preset.description, id=preset.btn_id)
-                    for preset in TimeSeriesPivotTablePreset
-                ],
+                dropdown_select(
+                    "Preset views:",
+                    id=Id.PIVOT_TABLE_PRESETS_DROPDOWN,
+                    options=[
+                        {"label": preset.description, "value": preset.btn_id}
+                        for preset in TimeSeriesPivotTablePreset
+                    ],
+                ),
+                html.P(),
                 dcc.Markdown(
                     "Drag attributes to explore information about time series in "
                     "this dataset. See an animated demo in the [Dash Pivottable docs]("
@@ -226,19 +313,10 @@ def _init_callbacks(
                 # is clicked.
                 dcc.Loading(id=Id.PIVOT_TABLE_PARENT),
                 html.H2("Regions"),
-                html.Div(
-                    [
-                        html.Div("Select variables: "),
-                        dcc.Dropdown(
-                            id="regions-variable-dropdown",
-                            options=[{"label": n, "value": n} for n in VARIABLE_GROUPS],
-                            value="all",
-                            clearable=False,
-                            # From https://stackoverflow.com/a/55755387/341400
-                            style=dict(width="40%"),
-                        ),
-                    ],
-                    style=dict(display="flex"),
+                dropdown_select(
+                    "Select variables: ",
+                    id=Id.REGIONS_VARIABLE_DROPDOWN,
+                    options=[{"label": n, "value": n} for n in VARIABLE_GROUPS],
                 ),
                 dcc.Markdown(
                     "Select a region using the radio button at the left of this table to "
@@ -276,42 +354,32 @@ def _init_callbacks(
 
     @dash_app.callback(
         [Output(Id.DATATABLE_REGIONS, "data"), Output(Id.DATATABLE_REGIONS, "columns")],
-        [Input("regions-variable-dropdown", "value")],
+        [Input(Id.REGIONS_VARIABLE_DROPDOWN, "value"), Input(Id.DATASETS_DROPDOWN, "value")],
         prevent_initial_call=True,
     )
-    def update_regions_table_variables(variable_dropdown_value):
+    def update_regions_table_variables(variable_dropdown_value, datasets_dropdown_value):
+        per_timeseries_stats = repo.get_stats(DashboardFile.get(datasets_dropdown_value))
         if variable_dropdown_value == "all":
             selected_var_stats = per_timeseries_stats
         else:
             selected_variables = common_fields.FIELD_GROUP_TO_LIST_FIELDS[variable_dropdown_value]
             selected_var_stats = per_timeseries_stats.subset_variables(selected_variables)
 
-        region_df = region_table(selected_var_stats, ds)
+        region_df = region_table(selected_var_stats)
         columns = [{"name": i, "id": i} for i in region_df.columns if i != "id"]
         data = region_df.to_dict("records")
         return data, columns
 
     @dash_app.callback(
         Output(Id.PIVOT_TABLE_PARENT, "children"),
-        [Input(preset.btn_id, "n_clicks") for preset in TimeSeriesPivotTablePreset],
+        [Input(Id.PIVOT_TABLE_PRESETS_DROPDOWN, "value"), Input(Id.DATASETS_DROPDOWN, "value"),],
     )
-    def time_series_pivot_table_preset_btn_clicked(*inputs_ignored):
-        """Make a new pivot table according to the most recently clicked button.
-
-        We can't have a callback function for each button because
-        https://dash.plotly.com/callback-gotchas "A component/property pair can only be the Output
-        of one callback"."""
-
-        # From https://dash.plotly.com/advanced-callbacks "Determining which Input has fired"
-        ctx = dash.callback_context
-        if not ctx.triggered:
-            # Use the first as the default when page is loaded.
-            preset = more_itertools.first(TimeSeriesPivotTablePreset)
-        else:
-            preset = TimeSeriesPivotTablePreset.get_by_btn_id(
-                ctx.triggered[0]["prop_id"].split(".")[0]
-            )
-
+    def time_series_pivot_table_preset_btn_clicked(
+        pivot_table_presets_dropdown_value, datasets_dropdown_value
+    ):
+        """Make a new pivot table when the table preset or dataset dropdown is changed."""
+        per_timeseries_stats = repo.get_stats(DashboardFile.get(datasets_dropdown_value))
+        preset = TimeSeriesPivotTablePreset.get_by_btn_id(pivot_table_presets_dropdown_value)
         # Each PivotTable needs a unique id as a work around for
         # https://github.com/plotly/dash-pivottable/issues/10
         return dash_pivottable.PivotTable(
@@ -327,14 +395,20 @@ def _init_callbacks(
         [Output(Id.REGION_GRAPH, "figure"), Output(Id.REGION_TAG_TABLE, "data")],
         [
             Input(Id.DATATABLE_REGIONS, "selected_row_ids"),
-            Input("regions-variable-dropdown", "value"),
+            Input(Id.REGIONS_VARIABLE_DROPDOWN, "value"),
+            Input(Id.DATASETS_DROPDOWN, "value"),
         ],
         prevent_initial_call=False,
     )
-    def update_figure(selected_row_ids, variable_dropdown_value):
+    def update_figure(selected_row_ids, variable_dropdown_value, datasets_dropdown_value):
+        per_timeseries_stats = repo.get_stats(DashboardFile.get(datasets_dropdown_value))
+        ds = per_timeseries_stats.dataset
         selected_row_id = more_itertools.one(selected_row_ids)
         assert isinstance(selected_row_id, str)
-        one_region = ds.get_one_region(pipeline.Region.from_location_id(selected_row_id))
+        try:
+            one_region = ds.get_one_region(pipeline.Region.from_location_id(selected_row_id))
+        except timeseries.RegionLatestNotFound:
+            return dash.no_update, dash.no_update
         interesting_ts = one_region.data.set_index(CommonFields.DATE).select_dtypes(
             include="number"
         )

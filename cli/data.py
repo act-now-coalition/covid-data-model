@@ -124,8 +124,8 @@ def update(
         old=before_manual_filter, new=multiregion_dataset
     )
     delta.timeseries_removed.write_to_wide_dates_csv(
-        pathlib.Path("data/manual_filter_removed-wide-dates.csv"),
-        pathlib.Path("data/manual_filter_removed-static.csv"),
+        dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH,
+        dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH,
     )
 
     multiregion_dataset.print_stats("combined")
