@@ -69,18 +69,21 @@ class Id(ValueAsStrMixin, str, enum.Enum):
 
 @enum.unique
 class DashboardFile(GetByValueMixin, str, enum.Enum):
-    """Enum of files that may be displayed in the dashboard."""
+    """Enum of files that may be displayed in the dashboard.
 
-    # Define a custom __new__ so DashboardFile instances use 'filename' as their value and have a
+    This is very de-coupled from the code that creates these files and will likely remain that
+    way unless/until DatasetPointer is cleaned up. See also the TODO in dataset_utils.py."""
+
+    # Define a custom __new__ so DashboardFile instances use 'file_key' as their value and have a
     # description.
-    def __new__(cls, filename, description):
-        # Initialize super class (str) with filename.
-        obj = super().__new__(cls, filename)
+    def __new__(cls, file_key, description):
+        # Initialize super class (str) with file_key.
+        obj = super().__new__(cls, file_key)
         # _value_ is a special name of enum. Set it here so enum code doesn't attempt to call
-        # str(filename, description).
-        obj._value_ = filename
+        # str(file_key, description).
+        obj._value_ = file_key
         obj.description = description
-        obj.filename = filename
+        obj.file_key = file_key
         return obj
 
     COMBINED_DATA = "multiregion-wide-date", "Combined data"
@@ -89,14 +92,14 @@ class DashboardFile(GetByValueMixin, str, enum.Enum):
 
 @dataclasses.dataclass(frozen=True)
 class RepoWrapper:
+    # If you read files using _repo watch out for a nasty API where streams must be read in
+    # order. See https://github.com/gitpython-developers/GitPython/issues/642#issuecomment-614588349
     _repo: git.Repo
     head_commit_str: str
     _working_copy_dataset: timeseries.MultiRegionDataset
 
     @staticmethod
     def make() -> "RepoWrapper":
-        # Add odbt=git.db.GitDB if there are problems reading files from git. See
-        # https://github.com/gitpython-developers/GitPython/issues/642#issuecomment-618117030
         repo = git.Repo(dataset_utils.REPO_ROOT)
         commit = repo.head.commit
         commit_str = (
@@ -232,7 +235,7 @@ def init(server):
             dropdown_select(
                 "Select dataset: ",
                 id=Id.DATASETS_DROPDOWN,
-                options=[{"label": n.description, "value": n.filename} for n in DashboardFile],
+                options=[{"label": n.description, "value": n.file_key} for n in DashboardFile],
             ),
             html.Div(id=Id.DATASET_PAGE_CONTENT),
         ]
@@ -374,7 +377,7 @@ def _init_callbacks(dash_app, repo: RepoWrapper):
     def time_series_pivot_table_preset_btn_clicked(
         pivot_table_presets_dropdown_value, datasets_dropdown_value
     ):
-        """Make a new pivot table according to ..."""
+        """Make a new pivot table when the table preset or dataset dropdown is changed."""
         per_timeseries_stats = repo.get_stats(DashboardFile.get(datasets_dropdown_value))
         preset = TimeSeriesPivotTablePreset.get_by_btn_id(pivot_table_presets_dropdown_value)
         # Each PivotTable needs a unique id as a work around for
