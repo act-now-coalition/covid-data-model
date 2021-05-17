@@ -276,11 +276,14 @@ def test_add_aggregate_level():
 
 
 def test_fips_not_in_geo_data_csv_raises():
-    with pytest.raises(KeyError):
-        ts_df = read_csv_and_index_fips_date(
-            "fips,date,m1,m2\n" "98789,2020-04-02,2,\n"
-        ).reset_index()
-        timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
+    df = test_helpers.read_csv_str(
+        "       location_id,       date,       cases\n"
+        "iso1:us#fips:06010, 2020-04-01,         100\n",
+        skip_spaces=True,
+    )
+
+    with pytest.raises(AssertionError):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
 
 
 def test_append_regions():

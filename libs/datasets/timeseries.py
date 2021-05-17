@@ -61,6 +61,9 @@ from libs.pipeline import RegionMaskOrRegion
 _log = structlog.get_logger()
 
 
+NO_LOCATION_ID_FOR_FIPS = "No location_id found for FIPS"
+
+
 # Fields used as panda MultiIndex levels when tags are represented in a pd.Series
 _TAG_INDEX_FIELDS = [
     TagField.LOCATION_ID,
@@ -241,13 +244,14 @@ def _add_location_id(df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.copy()
     df[CommonFields.LOCATION_ID] = df[CommonFields.FIPS].map(dataset_utils.get_fips_to_location())
-    # Missing values are mapped to NaN but we want it to raise. There doesn't seem to be a better
-    # work-around at https://github.com/pandas-dev/pandas/issues/14210
-    if df[CommonFields.LOCATION_ID].isna().any():
-        raise KeyError(
-            f"No location_id found for "
-            f"{df.loc[df[CommonFields.LOCATION_ID].isna(), CommonFields.FIPS].value_counts()}"
+    missing_location_id = df[CommonFields.LOCATION_ID].isna()
+    if missing_location_id.any():
+        _log.warn(
+            NO_LOCATION_ID_FOR_FIPS,
+            fips=df.loc[missing_location_id, CommonFields.FIPS].value_counts(),
         )
+        df = df.loc[~missing_location_id, :]
+
     return df
 
 
