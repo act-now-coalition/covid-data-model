@@ -252,6 +252,17 @@ def run_population_filter(output_path: pathlib.Path):
 
 @main.command()
 @click.argument("output_path", type=pathlib.Path)
+def write_combined_datasets(output_path: pathlib.Path):
+    log = structlog.get_logger()
+    log.info("Loading")
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    log.info("Writing")
+    us_timeseries.to_compressed_pickle(output_path)
+    log.info("Done")
+
+
+@main.command()
+@click.argument("output_path", type=pathlib.Path)
 def run_bad_tails_filter(output_path: pathlib.Path):
     us_dataset = combined_datasets.load_us_timeseries_dataset()
     log = structlog.get_logger()

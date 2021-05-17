@@ -21,6 +21,7 @@ from functools import lru_cache
 from itertools import chain
 from collections import defaultdict
 
+import compress_pickle
 import more_itertools
 from covidactnow.datapublic import common_fields
 from covidactnow.datapublic.common_fields import CommonFields
@@ -523,6 +524,23 @@ class MultiRegionDataset:
         self.__default_init__(  # pylint: disable=E1101
             timeseries_bucketed=timeseries_bucketed, **kwargs,
         )
+
+    def __getstate__(self):
+        return {
+            "timeseries_bucketed_long": self.timeseries_bucketed_long,
+            "static": self.static,
+            "tag": self.tag,
+        }
+
+    def __setstate__(self, state):
+        # Work around frozen using object.__setattr__. See https://bugs.python.org/issue36424
+        object.__setattr__(
+            self,
+            "timeseries_bucketed",
+            state["timeseries_bucketed_long"].unstack(PdFields.VARIABLE),
+        )
+        object.__setattr__(self, "static", state["static"])
+        object.__setattr__(self, "tag", state["tag"])
 
     @cached_property
     def timeseries(self) -> pd.DataFrame:
@@ -1266,6 +1284,17 @@ class MultiRegionDataset:
         if not self.provenance.empty:
             provenance_path = str(path).replace(".csv", "-provenance.csv")
             self.provenance.sort_index().rename(PdFields.PROVENANCE).to_csv(provenance_path)
+
+    def to_compressed_pickle(self, path: pathlib.Path):
+        assert path.name.endswith(".pkl.gz")
+        compress_pickle.dump(
+            self, path, compression="gzip", set_default_extension=False, compresslevel=4
+        )
+
+    @staticmethod
+    def from_compressed_pickle(path: pathlib.Path) -> "MultiRegionDataset":
+        assert path.name.endswith(".pkl.gz")
+        return compress_pickle.load(path, compression="gzip", set_default_extension=False)
 
     def write_to_dataset_pointer(self, pointer: dataset_pointer.DatasetPointer):
         """Writes `self` to files referenced by `pointer`."""
