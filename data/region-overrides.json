@@ -53,6 +53,27 @@
       "region": "AL",
       "context": "https://trello.com/c/SQ6I2HiO/1357-outlier-in-alabama-state-county-cases-day",
       "start_date": "2021-05-14"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "25001",
+      "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose",
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "25007",
+      "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose",
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "25019",
+      "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose",
     }
   ]
 }
