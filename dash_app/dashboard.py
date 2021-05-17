@@ -88,6 +88,7 @@ class DashboardFile(GetByValueMixin, str, enum.Enum):
 
     COMBINED_DATA = "multiregion-wide-date", "Combined data"
     MANUAL_FILTER_REMOVED = "manual_filter_removed", "Manual filter removed timeseries"
+    COMBINED_RAW = "combined-raw", "Combined data, raw from datasources"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -116,6 +117,10 @@ class RepoWrapper:
             dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
                 dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH
             ).add_static_csv_file(dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH)
+        elif dataset_name is DashboardFile.COMBINED_RAW:
+            dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
+                dataset_utils.DATA_DIRECTORY / "combined-raw.pkl.gz"
+            )
         else:
             raise ValueError(f"Bad {dataset_name}")
 

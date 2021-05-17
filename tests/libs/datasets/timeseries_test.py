@@ -1,9 +1,9 @@
-import dataclasses
 import datetime
 import io
 import pathlib
 import pickle
 
+import compress_pickle
 import pytest
 import pandas as pd
 import numpy as np
@@ -2018,3 +2018,15 @@ def test_delta_timeseries_removed():
     ds_expected = test_helpers.build_dataset({region_la: {CommonFields.CASES: {age_40s: [1, 2]}}})
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_pickle_test_dataset_size(tmp_path: pathlib.Path):
+    pkl_path = tmp_path / "testfile.pkl.gz"
+    test_dataset = test_helpers.load_test_dataset()
+    test_dataset.get_timeseries_not_bucketed_wide_dates(CommonFields.CASES)
+    test_dataset.to_compressed_pickle(pkl_path)
+    assert pkl_path.stat().st_size < 480_000
+
+    loaded_dataset = timeseries.MultiRegionDataset.from_compressed_pickle(pkl_path)
+
+    test_helpers.assert_dataset_like(test_dataset, loaded_dataset)

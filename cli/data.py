@@ -111,6 +111,8 @@ def update(
         timeseries_field_datasets, static_field_datasets
     )
     _logger.info("Finished combining datasets")
+    multiregion_dataset.to_compressed_pickle(dataset_utils.DATA_DIRECTORY / "combined-raw.pkl.gz")
+    _logger.info("Saved combined raw dataset")
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
     # need to remove CBSAs because they don't exist yet.
@@ -248,6 +250,17 @@ def run_population_filter(output_path: pathlib.Path):
         us_timeseries, KNOWN_LOCATION_ID_WITHOUT_POPULATION, log
     )
     ts_out.to_csv(output_path)
+
+
+@main.command()
+@click.argument("output_path", type=pathlib.Path)
+def write_combined_datasets(output_path: pathlib.Path):
+    log = structlog.get_logger()
+    log.info("Loading")
+    us_timeseries = combined_datasets.load_us_timeseries_dataset()
+    log.info("Writing")
+    us_timeseries.to_compressed_pickle(output_path)
+    log.info("Done")
 
 
 @main.command()
