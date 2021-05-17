@@ -221,12 +221,15 @@ def _transform_one_override(
     else:
         raise ValueError(f"Invalid include: {include_str}")
 
+    start_date = override.get("start_date", None)
+
     return Filter(
         regions_included=regions_included,
         fields_included=_METRIC_TO_FIELDS[override["metric"]],
         internal_note=override["context"],
         public_note=override.get("disclaimer", ""),
         drop_observations=bool(override["blocked"]),
+        start_date=start_date,
     )
 
 
