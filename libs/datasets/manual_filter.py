@@ -23,11 +23,13 @@ from libs.pipeline import RegionMaskOrRegion
 _logger = structlog.getLogger()
 
 
+# Tag types expected to be produced by this module and only this module.
+_EXPECTED_TYPES = [taglib.TagType.KNOWN_ISSUE, taglib.TagType.KNOWN_ISSUE_NO_DATE]
+
+
 # The manual filter config is defined with pydantic instead of standard dataclasses to get support
 # for parsing from json, automatic conversion of fields to the expected type and avoiding the
 # dreaded "TypeError: non-default argument ...". pydantic reserves the field name 'fields'.
-
-
 class Filter(pydantic.BaseModel):
     regions_included: List[RegionMaskOrRegion]
     regions_excluded: Optional[List[RegionMaskOrRegion]] = None
@@ -63,9 +65,6 @@ class Filter(pydantic.BaseModel):
 
 class Config(pydantic.BaseModel):
     filters: List[Filter]
-
-
-CONFIG = Config(filters=[])
 
 
 def _partition_by_fields(
@@ -125,10 +124,9 @@ def drop_observations(
         )
 
 
-def run(
-    dataset: timeseries.MultiRegionDataset, config: Config = CONFIG
-) -> timeseries.MultiRegionDataset:
+def run(dataset: timeseries.MultiRegionDataset, config: Config) -> timeseries.MultiRegionDataset:
     for filter_ in config.filters:
+        assert filter_.tag.TAG_TYPE in _EXPECTED_TYPES
         filtered_dataset, passed_dataset = dataset.partition_by_region(
             filter_.regions_included, exclude=filter_.regions_excluded
         )
@@ -149,6 +147,33 @@ def run(
         dataset = filtered_dataset.append_regions(passed_dataset)
 
     return dataset
+
+
+def touched_subset(
+    ds_in: timeseries.MultiRegionDataset, ds_out: timeseries.MultiRegionDataset
+) -> timeseries.MultiRegionDataset:
+    """Given the input and output of `run`, returns the time series from ds_in that have tags in
+    ds_out added by `run` combined with tags of these time series copied from ds_out."""
+    # Expected tags do not appear in the input
+    assert ds_in.tag.index.unique(taglib.TagField.TYPE).intersection(_EXPECTED_TYPES).empty
+    tag_mask = ds_out.tag.index.get_level_values(taglib.TagField.TYPE).isin(_EXPECTED_TYPES)
+    # touch_index identifies the subset of time series rows that have an _EXPECTED_TYPES tag.
+    touch_index = ds_out.tag.index[tag_mask].droplevel(taglib.TagField.TYPE).unique()
+    wide_dates_in_df = ds_in.timeseries_bucketed_wide_dates
+    assert wide_dates_in_df.index.names == touch_index.names
+    assert touch_index.isin(wide_dates_in_df.index).all()
+    # Get all ds_in.tag associated with any time series in touch_index
+    tag_in = ds_in.tag.loc[ds_in.tag.index.droplevel(taglib.TagField.TYPE).isin(touch_index)]
+    # Get only the ds_out.tag where the type is _EXPECTED_TYPES. These are the tags added by
+    # `run` and not in ds_in.tag.
+    tag_out = ds_out.tag.loc[tag_mask]
+    return (
+        timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(
+            wide_dates_in_df.reindex(touch_index), bucketed=True
+        )
+        .append_tag_df(tag_in.reset_index())
+        .append_tag_df(tag_out.reset_index())
+    )
 
 
 # Possible values from data/region-overrides.json

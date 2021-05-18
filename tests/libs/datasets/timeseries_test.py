@@ -1,9 +1,9 @@
+import dataclasses
 import datetime
 import io
 import pathlib
 import pickle
 
-import compress_pickle
 import pytest
 import pandas as pd
 import numpy as np
@@ -276,11 +276,14 @@ def test_add_aggregate_level():
 
 
 def test_fips_not_in_geo_data_csv_raises():
-    with pytest.raises(KeyError):
-        ts_df = read_csv_and_index_fips_date(
-            "fips,date,m1,m2\n" "98789,2020-04-02,2,\n"
-        ).reset_index()
-        timeseries.MultiRegionDataset.from_fips_timeseries_df(ts_df)
+    df = test_helpers.read_csv_str(
+        "       location_id,       date,       cases\n"
+        "iso1:us#fips:06010, 2020-04-01,         100\n",
+        skip_spaces=True,
+    )
+
+    with pytest.raises(AssertionError):
+        timeseries.MultiRegionDataset.from_timeseries_df(df)
 
 
 def test_append_regions():
@@ -2016,6 +2019,36 @@ def test_delta_timeseries_removed():
     ds_out = delta.timeseries_removed
 
     ds_expected = test_helpers.build_dataset({region_la: {CommonFields.CASES: {age_40s: [1, 2]}}})
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_drop_observations_after():
+    age_40s = DemographicBucket("age:40-49")
+    ds_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {DemographicBucket.ALL: [5, 10], age_40s: [1, 2, 3]},
+            # Check that observation is dropped even when not a True value (ie 0).
+            CommonFields.DEATHS: [0, 0, 0],
+            # Check what happens when there are no real valued observations after dropping,
+            # though the behaviour probably doesn't matter.
+            CommonFields.ICU_BEDS: [None, None, 10],
+        }
+    )
+
+    ds_out = timeseries.drop_observations(ds_in, after=datetime.date(2020, 4, 2))
+
+    tag = test_helpers.make_tag(taglib.TagType.DROP_FUTURE_OBSERVATION, after="2020-04-02")
+    ds_expected = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {
+                DemographicBucket.ALL: [5, 10],
+                age_40s: TimeseriesLiteral([1, 2], annotation=[tag]),
+            },
+            CommonFields.DEATHS: TimeseriesLiteral([0, 0], annotation=[tag]),
+            CommonFields.ICU_BEDS: TimeseriesLiteral([], annotation=[tag]),
+        }
+    )
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
 

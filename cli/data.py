@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -111,8 +112,7 @@ def update(
         timeseries_field_datasets, static_field_datasets
     )
     _logger.info("Finished combining datasets")
-    multiregion_dataset.to_compressed_pickle(dataset_utils.DATA_DIRECTORY / "combined-raw.pkl.gz")
-    _logger.info("Saved combined raw dataset")
+    multiregion_dataset.print_stats("combined")
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
     # need to remove CBSAs because they don't exist yet.
@@ -122,15 +122,17 @@ def update(
     )
     before_manual_filter = multiregion_dataset
     multiregion_dataset = manual_filter.run(multiregion_dataset, region_overrides_config)
-    delta = timeseries.MultiRegionDatasetDiff.make(
-        old=before_manual_filter, new=multiregion_dataset
-    )
-    delta.timeseries_removed.write_to_wide_dates_csv(
+    manual_filter_touched = manual_filter.touched_subset(before_manual_filter, multiregion_dataset)
+    manual_filter_touched.write_to_wide_dates_csv(
         dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH,
         dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH,
     )
+    multiregion_dataset.print_stats("manual filter")
 
-    multiregion_dataset.print_stats("combined")
+    multiregion_dataset = timeseries.drop_observations(
+        multiregion_dataset, after=datetime.datetime.utcnow().date()
+    )
+
     multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
     multiregion_dataset.print_stats("drop_tail")
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.

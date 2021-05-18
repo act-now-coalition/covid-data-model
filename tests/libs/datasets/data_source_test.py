@@ -9,16 +9,19 @@ from covidactnow.datapublic.common_fields import CommonFields
 from libs import pipeline
 from libs.datasets import data_source
 from libs.datasets import taglib
+from libs.datasets import timeseries
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.sources import can_scraper_local_dashboard_providers
 from libs.datasets.sources import nytimes_dataset
 from libs.datasets.sources import can_scraper_usafacts
 from unittest import mock
 
+from libs.pipeline import Region
 from tests import test_helpers
 from libs.datasets.taglib import UrlStr
 from tests.libs.datasets.sources import can_scraper_helpers_test
 from tests.libs.datasets.sources.can_scraper_helpers_test import build_can_scraper_dataframe
+from tests.test_helpers import TimeseriesLiteral
 
 
 @pytest.mark.slow
@@ -119,6 +122,38 @@ def test_data_source_truncates_dates():
 
     assert ds.timeseries_bucketed_wide_dates.columns.to_list() == pd.to_datetime(["2020-01-01"])
     assert more_itertools.one(logs)["event"] == "Dropping old data"
+
+
+def test_data_source_bad_fips():
+    df = test_helpers.read_csv_str(
+        "fips,                date,       cases\n"
+        "06010,         2020-04-01,         100\n"
+        "17031,         2020-04-01,         100\n",
+        skip_spaces=True,
+    )
+
+    class DataSourceForTest(data_source.DataSource):
+        EXPECTED_FIELDS = [CommonFields.CASES]
+        SOURCE_TYPE = "TestSource"
+        SOURCE_NAME = "Test source"
+        SOURCE_URL = "http://public.test.gov"
+
+        @classmethod
+        def _load_data(cls) -> pd.DataFrame:
+            return df
+
+    with structlog.testing.capture_logs() as logs:
+        ds = DataSourceForTest.make_dataset()
+    assert more_itertools.one(logs)["event"] == timeseries.NO_LOCATION_ID_FOR_FIPS
+
+    ds_expected = test_helpers.build_dataset(
+        {
+            Region.from_fips("17031"): {
+                CommonFields.CASES: TimeseriesLiteral([100], source=DataSourceForTest.source_tag())
+            }
+        }
+    )
+    test_helpers.assert_dataset_like(ds, ds_expected)
 
 
 def test_data_source_truncates_dates_can_scraper():
