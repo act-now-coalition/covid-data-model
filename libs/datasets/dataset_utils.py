@@ -65,6 +65,7 @@ TEST_COMBINED_STATIC_CSV_PATH = pathlib.Path(
 )
 MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH = DATA_DIRECTORY / "manual_filter_removed-wide-dates.csv"
 MANUAL_FILTER_REMOVED_STATIC_CSV_PATH = DATA_DIRECTORY / "manual_filter_removed-static.csv"
+COMBINED_RAW_PICKLE_GZ_PATH = DATA_DIRECTORY / "combined-raw.pkl.gz"
 
 
 class AggregationLevel(enum.Enum):

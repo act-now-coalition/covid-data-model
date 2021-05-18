@@ -112,6 +112,7 @@ def update(
         timeseries_field_datasets, static_field_datasets
     )
     _logger.info("Finished combining datasets")
+    multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
     multiregion_dataset.print_stats("combined")
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't

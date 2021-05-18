@@ -119,7 +119,7 @@ class RepoWrapper:
             ).add_static_csv_file(dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH)
         elif dataset_name is DashboardFile.COMBINED_RAW:
             dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
-                dataset_utils.DATA_DIRECTORY / "combined-raw.pkl.gz"
+                dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH
             )
         else:
             raise ValueError(f"Bad {dataset_name}")
