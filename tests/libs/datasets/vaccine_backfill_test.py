@@ -1,7 +1,4 @@
-import pytest
-
 from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
 
 from libs.datasets.taglib import TagType
 from libs.pipeline import Region
