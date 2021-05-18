@@ -104,6 +104,9 @@ def make_tag(
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
     elif tag_type is taglib.TagType.KNOWN_ISSUE:
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02")).date()
+    elif tag_type is taglib.TagType.DROP_FUTURE_OBSERVATION:
+        # make_tag does not have a default `after`; force tests to provide it explicitly.
+        kwargs["after"] = pd.to_datetime(kwargs["after"]).date()
 
     return taglib.TAG_TYPE_TO_CLASS[tag_type](**kwargs)
 

@@ -1392,6 +1392,20 @@ def drop_regions_without_population(
     return dataset.get_locations_subset(location_id_with_population)
 
 
+def drop_observations(
+    dataset_in: MultiRegionDataset, *, after: datetime.date
+) -> MultiRegionDataset:
+    wide_dates_df = dataset_in.timeseries_bucketed_wide_dates
+    after_columns_mask = wide_dates_df.columns > pd.to_datetime(after)
+    after_notna_index_mask = wide_dates_df.loc[:, after_columns_mask].notna().any(axis="columns")
+    after_notna_index = wide_dates_df.loc[after_notna_index_mask, :].index
+    wide_dates_not_after_df = wide_dates_df.loc[:, ~after_columns_mask]
+    tag = taglib.DropFutureObservation(after=after)
+    return dataset_in.replace_timeseries_wide_dates([wide_dates_not_after_df]).add_tag_to_subset(
+        tag, after_notna_index
+    )
+
+
 class DatasetName(str):
     """Human readable name for a dataset. In the future this may be an enum, for now it
     provides some type safety."""

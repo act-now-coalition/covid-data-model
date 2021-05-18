@@ -2021,3 +2021,33 @@ def test_delta_timeseries_removed():
     ds_expected = test_helpers.build_dataset({region_la: {CommonFields.CASES: {age_40s: [1, 2]}}})
 
     test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_drop_observations_after():
+    age_40s = DemographicBucket("age:40-49")
+    ds_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {DemographicBucket.ALL: [5, 10], age_40s: [1, 2, 3]},
+            # Check that observation is dropped even when not a True value (ie 0).
+            CommonFields.DEATHS: [0, 0, 0],
+            # Check what happens when there are no real valued observations after dropping,
+            # though the behaviour probably doesn't matter.
+            CommonFields.ICU_BEDS: [None, None, 10],
+        }
+    )
+
+    ds_out = timeseries.drop_observations(ds_in, after=datetime.date(2020, 4, 2))
+
+    tag = test_helpers.make_tag(taglib.TagType.DROP_FUTURE_OBSERVATION, after="2020-04-02")
+    ds_expected = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {
+                DemographicBucket.ALL: [5, 10],
+                age_40s: TimeseriesLiteral([1, 2], annotation=[tag]),
+            },
+            CommonFields.DEATHS: TimeseriesLiteral([0, 0], annotation=[tag]),
+            CommonFields.ICU_BEDS: TimeseriesLiteral([], annotation=[tag]),
+        }
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
