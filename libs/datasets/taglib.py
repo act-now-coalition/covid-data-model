@@ -59,6 +59,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     KNOWN_ISSUE = "known_issue"
     KNOWN_ISSUE_NO_DATE = "known_issue_no_date"
     DERIVED = "derived"
+    DROP_FUTURE_OBSERVATION = "drop_future_observation"
 
     PROVENANCE = PdFields.PROVENANCE
     SOURCE_URL = "source_url"
@@ -328,6 +329,22 @@ class Derived(TagInTimeseries):
         return json.dumps(d, separators=(",", ":"))
 
 
+@dataclass(frozen=True)
+class DropFutureObservation(TagInTimeseries):
+    TAG_TYPE = TagType.DROP_FUTURE_OBSERVATION
+    after: datetime.date
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+        content_parsed = json.loads(content)
+        return cls(after=datetime.date.fromisoformat(content_parsed["after"]),)
+
+    @property
+    def content(self) -> str:
+        d = {"after": self.after.isoformat()}
+        return json.dumps(d, separators=(",", ":"))
+
+
 TAG_TYPE_TO_CLASS = {
     TagType.CUMULATIVE_TAIL_TRUNCATED: CumulativeTailTruncated,
     TagType.CUMULATIVE_LONG_TAIL_TRUNCATED: CumulativeLongTailTruncated,
@@ -338,6 +355,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.KNOWN_ISSUE: KnownIssue,
     TagType.KNOWN_ISSUE_NO_DATE: KnownIssueNoDate,
     TagType.DERIVED: Derived,
+    TagType.DROP_FUTURE_OBSERVATION: DropFutureObservation,
 }
 
 
