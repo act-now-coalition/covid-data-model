@@ -163,17 +163,16 @@ def touched_subset(
     wide_dates_in_df = ds_in.timeseries_bucketed_wide_dates
     assert wide_dates_in_df.index.names == ts_has_tag_index.names
     assert ts_has_tag_index.isin(wide_dates_in_df.index).all()
-    # For time series identified by ts_has_tag_index find the number of observations in ds_in and
-    # ds_out.
-    ts_in_observations = wide_dates_in_df.reindex(ts_has_tag_index).notna().sum(axis="columns")
-    ts_out_observations = (
+    # For time series identified by ts_has_tag_index find the number of observations per time
+    # series in ds_in and ds_out.
+    in_observations_by_ts = wide_dates_in_df.reindex(ts_has_tag_index).notna().sum(axis="columns")
+    out_observations_by_ts = (
         ds_out.timeseries_bucketed_wide_dates.reindex(ts_has_tag_index).notna().sum(axis="columns")
     )
-    # Some time series may have been dropped from ds_in to ds_out (if all observations were
-    # dropped) but no time series were added.
-    assert ts_out_observations.index.isin(ts_in_observations.index).all()
-    ts_lost_observation_mask = ts_out_observations < ts_in_observations
-    ts_lost_observation_index = ts_in_observations.loc[ts_lost_observation_mask].index
+    # Make an index which identifies time series that had a decrease in number of observations
+    # from ds_in to ds_out.
+    ts_lost_observation_mask = out_observations_by_ts < in_observations_by_ts
+    ts_lost_observation_index = in_observations_by_ts.loc[ts_lost_observation_mask].index
 
     def tag_xs(tag: pd.Series, ts_index: pd.MultiIndex) -> pd.Series:
         """Return the cross-section of `tag` that has index labels in `ts_index`."""
