@@ -92,17 +92,24 @@ def update_forecasts(filename):
     help="Aggregate states to one USA country region",
     default=True,
 )
-@click.option("--vaccine-estimate/--no-vaccine-estimate", is_flag=True, default=True)
 @click.option("--state", type=str, help="For testing, a two letter state abbr")
 @click.option("--fips", type=str, help="For testing, a 5 digit county fips")
-def update(
-    aggregate_to_country: bool, vaccine_estimate: bool, state: Optional[str], fips: Optional[str]
-):
+def update(aggregate_to_country: bool, state: Optional[str], fips: Optional[str]):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
-    multiregion_dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
-        dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH
+
+    timeseries_field_datasets = load_datasets_by_field(
+        ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
     )
+    static_field_datasets = load_datasets_by_field(
+        ALL_FIELDS_FEATURE_DEFINITION, state=state, fips=fips
+    )
+
+    multiregion_dataset = timeseries.combined_datasets(
+        timeseries_field_datasets, static_field_datasets
+    )
+    _logger.info("Finished combining datasets")
+    multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
     multiregion_dataset.print_stats("combined")
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
@@ -138,17 +145,10 @@ def update(
             CommonFields.VACCINATIONS_INITIATED,
         ],
     )
-    multiregion_dataset.to_compressed_pickle(pathlib.Path("data/vac.pkl.gz"))
-
     multiregion_dataset.print_stats("zeros_filter")
-    multiregion_dataset = vaccine_backfills.backfill_vaccination_initiated(multiregion_dataset)
-    multiregion_dataset.print_stats("backfill_vaccination_initiated")
 
-    if vaccine_estimate:
-        multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(
-            multiregion_dataset
-        )
-        multiregion_dataset.print_stats("estimate_initiated_from_state_ratio")
+    multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(multiregion_dataset)
+    multiregion_dataset.print_stats("estimate_initiated_from_state_ratio")
 
     multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
     multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
