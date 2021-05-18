@@ -153,23 +153,41 @@ def touched_subset(
     ds_in: timeseries.MultiRegionDataset, ds_out: timeseries.MultiRegionDataset
 ) -> timeseries.MultiRegionDataset:
     """Given the input and output of `run`, returns the time series from ds_in that have tags in
-    ds_out added by `run` combined with tags of these time series copied from ds_out."""
-    # Expected tags do not appear in the input
+    ds_out added by `run` and dropped observations, combined with tags of these time series
+    copied from ds_out."""
+    # Check that tags added by `run` do not appear in the input of `run`.
     assert ds_in.tag.index.unique(taglib.TagField.TYPE).intersection(_EXPECTED_TYPES).empty
     tag_mask = ds_out.tag.index.get_level_values(taglib.TagField.TYPE).isin(_EXPECTED_TYPES)
-    # touch_index identifies the subset of time series rows that have an _EXPECTED_TYPES tag.
-    touch_index = ds_out.tag.index[tag_mask].droplevel(taglib.TagField.TYPE).unique()
+    # ts_has_tag_index identifies the subset of time series rows that have an _EXPECTED_TYPES tag.
+    ts_has_tag_index = ds_out.tag.index[tag_mask].droplevel(taglib.TagField.TYPE).unique()
     wide_dates_in_df = ds_in.timeseries_bucketed_wide_dates
-    assert wide_dates_in_df.index.names == touch_index.names
-    assert touch_index.isin(wide_dates_in_df.index).all()
-    # Get all ds_in.tag associated with any time series in touch_index
-    tag_in = ds_in.tag.loc[ds_in.tag.index.droplevel(taglib.TagField.TYPE).isin(touch_index)]
-    # Get only the ds_out.tag where the type is _EXPECTED_TYPES. These are the tags added by
-    # `run` and not in ds_in.tag.
-    tag_out = ds_out.tag.loc[tag_mask]
+    assert wide_dates_in_df.index.names == ts_has_tag_index.names
+    assert ts_has_tag_index.isin(wide_dates_in_df.index).all()
+    # For time series identified by ts_has_tag_index find the number of observations per time
+    # series in ds_in and ds_out.
+    in_observations_by_ts = wide_dates_in_df.reindex(ts_has_tag_index).notna().sum(axis="columns")
+    out_observations_by_ts = (
+        ds_out.timeseries_bucketed_wide_dates.reindex(ts_has_tag_index).notna().sum(axis="columns")
+    )
+    # Make an index which identifies time series that had a decrease in number of observations
+    # from ds_in to ds_out.
+    ts_lost_observation_mask = out_observations_by_ts < in_observations_by_ts
+    ts_lost_observation_index = in_observations_by_ts.loc[ts_lost_observation_mask].index
+
+    def tag_xs(tag: pd.Series, ts_index: pd.MultiIndex) -> pd.Series:
+        """Return the cross-section of `tag` that has index labels in `ts_index`."""
+        tag_ts_index = tag.index.droplevel([taglib.TagField.TYPE])
+        assert tag_ts_index.names == ts_index.names
+        return tag.loc[tag_ts_index.isin(ts_index)]
+
+    # Get all ds_in.tag associated with any time series in ts_lost_observation_index.
+    tag_in = tag_xs(ds_in.tag, ts_lost_observation_index)
+    # Get only the ds_out.tag where the type is _EXPECTED_TYPES and observations were lost. This
+    # avoids duplicating tags in tag_in.
+    tag_out = tag_xs(ds_out.tag.loc[tag_mask], ts_lost_observation_index)
     return (
         timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(
-            wide_dates_in_df.reindex(touch_index), bucketed=True
+            wide_dates_in_df.reindex(ts_lost_observation_index), bucketed=True
         )
         .append_tag_df(tag_in.reset_index())
         .append_tag_df(tag_out.reset_index())
