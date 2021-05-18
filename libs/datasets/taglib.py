@@ -60,6 +60,8 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     KNOWN_ISSUE_NO_DATE = "known_issue_no_date"
     DERIVED = "derived"
     DROP_FUTURE_OBSERVATION = "drop_future_observation"
+    # When adding a TagType remember to update timeseries_stats.StatName so it is displayed in
+    # the dashboard.
 
     PROVENANCE = PdFields.PROVENANCE
     SOURCE_URL = "source_url"

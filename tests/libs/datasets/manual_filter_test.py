@@ -383,3 +383,54 @@ def test_touched_subset():
         }
     )
     test_helpers.assert_dataset_like(ds_touched, ds_touched_expected)
+
+
+def test_touched_subset_only_observation_drops():
+    # (Ab)use the demographic buckets as a way to identify time series.
+    bucket_no_issue = DemographicBucket("b1")
+    bucket_has_tag = DemographicBucket("b2")
+    # Make 6 time series. half will get a KNOWN_ISSUE tag, half won't.
+    ds_in = test_helpers.build_default_region_dataset(
+        {
+            CommonFields.CASES: {bucket_no_issue: [1, 2], bucket_has_tag: [3, 4]},
+            CommonFields.DEATHS: {bucket_no_issue: [5, 6], bucket_has_tag: [7, 8]},
+            CommonFields.ICU_BEDS: {bucket_no_issue: [9, 1], bucket_has_tag: [2, 3]},
+        }
+    )
+    known_issue = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE, disclaimer="foo", date="2021-04-01"
+    )
+    # ds_out is a mock of what is returned by `manual_filter.run`.
+    ds_out = test_helpers.build_default_region_dataset(
+        {
+            # Drop all observations of CASES.
+            CommonFields.CASES: {
+                bucket_no_issue: [None, None],
+                bucket_has_tag: TimeseriesLiteral([None, None], annotation=[known_issue]),
+            },
+            # Drop one observation of each DEATHS time series.
+            CommonFields.DEATHS: {
+                bucket_no_issue: [5, None],
+                bucket_has_tag: TimeseriesLiteral([7, None], annotation=[known_issue]),
+            },
+            # Drop no observations of ICU_BEDS.
+            CommonFields.ICU_BEDS: {
+                bucket_no_issue: [9, 1],
+                bucket_has_tag: TimeseriesLiteral([2, 3], annotation=[known_issue]),
+            },
+        }
+    )
+    ds_touched = manual_filter.touched_subset(ds_in, ds_out)
+    ds_touched_expected = test_helpers.build_default_region_dataset(
+        {
+            # Only time series that had the tag and at least one dropped observation are put in
+            # the touched dataset.
+            CommonFields.CASES: {
+                bucket_has_tag: TimeseriesLiteral([3, 4], annotation=[known_issue]),
+            },
+            CommonFields.DEATHS: {
+                bucket_has_tag: TimeseriesLiteral([7, 8], annotation=[known_issue]),
+            },
+        }
+    )
+    test_helpers.assert_dataset_like(ds_touched, ds_touched_expected)
