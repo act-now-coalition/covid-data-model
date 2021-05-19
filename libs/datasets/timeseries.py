@@ -1495,18 +1495,17 @@ def combined_datasets(
     For each region, the timeseries from the first dataset in the list with a real value is returned.
     """
     if timeseries_field_datasets:
-        # First make a map from dataset to table with bool values that represent what timeseries
-        # (or distribution) has any real value in that dataset.
-        # In the table the index labels are currently just location_id (but could be expanded to
-        # include the distribution such as 'all', 'age', 'race', ... if these are combined
-        # separately) and columns are fields.
+        # First make a map from dataset to table with bool values that represent what distribution
+        # has any real value in that dataset.
+        # In the table the index labels are <location_id, distribution> (for example
+        # <DC, 'all'>, <Cook County, 'age'>, <Miami, 'age;sex'>) and columns are fields.
         all_timeseries_datasets = set(chain.from_iterable(timeseries_field_datasets.values()))
         datasets_wide = _datasets_wide_var_not_null(all_timeseries_datasets)
         # Then make a map from dataset to table with the same index and columns but only True
         # where that particular data will be copied to the output. These tables will have a
         # subset of the True values in `datasets_wide`.
         datasets_output = _pick_first_with_field(datasets_wide, timeseries_field_datasets)
-        # Finally copy the timeseries and tags that were selected from each dataset.
+        # Finally copy the distributions and tags that were selected from each dataset.
         ts_bucketed, tags = _combine_timeseries(datasets_output)
     else:
         ts_bucketed, tags = _combine_timeseries({})
@@ -1605,10 +1604,10 @@ def _with_common_index(
 def _combine_timeseries(
     datasets_output: Mapping[MultiRegionDataset, pd.DataFrame]
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    """Combine timeseries selected from each dataset into one structure.
+    """Combine distributions selected from each dataset into one structure.
 
     Args:
-        datasets_output: Map from dataset to a DataFrame of which timeseries to output
+        datasets_output: Map from dataset to a DataFrame of which distributions to output
     Returns:
         Tuple of timeseries_bucketed and tag, suitable for MultiRegionDataset.__init__
     """
