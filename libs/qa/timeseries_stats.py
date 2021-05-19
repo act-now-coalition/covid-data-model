@@ -154,6 +154,7 @@ class PerTimeseries(Aggregated):
             stat_map[StatName._value2member_map_[tag_type]] = tag_count[tag_type]
         location_id_index = all_timeseries_index.get_level_values(CommonFields.LOCATION_ID)
         stat_extra_index = {
+            # This is similar to timeseries._add_distribution_level but this operates on an index.
             DISTRIBUTION: all_timeseries_index.get_level_values(PdFields.DEMOGRAPHIC_BUCKET).map(
                 lambda b: demographics.DistributionBucket.from_str(b).distribution
             ),
