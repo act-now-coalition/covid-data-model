@@ -479,27 +479,27 @@ def test_timeseries_distribution_long():
         }
     )
 
+    long_series = ds.timeseries_distribution_long
+    assert long_series.name == PdFields.VALUE
+    assert long_series.index.names == [
+        CommonFields.LOCATION_ID,
+        PdFields.DEMOGRAPHIC_BUCKET,
+        CommonFields.DATE,
+        PdFields.DISTRIBUTION,
+        PdFields.VARIABLE,
+    ]
     expected = test_helpers.read_csv_str(
-        "       location_id,distribution,   demographic_bucket,      date,variable,value\n"
-        "iso1:us#fips:97222,         age,              age:0-9,2020-04-01,      m1,    1\n"
-        "iso1:us#fips:97222,         age,              age:0-9,2020-04-02,      m1,    2\n"
-        "iso1:us#fips:97222,         age,              age:0-9,2020-04-03,      m1,    3\n"
-        "iso1:us#fips:97222,         age,            age:10-19,2020-04-03,      m1,    4\n"
-        "iso1:us#fips:97222,         all,                  all,2020-04-01,      m1,    5\n"
-        "iso1:us#fips:97222,         all,                  all,2020-04-03,      m1,    6\n"
-        "iso1:us#fips:97222,color;gender,color;gender:blue;man,2020-04-01,      m1,    7\n",
+        "       location_id,   demographic_bucket,      date,distribution,variable,value\n"
+        "iso1:us#fips:97222,              age:0-9,2020-04-01,         age,      m1,    1\n"
+        "iso1:us#fips:97222,              age:0-9,2020-04-02,         age,      m1,    2\n"
+        "iso1:us#fips:97222,              age:0-9,2020-04-03,         age,      m1,    3\n"
+        "iso1:us#fips:97222,            age:10-19,2020-04-03,         age,      m1,    4\n"
+        "iso1:us#fips:97222,                  all,2020-04-01,         all,      m1,    5\n"
+        "iso1:us#fips:97222,                  all,2020-04-03,         all,      m1,    6\n"
+        "iso1:us#fips:97222,color;gender:blue;man,2020-04-01,color;gender,      m1,    7\n",
         skip_spaces=True,
         dtype={"value": float},
     )
-    long_series = ds.timeseries_distribution_long
-    assert long_series.index.names == [
-        CommonFields.LOCATION_ID,
-        PdFields.DISTRIBUTION,
-        PdFields.DEMOGRAPHIC_BUCKET,
-        CommonFields.DATE,
-        PdFields.VARIABLE,
-    ]
-    assert long_series.name == PdFields.VALUE
     pd.testing.assert_frame_equal(long_series.reset_index(), expected, check_like=True)
 
 
