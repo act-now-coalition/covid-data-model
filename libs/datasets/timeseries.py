@@ -330,6 +330,17 @@ def _add_aggregate_level_if_missing(df: pd.DataFrame):
         )
 
 
+def _add_distribution_level(frame_or_series: FrameOrSeries) -> FrameOrSeries:
+    # Assigning to `index` avoids reindexing done by constructor `pd.DataFrame(df, index=...)`.
+    frame_or_series = frame_or_series.copy()
+    index_as_df = frame_or_series.index.to_frame()
+    index_as_df[PdFields.DISTRIBUTION] = index_as_df[PdFields.DEMOGRAPHIC_BUCKET].map(
+        lambda b: demographics.DistributionBucket.from_str(b).distribution
+    )
+    frame_or_series.index = pd.MultiIndex.from_frame(index_as_df)
+    return frame_or_series
+
+
 def _merge_attributes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     """Merges the static attributes in two DataFrame objects. Non-NA values in df2 override values
     from df1.
@@ -571,6 +582,10 @@ class MultiRegionDataset:
             return _EMPTY_TAG_SERIES.droplevel(TagField.DEMOGRAPHIC_BUCKET)
 
     @cached_property
+    def tag_distribution(self) -> pd.Series:
+        return _add_distribution_level(self.tag)
+
+    @cached_property
     def tag_objects_series(self) -> pd.Series:
         """A Series of TagInTimeseries objects, indexed like self.tag for easy lookups."""
         return taglib.series_string_to_object(self.tag)
@@ -636,21 +651,9 @@ class MultiRegionDataset:
 
     @cached_property
     def timeseries_distribution_long(self) -> pd.Series:
-        """A Series with MultiIndex LOCATION_ID, DISTRIBUTION, DEMOGRAPHIC_BUCKET, DATE, VARIABLE"""
-        bucketed_index_as_df = self.timeseries_bucketed.index.to_frame()
-        bucketed_index_as_df.insert(
-            1,
-            PdFields.DISTRIBUTION,
-            self.timeseries_bucketed[PdFields.DEMOGRAPHIC_BUCKET].map(
-                lambda b: demographics.DistributionBucket.from_str(b).distribution
-            ),
-        )
+        """A Series with MultiIndex LOCATION_ID, DEMOGRAPHIC_BUCKET, DATE, DISTRIBUTION, VARIABLE"""
         return (
-            pd.DataFrame(
-                self.timeseries_bucketed,
-                index=pd.MultiIndex.from_frame(bucketed_index_as_df),
-                columns=self.timeseries_bucketed.columns,
-            )
+            _add_distribution_level(self.timeseries_bucketed)
             .stack(dropna=True)
             .rename(PdFields.VALUE)
             .sort_index()
@@ -660,17 +663,9 @@ class MultiRegionDataset:
     def wide_var_not_null(self) -> pd.DataFrame:
         """True iff there is at least one real value in any bucket with given location and
         variable"""
-        ts_bucketed_long_notna = self.timeseries_bucketed_long.notna()
-        ts_bucketed_long_notna_index_as_df = ts_bucketed_long_notna.index.to_frame()
-        ts_bucketed_long_notna_index_as_df[
-            PdFields.DISTRIBUTION
-        ] = ts_bucketed_long_notna_index_as_df[PdFields.DEMOGRAPHIC_BUCKET].map(
-            lambda b: demographics.DistributionBucket.from_str(b).distribution
-        )
-
-        ts_bucketed_long_notna.index = pd.MultiIndex.from_frame(ts_bucketed_long_notna_index_as_df)
         wide_var_not_null = (
-            ts_bucketed_long_notna.groupby(
+            self.timeseries_distribution_long.notna()
+            .groupby(
                 [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DISTRIBUTION], sort=False
             )
             .any()
@@ -1632,9 +1627,13 @@ def _combine_timeseries(
             PdFields.VARIABLE,
         ]
         ts_bucketed_long_to_concat.append(
-            _slice_with_labels(ds.timeseries_bucketed_long, output_labels)
+            _slice_with_labels(ds.timeseries_distribution_long, output_labels).droplevel(
+                PdFields.DISTRIBUTION
+            )
         )
-        tags_to_concat.append(_slice_with_labels(ds.tag, output_labels))
+        tags_to_concat.append(
+            _slice_with_labels(ds.tag_distribution, output_labels).droplevel(PdFields.DISTRIBUTION)
+        )
 
     if ts_bucketed_long_to_concat:
         ts_bucketed = pd.concat(ts_bucketed_long_to_concat).unstack(PdFields.VARIABLE).sort_index()

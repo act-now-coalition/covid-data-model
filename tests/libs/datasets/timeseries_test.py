@@ -463,6 +463,46 @@ def test_timeseries_bucketed_long():
     pd.testing.assert_frame_equal(long_series.reset_index(), expected, check_like=True)
 
 
+def test_timeseries_distribution_long():
+    bucket_age_0 = DemographicBucket("age:0-9")
+    bucket_age_10 = DemographicBucket("age:10-19")
+    bucket_all = DemographicBucket("all")
+    bucket_blueman = DemographicBucket("color;gender:blue;man")
+    ds = test_helpers.build_default_region_dataset(
+        {
+            FieldName("m1"): {
+                bucket_age_0: [1, 2, 3],
+                bucket_age_10: [None, None, 4],
+                bucket_all: [5, None, 6],
+                bucket_blueman: [7, None, None],
+            }
+        }
+    )
+
+    expected = test_helpers.read_csv_str(
+        "       location_id,distribution,   demographic_bucket,      date,variable,value\n"
+        "iso1:us#fips:97222,         age,              age:0-9,2020-04-01,      m1,    1\n"
+        "iso1:us#fips:97222,         age,              age:0-9,2020-04-02,      m1,    2\n"
+        "iso1:us#fips:97222,         age,              age:0-9,2020-04-03,      m1,    3\n"
+        "iso1:us#fips:97222,         age,            age:10-19,2020-04-03,      m1,    4\n"
+        "iso1:us#fips:97222,         all,                  all,2020-04-01,      m1,    5\n"
+        "iso1:us#fips:97222,         all,                  all,2020-04-03,      m1,    6\n"
+        "iso1:us#fips:97222,color;gender,color;gender:blue;man,2020-04-01,      m1,    7\n",
+        skip_spaces=True,
+        dtype={"value": float},
+    )
+    long_series = ds.timeseries_distribution_long
+    assert long_series.index.names == [
+        CommonFields.LOCATION_ID,
+        PdFields.DISTRIBUTION,
+        PdFields.DEMOGRAPHIC_BUCKET,
+        CommonFields.DATE,
+        PdFields.VARIABLE,
+    ]
+    assert long_series.name == PdFields.VALUE
+    pd.testing.assert_frame_equal(long_series.reset_index(), expected, check_like=True)
+
+
 def test_timeseries_wide_dates():
     region_cbsa = Region.from_cbsa_code("10100")
     region_fips = Region.from_fips("97111")
@@ -1764,8 +1804,8 @@ def test_combine_demographic_data_multiple_distributions():
 
     ds1 = test_helpers.build_dataset(
         {
-            region_ak: {m1: {all: TimeseriesLiteral([1, 2], provenance="ds1_ak_m1_all")}},
-            region_ca: {m1: {age_20s: TimeseriesLiteral([2, 3], provenance="ds1_ca_m1_20s")}},
+            region_ak: {m1: {all: TimeseriesLiteral([1.1, 2.1], provenance="ds1_ak_m1_all")}},
+            region_ca: {m1: {age_20s: TimeseriesLiteral([2.1, 3.1], provenance="ds1_ca_m1_20s")}},
         }
     )
 
@@ -1786,10 +1826,10 @@ def test_combine_demographic_data_multiple_distributions():
 
     ds_expected = test_helpers.build_dataset(
         {
-            region_ak: {m1: {all: TimeseriesLiteral([1, 2], provenance="ds1_ak_m1_all")}},
+            region_ak: {m1: {all: TimeseriesLiteral([1.1, 2.1], provenance="ds1_ak_m1_all")}},
             region_ca: {
                 m1: {
-                    age_20s: TimeseriesLiteral([2, 3], provenance="ds1_ca_m1_20s"),
+                    age_20s: TimeseriesLiteral([2.1, 3.1], provenance="ds1_ca_m1_20s"),
                     all: TimeseriesLiteral([5, 6], provenance="ds2_ca_m1_all"),
                 },
                 m2: {age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")},
