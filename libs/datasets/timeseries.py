@@ -635,12 +635,44 @@ class MultiRegionDataset:
         return self.timeseries_bucketed.stack(dropna=True).rename(PdFields.VALUE).sort_index()
 
     @cached_property
+    def timeseries_distribution_long(self) -> pd.Series:
+        """A Series with MultiIndex LOCATION_ID, DISTRIBUTION, DEMOGRAPHIC_BUCKET, DATE, VARIABLE"""
+        bucketed_index_as_df = self.timeseries_bucketed.index.to_frame()
+        bucketed_index_as_df.insert(
+            1,
+            PdFields.DISTRIBUTION,
+            self.timeseries_bucketed[PdFields.DEMOGRAPHIC_BUCKET].map(
+                lambda b: demographics.DistributionBucket.from_str(b).distribution
+            ),
+        )
+        return (
+            pd.DataFrame(
+                self.timeseries_bucketed,
+                index=pd.MultiIndex.from_frame(bucketed_index_as_df),
+                columns=self.timeseries_bucketed.columns,
+            )
+            .stack(dropna=True)
+            .rename(PdFields.VALUE)
+            .sort_index()
+        )
+
+    @cached_property
     def wide_var_not_null(self) -> pd.DataFrame:
         """True iff there is at least one real value in any bucket with given location and
         variable"""
+        ts_bucketed_long_notna = self.timeseries_bucketed_long.notna()
+        ts_bucketed_long_notna_index_as_df = ts_bucketed_long_notna.index.to_frame()
+        ts_bucketed_long_notna_index_as_df[
+            PdFields.DISTRIBUTION
+        ] = ts_bucketed_long_notna_index_as_df[PdFields.DEMOGRAPHIC_BUCKET].map(
+            lambda b: demographics.DistributionBucket.from_str(b).distribution
+        )
+
+        ts_bucketed_long_notna.index = pd.MultiIndex.from_frame(ts_bucketed_long_notna_index_as_df)
         wide_var_not_null = (
-            self.timeseries_bucketed_long.notnull()
-            .groupby([CommonFields.LOCATION_ID, PdFields.VARIABLE], sort=False)
+            ts_bucketed_long_notna.groupby(
+                [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DISTRIBUTION], sort=False
+            )
             .any()
             # TODO(tom) unstack sometimes return dtype Object, sometimes bool. Work out why and
             #  remove astype.
@@ -648,7 +680,7 @@ class MultiRegionDataset:
             .sort_index()
             .astype(bool)
         )
-        assert wide_var_not_null.index.names == [CommonFields.LOCATION_ID]
+        assert wide_var_not_null.index.names == [CommonFields.LOCATION_ID, PdFields.DISTRIBUTION]
         assert wide_var_not_null.columns.names == [PdFields.VARIABLE]
         assert wide_var_not_null.dtypes.apply(is_bool_dtype).all()
         return wide_var_not_null
@@ -1528,7 +1560,7 @@ def _pick_first_with_field(
     for df in datasets_wide.values():
         assert df.columns.names == [PdFields.VARIABLE]
         assert df.index.equals(common_index)
-    assert common_index.names == [CommonFields.LOCATION_ID]
+    assert common_index.names == [CommonFields.LOCATION_ID, PdFields.DISTRIBUTION]
     datasets_output = {
         ds: pd.DataFrame([], index=common_index, dtype="bool").rename_axis(
             columns=PdFields.VARIABLE
@@ -1536,14 +1568,16 @@ def _pick_first_with_field(
         for ds in datasets_wide.keys()
     }
     for field, datasets in timeseries_field_datasets.items():
-        location_id_so_far = pd.Series([], dtype=bool).reindex(index=common_index, fill_value=False)
+        distribution_so_far = pd.Series([], dtype=bool).reindex(
+            index=common_index, fill_value=False
+        )
         for dataset in datasets:
             try:
                 this_dataset = datasets_wide[dataset].loc[:, field]
             except KeyError:
                 continue
-            datasets_output[dataset].loc[:, field] = this_dataset & ~location_id_so_far
-            location_id_so_far = location_id_so_far | this_dataset
+            datasets_output[dataset].loc[:, field] = this_dataset & ~distribution_so_far
+            distribution_so_far = distribution_so_far | this_dataset
     return datasets_output
 
 
@@ -1559,12 +1593,14 @@ def _with_common_index(
     datasets_wide: Mapping[MultiRegionDataset, pd.DataFrame]
 ) -> Mapping[MultiRegionDataset, pd.DataFrame]:
     dataset_wide_first = more_itertools.first(datasets_wide.values())
-    assert dataset_wide_first.index.names == [CommonFields.LOCATION_ID]
+    assert dataset_wide_first.index.names == [CommonFields.LOCATION_ID, PdFields.DISTRIBUTION]
     assert dataset_wide_first.columns.names == [PdFields.VARIABLE]
-    common_index = pd.Index(
-        np.unique(np.concatenate([ds_w.index for ds_w in datasets_wide.values()])),
-        name=dataset_wide_first.index.name,
-    )
+    common_index = None
+    for dataset_wide in datasets_wide.values():
+        if common_index is None:
+            common_index = dataset_wide.index
+        else:
+            common_index = common_index.union(dataset_wide.index)
     datasets_wide = {
         ds: ds_w.reindex(index=common_index, fill_value=False) for ds, ds_w in datasets_wide.items()
     }
@@ -1590,7 +1626,11 @@ def _combine_timeseries(
         output_labels = outputs.replace({False: np.nan}).stack().index
         if output_labels.empty:
             continue
-        assert output_labels.names == [CommonFields.LOCATION_ID, PdFields.VARIABLE]
+        assert output_labels.names == [
+            CommonFields.LOCATION_ID,
+            PdFields.DISTRIBUTION,
+            PdFields.VARIABLE,
+        ]
         ts_bucketed_long_to_concat.append(
             _slice_with_labels(ds.timeseries_bucketed_long, output_labels)
         )

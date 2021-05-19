@@ -1773,7 +1773,10 @@ def test_combine_demographic_data_multiple_distributions():
         {
             region_ak: {m1: {all: TimeseriesLiteral([1, 2], provenance="ds2_ak_m1_all")}},
             region_ca: {
-                m1: {age_30s: TimeseriesLiteral([3, 4], provenance="ds2_ca_m1_30s")},
+                m1: {
+                    age_30s: TimeseriesLiteral([3, 4], provenance="ds2_ca_m1_30s"),
+                    all: TimeseriesLiteral([5, 6], provenance="ds2_ca_m1_all"),
+                },
                 m2: {age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")},
             },
         }
@@ -1785,7 +1788,10 @@ def test_combine_demographic_data_multiple_distributions():
         {
             region_ak: {m1: {all: TimeseriesLiteral([1, 2], provenance="ds1_ak_m1_all")}},
             region_ca: {
-                m1: {age_20s: TimeseriesLiteral([2, 3], provenance="ds1_ca_m1_20s")},
+                m1: {
+                    age_20s: TimeseriesLiteral([2, 3], provenance="ds1_ca_m1_20s"),
+                    all: TimeseriesLiteral([5, 6], provenance="ds2_ca_m1_all"),
+                },
                 m2: {age_30s: TimeseriesLiteral([6, 7], provenance="ds2_ca_m2_30s")},
             },
         }
