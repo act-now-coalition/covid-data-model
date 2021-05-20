@@ -135,10 +135,23 @@ FeatureDataSourceMap = NewType(
     Dict[FieldName, List[Union[DataSourceAndRegionMasks, Type[data_source.DataSource]]]],
 )
 
+KANSAS_CITY_COUNTIES = [
+    Region.from_fips("29037"),
+    Region.from_fips("29047"),
+    Region.from_fips("29095"),
+    Region.from_fips("29165"),
+]
+
+JOPLIN_COUNTIES = [Region.from_fips("29097"), Region.from_fips("29145")]
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
 # Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
-NYTimesDatasetWithoutNYC = datasource_regions(NYTimesDataset, exclude=[*ALL_NYC_REGIONS],)
+# Remove counties in MO that overlap with Kansas City and Joplin because we don't handle the
+# reporting done by city, as documented at
+# https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions
+NYTimesDatasetWithoutExceptions = datasource_regions(
+    NYTimesDataset, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
+)
 
 
 CDCVaccinesCountiesDataset = datasource_regions(
@@ -166,7 +179,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutNYC,
+        NYTimesDatasetWithoutExceptions,
     ],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
@@ -190,7 +203,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.DEATHS: [
         CANScraperStateProviders,
         CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutNYC,
+        NYTimesDatasetWithoutExceptions,
     ],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
