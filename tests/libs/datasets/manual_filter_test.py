@@ -313,6 +313,47 @@ def test_region_overrides_transform_and_filter_infection_rate():
     test_helpers.assert_dataset_like(ds_out, ds_in)
 
 
+@pytest.mark.parametrize(
+    "start_date,end_date,has_tag,result", [("2020-04-03", None, True, [1, 2, None, None]),],
+)
+def test_region_overrides_transform_and_filter(start_date, end_date, has_tag, result):
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region",
+                "metric": "metrics.caseDensity",
+                "region": "TX",
+                "context": "https://foo.com/",
+                "disclaimer": "Blah",
+                "blocked": True,
+                "start_date": start_date,
+                "end_date": end_date,
+            }
+        ]
+    }
+    region_tx = Region.from_state("TX")
+
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: [1, 2, 3, 4]}, region=region_tx
+    )
+
+    ds_out = manual_filter.run(
+        ds_in, manual_filter.transform_region_overrides(region_overrides, {})
+    )
+
+    if has_tag:
+        tags = [
+            test_helpers.make_tag(taglib.TagType.KNOWN_ISSUE, public_note="Blah", date="2020-04-03")
+        ]
+    else:
+        tags = []
+    ds_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: TimeseriesLiteral(result, annotation=tags)}, region=region_tx,
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)
+
+
 def test_block_removes_existing_source_tag():
     source = taglib.Source("TestSource")
     other_metrics = {CommonFields.DEATHS: [0, 0]}
