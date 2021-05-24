@@ -43,7 +43,7 @@ class Filter(pydantic.BaseModel):
     @property
     def tag(self) -> taglib.TagInTimeseries:
         if self.start_date:
-            return taglib.KnownIssue(date=self.start_date, disclaimer=self.public_note)
+            return taglib.KnownIssue(date=self.start_date, public_note=self.public_note)
         else:
             return taglib.KnownIssueNoDate(public_note=self.public_note)
 
