@@ -278,7 +278,7 @@ class ZScoreOutlier(AnnotationWithDate):
 
 @dataclass(frozen=True)
 class KnownIssue(TagInTimeseries):
-    disclaimer: str  # TODO(tom): Rename to public_note, to be consistent with KnownIssueNoDate
+    public_note: str
     date: datetime.date
 
     TAG_TYPE = TagType.KNOWN_ISSUE
@@ -286,14 +286,15 @@ class KnownIssue(TagInTimeseries):
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
         content_parsed = json.loads(content)
+        # Support loading old "disclaimer" and new "public_note".
+        public_note = content_parsed.get("disclaimer", content_parsed.get("public_note", ""))
         return cls(
-            disclaimer=content_parsed["disclaimer"],
-            date=datetime.date.fromisoformat(content_parsed["date"]),
+            public_note=public_note, date=datetime.date.fromisoformat(content_parsed["date"]),
         )
 
     @property
     def content(self) -> str:
-        d = {"disclaimer": self.disclaimer, "date": self.date.isoformat()}
+        d = {"public_note": self.public_note, "date": self.date.isoformat()}
         return json.dumps(d, separators=(",", ":"))
 
 
