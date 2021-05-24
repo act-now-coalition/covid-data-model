@@ -136,13 +136,22 @@ FeatureDataSourceMap = NewType(
 )
 
 KANSAS_CITY_COUNTIES = [
+    # Cass County
     Region.from_fips("29037"),
+    # Clay County
     Region.from_fips("29047"),
+    # Jackson County
     Region.from_fips("29095"),
+    # Platte County
     Region.from_fips("29165"),
 ]
 
-JOPLIN_COUNTIES = [Region.from_fips("29097"), Region.from_fips("29145")]
+JOPLIN_COUNTIES = [
+    # Jasper
+    Region.from_fips("29097"),
+    # Newton County
+    Region.from_fips("29145"),
+]
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
 # Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
