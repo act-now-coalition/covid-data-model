@@ -1,4 +1,6 @@
 import json
+from typing import List
+from typing import Optional
 
 import pytest
 from covidactnow.datapublic import common_fields
@@ -314,9 +316,19 @@ def test_region_overrides_transform_and_filter_infection_rate():
 
 
 @pytest.mark.parametrize(
-    "start_date,end_date,has_tag,result", [("2020-04-03", None, True, [1, 2, None, None]),],
+    "start_date,end_date,result, tag_date",
+    [
+        ("2020-04-03", None, [1, 2, None, None], "2020-04-03"),
+        (None, "2020-04-02", [None, None, 3, 4], "2020-04-02"),
+        ("2020-04-02", "2020-04-03", [1, None, None, 4], "2020-04-02"),
+        ("2020-04-02", "2020-04-02", [1, None, 3, 4], "2020-04-02"),
+        ("2020-04-05", None, [1, 2, 3, 4], None),
+        (None, "2020-03-28", [1, 2, 3, 4], None),
+    ],
 )
-def test_region_overrides_transform_and_filter(start_date, end_date, has_tag, result):
+def test_region_overrides_transform_and_filter_start_end_dates(
+    start_date: Optional[str], end_date: Optional[str], result: List, tag_date: Optional[str]
+):
     region_overrides = {
         "overrides": [
             {
@@ -341,9 +353,9 @@ def test_region_overrides_transform_and_filter(start_date, end_date, has_tag, re
         ds_in, manual_filter.transform_region_overrides(region_overrides, {})
     )
 
-    if has_tag:
+    if tag_date:
         tags = [
-            test_helpers.make_tag(taglib.TagType.KNOWN_ISSUE, public_note="Blah", date="2020-04-03")
+            test_helpers.make_tag(taglib.TagType.KNOWN_ISSUE, public_note="Blah", date=tag_date)
         ]
     else:
         tags = []
@@ -351,7 +363,44 @@ def test_region_overrides_transform_and_filter(start_date, end_date, has_tag, re
         {CommonFields.CASES: TimeseriesLiteral(result, annotation=tags)}, region=region_tx,
     )
 
-    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)
+    test_helpers.assert_dataset_like(ds_out, ds_expected)
+
+
+def test_region_overrides_transform_and_filter_value_errors():
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region",
+                "metric": "metrics.caseDensity",
+                "region": "TX",
+                "context": "https://foo.com/",
+                "blocked": False,
+            }
+        ]
+    }
+    with pytest.raises(ValueError):
+        manual_filter.transform_region_overrides(region_overrides, {})
+
+    region_overrides["overrides"][0]["disclaimer"] = "Bad stuff happened."
+    manual_filter.transform_region_overrides(region_overrides, {})
+
+    # start_date with blocked: False is a problem
+    region_overrides["overrides"][0]["start_date"] = "2020-04-01"
+    with pytest.raises(ValueError):
+        manual_filter.transform_region_overrides(region_overrides, {})
+
+    # with blocked: True transform works again.
+    region_overrides["overrides"][0]["blocked"] = True
+    manual_filter.transform_region_overrides(region_overrides, {})
+
+    # A good end_date.
+    region_overrides["overrides"][0]["end_date"] = "2020-04-01"
+    manual_filter.transform_region_overrides(region_overrides, {})
+
+    # end_date is before start_date, not good.
+    region_overrides["overrides"][0]["end_date"] = "2020-03-29"
+    with pytest.raises(ValueError):
+        manual_filter.transform_region_overrides(region_overrides, {})
 
 
 def test_block_removes_existing_source_tag():

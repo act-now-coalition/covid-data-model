@@ -478,6 +478,12 @@ def check_timeseries_wide_dates_structure(timeseries_wide_dates: pd.DataFrame, *
             PdFields.VARIABLE,
         ]
     assert timeseries_wide_dates.columns.names == [CommonFields.DATE]
+    numeric_columns = timeseries_wide_dates.dtypes.apply(is_numeric_dtype)
+    assert numeric_columns.all()
+    assert timeseries_wide_dates.columns.is_unique
+    # The following fails unexpectedly. See TODO in __post_init__.
+    # assert timeseries_wide_dates.columns.is_monotonic_increasing
+    assert timeseries_wide_dates.columns.is_all_dates
 
 
 def _tag_add_all_bucket(tag: pd.Series) -> pd.Series:
@@ -1031,6 +1037,7 @@ class MultiRegionDataset:
         # TODO(tom): Work out why is_monotonic_increasing is false (just for index with NaT
         #  and real date values?) after calling sort_index(). It may be related to
         #  https://github.com/pandas-dev/pandas/issues/35992 which is fixed in pandas 1.2.0
+        # Also check other references to is_monotonic_increasing in this file.
         # assert self.tag.index.is_monotonic_increasing
         assert self.tag.name == TagField.CONTENT
 
