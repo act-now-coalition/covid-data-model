@@ -1,6 +1,7 @@
 import json
 from typing import List
 from typing import Optional
+from typing import Type
 
 import pytest
 from covidactnow.datapublic import common_fields
@@ -316,7 +317,7 @@ def test_region_overrides_transform_and_filter_infection_rate():
 
 
 @pytest.mark.parametrize(
-    "start_date,end_date,result, tag_date",
+    "start_date, end_date, result, tag_date",
     [
         ("2020-04-03", None, [1, 2, None, None], "2020-04-03"),
         (None, "2020-04-02", [None, None, 3, 4], "2020-04-02"),
@@ -366,7 +367,32 @@ def test_region_overrides_transform_and_filter_start_end_dates(
     test_helpers.assert_dataset_like(ds_out, ds_expected)
 
 
-def test_region_overrides_transform_and_filter_value_errors():
+@pytest.mark.parametrize(
+    "blocked, disclaimer, start_date, end_date, raises",
+    [
+        # Not blocked and no disclaimer is invalid.
+        (False, None, None, None, ValueError),
+        # Setting disclaimer fixes the problem so transform_region_overrides returns normally.
+        (False, "Stuff", None, None, None),
+        # start_date or end_date with blocked: False is a problem
+        (False, "Stuff", "2020-04-01", None, ValueError),
+        (False, "Stuff", None, "2020-04-01", ValueError),
+        # start_date or end_date with blocked: True works
+        (True, "Stuff", "2020-04-01", None, None),
+        (True, "Stuff", None, "2020-04-01", None),
+        # Good start_date and end_date
+        (True, "Stuff", "2020-04-01", "2020-04-02", None),
+        # Bad start_date and end_date
+        (True, "Stuff", "2020-04-02", "2020-04-01", ValueError),
+    ],
+)
+def test_region_overrides_transform_and_filter_validation(
+    blocked: bool,
+    disclaimer: Optional[str],
+    start_date: Optional[str],
+    end_date: Optional[str],
+    raises: Optional[Type[BaseException]],
+):
     region_overrides = {
         "overrides": [
             {
@@ -374,32 +400,21 @@ def test_region_overrides_transform_and_filter_value_errors():
                 "metric": "metrics.caseDensity",
                 "region": "TX",
                 "context": "https://foo.com/",
-                "blocked": False,
+                "blocked": blocked,
             }
         ]
     }
-    with pytest.raises(ValueError):
-        manual_filter.transform_region_overrides(region_overrides, {})
+    if disclaimer:
+        region_overrides["overrides"][0]["disclaimer"] = disclaimer
+    if start_date:
+        region_overrides["overrides"][0]["start_date"] = start_date
+    if end_date:
+        region_overrides["overrides"][0]["end_date"] = end_date
 
-    region_overrides["overrides"][0]["disclaimer"] = "Bad stuff happened."
-    manual_filter.transform_region_overrides(region_overrides, {})
-
-    # start_date with blocked: False is a problem
-    region_overrides["overrides"][0]["start_date"] = "2020-04-01"
-    with pytest.raises(ValueError):
-        manual_filter.transform_region_overrides(region_overrides, {})
-
-    # with blocked: True transform works again.
-    region_overrides["overrides"][0]["blocked"] = True
-    manual_filter.transform_region_overrides(region_overrides, {})
-
-    # A good end_date.
-    region_overrides["overrides"][0]["end_date"] = "2020-04-01"
-    manual_filter.transform_region_overrides(region_overrides, {})
-
-    # end_date is before start_date, not good.
-    region_overrides["overrides"][0]["end_date"] = "2020-03-29"
-    with pytest.raises(ValueError):
+    if raises:
+        with pytest.raises(raises):
+            manual_filter.transform_region_overrides(region_overrides, {})
+    else:
         manual_filter.transform_region_overrides(region_overrides, {})
 
 
