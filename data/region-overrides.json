@@ -21,7 +21,7 @@
       "metric": "metrics.testPositivityRatio",
       "region": "NY",
       "context": "[michael] NY dashboard uses \"testing encounters\" instead of \"PCR test specimens\"",
-      "disclaimer": "There is a known discrepancy between our data and the New York state dashboard. We calculate test positivity rate based on positive PCR test specimens, while the state dashboard rate is based on individuals testing positive.",
+      "disclaimer": "There is a known discrepancy between our data and the New York state dashboard. We calculate test positivity rate based on positive PCR test specimens, while the state dashboard rate is based on individuals testing positive via PCR or antigen testing.",
       "blocked": false
     },
     {
@@ -29,15 +29,8 @@
       "metric": "metrics.vaccinationsInitiatedRatio",
       "region": "IL",
       "context": "https://trello.com/c/buXoYmKy/1140-il-county-first-doses-underreporting",
-      "disclaimer": "Note that Illinois does not report enough information to correctly distinguish between administration of one dose vaccines and two dose vaccines, and therefore our \"1+ dose\" data above may be an underestimation of the true number of people receiving at least one dose.",
+      "disclaimer": "Note that Illinois does not report enough information to correctly distinguish between administration of one dose vaccines and two dose vaccines, and therefore our \"1+ dose\" data above is approximated using the fully-vaccinated data and a state-wide average ratio.",
       "blocked": false
-    },
-    {
-      "include": "region",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "region": "04013",
-      "context": "https://trello.com/c/gLXOYZdT/1159-maricopa-county-az-fully-vaccinated-exceeds-partially-vaccinated"
     },
     {
       "include": "region",
@@ -74,6 +67,20 @@
       "blocked": true,
       "region": "25019",
       "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "51685",
+      "context": "https://trello.com/c/DfXi7QFD/1346-virginia-city-county-mismatch-leading-to-one-place-with-100"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "51683",
+      "context": "https://trello.com/c/DfXi7QFD/1346-virginia-city-county-mismatch-leading-to-one-place-with-100"
     }
   ]
 }
