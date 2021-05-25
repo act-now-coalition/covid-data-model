@@ -84,7 +84,7 @@ def test_manual_filter():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-02-12",
-        disclaimer=TEST_CONFIG.filters[0].public_note,
+        public_note=TEST_CONFIG.filters[0].public_note,
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -110,7 +110,7 @@ def test_manual_filter_region_excluded():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=TEST_CONFIG.filters[1].public_note,
+        public_note=TEST_CONFIG.filters[1].public_note,
     )
     ds_expected = test_helpers.build_dataset(
         {
@@ -139,7 +139,7 @@ def test_manual_filter_field_groups():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=TEST_CONFIG.filters[1].public_note,
+        public_note=TEST_CONFIG.filters[1].public_note,
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {CommonFields.DEATHS: TimeseriesLiteral([1], annotation=[tag_expected]), **other_data},
@@ -178,7 +178,7 @@ def test_manual_filter_per_bucket_tag():
     tag_expected = test_helpers.make_tag(
         taglib.TagType.KNOWN_ISSUE,
         date="2021-03-15",
-        disclaimer=TEST_CONFIG.filters[1].public_note,
+        public_note=TEST_CONFIG.filters[1].public_note,
     )
     ds_expected = test_helpers.build_default_region_dataset(
         {
@@ -361,10 +361,10 @@ def test_touched_subset():
     # Add 2 known issue tags for the same time series and check that touched_subset still produces
     # the expected output.
     known_issue_1 = test_helpers.make_tag(
-        taglib.TagType.KNOWN_ISSUE, disclaimer="foo", date="2021-04-01"
+        taglib.TagType.KNOWN_ISSUE, public_note="foo", date="2021-04-01"
     )
     known_issue_2 = test_helpers.make_tag(
-        taglib.TagType.KNOWN_ISSUE, disclaimer="foo", date="2021-04-02"
+        taglib.TagType.KNOWN_ISSUE, public_note="foo", date="2021-04-02"
     )
     ds_out = test_helpers.build_default_region_dataset(
         {
@@ -398,7 +398,7 @@ def test_touched_subset_only_observation_drops():
         }
     )
     known_issue = test_helpers.make_tag(
-        taglib.TagType.KNOWN_ISSUE, disclaimer="foo", date="2021-04-01"
+        taglib.TagType.KNOWN_ISSUE, public_note="foo", date="2021-04-01"
     )
     # ds_out is a mock of what is returned by `manual_filter.run`.
     ds_out = test_helpers.build_default_region_dataset(

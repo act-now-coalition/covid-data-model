@@ -29,3 +29,19 @@ def test_tag_type_to_class():
 def test_enum_names_match_values():
     test_helpers.assert_enum_names_match_values(taglib.TagType)
     test_helpers.assert_enum_names_match_values(taglib.TagField, exceptions={taglib.TagField.TYPE})
+
+
+def test_load_known_issue_json():
+    parsed_old = taglib.KnownIssue.make_instance(content='{"disclaimer":"a","date":"2021-05-14"}')
+    expected = test_helpers.make_tag(taglib.TagType.KNOWN_ISSUE, public_note="a", date="2021-05-14")
+    assert parsed_old == expected
+    parsed_new = taglib.KnownIssue.make_instance(content='{"public_note":"a","date":"2021-05-14"}')
+    assert parsed_new == expected
+
+
+def test_load_known_issue_json_empty_disclaimer():
+    parsed_old = taglib.KnownIssue.make_instance(content='{"disclaimer":"","date":"2021-05-14"}')
+    expected = test_helpers.make_tag(taglib.TagType.KNOWN_ISSUE, public_note="", date="2021-05-14")
+    assert parsed_old == expected
+    parsed_new = taglib.KnownIssue.make_instance(content='{"public_note":"","date":"2021-05-14"}')
+    assert parsed_new == expected
