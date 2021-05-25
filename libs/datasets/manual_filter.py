@@ -99,21 +99,23 @@ def _filter_by_date(
     """Removes observations from specified dates, returning the modified timeseries and
     unmodified timeseries in separate DataFrame objects."""
     timeseries.check_timeseries_wide_dates_structure(ts_in)
+
     drop_masks = []  # Masks for ts_in.columns. A date is dropped when True in all masks.
     if drop_start_date:
         drop_masks.append(pd.to_datetime(drop_start_date) <= ts_in.columns)
     if drop_end_date:
         drop_masks.append(ts_in.columns <= pd.to_datetime(drop_end_date))
     if len(drop_masks) == 1:
-        drop_mask = drop_masks[0]  # Only one of start and end date was set
+        columns_to_drop_mask = drop_masks[0]  # Only one of start and end date was set
     else:
         assert len(drop_masks) == 2  # Both start and end date were set
-        drop_mask = drop_masks[0] & drop_masks[1]
-    observations_dropped = ts_in.loc[:, drop_mask]
-    mask_has_real_value_to_drop = observations_dropped.notna().any(1)
-    ts_to_filter = ts_in.loc[mask_has_real_value_to_drop]
-    ts_no_real_values_to_drop = ts_in.loc[~mask_has_real_value_to_drop]
-    ts_filtered = ts_to_filter.loc[:, ~drop_mask]
+        columns_to_drop_mask = drop_masks[0] & drop_masks[1]
+
+    observations_dropped = ts_in.loc[:, columns_to_drop_mask]
+    ts_has_real_value_to_drop_mask = observations_dropped.notna().any(1)
+    ts_to_filter = ts_in.loc[ts_has_real_value_to_drop_mask]
+    ts_no_real_values_to_drop = ts_in.loc[~ts_has_real_value_to_drop_mask]
+    ts_filtered = ts_to_filter.loc[:, ~columns_to_drop_mask]
     return ts_filtered, ts_no_real_values_to_drop
 
 
