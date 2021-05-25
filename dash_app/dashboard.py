@@ -24,6 +24,7 @@ from plotly import express as px
 from libs import pipeline
 from libs.datasets import combined_datasets
 from libs.datasets import dataset_utils
+from libs.datasets import new_cases_and_deaths
 from libs.datasets import timeseries
 from libs.datasets.taglib import TagField
 from libs.qa import timeseries_stats
@@ -117,6 +118,7 @@ class RepoWrapper:
             dataset = timeseries.MultiRegionDataset.from_wide_dates_csv(
                 dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH
             ).add_static_csv_file(dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH)
+            dataset = new_cases_and_deaths.add_new_cases(dataset)
         elif dataset_name is DashboardFile.COMBINED_RAW:
             dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
                 dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH
