@@ -62,12 +62,11 @@ class Filter(pydantic.BaseModel):
                 )
             if start_date:
                 raise ValueError(
-                    "Filter including start_date without dropping observations "
-                    "doesn't make sense."
+                    "Filter including start_date without dropping observations doesn't make sense."
                 )
             if end_date:
                 raise ValueError(
-                    "Filter including end_date without dropping observations " "doesn't make sense."
+                    "Filter including end_date without dropping observations doesn't make sense."
                 )
         if start_date and end_date and end_date < start_date:
             raise ValueError(f"Filter end_date ({end_date}) is before start_date ({start_date})")
