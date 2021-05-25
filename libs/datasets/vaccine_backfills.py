@@ -64,39 +64,6 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     return ds_in.replace_timeseries_wide_dates([ts_in_without_pcts, most_recent_pcts])
 
 
-def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDataset:
-    """Backfills vaccination initiated data from total doses administered and total completed.
-
-    Args:
-        dataset: Input dataset.
-
-    Returns: New dataset with backfilled data.
-    """
-    administered = dataset.get_timeseries_bucketed_wide_dates(CommonFields.VACCINES_ADMINISTERED)
-    completed = dataset.get_timeseries_bucketed_wide_dates(CommonFields.VACCINATIONS_COMPLETED)
-    existing_initiated = dataset.get_timeseries_bucketed_wide_dates(
-        CommonFields.VACCINATIONS_INITIATED
-    )
-
-    # Compute and keep only time series with at least one real value
-    computed_initiated = administered - completed
-    computed_initiated = computed_initiated.dropna(axis=0, how="all")
-    # Keep the computed initiated only where there is not already an existing time series.
-    computed_initiated = computed_initiated.loc[
-        ~computed_initiated.index.isin(existing_initiated.index)
-    ]
-
-    # Use concat to prepend the VARIABLE index level, then reorder the levels to match the dataset.
-    computed_initiated = pd.concat(
-        {CommonFields.VACCINATIONS_INITIATED: computed_initiated},
-        names=[PdFields.VARIABLE] + list(computed_initiated.index.names),
-    ).reorder_levels(timeseries.EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.index.names)
-
-    return dataset.replace_timeseries_wide_dates(
-        [dataset.timeseries_bucketed_wide_dates, computed_initiated]
-    ).add_tag_to_subset(taglib.Derived("backfill_vaccination_initiated"), computed_initiated.index)
-
-
 STATE_LOCATION_ID = "state_location_id"
 
 
