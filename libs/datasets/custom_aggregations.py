@@ -115,6 +115,10 @@ US_AGGREGATED_EXPECTED_VARIABLES_TO_DROP = [
     CommonFields.DEATHS,
     CommonFields.NEW_DEATHS,
     CommonFields.POPULATION,
+    CommonFields.VACCINATIONS_COMPLETED,
+    CommonFields.VACCINATIONS_INITIATED,
+    CommonFields.VACCINES_ADMINISTERED,
+    CommonFields.VACCINES_DISTRIBUTED,
 ]
 US_AGGREGATED_VARIABLE_DROP_MESSAGE = (
     "Unexpected variable found in source and aggregated country data."
