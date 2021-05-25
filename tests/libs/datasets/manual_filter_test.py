@@ -1,4 +1,7 @@
 import json
+from typing import List
+from typing import Optional
+from typing import Type
 
 import pytest
 from covidactnow.datapublic import common_fields
@@ -311,6 +314,110 @@ def test_region_overrides_transform_and_filter_infection_rate():
     )
 
     test_helpers.assert_dataset_like(ds_out, ds_in)
+
+
+@pytest.mark.parametrize(
+    "start_date, end_date, result, tag_date",
+    [
+        ("2020-04-03", None, [1, 2, None, None], "2020-04-03"),
+        (None, "2020-04-02", [None, None, 3, 4], "2020-04-02"),
+        ("2020-04-02", "2020-04-03", [1, None, None, 4], "2020-04-02"),
+        ("2020-04-02", "2020-04-02", [1, None, 3, 4], "2020-04-02"),
+        ("2020-04-05", None, [1, 2, 3, 4], None),
+        (None, "2020-03-28", [1, 2, 3, 4], None),
+        (None, "2020-04-05", [None, None, None, None], "2020-04-05"),
+        ("2020-03-28", None, [None, None, None, None], "2020-03-28"),
+    ],
+)
+def test_region_overrides_transform_and_filter_start_end_dates(
+    start_date: Optional[str], end_date: Optional[str], result: List, tag_date: Optional[str]
+):
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region",
+                "metric": "metrics.caseDensity",
+                "region": "TX",
+                "context": "https://foo.com/",
+                "disclaimer": "Blah",
+                "blocked": True,
+                "start_date": start_date,
+                "end_date": end_date,
+            }
+        ]
+    }
+    region_tx = Region.from_state("TX")
+
+    ds_in = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: [1, 2, 3, 4]}, region=region_tx
+    )
+
+    ds_out = manual_filter.run(
+        ds_in, manual_filter.transform_region_overrides(region_overrides, {})
+    )
+
+    if tag_date:
+        tags = [
+            test_helpers.make_tag(taglib.TagType.KNOWN_ISSUE, public_note="Blah", date=tag_date)
+        ]
+    else:
+        tags = []
+    ds_expected = test_helpers.build_default_region_dataset(
+        {CommonFields.CASES: TimeseriesLiteral(result, annotation=tags)}, region=region_tx,
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)
+
+
+@pytest.mark.parametrize(
+    "blocked, disclaimer, start_date, end_date, raises",
+    [
+        # Not blocked and no disclaimer is invalid.
+        (False, None, None, None, ValueError),
+        # Setting disclaimer fixes the problem so transform_region_overrides returns normally.
+        (False, "Stuff", None, None, None),
+        # start_date or end_date with blocked: False is a problem
+        (False, "Stuff", "2020-04-01", None, ValueError),
+        (False, "Stuff", None, "2020-04-01", ValueError),
+        # start_date or end_date with blocked: True works
+        (True, "Stuff", "2020-04-01", None, None),
+        (True, "Stuff", None, "2020-04-01", None),
+        # Good start_date and end_date
+        (True, "Stuff", "2020-04-01", "2020-04-02", None),
+        # Bad start_date and end_date
+        (True, "Stuff", "2020-04-02", "2020-04-01", ValueError),
+    ],
+)
+def test_region_overrides_transform_and_filter_validation(
+    blocked: bool,
+    disclaimer: Optional[str],
+    start_date: Optional[str],
+    end_date: Optional[str],
+    raises: Optional[Type[BaseException]],
+):
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region",
+                "metric": "metrics.caseDensity",
+                "region": "TX",
+                "context": "https://foo.com/",
+                "blocked": blocked,
+            }
+        ]
+    }
+    if disclaimer:
+        region_overrides["overrides"][0]["disclaimer"] = disclaimer
+    if start_date:
+        region_overrides["overrides"][0]["start_date"] = start_date
+    if end_date:
+        region_overrides["overrides"][0]["end_date"] = end_date
+
+    if raises:
+        with pytest.raises(raises):
+            manual_filter.transform_region_overrides(region_overrides, {})
+    else:
+        manual_filter.transform_region_overrides(region_overrides, {})
 
 
 def test_block_removes_existing_source_tag():

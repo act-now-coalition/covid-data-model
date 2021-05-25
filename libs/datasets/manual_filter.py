@@ -35,6 +35,7 @@ class Filter(pydantic.BaseModel):
     regions_excluded: Optional[List[RegionMaskOrRegion]] = None
     fields_included: List[CommonFields]
     start_date: Optional[datetime.date] = None
+    end_date: Optional[datetime.date] = None
     drop_observations: bool
     internal_note: str
     # public_note may be any empty string
@@ -44,22 +45,32 @@ class Filter(pydantic.BaseModel):
     def tag(self) -> taglib.TagInTimeseries:
         if self.start_date:
             return taglib.KnownIssue(date=self.start_date, public_note=self.public_note)
+        elif self.end_date:
+            return taglib.KnownIssue(date=self.end_date, public_note=self.public_note)
         else:
             return taglib.KnownIssueNoDate(public_note=self.public_note)
 
     # From https://github.com/samuelcolvin/pydantic/issues/568 ... pylint: disable=no-self-argument
     @pydantic.root_validator()
     def check(cls, values):
+        start_date = values["start_date"]
+        end_date = values["end_date"]
         if not values["drop_observations"]:
             if values["public_note"] == "":
                 raise ValueError(
                     "Filter doesn't drop observations or add a public_note. What does it do?"
                 )
-            if values["start_date"]:
+            if start_date:
                 raise ValueError(
-                    "Filter including start_date without dropping observations "
-                    "doesn't make sense."
+                    "Filter including start_date without dropping observations doesn't make sense."
                 )
+            if end_date:
+                raise ValueError(
+                    "Filter including end_date without dropping observations doesn't make sense."
+                )
+        if start_date and end_date and end_date < start_date:
+            raise ValueError(f"Filter end_date ({end_date}) is before start_date ({start_date})")
+
         return values
 
 
@@ -79,17 +90,31 @@ def _partition_by_fields(
 
 
 def _filter_by_date(
-    ts_in: pd.DataFrame, *, drop_start_date: datetime.date
+    ts_in: pd.DataFrame,
+    *,
+    drop_start_date: Optional[datetime.date],
+    drop_end_date: Optional[datetime.date],
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Removes observations from specified dates, returning the modified timeseries and
     unmodified timeseries in separate DataFrame objects."""
     timeseries.check_timeseries_wide_dates_structure(ts_in)
-    start_date = pd.to_datetime(drop_start_date)
-    obsv_selected = ts_in.loc[:, ts_in.columns >= start_date]
-    mask_has_real_value_to_drop = obsv_selected.notna().any(1)
-    ts_to_filter = ts_in.loc[mask_has_real_value_to_drop]
-    ts_no_real_values_to_drop = ts_in.loc[~mask_has_real_value_to_drop]
-    ts_filtered = ts_to_filter.loc[:, ts_to_filter.columns < start_date]
+
+    drop_masks = []  # Masks for ts_in.columns. A date is dropped when True in all masks.
+    if drop_start_date:
+        drop_masks.append(pd.to_datetime(drop_start_date) <= ts_in.columns)
+    if drop_end_date:
+        drop_masks.append(ts_in.columns <= pd.to_datetime(drop_end_date))
+    if len(drop_masks) == 1:
+        columns_to_drop_mask = drop_masks[0]  # Only one of start and end date was set
+    else:
+        assert len(drop_masks) == 2  # Both start and end date were set
+        columns_to_drop_mask = drop_masks[0] & drop_masks[1]
+
+    observations_dropped = ts_in.loc[:, columns_to_drop_mask]
+    ts_has_real_value_to_drop_mask = observations_dropped.notna().any(1)
+    ts_to_filter = ts_in.loc[ts_has_real_value_to_drop_mask]
+    ts_no_real_values_to_drop = ts_in.loc[~ts_has_real_value_to_drop_mask]
+    ts_filtered = ts_to_filter.loc[:, ~columns_to_drop_mask]
     return ts_filtered, ts_no_real_values_to_drop
 
 
@@ -106,9 +131,9 @@ def drop_observations(
     )
     ts_results.append(ts_not_selected_fields)
 
-    if filter_.start_date:
+    if filter_.start_date or filter_.end_date:
         ts_filtered, ts_no_real_values_to_drop = _filter_by_date(
-            ts_selected_fields, drop_start_date=filter_.start_date
+            ts_selected_fields, drop_start_date=filter_.start_date, drop_end_date=filter_.end_date
         )
         return dataset.replace_timeseries_wide_dates(
             [ts_not_selected_fields, ts_filtered, ts_no_real_values_to_drop]
@@ -240,6 +265,7 @@ def _transform_one_override(
         raise ValueError(f"Invalid include: {include_str}")
 
     start_date = override.get("start_date", None)
+    end_date = override.get("end_date", None)
 
     return Filter(
         regions_included=regions_included,
@@ -248,6 +274,7 @@ def _transform_one_override(
         public_note=override.get("disclaimer", ""),
         drop_observations=bool(override["blocked"]),
         start_date=start_date,
+        end_date=end_date,
     )
 
 
