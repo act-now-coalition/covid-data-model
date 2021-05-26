@@ -468,9 +468,12 @@ class RtInferenceEngine:
                 # again.
 
                 posteriors[current_day] = reinit_prior
-            elif timeseries[current_day] == 0:
-                # If the smoothed values for Daily New Cases is 0, then reset the prior to the initial
+            elif timeseries[current_day] <= 0.4:
+                # If the smoothed values for Daily New Cases is less than or equal to 0.4, then reset the prior to the initial
                 # In this branch reinit_prior is equal to the initial prior
+                # This magic number was decided in consultation between Brett and Chris on 26 May 2021
+                # We looked at the impulse response function for the current input smoothing window
+                # 6 cases separated by 2 days each has a peak value of 0.41.
                 posteriors[current_day] = reinit_prior
             else:
                 posteriors[current_day] = numerator / denominator
