@@ -483,7 +483,7 @@ def check_timeseries_wide_dates_structure(timeseries_wide_dates: pd.DataFrame, *
     assert timeseries_wide_dates.columns.is_unique
     # The following fails unexpectedly. See TODO in __post_init__.
     # assert timeseries_wide_dates.columns.is_monotonic_increasing
-    assert timeseries_wide_dates.columns.is_all_dates
+    assert isinstance(timeseries_wide_dates.columns, pd.DatetimeIndex)
 
 
 def _tag_add_all_bucket(tag: pd.Series) -> pd.Series:
@@ -707,7 +707,7 @@ class MultiRegionDataset:
                 [CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET]
             )
         )
-        if not timeseries_wide.columns.is_all_dates:
+        if not isinstance(timeseries_wide.columns, pd.DatetimeIndex):
             raise ValueError(f"Problem with {start_date} to {end_date}... {str(self.timeseries)}")
         return timeseries_wide
 
