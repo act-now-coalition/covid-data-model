@@ -377,7 +377,7 @@ def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
         # positive_tests and negative_tests are used
         expected_metrics = {
             CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-                [None, 0.0909, None, None, None, None], provenance="pos"
+                [None, 2 / (2 + 20), None, None, None, None], provenance="pos"
             )
         }
         expected = test_helpers.build_default_region_dataset(
@@ -401,4 +401,4 @@ def test_recent_pos_neg_tests_has_positivity_ratio(pos_neg_tests_recent):
         all_methods = AllMethods.run(dataset_in)
 
     # check_less_precise so only 3 digits need match for testPositivityRatio
-    test_helpers.assert_dataset_like(all_methods.test_positivity, expected, check_less_precise=True)
+    test_helpers.assert_dataset_like(all_methods.test_positivity, expected)
