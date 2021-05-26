@@ -412,7 +412,7 @@ class RtInferenceEngine:
         process_matrix /= process_matrix.sum(axis=0)
 
         # (4) Calculate the initial prior. Gamma mean of "a" with mode of "a-1".
-        prior0 = sps.gamma(a=2.5).pdf(self.r_list)
+        prior0 = sps.gamma(a=2).pdf(self.r_list)
         prior0 /= prior0.sum()
 
         reinit_prior = sps.gamma(a=2).pdf(self.r_list)
@@ -467,6 +467,10 @@ class RtInferenceEngine:
                 # deaths that dip down to zero, but then start to increase
                 # again.
 
+                posteriors[current_day] = reinit_prior
+            elif timeseries[current_day] == 0:
+                # If the smoothed values for Daily New Cases is 0, then reset the prior to the initial
+                # In this branch reinit_prior is equal to the initial prior
                 posteriors[current_day] = reinit_prior
             else:
                 posteriors[current_day] = numerator / denominator
