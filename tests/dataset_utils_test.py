@@ -65,10 +65,7 @@ def read_csv_and_index_fips(csv_str: str) -> pd.DataFrame:
 def read_csv_and_index_fips_date(csv_str: str) -> pd.DataFrame:
     """Read a CSV in a str to a DataFrame and set the FIPS and DATE columns as MultiIndex."""
     return pd.read_csv(
-        StringIO(csv_str),
-        parse_dates=[CommonFields.DATE],
-        dtype={CommonFields.FIPS: str},
-        low_memory=False,
+        StringIO(csv_str), parse_dates=[CommonFields.DATE], dtype={CommonFields.FIPS: str},
     ).set_index(COMMON_FIELDS_TIMESERIES_KEYS)
 
 

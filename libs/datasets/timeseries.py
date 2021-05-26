@@ -1,4 +1,5 @@
 import textwrap
+from functools import cached_property
 from typing import (
     Any,
     Collection,
@@ -54,7 +55,6 @@ from libs.datasets.taglib import UrlStr
 from libs.datasets.demographics import DistributionBucket
 from libs.pipeline import Region
 import pandas.core.groupby.generic
-from backports.cached_property import cached_property
 
 from libs.pipeline import RegionMaskOrRegion
 
@@ -203,6 +203,7 @@ class OneRegionTimeseriesDataset:
         if CommonFields.DATE not in self.data.columns:
             raise ValueError("A timeseries must have a date column")
 
+        assert isinstance(self.tag, pd.Series)
         assert self.tag.index.names == [
             TagField.VARIABLE,
             TagField.DEMOGRAPHIC_BUCKET,
@@ -1097,7 +1098,10 @@ class MultiRegionDataset:
         if ts_df.empty and not latest_dict:
             raise RegionLatestNotFound(region)
 
-        tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
+        try:
+            tag = self.tag.xs(region.location_id, level=CommonFields.LOCATION_ID, drop_level=True)
+        except KeyError:
+            tag = _EMPTY_ONE_REGION_TAG_SERIES
 
         return OneRegionTimeseriesDataset(
             region=region, data=ts_df, latest=latest_dict, tag=tag, bucketed_latest=bucketed_latest
