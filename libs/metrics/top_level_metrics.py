@@ -13,8 +13,6 @@ from api import can_api_v2_definition
 from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
 from libs import series_utils
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.metrics import icu_headroom
-from libs.metrics import icu_capacity
 
 Metrics = can_api_v2_definition.Metrics
 ICUHeadroomMetricDetails = can_api_v2_definition.ICUHeadroomMetricDetails
@@ -67,17 +65,12 @@ def calculate_metrics_for_timeseries(
 
     data = timeseries.data.set_index(CommonFields.DATE)
 
-    estimated_current_icu = None
     infection_rate = np.nan
     infection_rate_ci90 = np.nan
     if rt_data and not rt_data.empty:
         rt_data = rt_data.date_indexed
         infection_rate = rt_data["Rt_MAP_composite"]
         infection_rate_ci90 = rt_data["Rt_ci95_composite"] - rt_data["Rt_MAP_composite"]
-
-    if icu_data and not icu_data.empty:
-        icu_data = icu_data.date_indexed
-        estimated_current_icu = icu_data[CommonFields.CURRENT_ICU]
 
     new_cases = data[CommonFields.NEW_CASES]
     case_density = calculate_case_density(new_cases, population)
@@ -87,15 +80,6 @@ def calculate_metrics_for_timeseries(
     contact_tracer_capacity = calculate_contact_tracers(
         new_cases, data[CommonFields.CONTACT_TRACERS_COUNT]
     )
-
-    # Caculate icu headroom
-    decomp = icu_headroom.get_decomp_for_state(latest[CommonFields.STATE])
-    icu_data = icu_headroom.ICUMetricData(
-        data, estimated_current_icu, latest, decomp, require_recent_data=require_recent_icu_data
-    )
-    icu_metric, icu_metric_details = icu_headroom.calculate_icu_utilization_metric(icu_data)
-
-    icu_capacity_ratio = icu_capacity.calculate_icu_capacity(data)
 
     vaccines_initiated_ratio = (
         common_df.get_timeseries(
@@ -117,8 +101,8 @@ def calculate_metrics_for_timeseries(
         MetricsFields.CONTACT_TRACER_CAPACITY_RATIO: contact_tracer_capacity,
         MetricsFields.INFECTION_RATE: infection_rate,
         MetricsFields.INFECTION_RATE_CI90: infection_rate_ci90,
-        MetricsFields.ICU_HEADROOM_RATIO: icu_metric,
-        MetricsFields.ICU_CAPACITY_RATIO: icu_capacity_ratio,
+        MetricsFields.ICU_HEADROOM_RATIO: np.nan,
+        MetricsFields.ICU_CAPACITY_RATIO: np.nan,
         MetricsFields.VACCINATIONS_INITIATED_RATIO: vaccines_initiated_ratio,
         MetricsFields.VACCINATIONS_COMPLETED_RATIO: vaccines_completed_ratio,
     }
@@ -128,9 +112,7 @@ def calculate_metrics_for_timeseries(
 
     metric_summary = None
     if not metrics.empty:
-        metric_summary = calculate_latest_metrics(
-            metrics, icu_metric_details, test_positivity_details
-        )
+        metric_summary = calculate_latest_metrics(metrics, test_positivity_details)
 
     return metrics, metric_summary
 
@@ -229,7 +211,6 @@ def calculate_contact_tracers(
 
 def calculate_latest_metrics(
     data: pd.DataFrame,
-    icu_metric_details: Optional[ICUHeadroomMetricDetails],
     test_positivity_method: Optional[TestPositivityRatioDetails],
     max_lookback_days: int = MAX_METRIC_LOOKBACK_DAYS,
 ) -> Metrics:
@@ -245,7 +226,7 @@ def calculate_latest_metrics(
     data = data.set_index(CommonFields.DATE)
     metrics = {
         "testPositivityRatioDetails": test_positivity_method,
-        "icuHeadroomDetails": icu_metric_details,
+        "icuHeadroomDetails": None,
     }
     latest_date = data.index[-1]
 
