@@ -468,9 +468,15 @@ class RtInferenceEngine:
                 # again.
 
                 posteriors[current_day] = reinit_prior
-            elif timeseries[current_day] == 0:
-                # If the smoothed values for Daily New Cases is 0, then reset the prior to the initial
-                # In this branch reinit_prior is equal to the initial prior
+            elif (
+                timeseries[current_day]
+                / self.regional_input.timeseries.latest["population"]
+                * 100000
+                < 1
+            ):
+                # If the smoothed values for Daily New Cases is less than 1, then reset the prior to the
+                # reinit value. In this branch we don't have to worry about leading zeros,
+                # because the initial prior is equal to the reinitial prior.
                 posteriors[current_day] = reinit_prior
             else:
                 posteriors[current_day] = numerator / denominator
