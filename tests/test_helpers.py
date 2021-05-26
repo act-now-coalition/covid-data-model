@@ -8,7 +8,6 @@ from typing import Collection
 from typing import Iterable
 from typing import List
 
-from collections import UserList
 from typing import Any
 from typing import Mapping
 from typing import NewType
@@ -47,7 +46,7 @@ DEFAULT_START_DATE = "2020-04-01"
 
 
 @dataclass_with_default_init(frozen=True)
-class TimeseriesLiteral(UserList):
+class TimeseriesLiteral:
     """Represents a timeseries literal: a sequence of floats and some related attributes."""
 
     data: Sequence[float]
@@ -66,8 +65,6 @@ class TimeseriesLiteral(UserList):
         **kwargs,
     ):
         """Initialize `self`, doing some type conversion."""
-        # UserList.__init__ attempts to set self.data, which fails on this frozen class. Instead
-        # let the dataclasses code initialize `data`.
         self.__default_init__(  # pylint: disable=E1101
             *args,
             provenance=combined_datasets.to_list(provenance),
@@ -165,12 +162,12 @@ def build_dataset(
             yield DemographicBucket("all"), buckets
 
     tags_to_concat = []
-    region_var_bucket_seq = {}
+    region_var_bucket_timeseries = {}
     for region, region_metrics in metrics_by_region_then_field_name.items():
         for var_name, var_buckets in region_metrics.items():
             for bucket_name, ts_literal in iter_buckets(var_buckets):
                 if isinstance(ts_literal, TimeseriesLiteral):
-                    region_var_bucket_seq[(region, var_name, bucket_name)] = ts_literal.data
+                    timeseries_data = ts_literal.data
                     records = list(ts_literal.annotation)
                     records.extend(ts_literal.source)
                     records.extend(
@@ -182,12 +179,13 @@ def build_dataset(
                     )
                     tags_to_concat.append(make_tag_df(region, var_name, bucket_name, records))
                 else:
-                    region_var_bucket_seq[(region, var_name, bucket_name)] = ts_literal
+                    timeseries_data = ts_literal
+                region_var_bucket_timeseries[(region, var_name, bucket_name)] = timeseries_data
 
-    if region_var_bucket_seq:
-        # Find the longest sequence in region_var_bucket_seq.values(). Make a DatetimeIndex with that
-        # many dates.
-        sequence_lengths = max(len(seq) for seq in region_var_bucket_seq.values())
+    if region_var_bucket_timeseries:
+        # Find the longest sequence in region_var_bucket_timeseries.values(). Make a DatetimeIndex
+        # with that many dates.
+        sequence_lengths = max(len(seq) for seq in region_var_bucket_timeseries.values())
         dates = pd.date_range(
             start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE
         )
@@ -195,12 +193,12 @@ def build_dataset(
         index = pd.MultiIndex.from_tuples(
             [
                 (region.location_id, var, bucket)
-                for region, var, bucket in region_var_bucket_seq.keys()
+                for region, var, bucket in region_var_bucket_timeseries.keys()
             ],
             names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
         )
 
-        df = pd.DataFrame(list(region_var_bucket_seq.values()), index=index, columns=dates)
+        df = pd.DataFrame(list(region_var_bucket_timeseries.values()), index=index, columns=dates)
         df = df.fillna(np.nan).apply(pd.to_numeric)
 
         dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df, bucketed=True)
