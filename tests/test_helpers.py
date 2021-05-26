@@ -96,7 +96,7 @@ def make_tag_df(
 
 
 def make_tag(
-    tag_type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
+    tag_type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs
 ) -> taglib.TagInTimeseries:
     if tag_type in timeseries.ANNOTATION_TAG_TYPES:
         # Force to the expected types and add defaults if not in kwargs
@@ -153,6 +153,7 @@ def build_dataset(
         start_date: The oldest date of each timeseries.
         timeseries_columns: Columns that will exist in the returned dataset, even if all NA
     """
+
     # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
     # sequences in metrics.
     def iter_buckets(
@@ -163,12 +164,25 @@ def build_dataset(
         else:
             yield DemographicBucket("all"), buckets
 
-    region_var_bucket_seq = {
-        (region, var_name, bucket_name): bucket_ts
-        for region in metrics_by_region_then_field_name.keys()
-        for var_name, var_buckets in metrics_by_region_then_field_name[region].items()
-        for bucket_name, bucket_ts in iter_buckets(var_buckets)
-    }
+    tags_to_concat = []
+    region_var_bucket_seq = {}
+    for region, region_metrics in metrics_by_region_then_field_name.items():
+        for var_name, var_buckets in region_metrics.items():
+            for bucket_name, ts_literal in iter_buckets(var_buckets):
+                if isinstance(ts_literal, TimeseriesLiteral):
+                    region_var_bucket_seq[(region, var_name, bucket_name)] = ts_literal.data
+                    records = list(ts_literal.annotation)
+                    records.extend(ts_literal.source)
+                    records.extend(
+                        make_tag(TagType.PROVENANCE, source=provenance)
+                        for provenance in ts_literal.provenance
+                    )
+                    records.extend(
+                        make_tag(TagType.SOURCE_URL, source=url) for url in ts_literal.source_url
+                    )
+                    tags_to_concat.append(make_tag_df(region, var_name, bucket_name, records))
+                else:
+                    region_var_bucket_seq[(region, var_name, bucket_name)] = ts_literal
 
     if region_var_bucket_seq:
         # Find the longest sequence in region_var_bucket_seq.values(). Make a DatetimeIndex with that
@@ -196,19 +210,6 @@ def build_dataset(
     if timeseries_columns:
         new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
         dataset = dataclasses.replace(dataset, timeseries=new_timeseries, timeseries_bucketed=None)
-
-    tags_to_concat = []
-    for (region, var, bucket), ts_literal in region_var_bucket_seq.items():
-        if not isinstance(ts_literal, TimeseriesLiteral):
-            continue
-
-        records = list(ts_literal.annotation)
-        records.extend(ts_literal.source)
-        records.extend(
-            make_tag(TagType.PROVENANCE, source=provenance) for provenance in ts_literal.provenance
-        )
-        records.extend(make_tag(TagType.SOURCE_URL, source=url) for url in ts_literal.source_url)
-        tags_to_concat.append(make_tag_df(region, var, bucket, records))
 
     if tags_to_concat:
         dataset = dataset.append_tag_df(pd.concat(tags_to_concat))
