@@ -8,7 +8,10 @@ from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.pipeline import Region
 
+
 MultiRegionDataset = timeseries.MultiRegionDataset
+
+MOST_RECENT_DATE = "most_recent_date"
 
 
 def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
@@ -40,9 +43,10 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 
     def append_most_recent_date_index_level(df: pd.DataFrame) -> pd.DataFrame:
         """Appends most recent date with real (not NA) value as a new index level."""
-        most_recent_date = df.apply(pd.Series.last_valid_index, axis=1)
-        return df.assign(most_recent_date=most_recent_date).set_index(
-            "most_recent_date", append=True
+        most_recent_date_series = df.apply(pd.Series.last_valid_index, axis=1)
+        # Append the series as a new level in the index and rename that level to MOST_RECENT_DATE.
+        return df.set_index(most_recent_date_series, append=True).rename_axis(
+            index={None: MOST_RECENT_DATE}
         )
 
     derived_pct_df = append_most_recent_date_index_level(derived_pct_df)
@@ -52,8 +56,8 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     # date and drop duplicates except for the last/most recent.
     combined_pcts = (
         derived_pct_df.append(ts_in_pcts)
-        .sort_index(level="most_recent_date")
-        .droplevel("most_recent_date")
+        .sort_index(level=MOST_RECENT_DATE)
+        .droplevel(MOST_RECENT_DATE)
     )
     most_recent_pcts = combined_pcts.loc[~combined_pcts.index.duplicated(keep="last")]
 
