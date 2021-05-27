@@ -165,5 +165,65 @@ class ICUMetricData:
 def calculate_icu_utilization_metric(
     icu_data: ICUMetricData,
 ) -> Tuple[Optional[pd.Series], Optional[can_api_v2_definition.ICUHeadroomMetricDetails]]:
-    """Depricated."""
-    return None, None
+    """
+
+             covid icu patients
+           ----------------------
+    available beds for covid icu patients
+
+
+    If we know exactly how many beds are in use by non covid patients we can
+    calculate the number of available beds exactly.
+
+    otherwise available beds is calulated by looking at historical data and
+    assuming that we can add more capacity.
+
+    So, we need to know or guess how many icu beds are occupied by non covid patients
+    non covid patients:
+     - get from actuals
+     - estimate from typical utilization + decomp factor
+
+    available beds can be calulated
+
+                  covid icu patients
+                ----------------------
+           total beds - non covid patients
+                          ==
+                  covid icu patients
+                ---------------------
+    total beds - (typical non covid usage - decomp)
+                          or
+                  covid icu patients
+                ---------------------
+    total beds - (total covid patients - covid patients)
+
+
+    non covid patient source: Actual total patients |
+                              Estimated from actual total patients |
+                              Estimated from typical utilization
+    covid patient source:     Actuals | Estimates
+
+    """
+    if icu_data.total_icu_beds is None:
+        return np.nan, None
+
+    current_covid_patients, covid_source = icu_data.current_icu_covid_with_source
+
+    if current_covid_patients is None:
+        return np.nan, None
+
+    current_non_covid_patients, non_covid_source = icu_data.current_icu_non_covid_with_source
+    metric = current_covid_patients / (icu_data.total_icu_beds - current_non_covid_patients)
+
+    # current_non_covid_patients and current_covid_patients timeseries could have
+    # different end dates (i.e. may rely on two different data sources), using the last
+    # available date from the metrics timeseries to pull current values from.
+    latest_metric_date = metric.last_valid_index()
+
+    details = can_api_v2_definition.ICUHeadroomMetricDetails(
+        currentIcuCovidMethod=covid_source,
+        currentIcuCovid=current_covid_patients[latest_metric_date],
+        currentIcuNonCovidMethod=non_covid_source,
+        currentIcuNonCovid=current_non_covid_patients[latest_metric_date],
+    )
+    return metric, details
