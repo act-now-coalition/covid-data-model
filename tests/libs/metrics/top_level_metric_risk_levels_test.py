@@ -62,7 +62,7 @@ def test_risk_level_timeseries():
         testPositivityRatio=[0.8] * 1 + [None] * 15,
     )
 
-    metrics = top_level_metrics.calculate_latest_metrics(metrics_df, None, None)
+    metrics = top_level_metrics.calculate_latest_metrics(metrics_df, None)
     expected_latest_risk_level = metric_risk_levels.calculate_risk_level_from_metrics(metrics)
 
     results = metric_risk_levels.calculate_risk_level_timeseries(metrics_df)
