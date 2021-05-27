@@ -8,7 +8,6 @@ from typing import Collection
 from typing import Iterable
 from typing import List
 
-from collections import UserList
 from typing import Any
 from typing import Mapping
 from typing import NewType
@@ -47,7 +46,7 @@ DEFAULT_START_DATE = "2020-04-01"
 
 
 @dataclass_with_default_init(frozen=True)
-class TimeseriesLiteral(UserList):
+class TimeseriesLiteral:
     """Represents a timeseries literal: a sequence of floats and some related attributes."""
 
     data: Sequence[float]
@@ -66,8 +65,6 @@ class TimeseriesLiteral(UserList):
         **kwargs,
     ):
         """Initialize `self`, doing some type conversion."""
-        # UserList.__init__ attempts to set self.data, which fails on this frozen class. Instead
-        # let the dataclasses code initialize `data`.
         self.__default_init__(  # pylint: disable=E1101
             *args,
             provenance=combined_datasets.to_list(provenance),
@@ -96,7 +93,7 @@ def make_tag_df(
 
 
 def make_tag(
-    tag_type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs,
+    tag_type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs
 ) -> taglib.TagInTimeseries:
     if tag_type in timeseries.ANNOTATION_TAG_TYPES:
         # Force to the expected types and add defaults if not in kwargs
@@ -153,6 +150,7 @@ def build_dataset(
         start_date: The oldest date of each timeseries.
         timeseries_columns: Columns that will exist in the returned dataset, even if all NA
     """
+
     # From https://stackoverflow.com/a/47416248. Make a dictionary listing all the timeseries
     # sequences in metrics.
     def iter_buckets(
@@ -163,17 +161,31 @@ def build_dataset(
         else:
             yield DemographicBucket("all"), buckets
 
-    region_var_bucket_seq = {
-        (region, var_name, bucket_name): bucket_ts
-        for region in metrics_by_region_then_field_name.keys()
-        for var_name, var_buckets in metrics_by_region_then_field_name[region].items()
-        for bucket_name, bucket_ts in iter_buckets(var_buckets)
-    }
+    tags_to_concat = []
+    region_var_bucket_timeseries = {}
+    for region, region_metrics in metrics_by_region_then_field_name.items():
+        for var_name, var_buckets in region_metrics.items():
+            for bucket_name, ts_literal in iter_buckets(var_buckets):
+                if isinstance(ts_literal, TimeseriesLiteral):
+                    timeseries_data = ts_literal.data
+                    records = list(ts_literal.annotation)
+                    records.extend(ts_literal.source)
+                    records.extend(
+                        make_tag(TagType.PROVENANCE, source=provenance)
+                        for provenance in ts_literal.provenance
+                    )
+                    records.extend(
+                        make_tag(TagType.SOURCE_URL, source=url) for url in ts_literal.source_url
+                    )
+                    tags_to_concat.append(make_tag_df(region, var_name, bucket_name, records))
+                else:
+                    timeseries_data = ts_literal
+                region_var_bucket_timeseries[(region, var_name, bucket_name)] = timeseries_data
 
-    if region_var_bucket_seq:
-        # Find the longest sequence in region_var_bucket_seq.values(). Make a DatetimeIndex with that
-        # many dates.
-        sequence_lengths = max(len(seq) for seq in region_var_bucket_seq.values())
+    if region_var_bucket_timeseries:
+        # Find the longest sequence in region_var_bucket_timeseries.values(). Make a DatetimeIndex
+        # with that many dates.
+        sequence_lengths = max(len(seq) for seq in region_var_bucket_timeseries.values())
         dates = pd.date_range(
             start_date, periods=sequence_lengths, freq="D", name=CommonFields.DATE
         )
@@ -181,12 +193,12 @@ def build_dataset(
         index = pd.MultiIndex.from_tuples(
             [
                 (region.location_id, var, bucket)
-                for region, var, bucket in region_var_bucket_seq.keys()
+                for region, var, bucket in region_var_bucket_timeseries.keys()
             ],
             names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
         )
 
-        df = pd.DataFrame(list(region_var_bucket_seq.values()), index=index, columns=dates)
+        df = pd.DataFrame(list(region_var_bucket_timeseries.values()), index=index, columns=dates)
         df = df.fillna(np.nan).apply(pd.to_numeric)
 
         dataset = timeseries.MultiRegionDataset.from_timeseries_wide_dates_df(df, bucketed=True)
@@ -196,19 +208,6 @@ def build_dataset(
     if timeseries_columns:
         new_timeseries = _add_missing_columns(dataset.timeseries, timeseries_columns)
         dataset = dataclasses.replace(dataset, timeseries=new_timeseries, timeseries_bucketed=None)
-
-    tags_to_concat = []
-    for (region, var, bucket), ts_literal in region_var_bucket_seq.items():
-        if not isinstance(ts_literal, TimeseriesLiteral):
-            continue
-
-        records = list(ts_literal.annotation)
-        records.extend(ts_literal.source)
-        records.extend(
-            make_tag(TagType.PROVENANCE, source=provenance) for provenance in ts_literal.provenance
-        )
-        records.extend(make_tag(TagType.SOURCE_URL, source=url) for url in ts_literal.source_url)
-        tags_to_concat.append(make_tag_df(region, var, bucket, records))
 
     if tags_to_concat:
         dataset = dataset.append_tag_df(pd.concat(tags_to_concat))
@@ -308,7 +307,6 @@ def assert_dataset_like(
     drop_na_timeseries=False,
     drop_na_latest=False,
     drop_na_dates=False,
-    check_less_precise=False,
     compare_tags=True,
 ):
     """Asserts that two datasets contain similar date, ignoring order."""
@@ -318,21 +316,15 @@ def assert_dataset_like(
     ts2 = _timeseries_sorted_by_location_date(
         ds2, drop_na=drop_na_timeseries, drop_na_dates=drop_na_dates
     )
-    pd.testing.assert_frame_equal(
-        ts1, ts2, check_like=True, check_dtype=False, check_less_precise=check_less_precise
-    )
+    pd.testing.assert_frame_equal(ts1, ts2, check_like=True, check_dtype=False)
     latest1 = _latest_sorted_by_location_date(ds1, drop_na_latest)
     latest2 = _latest_sorted_by_location_date(ds2, drop_na_latest)
-    pd.testing.assert_frame_equal(
-        latest1, latest2, check_like=True, check_dtype=False, check_less_precise=check_less_precise
-    )
+    pd.testing.assert_frame_equal(latest1, latest2, check_like=True, check_dtype=False)
     # Somehow tests/libs/datasets/combined_dataset_utils_test.py::test_update_and_load has
     # two provenance Series that are empty but assert_series_equal fails with message
     # 'Attribute "inferred_type" are different'. Don't call it when both series are empty.
     if not (ds1.provenance.empty and ds2.provenance.empty):
-        pd.testing.assert_series_equal(
-            ds1.provenance, ds2.provenance, check_less_precise=check_less_precise
-        )
+        pd.testing.assert_series_equal(ds1.provenance, ds2.provenance)
 
     if compare_tags:
         tag1 = ds1.tag.astype("string")
@@ -391,7 +383,7 @@ def read_csv_str(
         else:
             dtype = {}
 
-    return pd.read_csv(io.StringIO(csv), parse_dates=parse_dates, dtype=dtype, low_memory=True)
+    return pd.read_csv(io.StringIO(csv), parse_dates=parse_dates, dtype=dtype)
 
 
 @functools.lru_cache(None)

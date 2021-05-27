@@ -6,7 +6,9 @@
       "region": "CT",
       "context": "[michael] Ongoing issue with CT dashboard including antigen tests.",
       "disclaimer": "There is a known discrepancy between our data and the Connecticut state dashboard. The state dashboard includes antigen tests in the calculation while we exclude antigen tests.",
-      "blocked": false
+      "blocked": false,
+      "start_date": "",
+      "end_date": ""
     },
     {
       "include": "subregions",
@@ -14,7 +16,9 @@
       "region": "CA",
       "context": "[michael] https://www.cdph.ca.gov/Programs/CID/DCDC/Pages/COVID-19/COVID19CountyMonitoringOverview.aspx",
       "disclaimer": "Note that our daily new cases per 100k metric is different than the \"adjusted case rate\" metric used by California for determining reopening tier assignments. Their adjusted case rate is adjusted to account for testing levels.",
-      "blocked": false
+      "blocked": false,
+      "start_date": "",
+      "end_date": ""
     },
     {
       "include": "region-and-subregions",
@@ -22,7 +26,9 @@
       "region": "NY",
       "context": "[michael] NY dashboard uses \"testing encounters\" instead of \"PCR test specimens\"",
       "disclaimer": "There is a known discrepancy between our data and the New York state dashboard. We calculate test positivity rate based on positive PCR test specimens, while the state dashboard rate is based on individuals testing positive via PCR or antigen testing.",
-      "blocked": false
+      "blocked": false,
+      "start_date": "",
+      "end_date": ""
     },
     {
       "include": "subregions",
@@ -30,14 +36,63 @@
       "region": "IL",
       "context": "https://trello.com/c/buXoYmKy/1140-il-county-first-doses-underreporting",
       "disclaimer": "Note that Illinois does not report enough information to correctly distinguish between administration of one dose vaccines and two dose vaccines, and therefore our \"1+ dose\" data above is approximated using the fully-vaccinated data and a state-wide average ratio.",
-      "blocked": false
+      "blocked": false,
+      "start_date": "",
+      "end_date": ""
     },
     {
       "include": "region",
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
       "region": "15009",
-      "context": "https://trello.com/c/O7Cqn1p7/1181-pegged-100-icu-capacity-in-maui"
+      "context": "https://trello.com/c/O7Cqn1p7/1181-pegged-100-icu-capacity-in-maui",
+      "start_date": "",
+      "end_date": ""
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "25001",
+      "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose",
+      "start_date": "",
+      "end_date": ""
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "25007",
+      "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose",
+      "start_date": "",
+      "end_date": ""
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "25019",
+      "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose",
+      "start_date": "",
+      "end_date": ""
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "51685",
+      "context": "https://trello.com/c/DfXi7QFD/1346-virginia-city-county-mismatch-leading-to-one-place-with-100",
+      "start_date": "",
+      "end_date": ""
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "region": "51683",
+      "context": "https://trello.com/c/DfXi7QFD/1346-virginia-city-county-mismatch-leading-to-one-place-with-100",
+      "start_date": "",
+      "end_date": ""
     },
     {
       "include": "region-and-subregions",
@@ -45,42 +100,63 @@
       "blocked": true,
       "region": "AL",
       "context": "https://trello.com/c/SQ6I2HiO/1357-outlier-in-alabama-state-county-cases-day",
-      "start_date": "2021-05-14"
+      "start_date": "2021-05-13",
+      "end_date": "2021-05-15"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "CO",
+      "context": "https://trello.com/c/5YPRc90C/1368-colorado-county-level-vaccine-data-via-cdc-seems-low-and-doesnt-sense-check-with-state-level-data",
+      "disclaimer": "As of May 26, only 72% of Colorado vaccinations reported to the CDC had a valid county of residence associated with them. Therefore the above data may underrepresent the true number of vaccinations."
     },
     {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
-      "region": "25001",
-      "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose"
+      "start_date": "",
+      "end_date": "",
+      "region": "29165",
+      "context": "https://trello.com/c/G1DCxKeu/1188-joplin-mo-metro-likely-wrong"
     },
     {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
-      "region": "25007",
-      "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose"
+      "start_date": "",
+      "end_date": "",
+      "region": "29047",
+      "context": "https://trello.com/c/G1DCxKeu/1188-joplin-mo-metro-likely-wrong"
     },
     {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
-      "region": "25019",
-      "context": "https://trello.com/c/G3cYIYdw/1325-cdc-reporting-unrealistically-low-numbers-for-ma-cape-county-2nd-dose"
+      "start_date": "",
+      "end_date": "",
+      "region": "29095",
+      "context": "https://trello.com/c/G1DCxKeu/1188-joplin-mo-metro-likely-wrong"
     },
     {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
-      "region": "51685",
-      "context": "https://trello.com/c/DfXi7QFD/1346-virginia-city-county-mismatch-leading-to-one-place-with-100"
+      "start_date": "",
+      "end_date": "",
+      "region": "29097",
+      "context": "https://trello.com/c/G1DCxKeu/1188-joplin-mo-metro-likely-wrong"
     },
     {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
-      "region": "51683",
-      "context": "https://trello.com/c/DfXi7QFD/1346-virginia-city-county-mismatch-leading-to-one-place-with-100"
+      "start_date": "",
+      "end_date": "",
+      "region": "29145",
+      "context": "https://trello.com/c/G1DCxKeu/1188-joplin-mo-metro-likely-wrong"
     }
   ]
 }

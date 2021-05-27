@@ -8,7 +8,10 @@ from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.pipeline import Region
 
+
 MultiRegionDataset = timeseries.MultiRegionDataset
+
+MOST_RECENT_DATE = "most_recent_date"
 
 
 def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
@@ -40,9 +43,10 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
 
     def append_most_recent_date_index_level(df: pd.DataFrame) -> pd.DataFrame:
         """Appends most recent date with real (not NA) value as a new index level."""
-        most_recent_date = df.apply(pd.Series.last_valid_index, axis=1)
-        return df.assign(most_recent_date=most_recent_date).set_index(
-            "most_recent_date", append=True
+        most_recent_date_series = df.apply(pd.Series.last_valid_index, axis=1)
+        # Append the series as a new level in the index and rename that level to MOST_RECENT_DATE.
+        return df.set_index(most_recent_date_series, append=True).rename_axis(
+            index={None: MOST_RECENT_DATE}
         )
 
     derived_pct_df = append_most_recent_date_index_level(derived_pct_df)
@@ -52,8 +56,8 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     # date and drop duplicates except for the last/most recent.
     combined_pcts = (
         derived_pct_df.append(ts_in_pcts)
-        .sort_index(level="most_recent_date")
-        .droplevel("most_recent_date")
+        .sort_index(level=MOST_RECENT_DATE)
+        .droplevel(MOST_RECENT_DATE)
     )
     most_recent_pcts = combined_pcts.loc[~combined_pcts.index.duplicated(keep="last")]
 
@@ -62,39 +66,6 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
     assert ts_in_without_pcts.index.intersection(most_recent_pcts.index).empty
 
     return ds_in.replace_timeseries_wide_dates([ts_in_without_pcts, most_recent_pcts])
-
-
-def backfill_vaccination_initiated(dataset: MultiRegionDataset) -> MultiRegionDataset:
-    """Backfills vaccination initiated data from total doses administered and total completed.
-
-    Args:
-        dataset: Input dataset.
-
-    Returns: New dataset with backfilled data.
-    """
-    administered = dataset.get_timeseries_bucketed_wide_dates(CommonFields.VACCINES_ADMINISTERED)
-    completed = dataset.get_timeseries_bucketed_wide_dates(CommonFields.VACCINATIONS_COMPLETED)
-    existing_initiated = dataset.get_timeseries_bucketed_wide_dates(
-        CommonFields.VACCINATIONS_INITIATED
-    )
-
-    # Compute and keep only time series with at least one real value
-    computed_initiated = administered - completed
-    computed_initiated = computed_initiated.dropna(axis=0, how="all")
-    # Keep the computed initiated only where there is not already an existing time series.
-    computed_initiated = computed_initiated.loc[
-        ~computed_initiated.index.isin(existing_initiated.index)
-    ]
-
-    # Use concat to prepend the VARIABLE index level, then reorder the levels to match the dataset.
-    computed_initiated = pd.concat(
-        {CommonFields.VACCINATIONS_INITIATED: computed_initiated},
-        names=[PdFields.VARIABLE] + list(computed_initiated.index.names),
-    ).reorder_levels(timeseries.EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.index.names)
-
-    return dataset.replace_timeseries_wide_dates(
-        [dataset.timeseries_bucketed_wide_dates, computed_initiated]
-    ).add_tag_to_subset(taglib.Derived("backfill_vaccination_initiated"), computed_initiated.index)
 
 
 STATE_LOCATION_ID = "state_location_id"

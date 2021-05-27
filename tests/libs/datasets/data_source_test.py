@@ -85,7 +85,7 @@ def test_data_source_make_dataset(tmpdir):
     # Make a tiny fake NYTimes dataset and write it to disk.
     dataset_start = test_helpers.build_default_region_dataset(
         # Make timeseries using just the real values, no source.
-        {CommonFields.CASES: list(cases_ts), CommonFields.DEATHS: list(deaths_ts)},
+        {CommonFields.CASES: cases_ts.data, CommonFields.DEATHS: deaths_ts.data},
         region=region,
     )
     dataset_start.to_csv(csv_path, include_latest=False)

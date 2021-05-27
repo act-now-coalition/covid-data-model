@@ -264,8 +264,9 @@ def _transform_one_override(
     else:
         raise ValueError(f"Invalid include: {include_str}")
 
-    start_date = override.get("start_date", None)
-    end_date = override.get("end_date", None)
+    # The CMS stores empty strings when no date is specified, hence "or None"
+    start_date = override.get("start_date", None) or None
+    end_date = override.get("end_date", None) or None
 
     return Filter(
         regions_included=regions_included,
