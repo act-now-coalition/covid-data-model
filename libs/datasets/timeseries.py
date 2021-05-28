@@ -1,5 +1,4 @@
 import textwrap
-from functools import cached_property
 from typing import (
     Any,
     Collection,
@@ -55,7 +54,11 @@ from libs.datasets.taglib import UrlStr
 from libs.datasets.demographics import DistributionBucket
 from libs.pipeline import Region
 import pandas.core.groupby.generic
-from backports.cached_property import cached_property
+
+try:  # To work with python 3.7 and 3.9 without changes.
+    from functools import cached_property
+except ImportError:
+    from backports.cached_property import cached_property
 
 from libs.pipeline import RegionMaskOrRegion
 
@@ -1422,7 +1425,10 @@ class MultiRegionDataset:
         ):
             latest_dict = self._location_id_latest_dict(location_id)
             region = Region.from_location_id(location_id)
-            tag = self.tag.loc[[region.location_id]].reset_index(TagField.LOCATION_ID, drop=True)
+            try:
+                tag = self.tag.xs(region.location_id, level=TagField.LOCATION_ID, drop_level=True)
+            except KeyError:
+                tag = _EMPTY_ONE_REGION_TAG_SERIES
             bucketed_latest = self._bucketed_latest_for_location_id(location_id)
 
             yield region, OneRegionTimeseriesDataset(
