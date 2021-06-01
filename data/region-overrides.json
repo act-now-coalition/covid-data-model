@@ -180,10 +180,10 @@
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
-      "start_date": "2021-05-30",
+      "start_date": "2021-05-29",
       "end_date": "2021-05-30",
       "region": "17140",
-      "context": "KY didn't update  on 5/30"
+      "context": "KY didn't update on 5/30"
     }
   ]
 }
