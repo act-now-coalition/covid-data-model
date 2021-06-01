@@ -162,10 +162,28 @@
       "include": "subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": false,
-      "start_date": "2021-05-01",
+      "start_date": "2021-05-31",
       "end_date": "",
       "region": "MT",
       "context": "2nd dose decreasing across the state"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "2021-05-31",
+      "end_date": "2021-05-31",
+      "region": "WY",
+      "context": "Memorial day lag"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": false,
+      "start_date": "2021-05-30",
+      "end_date": "2021-05-30",
+      "region": "17140",
+      "context": "KY didn't update "
     }
   ]
 }
