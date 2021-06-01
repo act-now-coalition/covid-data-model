@@ -162,7 +162,7 @@
       "include": "subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
-      "start_date": "2021-05-31",
+      "start_date": "2021-05-30",
       "end_date": "",
       "region": "MT",
       "context": "2nd dose decreasing across the state https://trello.com/c/WflnYInl"
