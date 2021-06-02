@@ -159,15 +159,6 @@
       "context": "https://trello.com/c/G1DCxKeu/1188-joplin-mo-metro-likely-wrong"
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-05-31",
-      "end_date": "2021-05-31",
-      "region": "WY",
-      "context": "Memorial day lag"
-    },
-    {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
