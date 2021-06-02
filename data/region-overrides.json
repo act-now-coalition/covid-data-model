@@ -166,6 +166,33 @@
       "end_date": "2021-05-31",
       "region": "17140",
       "context": "KY didn't update on 5/30"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-05-30",
+      "end_date": "",
+      "region": "WY",
+      "context": "WY data stalled"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-05-31",
+      "end_date": "",
+      "region": "RI",
+      "context": "RI county cases not updating"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-05-26",
+      "end_date": "",
+      "region": "NE",
+      "context": "Counties not updating - NYTimes is working on a fix"
     }
   ]
 }
