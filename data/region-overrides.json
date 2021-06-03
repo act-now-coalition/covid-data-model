@@ -168,15 +168,6 @@
       "context": "KY didn't update on 5/30"
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": false,
-      "start_date": "2021-05-30",
-      "end_date": "",
-      "region": "WY",
-      "context": "WY data stalled"
-    },
-    {
       "include": "subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
