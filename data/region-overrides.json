@@ -184,6 +184,15 @@
       "end_date": "",
       "region": "NE",
       "context": "Counties not updating - NYTimes is working on a fix"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "48135",
+      "context": "https://trello.com/c/5MMJrIJT/1412-odessa-metro-tx-ector-county-spiked-causing-grade-to-go-up-two-levels"
     }
   ]
 }
