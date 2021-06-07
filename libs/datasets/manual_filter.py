@@ -240,6 +240,39 @@ def _transform_one_override(
     override: Mapping, cbsa_to_counties_map: Mapping[Region, List[Region]]
 ) -> Filter:
     region_str = override["region"]
+    include_str = override["include"]
+
+    if not isinstance(region_str, str):
+        raise ValueError(f"Invalid 'region': {region_str}")
+    if not isinstance(include_str, str):
+        raise ValueError(f"Invalid 'include': {include_str}")
+
+    # Split on commas.
+    region_strs = [single_region_str.strip() for single_region_str in region_str.split(",")]
+    # Convert each region string to 1+ regions and aggregate.
+    regions_included = []
+    for region_str in region_strs:
+        for region in _transform_region_str(region_str, include_str, cbsa_to_counties_map):
+            regions_included.append(region)
+
+    # The CMS stores empty strings when no date is specified, hence "or None"
+    start_date = override.get("start_date", None) or None
+    end_date = override.get("end_date", None) or None
+
+    return Filter(
+        regions_included=regions_included,
+        fields_included=_METRIC_TO_FIELDS[override["metric"]],
+        internal_note=override["context"],
+        public_note=override.get("disclaimer", ""),
+        drop_observations=bool(override["blocked"]),
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
+def _transform_region_str(
+    region_str: str, include_str: str, cbsa_to_counties_map: Mapping[Region, List[Region]]
+) -> List[Region]:
     if re.fullmatch(r"[A-Z][A-Z]", region_str):
         region = Region.from_state(region_str)
     elif re.fullmatch(r"\d{5}", region_str):
@@ -247,7 +280,6 @@ def _transform_one_override(
     else:
         raise ValueError(f"Invalid region: {region_str}")
 
-    include_str = override["include"]
     if include_str == "region":
         regions_included = [region]
     elif include_str == "region-and-subregions":
@@ -264,19 +296,7 @@ def _transform_one_override(
     else:
         raise ValueError(f"Invalid include: {include_str}")
 
-    # The CMS stores empty strings when no date is specified, hence "or None"
-    start_date = override.get("start_date", None) or None
-    end_date = override.get("end_date", None) or None
-
-    return Filter(
-        regions_included=regions_included,
-        fields_included=_METRIC_TO_FIELDS[override["metric"]],
-        internal_note=override["context"],
-        public_note=override.get("disclaimer", ""),
-        drop_observations=bool(override["blocked"]),
-        start_date=start_date,
-        end_date=end_date,
-    )
+    return regions_included
 
 
 def transform_region_overrides(
