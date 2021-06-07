@@ -202,6 +202,15 @@
       "end_date": "2021-06-07",
       "context": "https://trello.com/c/haTHfinN/1413-blocked-06-05-06-06-vermont-and-montana-no-longer-reporting-on-weekends",
       "region": "VT"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-05-28",
+      "end_date": "",
+      "region": "48085",
+      "context": "https://trello.com/c/WCCU7ey1/1417-blocked-data-after-5-27-cases-in-collin-county-tx-stalled"
     }
   ]
 }
