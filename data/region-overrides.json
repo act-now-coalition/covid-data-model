@@ -171,15 +171,6 @@
       "include": "subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-05-31",
-      "end_date": "",
-      "region": "RI",
-      "context": "RI county cases not updating"
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "2021-05-26",
       "end_date": "",
       "region": "NE",
