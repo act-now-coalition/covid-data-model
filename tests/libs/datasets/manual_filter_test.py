@@ -369,6 +369,58 @@ def test_region_overrides_transform_and_filter_start_end_dates(
     test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)
 
 
+def test_region_overrides_transform_and_filter_override_with_multiple_regions():
+    region_overrides = {
+        "overrides": [
+            {
+                "include": "region-and-subregions",
+                "metric": "metrics.vaccinationsInitiatedRatio",
+                "region": "WY, TX",
+                "context": "",
+                "disclaimer": "Bad data",
+                "blocked": False,
+            }
+        ]
+    }
+
+    region_wy = Region.from_state("WY")
+    region_tx = Region.from_state("TX")
+    region_ca = Region.from_state("CA")
+    ds_in = test_helpers.build_dataset(
+        {
+            region_wy: {CommonFields.VACCINATIONS_INITIATED: [1, 2, 3]},
+            region_tx: {CommonFields.VACCINATIONS_INITIATED: [4, 5, 6]},
+            region_ca: {CommonFields.VACCINATIONS_INITIATED: [7, 8, 9]},
+        }
+    )
+
+    ds_out = manual_filter.run(
+        ds_in, manual_filter.transform_region_overrides(region_overrides, {})
+    )
+
+    tag_expected = test_helpers.make_tag(
+        taglib.TagType.KNOWN_ISSUE_NO_DATE,
+        public_note=region_overrides["overrides"][0]["disclaimer"],
+    )
+    ds_expected = test_helpers.build_dataset(
+        {
+            region_wy: {
+                CommonFields.VACCINATIONS_INITIATED: TimeseriesLiteral(
+                    [1, 2, 3], annotation=[tag_expected]
+                )
+            },
+            region_tx: {
+                CommonFields.VACCINATIONS_INITIATED: TimeseriesLiteral(
+                    [4, 5, 6], annotation=[tag_expected]
+                )
+            },
+            region_ca: {CommonFields.VACCINATIONS_INITIATED: [7, 8, 9]},
+        }
+    )
+
+    test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)
+
+
 @pytest.mark.parametrize(
     "blocked, disclaimer, start_date, end_date, raises",
     [
