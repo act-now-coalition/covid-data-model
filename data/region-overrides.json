@@ -211,6 +211,25 @@
       "end_date": "",
       "region": "48085",
       "context": "https://trello.com/c/WCCU7ey1/1417-blocked-data-after-5-27-cases-in-collin-county-tx-stalled"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-06-04",
+      "end_date": "",
+      "region": "FL",
+      "context": "https://trello.com/c/3uunA3oU/1419-data-paused-for-now-florida-counties-switching-to-weekly-reporting"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "FL",
+      "context": "https://trello.com/c/3uunA3oU/1419-data-paused-for-now-florida-counties-switching-to-weekly-reporting",
+      "disclaimer": "As of June 2021, Florida only reports data once a week and therefore the above data may be up to a week old."
     }
   ]
 }
