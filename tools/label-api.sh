@@ -39,7 +39,7 @@ exit_with_usage () {
 execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
       --request POST \
-      --data "{\"inputs\": { \"snapshot_id\": \"${SNAPSHOT_ID}\" } }" \
+      --data "{ \"ref\": \"main\", \"inputs\": { \"snapshot_id\": \"${SNAPSHOT_ID}\" } }" \
       https://api.github.com/repos/covid-projections/covid-data-model/actions/workflows/label_api_snapshot.yml/dispatches
 
   echo "Label requested. Go to https://github.com/covid-projections/covid-data-model/actions to monitor progress."
