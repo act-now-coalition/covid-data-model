@@ -240,29 +240,14 @@ def _transform_one_override(
     override: Mapping, cbsa_to_counties_map: Mapping[Region, List[Region]]
 ) -> Filter:
     region_str = override["region"]
-    if re.fullmatch(r"[A-Z][A-Z]", region_str):
-        region = Region.from_state(region_str)
-    elif re.fullmatch(r"\d{5}", region_str):
-        region = Region.from_fips(region_str)
-    else:
-        raise ValueError(f"Invalid region: {region_str}")
-
     include_str = override["include"]
-    if include_str == "region":
-        regions_included = [region]
-    elif include_str == "region-and-subregions":
-        if region.is_state():
-            regions_included = [RegionMask(states=[region.state])]
-        elif region.level == AggregationLevel.CBSA:
-            regions_included = [region] + cbsa_to_counties_map[region]
-        else:
-            raise ValueError("region-and-subregions only valid for a state and CBSA")
-    elif include_str == "subregions":
-        if not region.is_state():
-            raise ValueError("subregions only valid for a state")
-        regions_included = [RegionMask(AggregationLevel.COUNTY, states=[region.state])]
-    else:
-        raise ValueError(f"Invalid include: {include_str}")
+
+    if not isinstance(region_str, str):
+        raise ValueError(f"Invalid 'region': {region_str}")
+    if not isinstance(include_str, str):
+        raise ValueError(f"Invalid 'include': {include_str}")
+
+    regions_included = _transform_region_str(region_str, include_str, cbsa_to_counties_map)
 
     # The CMS stores empty strings when no date is specified, hence "or None"
     start_date = override.get("start_date", None) or None
@@ -277,6 +262,41 @@ def _transform_one_override(
         start_date=start_date,
         end_date=end_date,
     )
+
+
+def _transform_region_str(
+    raw_region_str: str, include_str: str, cbsa_to_counties_map: Mapping[Region, List[Region]]
+) -> List[RegionMaskOrRegion]:
+
+    # We allow multiple regions to be specified, separated by commas.
+    region_strs = [single_region_str.strip() for single_region_str in raw_region_str.split(",")]
+
+    regions_included = []
+    for region_str in region_strs:
+        if re.fullmatch(r"[A-Z][A-Z]", region_str):
+            region = Region.from_state(region_str)
+        elif re.fullmatch(r"\d{5}", region_str):
+            region = Region.from_fips(region_str)
+        else:
+            raise ValueError(f"Invalid region: {region_str}")
+
+        if include_str == "region":
+            regions_included.append(region)
+        elif include_str == "region-and-subregions":
+            if region.is_state():
+                regions_included.append(RegionMask(states=[region.state]))
+            elif region.level == AggregationLevel.CBSA:
+                regions_included.extend([region] + cbsa_to_counties_map[region])
+            else:
+                raise ValueError("region-and-subregions only valid for a state and CBSA")
+        elif include_str == "subregions":
+            if not region.is_state():
+                raise ValueError("subregions only valid for a state")
+            regions_included.append(RegionMask(AggregationLevel.COUNTY, states=[region.state]))
+        else:
+            raise ValueError(f"Invalid include: {include_str}")
+
+    return regions_included
 
 
 def transform_region_overrides(
