@@ -374,7 +374,7 @@ def test_region_overrides_transform_and_filter_override_with_multiple_regions():
         "overrides": [
             {
                 "include": "region-and-subregions",
-                "metric": "metrics.vaccinationsInitiatedRatio",
+                "metric": "metrics.caseDensity",
                 "region": "WY, TX",
                 "context": "",
                 "disclaimer": "Bad data",
@@ -388,9 +388,9 @@ def test_region_overrides_transform_and_filter_override_with_multiple_regions():
     region_ca = Region.from_state("CA")
     ds_in = test_helpers.build_dataset(
         {
-            region_wy: {CommonFields.VACCINATIONS_INITIATED: [1, 2, 3]},
-            region_tx: {CommonFields.VACCINATIONS_INITIATED: [4, 5, 6]},
-            region_ca: {CommonFields.VACCINATIONS_INITIATED: [7, 8, 9]},
+            region_wy: {CommonFields.CASES: [1, 2, 3]},
+            region_tx: {CommonFields.CASES: [4, 5, 6]},
+            region_ca: {CommonFields.CASES: [7, 8, 9]},
         }
     )
 
@@ -405,16 +405,12 @@ def test_region_overrides_transform_and_filter_override_with_multiple_regions():
     ds_expected = test_helpers.build_dataset(
         {
             region_wy: {
-                CommonFields.VACCINATIONS_INITIATED: TimeseriesLiteral(
-                    [1, 2, 3], annotation=[tag_expected]
-                )
+                CommonFields.CASES: TimeseriesLiteral([1, 2, 3], annotation=[tag_expected])
             },
             region_tx: {
-                CommonFields.VACCINATIONS_INITIATED: TimeseriesLiteral(
-                    [4, 5, 6], annotation=[tag_expected]
-                )
+                CommonFields.CASES: TimeseriesLiteral([4, 5, 6], annotation=[tag_expected])
             },
-            region_ca: {CommonFields.VACCINATIONS_INITIATED: [7, 8, 9]},
+            region_ca: {CommonFields.CASES: [7, 8, 9]},
         }
     )
 

@@ -266,7 +266,7 @@ def _transform_one_override(
 
 def _transform_region_str(
     raw_region_str: str, include_str: str, cbsa_to_counties_map: Mapping[Region, List[Region]]
-) -> List[Region]:
+) -> List[RegionMaskOrRegion]:
 
     # We allow multiple regions to be specified, separated by commas.
     region_strs = [single_region_str.strip() for single_region_str in raw_region_str.split(",")]
