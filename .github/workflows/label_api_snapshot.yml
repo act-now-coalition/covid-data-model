@@ -7,10 +7,11 @@
 name: Label API Snapshot.
 
 on:
-  # Hook to trigger a manual run.
-  # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
-  repository_dispatch:
-    types: label-api-snapshot
+  workflow_dispatch:
+    inputs:
+      snapshot_id:
+        description: 'The snapshot ID (e.g. 1234) to be labeled as "latest" and used by the API.'
+        required: true
 
 jobs:
   label-api-snapshot:
@@ -18,18 +19,15 @@ jobs:
 
     env:
       AWS_S3_BUCKET: 'data.covidactnow.org'
-      LABEL: '${{ github.event.client_payload.label }}'
-      SNAPSHOT_ID: '${{ github.event.client_payload.snapshot_id }}'
+      LABEL: 'latest'
+      SNAPSHOT_ID: '${{ github.event.inputs.snapshot_id }}'
 
     steps:
     - name: Checkout repo
       uses: actions/checkout@v2
-    - name: Verify Label provided
-      if: ${{ !env.LABEL }}
-      run: 'echo "Missing client_payload parameter: label" ; exit 1'
     - name: Verify Snapshot ID provided
       if: ${{ !env.SNAPSHOT_ID }}
-      run: 'echo "Missing client_payload parameter: snapshot_id" ; exit 1'
+      run: 'echo "Missing input parameter: snapshot_id" ; exit 1'
 
     # TODO: We want to replace this with a "symlink" of some kind, perhaps implemented at
     # the CloudFront layer.
