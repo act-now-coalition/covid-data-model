@@ -159,6 +159,24 @@
       "region": "FL",
       "context": "https://trello.com/c/3uunA3oU/1419-data-paused-for-now-florida-counties-switching-to-weekly-reporting",
       "disclaimer": "As of June 2021, Florida only reports data once a week and therefore the above data may be up to a week old."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-06-09",
+      "end_date": "2021-06-09",
+      "context": "large spike in daily new cases for Webb, Bell counties in TX, maybe backlogged data",
+      "region": "48479, 48027"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-06-05",
+      "end_date": "2021-06-09",
+      "region": "48323",
+      "context": "outlier new case spikes since june 5th for Maverick county TX"
     }
   ]
 }
