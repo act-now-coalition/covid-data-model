@@ -42,6 +42,16 @@
     },
     {
       "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "NH",
+      "disclaimer": "The data above reflects data as provided by the CDC. Data for New Hampshire has been revised multiple times resulting in jumps in the vaccination percentages.",
+      "context": "https://trello.com/c/N9qzPb7Q/1416-put-disclaimer-on-nh-vx-data"
+    },
+    {
+      "include": "region",
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
       "region": "15009",
@@ -149,16 +159,6 @@
       "region": "FL",
       "context": "https://trello.com/c/3uunA3oU/1419-data-paused-for-now-florida-counties-switching-to-weekly-reporting",
       "disclaimer": "As of June 2021, Florida only reports data once a week and therefore the above data may be up to a week old."
-    },
-    {
-      "include": "region",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "region": "NH",
-      "disclaimer": "The data above reflects data as provided by the CDC. Data for New Hampshire has been revised multiple times resulting in jumps in the vaccination percentages.",
-      "context": "https://trello.com/c/N9qzPb7Q/1416-put-disclaimer-on-nh-vx-data"
     }
   ]
 }
