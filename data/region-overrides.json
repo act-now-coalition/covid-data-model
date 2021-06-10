@@ -177,6 +177,15 @@
       "end_date": "2021-06-09",
       "region": "48323",
       "context": "outlier new case spikes since june 5th for Maverick county TX"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-06-08",
+      "end_date": "2021-06-09",
+      "region": "TX",
+      "context": "large spikes in daily new cases"
     }
   ]
 }
