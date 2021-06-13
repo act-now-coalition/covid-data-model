@@ -144,15 +144,6 @@
     {
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-06-04",
-      "end_date": "",
-      "region": "FL",
-      "context": "https://trello.com/c/3uunA3oU/1419-data-paused-for-now-florida-counties-switching-to-weekly-reporting"
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
       "blocked": false,
       "start_date": "",
       "end_date": "",
