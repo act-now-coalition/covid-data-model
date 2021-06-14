@@ -179,6 +179,44 @@ def test_top_level_metrics_basic():
     pd.testing.assert_frame_equal(expected, results)
 
 
+def test_top_level_metrics_rounding():
+    metrics = {
+        CommonFields.CASES: [1, 2, 5],
+        CommonFields.NEW_CASES: [1, 1, 3],
+        CommonFields.TEST_POSITIVITY: [0.1, 0.10051, 0.10049],
+        CommonFields.CONTACT_TRACERS_COUNT: [1, 2, 3],
+        CommonFields.CURRENT_ICU: [10, 20, 30],
+        CommonFields.CURRENT_ICU_TOTAL: [10, 20, 30],
+        CommonFields.ICU_BEDS: [None, None, None],
+        CommonFields.VACCINATIONS_INITIATED_PCT: [33.3333, 66.666, 100],
+        CommonFields.VACCINATIONS_COMPLETED_PCT: [33.3333, 66.6666, 100],
+    }
+    latest = {
+        CommonFields.POPULATION: 100_000,
+        CommonFields.STATE: "NY",
+        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
+        CommonFields.ICU_BEDS: 30,
+    }
+    one_region = build_one_region_dataset(
+        metrics, start_date="2020-08-17", timeseries_columns=INPUT_COLUMNS, latest_override=latest,
+    )
+    results, _ = top_level_metrics.calculate_metrics_for_timeseries(
+        one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
+    )
+
+    expected = build_metrics_df(
+        DEFAULT_REGION.fips,
+        start_date="2020-08-17",
+        caseDensity=[1, 1, 1.7],
+        testPositivityRatio=[0.1, 0.101, 0.1],
+        contactTracerCapacityRatio=[0.2, 0.4, 0.36],
+        icuHeadroomRatio=[0.33, 0.67, 1.0],
+        vaccinationsInitiatedRatio=[0.333, 0.667, 1],
+        vaccinationsCompletedRatio=[0.333, 0.667, 1],
+    )
+    pd.testing.assert_frame_equal(expected, results)
+
+
 def test_top_level_metrics_incomplete_latest():
     region_ny = Region.from_state("NY")
     # This test doesn't have ICU_BEDS set in `latest`. It checks that the metrics are still built.
