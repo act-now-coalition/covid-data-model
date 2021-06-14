@@ -128,7 +128,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-05-28",
-      "end_date": "",
+      "end_date": "2021-06-11",
       "region": "48085",
       "context": "https://trello.com/c/WCCU7ey1/1417-blocked-data-after-5-27-cases-in-collin-county-tx-stalled"
     },
