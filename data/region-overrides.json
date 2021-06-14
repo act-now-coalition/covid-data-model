@@ -124,15 +124,6 @@
       "region": "MT"
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-06-05",
-      "end_date": "2021-06-06",
-      "context": "https://trello.com/c/haTHfinN/1413-blocked-06-05-06-06-vermont-and-montana-no-longer-reporting-on-weekends",
-      "region": "VT"
-    },
-    {
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
