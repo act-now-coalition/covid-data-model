@@ -48,6 +48,25 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     VACCINATIONS_COMPLETED_RATIO = "vaccinationsCompletedRatio"
 
 
+# These precisions should be inline with
+# https://github.com/covid-projections/covid-projections/blob/c076f39f54dcf6ca3f20fbb67839c37bb8b0f5bf/src/common/metric.tsx#L90
+# but note that percentages (ICU_*, TEST_POSITIVITY, VACCINATIONS_*) need an
+# additional 2 digits of precisions since they will be converted from ratio
+# (0.xyz) to percentage (XY.Z%).
+
+METRIC_ROUNDING_PRECISION = {
+    MetricsFields.CASE_DENSITY_RATIO: 1,
+    MetricsFields.TEST_POSITIVITY: 3,
+    MetricsFields.CONTACT_TRACER_CAPACITY_RATIO: 2,
+    MetricsFields.INFECTION_RATE: 2,
+    MetricsFields.INFECTION_RATE_CI90: 2,
+    MetricsFields.ICU_HEADROOM_RATIO: 2,
+    MetricsFields.ICU_CAPACITY_RATIO: 2,
+    MetricsFields.VACCINATIONS_INITIATED_RATIO: 3,
+    MetricsFields.VACCINATIONS_COMPLETED_RATIO: 3,
+}
+
+
 def has_data_in_past_10_days(series: pd.Series) -> bool:
     return series_utils.has_recent_data(series, days_back=10, required_non_null_datapoints=1)
 
@@ -123,6 +142,7 @@ def calculate_metrics_for_timeseries(
         MetricsFields.VACCINATIONS_COMPLETED_RATIO: vaccines_completed_ratio,
     }
     metrics = pd.DataFrame(top_level_metrics_data)
+    metrics = metrics.round(METRIC_ROUNDING_PRECISION)
     metrics.index.name = CommonFields.DATE
     metrics = metrics.reset_index()
 
