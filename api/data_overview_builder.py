@@ -46,6 +46,16 @@ TESTING_FIELDS = Fields(
     ["positiveTests", "negativeTests"], ["testPositivityRatio", "testPositivityRatioDetails"],
 )
 
+EXCLUDED_CSV_FIELDS = [
+    "vaccinesAdministeredDemographics",
+    "vaccinationsInitiatedDemographics",
+]
+
+EXCLUDED_JSON_TIMESERIES_FIELDS = [
+    "vaccinesAdministeredDemographics",
+    "vaccinationsInitiatedDemographics",
+]
+
 
 @dataclasses.dataclass
 class Section:
@@ -83,14 +93,23 @@ def build_section_block(section: Section):
         field_name = field.name
         description = field.field_info.description or ""
         description = description.rstrip("\n").lstrip("\n")
+
+        # Some fields aren't included in the CSV, so don't list csv column
+        csv_column_row = f"\n* CSV column names: ``{field_prefix}.{field_name}``"
+        if field.name in EXCLUDED_CSV_FIELDS:
+            csv_column_row = ""
+
+        timeseries_field = f", ``{field_prefix}Timeseries.*.{field_name}``"
+        if field.name in EXCLUDED_JSON_TIMESERIES_FIELDS:
+            timeseries_field = ""
+
         space = "  "
         field_fmt = f"""### {field_title}
 
   {description}
 
-**Where to access**{space}
-* CSV column names: ``{field_prefix}.{field_name}``
-* JSON file fields: ``{field_prefix}.{field_name}``, ``{field_prefix}Timeseries.*.{field_name}``
+**Where to access**{space}{csv_column_row}
+* JSON file fields: ``{field_prefix}.{field_name}``{timeseries_field}
 """
         return field_fmt
 
