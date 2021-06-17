@@ -704,6 +704,9 @@
         "cumulative_long_tail_truncated",
         "zscore_outlier",
         "known_issue",
+        "known_issue_no_date",
+        "derived",
+        "drop_future_observation",
         "provenance",
         "source_url",
         "source"
