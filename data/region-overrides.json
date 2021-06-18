@@ -133,6 +133,22 @@
       "context": "https://trello.com/c/WCCU7ey1/1417-blocked-data-after-5-27-cases-in-collin-county-tx-stalled"
     },
     {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "region": "29037, 29047, 29095, 29165",
+      "context": "https://trello.com/c/6roEMYkZ/1020-switch-to-usa-facts-for-6-mo-counties-nyt-is-under-reporting-kc-joplin-data",
+      "disclaimer": "Four counties (Cass, Clay, Jackson and Platte) overlap the municipality of Kansas City, MO. Our data source attributes all cases and deaths for Kansas City to Jackson County."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "region": "29097, 29145",
+      "context": "https://trello.com/c/6roEMYkZ/1020-switch-to-usa-facts-for-6-mo-counties-nyt-is-under-reporting-kc-joplin-data",
+      "disclaimer": "Two counties (Jasper and Newton) overlap the municipality of Joplin, MO. Our data source attributes all cases and deaths for Joplin to Jasper County."
+    },
+    {
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": false,
