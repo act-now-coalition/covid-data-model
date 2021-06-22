@@ -172,6 +172,13 @@ CDCVaccinesStatesAndNationDataset = datasource_regions(
 )
 
 
+# Excludes FL counties for vaccine fields. See
+# https://trello.com/c/0nVivEMt/1435-fix-florida-data-scraper
+CANScraperStateProvidersWithoutFLCounties = datasource_regions(
+    CANScraperStateProviders, exclude=RegionMask(level=AggregationLevel.COUNTY, states=["FL"])
+)
+
+
 # Below are two instances of feature definitions. These define
 # how to assemble values for a specific field.  Right now, we only
 # support overlaying values. i.e. a row of
@@ -234,30 +241,36 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
     CommonFields.VACCINES_DISTRIBUTED: [
         CDCVaccinesCountiesDataset,
-        CANScraperStateProviders,
+        CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
     ],
     CommonFields.VACCINES_ADMINISTERED: [
         CDCVaccinesCountiesDataset,
-        CANScraperStateProviders,
+        CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
     ],
     CommonFields.VACCINATIONS_INITIATED: [
         CDCVaccinesCountiesDataset,
-        CANScraperStateProviders,
+        CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
     ],
     CommonFields.VACCINATIONS_COMPLETED: [
         CDCVaccinesCountiesDataset,
-        CANScraperStateProviders,
+        CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
     ],
-    CommonFields.VACCINATIONS_INITIATED_PCT: [CANScraperStateProviders, CANScraperCountyProviders],
-    CommonFields.VACCINATIONS_COMPLETED_PCT: [CANScraperStateProviders, CANScraperCountyProviders],
+    CommonFields.VACCINATIONS_INITIATED_PCT: [
+        CANScraperStateProvidersWithoutFLCounties,
+        CANScraperCountyProviders,
+    ],
+    CommonFields.VACCINATIONS_COMPLETED_PCT: [
+        CANScraperStateProvidersWithoutFLCounties,
+        CANScraperCountyProviders,
+    ],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
