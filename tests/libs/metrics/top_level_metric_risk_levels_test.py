@@ -38,6 +38,7 @@ def test_contact_tracing_levels(value, expected_level):
 @pytest.mark.parametrize(
     "case_density_level,expected",
     [
+        (RiskLevel.UNKNOWN, RiskLevel.UNKNOWN),
         (RiskLevel.LOW, RiskLevel.LOW),
         (RiskLevel.MEDIUM, RiskLevel.CRITICAL),
         (RiskLevel.EXTREME, RiskLevel.EXTREME),
