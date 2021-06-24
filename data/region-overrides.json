@@ -138,7 +138,9 @@
       "blocked": false,
       "region": "29037, 29047, 29095, 29165",
       "context": "https://trello.com/c/6roEMYkZ/1020-switch-to-usa-facts-for-6-mo-counties-nyt-is-under-reporting-kc-joplin-data",
-      "disclaimer": "Four counties (Cass, Clay, Jackson and Platte) overlap the municipality of Kansas City, MO. Our data source attributes all cases and deaths for Kansas City to Jackson County."
+      "disclaimer": "Four counties (Cass, Clay, Jackson and Platte) overlap the municipality of Kansas City, MO. Our data source attributes all cases and deaths for Kansas City to Jackson County.",
+      "start_date": "",
+      "end_date": ""
     },
     {
       "include": "region",
@@ -146,7 +148,9 @@
       "blocked": false,
       "region": "29097, 29145",
       "context": "https://trello.com/c/6roEMYkZ/1020-switch-to-usa-facts-for-6-mo-counties-nyt-is-under-reporting-kc-joplin-data",
-      "disclaimer": "Two counties (Jasper and Newton) overlap the municipality of Joplin, MO. Our data source attributes all cases and deaths for Joplin to Jasper County."
+      "disclaimer": "Two counties (Jasper and Newton) overlap the municipality of Joplin, MO. Our data source attributes all cases and deaths for Joplin to Jasper County.",
+      "start_date": "",
+      "end_date": ""
     },
     {
       "include": "region-and-subregions",
@@ -184,6 +188,15 @@
       "end_date": "2021-06-09",
       "region": "TX",
       "context": "large spikes in daily new cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-06-23",
+      "end_date": "2021-06-23",
+      "region": "48203, 48459, 48401",
+      "context": "backlogged cases for 6/23/21"
     }
   ]
 }
