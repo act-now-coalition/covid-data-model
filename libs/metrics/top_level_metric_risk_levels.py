@@ -95,8 +95,8 @@ def top_level_risk_level(
     infection_rate_level: RiskLevel,
 ) -> RiskLevel:
     """Calculate the overall risk for a region based on metric risk levels."""
-    if case_density_level is RiskLevel.LOW:
-        return RiskLevel.LOW
+    if case_density_level in (RiskLevel.LOW, RiskLevel.UNKNOWN):
+        return case_density_level
 
     level_list = [
         infection_rate_level,
