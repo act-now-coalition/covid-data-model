@@ -62,8 +62,11 @@ def test_calculate_new_deaths():
     dataset_after = new_cases_and_deaths.add_new_deaths(dataset_before)
     dataset_expected = test_helpers.build_dataset(
         {
-            ma_region: {CommonFields.DEATHS: [0, 1, 1], CommonFields.NEW_DEATHS: [0, 1, 0]},
-            ny_region: {CommonFields.DEATHS: [None, 5, 7], CommonFields.NEW_DEATHS: [None, 5, 2]},
+            ma_region: {CommonFields.DEATHS: [0, 1, 1], CommonFields.NEW_DEATHS: [None, 1, 0]},
+            ny_region: {
+                CommonFields.DEATHS: [None, 5, 7],
+                CommonFields.NEW_DEATHS: [None, None, 2],
+            },
         }
     )
     test_helpers.assert_dataset_like(dataset_after, dataset_expected)
@@ -79,7 +82,10 @@ def test_calculate_new_deaths_preserve_buckets():
     dataset_after = new_cases_and_deaths.add_new_deaths(dataset_before)
     dataset_expected = test_helpers.build_default_region_dataset(
         {
-            CommonFields.NEW_DEATHS: {DemographicBucket.ALL: [0, 1, 0], age_40s: [None, 5, 2]},
+            CommonFields.NEW_DEATHS: {
+                DemographicBucket.ALL: [None, 1, 0],
+                age_40s: [None, None, 2],
+            },
             **metrics_before,
         }
     )
@@ -101,7 +107,7 @@ def test_new_cases_remove_negative():
     mrts_expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,cases,new_cases\n"
-            "iso1:us#fips:97111,2020-01-01,100,100\n"
+            "iso1:us#fips:97111,2020-01-01,100,\n"
             "iso1:us#fips:97111,2020-01-02,50,\n"
             "iso1:us#fips:97111,2020-01-03,75,25\n"
             "iso1:us#fips:97111,2020-01-04,74,0\n"
@@ -127,7 +133,7 @@ def test_new_cases_gap_in_date():
     mrts_expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,cases,new_cases\n"
-            "iso1:us#fips:97111,2020-01-01,100,100\n"
+            "iso1:us#fips:97111,2020-01-01,100,\n"
             "iso1:us#fips:97111,2020-01-02,,\n"
             "iso1:us#fips:97111,2020-01-03,110,\n"
             "iso1:us#fips:97111,2020-01-04,130,20\n"
