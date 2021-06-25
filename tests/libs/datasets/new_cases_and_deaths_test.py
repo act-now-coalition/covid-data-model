@@ -30,16 +30,16 @@ def test_calculate_new_cases():
     mrts_expected = timeseries.MultiRegionDataset.from_csv(
         io.StringIO(
             "location_id,date,cases,new_cases\n"
-            "iso1:us#iso2:us-tx#fips:48011,2020-01-01,0,0\n"
+            "iso1:us#iso2:us-tx#fips:48011,2020-01-01,0,\n"
             "iso1:us#iso2:us-tx#fips:48011,2020-01-02,1,1\n"
             "iso1:us#iso2:us-tx#fips:48011,2020-01-03,1,0\n"
-            "iso1:us#iso2:us-tx#fips:48021,2020-01-01,5,5\n"
+            "iso1:us#iso2:us-tx#fips:48021,2020-01-01,5,\n"
             "iso1:us#iso2:us-tx#fips:48021,2020-01-02,7,2\n"
-            "iso1:us#iso2:us-tx#fips:48031,2020-01-01,9,9\n"
+            "iso1:us#iso2:us-tx#fips:48031,2020-01-01,9,\n"
             "iso1:us#iso2:us-tx#fips:48041,2020-01-01,,\n"
             "iso1:us#iso2:us-tx#fips:48011,,100,0.0\n"
             "iso1:us#iso2:us-tx#fips:48021,,,2.0\n"
-            "iso1:us#iso2:us-tx#fips:48031,,,9.0\n"
+            "iso1:us#iso2:us-tx#fips:48031,,,\n"
             "iso1:us#iso2:us-tx#fips:48041,,,\n"
         )
     )
