@@ -108,12 +108,11 @@
     {
       "include": "subregions",
       "metric": "metrics.caseDensity",
-      "blocked": false,
-      "start_date": "",
+      "blocked": true,
+      "start_date": "2021-05-26",
       "end_date": "",
       "region": "NE",
-      "context": "Counties not updating - we're using disaggregated health district data now.",
-      "disclaimer": "Nebraska no longer publishes county-level case data and therefore the data above represents case data for the broader health district."
+      "context": "Counties not updating - NYTimes is working on a fix"
     },
     {
       "include": "region-and-subregions",
