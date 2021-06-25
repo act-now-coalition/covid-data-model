@@ -8,13 +8,12 @@ import pandas as pd
 MultiRegionDataset = timeseries.MultiRegionDataset
 
 
+# TODO(michael): We used to apply special logic to keep the first date's cases
+# as new_cases, but we have removed that.  This function could be removed.
 def _diff_preserving_first_value(cases: pd.Series):
     # cases is a pd.Series (a 1-D vector) with DATE index
     assert cases.index.names == [CommonFields.DATE]
     new_cases = cases.diff()
-    first_date = cases.notna().idxmax()
-    if pd.notna(first_date):
-        new_cases[first_date] = cases[first_date]
     return new_cases
 
 
@@ -31,6 +30,7 @@ def add_incident_column(
     wide_dates_var = dataset_in.timeseries_bucketed_wide_dates.xs(
         field_in, level=PdFields.VARIABLE, drop_level=False
     )
+    # TODO(michael): This comment is no longer accurate. See _diff_preserving_first_value().
     # Calculating new cases using diff will remove the first detected value from the case series.
     # We want to capture the first day a region reports a case. Since our data sources have
     # been capturing cases in all states from the beginning of the pandemic, we are treating
