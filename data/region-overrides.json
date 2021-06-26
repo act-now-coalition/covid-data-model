@@ -202,7 +202,7 @@
       "include": "subregions",
       "metric": "metrics.infectionRate",
       "blocked": true,
-      "start_date": "2021-06-24",
+      "start_date": "2023-10-25",
       "end_date": "",
       "region": "FL",
       "context": "New weekly reporting is causing non-sensical swings in R value. https://trello.com/c/f5EFuSFF/1448-blocked-6-26-onward-florida-weekly-reporting-is-causing-wild-swings-to-r-value"
