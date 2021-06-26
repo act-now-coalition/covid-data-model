@@ -197,6 +197,15 @@
       "end_date": "2021-06-23",
       "region": "48203, 48459, 48401",
       "context": "backlogged cases for 6/23/21"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.infectionRate",
+      "blocked": true,
+      "start_date": "2021-06-26",
+      "end_date": "",
+      "region": "FL",
+      "context": "New weekly reporting is causing non-sensical swings in R value. https://trello.com/c/f5EFuSFF/1448-blocked-6-26-onward-florida-weekly-reporting-is-causing-wild-swings-to-r-value"
     }
   ]
 }
