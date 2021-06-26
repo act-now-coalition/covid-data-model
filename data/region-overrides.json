@@ -199,15 +199,6 @@
       "context": "backlogged cases for 6/23/21"
     },
     {
-      "include": "subregions",
-      "metric": "metrics.infectionRate",
-      "blocked": true,
-      "start_date": "2023-10-25",
-      "end_date": "",
-      "region": "FL",
-      "context": "New weekly reporting is causing non-sensical swings in R value. https://trello.com/c/f5EFuSFF/1448-blocked-6-26-onward-florida-weekly-reporting-is-causing-wild-swings-to-r-value"
-    },
-    {
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
@@ -224,6 +215,15 @@
       "end_date": "",
       "region": "NJ",
       "context": "https://trello.com/c/JvbKZxzx/1450-blocked-6-25-nj-vaccination-data-seems-to-suddenly-exclude-federal-doses"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.infectionRate",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "FL",
+      "context": "https://trello.com/c/f5EFuSFF/1448-blocked-6-26-onward-florida-weekly-reporting-is-causing-wild-swings-to-r-value"
     }
   ]
 }
