@@ -21,6 +21,16 @@
       "end_date": ""
     },
     {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "region": "TX",
+      "context": "https://twitter.com/TexasDSHS/status/1407806450135666699",
+      "disclaimer": "Texas DSHS: This week's increase in new cases is due to some catch-up in case reporting by counties",
+      "blocked": false,
+      "start_date": "",
+      "end_date": ""
+    },
+    {
       "include": "region-and-subregions",
       "metric": "metrics.testPositivityRatio",
       "region": "NY",
