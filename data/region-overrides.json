@@ -234,15 +234,6 @@
       "end_date": "",
       "region": "FL",
       "context": "https://trello.com/c/f5EFuSFF/1448-blocked-6-26-onward-florida-weekly-reporting-is-causing-wild-swings-to-r-value"
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-06-28",
-      "end_date": "2021-06-28",
-      "region": "AR",
-      "context": "AR's first week switching to Mon-Fri reporting caused spike in 7-day averages"
     }
   ]
 }
