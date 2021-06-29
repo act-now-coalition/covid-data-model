@@ -234,6 +234,24 @@
       "end_date": "",
       "region": "FL",
       "context": "https://trello.com/c/f5EFuSFF/1448-blocked-6-26-onward-florida-weekly-reporting-is-causing-wild-swings-to-r-value"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-06-28",
+      "end_date": "2021-06-28",
+      "region": "AR, 05069, 05045, 05063, 05125, 05119",
+      "context": "AR's first week after switching to Mon-Fri reporting schedule caused spike in 7-day averages"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-06-25",
+      "end_date": "2021-06-25",
+      "region": "47057",
+      "context": "spike in positive test-rate (2% to 15%)"
     }
   ]
 }
