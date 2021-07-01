@@ -214,7 +214,7 @@
       "blocked": true,
       "start_date": "2021-06-25",
       "end_date": "",
-      "region": "48203,48401,48459",
+      "region": "48203,48401",
       "context": "https://trello.com/c/hvLgPSCV/1449-blocked-6-26-three-texas-counties-with-data-anomalies"
     },
     {
@@ -234,6 +234,15 @@
       "end_date": "",
       "region": "FL",
       "context": "https://trello.com/c/f5EFuSFF/1448-blocked-6-26-onward-florida-weekly-reporting-is-causing-wild-swings-to-r-value"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-06-23",
+      "end_date": "2021-07-27",
+      "region": "48459",
+      "context": "https://trello.com/c/hvLgPSCV/1449-blocked-6-26-three-texas-counties-with-data-anomalies Upshur county note"
     }
   ]
 }
