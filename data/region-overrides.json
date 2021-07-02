@@ -243,15 +243,6 @@
       "end_date": "2021-07-27",
       "region": "48459",
       "context": "https://trello.com/c/hvLgPSCV/1449-blocked-6-26-three-texas-counties-with-data-anomalies Upshur county note"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "start_date": "2021-06-30",
-      "end_date": "2021-06-30",
-      "region": "NC",
-      "context": "https://trello.com/c/t3k6Kbdj/1454-nc-cdc-state-level-vaccination-spike-7-01-21"
     }
   ]
 }
