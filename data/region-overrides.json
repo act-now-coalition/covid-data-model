@@ -218,15 +218,6 @@
       "context": "https://trello.com/c/hvLgPSCV/1449-blocked-6-26-three-texas-counties-with-data-anomalies"
     },
     {
-      "include": "region",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "start_date": "2021-06-25",
-      "end_date": "",
-      "region": "NJ",
-      "context": "https://trello.com/c/JvbKZxzx/1450-blocked-6-25-nj-vaccination-data-seems-to-suddenly-exclude-federal-doses"
-    },
-    {
       "include": "subregions",
       "metric": "metrics.infectionRate",
       "blocked": true,
