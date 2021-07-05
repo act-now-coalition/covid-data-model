@@ -220,7 +220,7 @@
     {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": false,
+      "blocked": true,
       "start_date": "2021-06-25",
       "end_date": "",
       "region": "NJ",
