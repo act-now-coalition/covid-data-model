@@ -234,6 +234,15 @@
       "end_date": "2021-06-27",
       "region": "48459",
       "context": "https://trello.com/c/hvLgPSCV/1449-blocked-6-26-three-texas-counties-with-data-anomalies Upshur county note"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-07-07",
+      "end_date": "2021-07-08",
+      "region": "MI",
+      "context": "https://trello.com/c/Xb9i71Y6/1461-michigan-delayed-updating"
     }
   ]
 }
