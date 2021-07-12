@@ -243,6 +243,15 @@
       "end_date": "",
       "region": "PA",
       "context": "https://trello.com/c/joAFlemh/1462-pa-1st-dose-decreased-across-the-board"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-07-08",
+      "end_date": "",
+      "region": "IA",
+      "context": "https://trello.com/c/cWaKxSEO/1463-blocked-iowa-hasnt-reported-cases-in-4-days"
     }
   ]
 }
