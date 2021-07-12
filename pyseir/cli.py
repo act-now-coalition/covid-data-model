@@ -16,7 +16,6 @@ from libs import parallel_utils
 from libs import pipeline
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_datasets
-from pyseir.icu import infer_icu
 import pyseir.rt.patches
 
 import pyseir.utils
@@ -37,7 +36,6 @@ def _cache_global_datasets():
     # is not needed as the only goal is to populate the cache.
     # Access data here to populate the property cache.
     combined_datasets.load_us_timeseries_dataset()
-    infer_icu.get_region_weight_map()
 
 
 @click.group()

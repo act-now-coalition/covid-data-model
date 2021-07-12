@@ -22,7 +22,6 @@ class RunArtifact(Enum):
 
 class SummaryArtifact(Enum):
     RT_METRIC_COMBINED = "rt_combined_metric.csv"
-    ICU_METRIC_COMBINED = "icu_combined_metric.csv"
 
 
 def get_summary_artifact_path(artifact: SummaryArtifact, output_dir=None) -> str:

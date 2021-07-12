@@ -24,16 +24,16 @@ from tests.test_helpers import TimeseriesLiteral
 
 
 @pytest.fixture
-def nyc_regional_input(nyc_region, rt_dataset, icu_dataset):
+def nyc_regional_input(nyc_region, rt_dataset):
     us_dataset = test_helpers.load_test_dataset()
     # Not using test_positivity because currently we don't have any data for counties
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
-        nyc_region, us_dataset, rt_dataset, icu_dataset
+        nyc_region, us_dataset, rt_dataset
     )
 
 
 @pytest.fixture
-def il_regional_input(rt_dataset, icu_dataset):
+def il_regional_input(rt_dataset):
     region = Region.from_state("IL")
     regional_data = test_helpers.load_test_dataset().get_regions_subset([region])
     regional_data = test_positivity.run_and_maybe_join_columns(
@@ -41,12 +41,12 @@ def il_regional_input(rt_dataset, icu_dataset):
     )
 
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
-        region, regional_data, rt_dataset, icu_dataset
+        region, regional_data, rt_dataset
     )
 
 
 @pytest.fixture
-def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
+def il_regional_input_empty_test_positivity_column(rt_dataset):
     region = Region.from_state("IL")
     regional_data = test_helpers.load_test_dataset().get_regions_subset([region])
     empty_test_positivity = timeseries.MultiRegionDataset.from_timeseries_df(
@@ -59,7 +59,7 @@ def il_regional_input_empty_test_positivity_column(rt_dataset, icu_dataset):
         empty_test_positivity
     )
     return api_v2_pipeline.RegionalInput.from_region_and_model_output(
-        region, regional_data, rt_dataset, icu_dataset
+        region, regional_data, rt_dataset
     )
 
 
@@ -132,9 +132,7 @@ def test_build_api_output_for_state(il_regional_input, tmp_path):
 def test_output_no_timeseries_rows(nyc_regional_input, tmp_path):
     # Creating a new regional input with an empty timeseries dataset
     one_region = test_helpers.load_test_dataset().get_one_region(nyc_regional_input.region)
-    regional_input = api_v2_pipeline.RegionalInput(
-        nyc_regional_input.region, one_region, None, None
-    )
+    regional_input = api_v2_pipeline.RegionalInput(nyc_regional_input.region, one_region, None)
     assert not regional_input.timeseries.empty
 
     all_timeseries_api = api_v2_pipeline.run_on_regions([regional_input])
@@ -142,7 +140,7 @@ def test_output_no_timeseries_rows(nyc_regional_input, tmp_path):
     assert all_timeseries_api
 
 
-def test_annotation(rt_dataset, icu_dataset):
+def test_annotation(rt_dataset):
     region = Region.from_state("IL")
     tag = test_helpers.make_tag(date="2020-04-01", original_observation=10.0)
     death_url = UrlStr("http://can.com/death_source")
@@ -171,7 +169,7 @@ def test_annotation(rt_dataset, icu_dataset):
         },
     )
     regional_input = api_v2_pipeline.RegionalInput.from_region_and_model_output(
-        region, ds, rt_dataset, icu_dataset
+        region, ds, rt_dataset
     )
 
     with structlog.testing.capture_logs() as logs:
@@ -211,7 +209,7 @@ def test_annotation(rt_dataset, icu_dataset):
     assert timeseries_for_region.annotations.contactTracers is None
 
 
-def test_source(rt_dataset, icu_dataset):
+def test_source(rt_dataset):
     """Test the `source` tag can produce data similar to that in `test_annotation`."""
     region = Region.from_state("IL")
     tag = test_helpers.make_tag(date="2020-04-01", original_observation=10.0)
@@ -250,7 +248,7 @@ def test_source(rt_dataset, icu_dataset):
         },
     )
     regional_input = api_v2_pipeline.RegionalInput.from_region_and_model_output(
-        region, ds, rt_dataset, icu_dataset
+        region, ds, rt_dataset
     )
 
     with structlog.testing.capture_logs() as logs:
@@ -287,7 +285,7 @@ def test_source(rt_dataset, icu_dataset):
     assert timeseries_for_region.annotations.contactTracers is None
 
 
-def test_annotation_all_fields_copied(rt_dataset, icu_dataset):
+def test_annotation_all_fields_copied(rt_dataset):
     region = Region.from_state("IL")
     # Create a dataset with bogus data for every CommonFields, excluding a few that are not
     # expected to have timeseries values.
@@ -305,7 +303,7 @@ def test_annotation_all_fields_copied(rt_dataset, icu_dataset):
         },
     )
     regional_input = api_v2_pipeline.RegionalInput.from_region_and_model_output(
-        region, ds, rt_dataset, icu_dataset
+        region, ds, rt_dataset
     )
 
     timeseries_for_region = api_v2_pipeline.build_timeseries_for_region(regional_input)

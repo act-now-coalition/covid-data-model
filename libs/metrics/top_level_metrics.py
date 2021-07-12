@@ -74,7 +74,6 @@ def has_data_in_past_10_days(series: pd.Series) -> bool:
 def calculate_metrics_for_timeseries(
     timeseries: OneRegionTimeseriesDataset,
     rt_data: Optional[OneRegionTimeseriesDataset],
-    icu_data: Optional[OneRegionTimeseriesDataset],
     log,
     require_recent_icu_data: bool = True,
 ) -> Tuple[pd.DataFrame, Metrics]:
@@ -86,6 +85,8 @@ def calculate_metrics_for_timeseries(
 
     data = timeseries.data.set_index(CommonFields.DATE)
 
+    # TODO(michael): estimated_current_icu is always None since we no longer infer ICU.
+    # We should really just delete all of the ICU Headroom code.
     estimated_current_icu = None
     infection_rate = np.nan
     infection_rate_ci90 = np.nan
@@ -93,10 +94,6 @@ def calculate_metrics_for_timeseries(
         rt_data = rt_data.date_indexed
         infection_rate = rt_data["Rt_MAP_composite"]
         infection_rate_ci90 = rt_data["Rt_ci95_composite"] - rt_data["Rt_MAP_composite"]
-
-    if icu_data and not icu_data.empty:
-        icu_data = icu_data.date_indexed
-        estimated_current_icu = icu_data[CommonFields.CURRENT_ICU]
 
     new_cases = data[CommonFields.NEW_CASES]
     case_density = calculate_case_density(new_cases, population)
