@@ -41,6 +41,7 @@ from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
 from libs.datasets.sources.cdc_vaccine_dataset import CDCVaccinesDataset
+from libs.datasets.sources.cdc_new_vaccine_counties_dataset import CDCNewVaccinesCountiesDataset
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
 from libs.pipeline import RegionMaskOrRegion
@@ -178,6 +179,43 @@ CDCVaccinesStatesAndNationDataset = datasource_regions(
     CDCVaccinesDataset, [RegionMask(AggregationLevel.STATE), RegionMask(AggregationLevel.COUNTRY)]
 )
 
+CDC_COUNTY_EXCLUSIONS = [
+    # Glacier County, MT - reports 99.9% of 12+ population vaccinated [7/2021]
+    Region.from_fips("30035"),
+    # Santa Cruz County, AZ - reports 99.9% of 12+ population vaccinated [7/2021]
+    Region.from_fips("04023"),
+    # Arecibo Municipio, PR - reports 99.9% of 12+ population vaccinated [7/2021]
+    Region.from_fips("72013"),
+    # Bristol Bay Borough, AK - reports 99.9% of 12+ population vaccinated [7/2021]
+    Region.from_fips("02060"),
+    # Culebra Municipio, PR - reports 99.9% of 12+ population vaccinated [7/2021]
+    Region.from_fips("72049"),
+]
+
+# Excluded for a variety of reasons (lower overall coverage, data irregularities, etc.)
+CDC_STATE_EXCLUSIONS = RegionMask(
+    states=[
+        # CA - Data irregularities including 99.9% of 12+ vaccinated in San Diego
+        "CA",
+        # GA - Very low coverage.
+        "GA",
+        "IL",
+        "NM",
+        "ND",
+        # PA - Data irregularities including very high rates in several counties
+        # (e.g. Montgomery, Chester)
+        "PA",
+        # SD - Missing a lot of counties and 1st dose data.
+        "SD",
+        # VA - Very low coverage.
+        "VA",
+        "VT",
+        "WV",
+    ]
+)
+CDCNewVaccinesCountiesWithoutExceptions = datasource_regions(
+    CDCNewVaccinesCountiesDataset, exclude=[CDC_STATE_EXCLUSIONS, *CDC_COUNTY_EXCLUSIONS]
+)
 
 # Excludes FL counties for vaccine fields. See
 # https://trello.com/c/0nVivEMt/1435-fix-florida-data-scraper
@@ -259,16 +297,16 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CDCVaccinesStatesAndNationDataset,
     ],
     CommonFields.VACCINATIONS_INITIATED: [
-        CDCVaccinesCountiesDataset,
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
+        CDCNewVaccinesCountiesWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_COMPLETED: [
-        CDCVaccinesCountiesDataset,
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
+        CDCNewVaccinesCountiesWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,
