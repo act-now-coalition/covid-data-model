@@ -29,7 +29,6 @@ def test_pyseir_end_to_end_idaho(tmp_path):
 
         model_output = pyseir.run.PyseirOutputDatasets.from_pipeline_output(region_pipelines)
 
-        assert model_output.icu.get_one_region(region)
         assert model_output.infection_rate.get_one_region(region)
 
 
@@ -51,5 +50,4 @@ def test_pyseir_end_to_end_dc(tmp_path):
         model_output = pyseir.run.PyseirOutputDatasets.from_pipeline_output(region_pipelines)
         # TODO(tom): Work out why these have only one region where there are two regions in the
         #  input
-        assert len([model_output.icu.iter_one_regions()]) == 1
         assert len([model_output.infection_rate.iter_one_regions()]) == 1

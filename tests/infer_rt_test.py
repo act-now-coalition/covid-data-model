@@ -276,7 +276,6 @@ def test_patch_substatepipeline_nola_infection_rate():
             pyseir.run.OneRegionPipeline(
                 region=region,
                 infer_df=infection_rate_df,
-                icu_data=None,
                 _combined_data=combined_datasets.RegionalData.from_region(region),
             )
         )

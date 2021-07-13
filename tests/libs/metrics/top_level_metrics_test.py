@@ -163,7 +163,7 @@ def test_top_level_metrics_basic():
         metrics, start_date="2020-08-17", timeseries_columns=INPUT_COLUMNS, latest_override=latest,
     )
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
+        one_region, None, structlog.get_logger(), require_recent_icu_data=False
     )
 
     expected = build_metrics_df(
@@ -201,7 +201,7 @@ def test_top_level_metrics_rounding():
         metrics, start_date="2020-08-17", timeseries_columns=INPUT_COLUMNS, latest_override=latest,
     )
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
+        one_region, None, structlog.get_logger(), require_recent_icu_data=False
     )
 
     expected = build_metrics_df(
@@ -242,7 +242,7 @@ def test_top_level_metrics_incomplete_latest():
         latest_override=latest,
     )
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, None, structlog.get_logger(), require_recent_icu_data=False
+        one_region, None, structlog.get_logger(), require_recent_icu_data=False
     )
 
     expected = build_metrics_df(
@@ -278,7 +278,7 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
         latest_override=latest,
     )
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, None, structlog.get_logger()
+        one_region, None, structlog.get_logger()
     )
 
     expected = build_metrics_df(
@@ -315,7 +315,7 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
     # All of positive_tests, negative_tests are empty. test_positivity has a real value. Make sure
     # test_positivity is copied to the output and other metrics are produced.
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, None, structlog.get_logger()
+        one_region, None, structlog.get_logger()
     )
 
     expected = build_metrics_df(
@@ -360,7 +360,7 @@ def test_top_level_metrics_with_rt():
     rt_data = _fips_csv_to_one_region(data, region)
 
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, rt_data, None, structlog.get_logger()
+        one_region, rt_data, structlog.get_logger()
     )
     expected = build_metrics_df(
         "36",
@@ -502,7 +502,7 @@ def test_calculate_icu_capacity():
     )
 
     results, metrics = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, None, structlog.get_logger()
+        one_region, None, structlog.get_logger()
     )
     expected = build_metrics_df("36", start_date="2020-12-18", icuCapacityRatio=[1.0, 0.75],)
     positivity_method = can_api_v2_definition.TestPositivityRatioDetails(
