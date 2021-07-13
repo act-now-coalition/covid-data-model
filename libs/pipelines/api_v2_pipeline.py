@@ -40,8 +40,6 @@ class RegionalInput:
 
     rt_data: Optional[OneRegionTimeseriesDataset]
 
-    icu_data: Optional[OneRegionTimeseriesDataset]
-
     @property
     def fips(self) -> str:
         return self.region.fips
@@ -59,7 +57,6 @@ class RegionalInput:
         region: pipeline.Region,
         combined_data_with_test_positivity: MultiRegionDataset,
         rt_data: MultiRegionDataset,
-        icu_data: MultiRegionDataset,
     ) -> "RegionalInput":
         one_region_data = combined_data_with_test_positivity.get_one_region(region)
 
@@ -69,16 +66,8 @@ class RegionalInput:
         except timeseries.RegionLatestNotFound:
             rt_data = None
 
-        try:
-            icu_data = icu_data.get_one_region(region)
-        except timeseries.RegionLatestNotFound:
-            icu_data = None
-
         return RegionalInput(
-            region=region,
-            _combined_data_with_test_positivity=one_region_data,
-            rt_data=rt_data,
-            icu_data=icu_data,
+            region=region, _combined_data_with_test_positivity=one_region_data, rt_data=rt_data,
         )
 
     @staticmethod
@@ -86,13 +75,9 @@ class RegionalInput:
         region: pipeline.Region,
         regional_data: OneRegionTimeseriesDataset,
         rt_data: Optional[OneRegionTimeseriesDataset],
-        icu_data: Optional[OneRegionTimeseriesDataset],
     ):
         return RegionalInput(
-            region=region,
-            _combined_data_with_test_positivity=regional_data,
-            rt_data=rt_data,
-            icu_data=icu_data,
+            region=region, _combined_data_with_test_positivity=regional_data, rt_data=rt_data,
         )
 
 
@@ -112,10 +97,7 @@ def run_on_regions(
 
 
 def generate_metrics_and_latest(
-    timeseries: OneRegionTimeseriesDataset,
-    rt_data: Optional[OneRegionTimeseriesDataset],
-    icu_data: Optional[OneRegionTimeseriesDataset],
-    log,
+    timeseries: OneRegionTimeseriesDataset, rt_data: Optional[OneRegionTimeseriesDataset], log,
 ) -> [pd.DataFrame, Metrics]:
     """
     Build metrics with timeseries.
@@ -123,7 +105,6 @@ def generate_metrics_and_latest(
     Args:
         timeseries: Timeseries for one region.
         rt_data: Rt data.
-        icu_data: Estimated ICU usage data.
 
 
     Returns:
@@ -133,7 +114,7 @@ def generate_metrics_and_latest(
         return pd.DataFrame([]), Metrics.empty()
 
     metrics_results, latest = top_level_metrics.calculate_metrics_for_timeseries(
-        timeseries, rt_data, icu_data, log
+        timeseries, rt_data, log
     )
     return metrics_results, latest
 
@@ -153,7 +134,7 @@ def build_timeseries_for_region(
     try:
         fips_timeseries = regional_input.timeseries
         metrics_results, metrics_latest = generate_metrics_and_latest(
-            fips_timeseries, regional_input.rt_data, regional_input.icu_data, log
+            fips_timeseries, regional_input.rt_data, log
         )
         risk_timeseries = top_level_metric_risk_levels.calculate_risk_level_timeseries(
             metrics_results
@@ -313,15 +294,9 @@ def generate_from_loaded_data(
     regions_data = vaccine_backfills.derive_vaccine_pct(regions_data)
 
     log.info(f"Joining inputs by region.")
-    icu_data_map = dict(model_output.icu.iter_one_regions())
     rt_data_map = dict(model_output.infection_rate.iter_one_regions())
     regional_inputs = [
-        RegionalInput.from_one_regions(
-            region,
-            regional_data,
-            icu_data=icu_data_map.get(region),
-            rt_data=rt_data_map.get(region),
-        )
+        RegionalInput.from_one_regions(region, regional_data, rt_data=rt_data_map.get(region),)
         for region, regional_data in regions_data.iter_one_regions()
     ]
     # Build all region timeseries API Output objects.
