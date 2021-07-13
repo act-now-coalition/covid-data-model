@@ -41,6 +41,7 @@ from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
 from libs.datasets.sources.cdc_vaccine_dataset import CDCVaccinesDataset
+from libs.datasets.sources.cdc_vaccine_dataset2 import CDCVaccinesDataset2
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
 from libs.pipeline import RegionMaskOrRegion
@@ -251,32 +252,38 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
+        CDCVaccinesDataset2,
     ],
     CommonFields.VACCINES_ADMINISTERED: [
         CDCVaccinesCountiesDataset,
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
+        CDCVaccinesDataset2,
     ],
     CommonFields.VACCINATIONS_INITIATED: [
         CDCVaccinesCountiesDataset,
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
+        CDCVaccinesDataset2,
     ],
     CommonFields.VACCINATIONS_COMPLETED: [
         CDCVaccinesCountiesDataset,
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
+        CDCVaccinesDataset2,
     ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
+        CDCVaccinesDataset2,
     ],
     CommonFields.VACCINATIONS_COMPLETED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
+        CDCVaccinesDataset2,
     ],
 }
 
