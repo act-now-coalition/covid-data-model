@@ -252,14 +252,12 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
-        CDCVaccinesDataset2,
     ],
     CommonFields.VACCINES_ADMINISTERED: [
         CDCVaccinesCountiesDataset,
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
-        CDCVaccinesDataset2,
     ],
     CommonFields.VACCINATIONS_INITIATED: [
         CDCVaccinesCountiesDataset,
@@ -278,12 +276,10 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.VACCINATIONS_INITIATED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
-        CDCVaccinesDataset2,
     ],
     CommonFields.VACCINATIONS_COMPLETED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
-        CDCVaccinesDataset2,
     ],
 }
 
