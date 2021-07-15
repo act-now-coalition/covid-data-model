@@ -5,6 +5,7 @@ from covidactnow.datapublic.common_fields import DemographicBucket
 from tests import test_helpers
 from libs.datasets import outlier_detection
 from libs.datasets.taglib import TagType
+import datetime
 
 TimeseriesLiteral = test_helpers.TimeseriesLiteral
 
@@ -38,6 +39,32 @@ def test_remove_outliers_threshold():
         TagType.ZSCORE_OUTLIER, date="2020-04-08", original_observation=30.0
     )
     expected_ts = TimeseriesLiteral([1.0] * 7, annotation=[expected_tag])
+    expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})
+    test_helpers.assert_dataset_like(result, expected, drop_na_dates=True)
+
+
+def test_remove_outliers_excludes_july_5th():
+    test_start_date = datetime.datetime.strptime(test_helpers.DEFAULT_START_DATE, "%Y-%m-%d").date()
+    normal_days = (datetime.date(2021, 7, 5) - test_start_date).days
+    values = [1.0] * normal_days + [31.0]
+    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
+    result = outlier_detection.drop_new_case_outliers(dataset)
+
+    # Should not remove outlier because 2021/07/05 is in the range of dates
+    # excluded for outlier detection.
+    test_helpers.assert_dataset_like(dataset, result)
+
+    # Now test 2021/07/04.
+    normal_days = normal_days - 1
+    values = [1.0] * normal_days + [31.0]
+    dataset = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: values})
+    result = outlier_detection.drop_new_case_outliers(dataset)
+
+    # Should remove outlier because 2021/07/04 is not in the range.
+    expected_tag = test_helpers.make_tag(
+        TagType.ZSCORE_OUTLIER, date="2021-07-04", original_observation=31.0
+    )
+    expected_ts = TimeseriesLiteral([1.0] * normal_days, annotation=[expected_tag])
     expected = test_helpers.build_default_region_dataset({CommonFields.NEW_CASES: expected_ts})
     test_helpers.assert_dataset_like(result, expected, drop_na_dates=True)
 

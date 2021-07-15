@@ -17,7 +17,6 @@ def test_generate_from_loaded_data_country(tmpdir):
     output_dir = pathlib.Path(tmpdir)
     model_output = pyseir.run.PyseirOutputDatasets(
         timeseries.MultiRegionDataset.new_without_timeseries(),
-        timeseries.MultiRegionDataset.new_without_timeseries(),
     )
     dataset = test_helpers.build_default_region_dataset(
         {

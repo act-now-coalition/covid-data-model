@@ -25,7 +25,7 @@ from libs.pipeline import Region
     "include_model_output,rt_null", [(True, True), (True, False), (False, False)]
 )
 def test_build_summary_for_fips(
-    include_model_output: bool, rt_null: bool, nyc_region, nyc_icu_dataset, nyc_rt_dataset
+    include_model_output: bool, rt_null: bool, nyc_region, nyc_rt_dataset
 ):
     us_timeseries = test_helpers.load_test_dataset()
 
@@ -33,7 +33,6 @@ def test_build_summary_for_fips(
         if rt_null:
             nyc_rt_dataset = None
     else:
-        nyc_icu_dataset = None
         nyc_rt_dataset = None
 
     fips_timeseries = us_timeseries.get_one_region(nyc_region)
@@ -46,7 +45,7 @@ def test_build_summary_for_fips(
     )
 
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
-        fips_timeseries, nyc_rt_dataset, nyc_icu_dataset, log,
+        fips_timeseries, nyc_rt_dataset, log,
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     assert latest_metric
@@ -163,14 +162,14 @@ def test_build_summary_for_fips(
     assert expected.dict() == summary.dict()
 
 
-def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset, nyc_icu_dataset):
+def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset):
     us_timeseries = test_helpers.load_test_dataset()
 
     nyc_timeseries = us_timeseries.get_one_region(nyc_region)
     nyc_latest = nyc_timeseries.latest
     log = structlog.get_logger()
     metrics_series, latest_metric = api_v2_pipeline.generate_metrics_and_latest(
-        nyc_timeseries, nyc_rt_dataset, nyc_icu_dataset, log
+        nyc_timeseries, nyc_rt_dataset, log
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     risk_timeseries = top_level_metric_risk_levels.calculate_risk_level_timeseries(metrics_series)
