@@ -156,4 +156,5 @@ TIMESERIES_ORDER = [
     "metrics.vaccinationsCompletedRatio",
     "actuals.newDeaths",
     "actuals.vaccinesAdministered",
+    "riskLevels.caseDensity",
 ]
