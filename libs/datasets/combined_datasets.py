@@ -264,11 +264,13 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.VACCINATIONS_INITIATED: [
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
+        CDCVaccinesStatesAndNationDataset,
         CDCVaccineDatasetWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_COMPLETED: [
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
+        CDCVaccinesStatesAndNationDataset,
         CDCVaccineDatasetWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [
