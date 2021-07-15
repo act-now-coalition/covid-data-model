@@ -179,6 +179,8 @@ CDCVaccinesStatesAndNationDataset = datasource_regions(
     CDCVaccinesDataset, [RegionMask(AggregationLevel.STATE), RegionMask(AggregationLevel.COUNTRY)]
 )
 
+CDC_EXCLUSIONS = RegionMask(states=["IL", "KS", "NM", "ND", "VT", "WV", "GA", "VA"])
+CDCVaccineDatasetWithoutExceptions = datasource_regions(CDCVaccinesDataset2, exclude=CDC_EXCLUSIONS)
 
 # Excludes FL counties for vaccine fields. See
 # https://trello.com/c/0nVivEMt/1435-fix-florida-data-scraper
@@ -260,18 +262,14 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CDCVaccinesStatesAndNationDataset,
     ],
     CommonFields.VACCINATIONS_INITIATED: [
-        CDCVaccinesCountiesDataset,
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
-        CDCVaccinesStatesAndNationDataset,
-        CDCVaccinesDataset2,
+        CDCVaccineDatasetWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_COMPLETED: [
-        CDCVaccinesCountiesDataset,
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
-        CDCVaccinesStatesAndNationDataset,
-        CDCVaccinesDataset2,
+        CDCVaccineDatasetWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,
