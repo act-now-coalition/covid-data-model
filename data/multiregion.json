@@ -7,9 +7,9 @@
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "1f5f85890f7ac5f94d8e1e50a8514f73d3d875d1",
-    "branch": "main",
+    "sha": "b883f70be4d08cedc804f9e10e2fe4abdbdd8d63",
+    "branch": "test-cdc-data",
     "is_dirty": true
   },
-  "updated_at": "2021-07-15T19:58:57.299936"
+  "updated_at": "2021-07-15T21:17:21.675080"
 }
