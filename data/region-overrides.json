@@ -253,6 +253,25 @@
       "end_date": "",
       "region": "IA",
       "context": "https://trello.com/c/cWaKxSEO/1463-blocked-iowa-hasnt-reported-cases-in-4-days"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-07-07",
+      "end_date": "2021-07-07",
+      "region": "06065",
+      "disclaimer": "",
+      "context": "Large outliers not caught due to post-7/4 outlier exclusion. See https://github.com/covid-projections/covid-data-model/pull/1150"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-07-07",
+      "end_date": "2021-07-07",
+      "region": "IA",
+      "context": "Large outliers not caught due to post-7/4 outlier exclusion. See https://github.com/covid-projections/covid-data-model/pull/1150"
     }
   ]
 }
