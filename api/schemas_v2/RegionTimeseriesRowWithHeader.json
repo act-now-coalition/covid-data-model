@@ -677,10 +677,19 @@
               "$ref": "#/definitions/RiskLevel"
             }
           ]
+        },
+        "caseDensity": {
+          "description": "Case density risk level for region.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
         }
       },
       "required": [
-        "overall"
+        "overall",
+        "caseDensity"
       ]
     }
   }

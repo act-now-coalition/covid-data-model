@@ -1648,7 +1648,8 @@
       "RiskLevelsRow": {
         "title": "RiskLevelsRow",
         "required": [
-          "overall"
+          "overall",
+          "caseDensity"
         ],
         "type": "object",
         "properties": {
@@ -1659,6 +1660,14 @@
               }
             ],
             "description": "Overall risk level for region."
+          },
+          "caseDensity": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Case density risk level for region."
           }
         },
         "description": "Base model for API output."
@@ -2696,6 +2705,7 @@
         "title": "RiskLevelTimeseriesRow",
         "required": [
           "overall",
+          "caseDensity",
           "date"
         ],
         "type": "object",
@@ -2707,6 +2717,14 @@
               }
             ],
             "description": "Overall risk level for region."
+          },
+          "caseDensity": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              }
+            ],
+            "description": "Case density risk level for region."
           },
           "date": {
             "title": "Date",
