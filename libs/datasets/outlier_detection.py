@@ -89,7 +89,21 @@ def drop_series_outliers(
         field, level=PdFields.VARIABLE, drop_level=False
     )
     zscores = ts_to_filter.apply(_calculate_modified_zscore, axis=1, result_type="reduce")
-    to_exclude = (zscores > zscore_threshold) & (ts_to_filter > threshold)
+
+    # Around July 4th 2021, lots of places had delayed reporting (no reporting
+    # over the weekend or on July 4/5) leading to a valid spike in cases.
+    # Simultaneously, the delta variant was starting to take hold, exacerbating
+    # the spike and leading to sustained case growth.
+    # Because outlier detection removed the first spike in many cases, the
+    # resulting r(t) calculation ended up inflated (e.g. >1.5 in San Francisco),
+    # so we just disable outlier detection for the days following July 4th.
+    dates_to_keep = ["2021-07-05", "2021-07-06", "2021-07-07"]
+
+    to_exclude = (
+        (zscores > zscore_threshold)
+        & (ts_to_filter > threshold)
+        & ~(ts_to_filter.columns.isin(dates_to_keep))
+    )
 
     return exclude_observations(dataset, to_exclude)
 
