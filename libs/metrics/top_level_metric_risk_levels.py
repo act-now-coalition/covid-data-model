@@ -168,6 +168,11 @@ def calculate_risk_level_timeseries(
     # day is the same as `top_level_metrics.calculate_latest_metrics`
     metrics_df.ffill(limit=metric_max_lookback - 1, inplace=True)
 
-    series = metrics_df.apply(calculate_risk_level_from_row, axis=1)
-    series.name = "overall"
-    return series.reset_index()
+    overall_risk = metrics_df.apply(calculate_risk_level_from_row, axis=1)
+    case_density_risk = metrics_df.apply(
+        lambda row: case_density_risk_level(row[MetricsFields.CASE_DENSITY_RATIO]), axis=1
+    )
+
+    return pd.DataFrame(
+        {"overall": overall_risk, MetricsFields.CASE_DENSITY_RATIO: case_density_risk}
+    ).reset_index()

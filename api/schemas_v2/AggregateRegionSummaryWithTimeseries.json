@@ -1330,6 +1330,14 @@
             }
           ]
         },
+        "caseDensity": {
+          "description": "Case density risk level for region.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RiskLevel"
+            }
+          ]
+        },
         "date": {
           "title": "Date",
           "description": "Date of timeseries data point",
@@ -1339,6 +1347,7 @@
       },
       "required": [
         "overall",
+        "caseDensity",
         "date"
       ]
     },
