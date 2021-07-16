@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "a492aa971a0f7ee13f03a24face2d8560c340cb4",
+    "sha": "c0a0be6419a9caf89e708b0c0df47f13b831e749",
     "branch": "main",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "5748db2eab0c0f47c3f5b6f9374f4da4dcab1ca2",
+    "sha": "ef9fee313fe546d5eb981c5de3719417aa118cc2",
     "branch": "main",
     "is_dirty": true
   },
-  "updated_at": "2021-07-16T02:27:55.517188"
+  "updated_at": "2021-07-16T03:28:42.865736"
 }
