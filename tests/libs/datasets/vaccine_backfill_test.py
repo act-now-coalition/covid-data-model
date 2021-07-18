@@ -1,4 +1,5 @@
 from covidactnow.datapublic.common_fields import CommonFields
+from datetime import datetime, timedelta
 
 from libs.datasets.taglib import TagType
 from libs.pipeline import Region
@@ -87,7 +88,8 @@ def test_estimate_initiated_from_state_ratio():
     }
 
     ds_in = test_helpers.build_dataset(
-        {**metrics_unmodified_regions, region_no: {CommonFields.VACCINATIONS_COMPLETED: [20, 40]}}
+        {**metrics_unmodified_regions, region_no: {CommonFields.VACCINATIONS_COMPLETED: [20, 40]}},
+        start_date=datetime.today().strftime("%Y-%m-%d"),
     )
 
     ds_result = vaccine_backfills.estimate_initiated_from_state_ratio(ds_in)
@@ -103,6 +105,58 @@ def test_estimate_initiated_from_state_ratio():
                     [10, 30], annotation=[derived]
                 ),
             },
-        }
+        },
+        start_date=datetime.today().strftime("%Y-%m-%d"),
+    )
+    test_helpers.assert_dataset_like(ds_result, ds_expected)
+
+
+def test_estimate_initiated_from_state_ratio_respects_lookback_days():
+    # lookback period is 16 days so we'll start our data 17 days back.
+    start_date = (datetime.today() - timedelta(days=17)).strftime("%Y-%m-%d")
+
+    region_to_estimate = Region.from_fips("22071")  # Orleans Parish
+    metrics_unmodified_regions = {
+        # State of Louisiana, used to estimate region_no vaccinations
+        Region.from_state("LA"): {
+            CommonFields.VACCINATIONS_COMPLETED: [100, 200],
+            CommonFields.VACCINATIONS_INITIATED: [50, 150],
+        },
+        # Because we have 2 days of data, we'll have 1 data point within the 16
+        # days lookback period and estimation won't be applied.
+        Region.from_fips("22073"): {
+            CommonFields.VACCINATIONS_COMPLETED: [20, 40],
+            CommonFields.VACCINATIONS_INITIATED: [15, 35],
+        },
+    }
+
+    ds_in = test_helpers.build_dataset(
+        {
+            **metrics_unmodified_regions,
+            region_to_estimate: {
+                CommonFields.VACCINATIONS_COMPLETED: [20, 40],
+                # Because we have 1 data point, it won't be within the 16 day
+                # lookback period, so estimation will be applied.
+                CommonFields.VACCINATIONS_INITIATED: [5],
+            },
+        },
+        start_date=start_date,
+    )
+
+    ds_result = vaccine_backfills.estimate_initiated_from_state_ratio(ds_in)
+    derived = test_helpers.make_tag(
+        TagType.DERIVED, function_name="estimate_initiated_from_state_ratio"
+    )
+    ds_expected = test_helpers.build_dataset(
+        {
+            **metrics_unmodified_regions,
+            region_to_estimate: {
+                CommonFields.VACCINATIONS_COMPLETED: [20, 40],
+                CommonFields.VACCINATIONS_INITIATED: TimeseriesLiteral(
+                    [10, 30], annotation=[derived]
+                ),
+            },
+        },
+        start_date=start_date,
     )
     test_helpers.assert_dataset_like(ds_result, ds_expected)
