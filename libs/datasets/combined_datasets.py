@@ -179,7 +179,7 @@ CDCVaccinesStatesAndNationDataset = datasource_regions(
     CDCVaccinesDataset, [RegionMask(AggregationLevel.STATE), RegionMask(AggregationLevel.COUNTRY)]
 )
 
-CDC_EXCLUSIONS = RegionMask(states=["IL", "KS", "NM", "ND", "VT", "WV", "GA", "VA"])
+CDC_EXCLUSIONS = RegionMask(states=["GA", "IL", "NM", "ND", "SD", "VA", "VT", "WV"])
 CDCVaccineDatasetWithoutExceptions = datasource_regions(CDCVaccinesDataset2, exclude=CDC_EXCLUSIONS)
 
 # Excludes FL counties for vaccine fields. See
