@@ -94,28 +94,43 @@ def update_forecasts(filename):
     help="Print summary stats at several places in the pipeline. Producing these takes extra time.",
     default=True,
 )
+@click.option(
+    "--refresh-datasets/--no-refresh-datasets",
+    is_flag=True,
+    help="Disable to skip loading datasets from covid-data-public and instead re-use data from combined-raw.pkl.gz (much faster)",
+    default=True,
+)
 @click.option("--state", type=str, help="For testing, a two letter state abbr")
 @click.option("--fips", type=str, help="For testing, a 5 digit county fips")
 def update(
-    aggregate_to_country: bool, print_stats: bool, state: Optional[str], fips: Optional[str]
+    aggregate_to_country: bool,
+    print_stats: bool,
+    refresh_datasets: bool,
+    state: Optional[str],
+    fips: Optional[str],
 ):
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
-    timeseries_field_datasets = load_datasets_by_field(
-        ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
-    )
-    static_field_datasets = load_datasets_by_field(
-        ALL_FIELDS_FEATURE_DEFINITION, state=state, fips=fips
-    )
+    if refresh_datasets:
+        timeseries_field_datasets = load_datasets_by_field(
+            ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
+        )
+        static_field_datasets = load_datasets_by_field(
+            ALL_FIELDS_FEATURE_DEFINITION, state=state, fips=fips
+        )
 
-    multiregion_dataset = timeseries.combined_datasets(
-        timeseries_field_datasets, static_field_datasets
-    )
-    _logger.info("Finished combining datasets")
-    multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
-    if print_stats:
-        multiregion_dataset.print_stats("combined")
+        multiregion_dataset = timeseries.combined_datasets(
+            timeseries_field_datasets, static_field_datasets
+        )
+        _logger.info("Finished combining datasets")
+        multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
+        if print_stats:
+            multiregion_dataset.print_stats("combined")
+    else:
+        multiregion_dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
+            dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH
+        )
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
     # need to remove CBSAs because they don't exist yet.
