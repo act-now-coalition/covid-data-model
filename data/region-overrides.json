@@ -249,11 +249,11 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-07-07",
-      "end_date": "2021-07-07",
+      "start_date": "2021-07-03",
+      "end_date": "2021-07-19",
       "region": "06065",
       "disclaimer": "",
-      "context": "Large outliers not caught due to post-7/4 outlier exclusion. See https://github.com/covid-projections/covid-data-model/pull/1150"
+      "context": "Large outliers not caught due to post-7/4 outlier exclusion + corrected a week later (which caused negative value)"
     },
     {
       "include": "subregions",
