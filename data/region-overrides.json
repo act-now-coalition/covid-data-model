@@ -281,15 +281,6 @@
       "end_date": "2021-07-16",
       "region": "48181",
       "context": "https://trello.com/c/ktNW4WEH/1476-grayson-county-tx-48181-reporting-backlog-of-cases-07-17-21"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-07-16",
-      "end_date": "2021-07-16",
-      "region": "MA",
-      "context": "https://trello.com/c/oBsxQlji/1477-block-ma-state-cases-on-7-17-21-to-stop-infection-rate-spike-caused-due-to-zero-fourth-of-july-reporting"
     }
   ]
 }
