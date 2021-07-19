@@ -210,15 +210,6 @@
       "context": "backlogged cases for 6/23/21"
     },
     {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-06-25",
-      "end_date": "",
-      "region": "48203,48401",
-      "context": "https://trello.com/c/hvLgPSCV/1449-blocked-6-26-three-texas-counties-with-data-anomalies"
-    },
-    {
       "include": "subregions",
       "metric": "metrics.infectionRate",
       "blocked": true,
@@ -233,7 +224,7 @@
       "blocked": true,
       "start_date": "2021-06-23",
       "end_date": "2021-06-27",
-      "region": "48459",
+      "region": "48459,48401,48203",
       "context": "https://trello.com/c/hvLgPSCV/1449-blocked-6-26-three-texas-counties-with-data-anomalies Upshur county note"
     },
     {
