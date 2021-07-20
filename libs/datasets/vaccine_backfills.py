@@ -1,4 +1,6 @@
 import pandas as pd
+from datetime import datetime
+from datetime import timedelta
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 from covidactnow.datapublic.common_fields import PdFields
@@ -12,6 +14,11 @@ from libs.pipeline import Region
 MultiRegionDataset = timeseries.MultiRegionDataset
 
 MOST_RECENT_DATE = "most_recent_date"
+
+
+# We'll apply the 1st dose estimation backfill if 1st dose data is missing for
+# at least this "lookback days" threshold.
+APPLY_BACKFILL_LOOKBACK_DAYS = 16
 
 
 def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
@@ -96,8 +103,8 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
     assert ts_state_level_ratios.index.names == [STATE_LOCATION_ID]
     assert ts_state_level_ratios.columns.names == [CommonFields.DATE]
 
-    # Find counties that have vaccinations completed but not initiated. These are the only
-    # counties that will be modified.
+    # Find counties that have vaccinations completed but not initiated in recent
+    # data. These are the only counties that will be modified.
     ds_counties = ds_in.get_subset(AggregationLevel.COUNTY)
     ts_counties_initiated = ds_counties.get_timeseries_not_bucketed_wide_dates(
         CommonFields.VACCINATIONS_INITIATED
@@ -105,7 +112,20 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
     ts_counties_completed = ds_counties.get_timeseries_not_bucketed_wide_dates(
         CommonFields.VACCINATIONS_COMPLETED
     )
-    counties_to_modify = ts_counties_completed.index.difference(ts_counties_initiated.index)
+    recent_start = (datetime.today() - timedelta(days=APPLY_BACKFILL_LOOKBACK_DAYS)).strftime(
+        "%Y-%m-%d"
+    )
+    recent_end = datetime.today().strftime("%Y-%m-%d")
+    ts_counties_completed_recent = ts_counties_completed.loc[:, recent_start:recent_end].dropna(
+        how="all"
+    )
+    ts_counties_initiated_recent = ts_counties_initiated.loc[:, recent_start:recent_end].dropna(
+        how="all"
+    )
+    counties_to_modify = ts_counties_completed_recent.index.difference(
+        ts_counties_initiated_recent.index
+    )
+
     ts_counties_completed_to_modify = add_state_location_id_index_level(
         ts_counties_completed.reindex(counties_to_modify)
     )
@@ -121,8 +141,8 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
     ts_counties_initiated_est = ts_counties_completed_to_modify.mul(
         ts_state_level_ratios, level=STATE_LOCATION_ID
     ).droplevel(STATE_LOCATION_ID)
-    # Append the variable name and bucket to the index so that ts_counties_initiated_est can be
-    # passed to replace_timeseries_wide_dates.
+    # Append the variable name and bucket to the index so that ts_counties_initiated_est is
+    # compatible with timeseries_wide_dates.
     ts_counties_initiated_est.index = pd.MultiIndex.from_product(
         (
             ts_counties_initiated_est.index,
@@ -132,8 +152,10 @@ def estimate_initiated_from_state_ratio(ds_in: MultiRegionDataset) -> MultiRegio
         names=[CommonFields.LOCATION_ID, PdFields.VARIABLE, PdFields.DEMOGRAPHIC_BUCKET],
     )
 
-    return ds_in.replace_timeseries_wide_dates(
-        [ds_in.timeseries_bucketed_wide_dates, ts_counties_initiated_est]
-    ).add_tag_to_subset(
+    # Add / replace estimated timeseries.
+    ts_bucketed_wide_dates_new = ts_counties_initiated_est.combine_first(
+        ds_in.timeseries_bucketed_wide_dates
+    )
+    return ds_in.replace_timeseries_wide_dates([ts_bucketed_wide_dates_new]).add_tag_to_subset(
         taglib.Derived("estimate_initiated_from_state_ratio"), ts_counties_initiated_est.index
     )
