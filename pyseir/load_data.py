@@ -17,7 +17,6 @@ import numpy as np
 
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets import new_cases_and_deaths
 import pyseir.utils
 
 
@@ -151,9 +150,6 @@ def calculate_new_case_data_by_region(
     times_new = (county_case_data[CommonFields.DATE] - t0).dt.days.iloc[1:]
 
     observed_new_cases = county_case_data[CommonFields.NEW_CASES]
-    observed_new_cases = new_cases_and_deaths.spread_first_reported_value_after_stall(
-        observed_new_cases
-    )
     # Converting to numpy and trimming off the first datapoint to match previous logic.
     # TODO(chris): update logic to be a date indexed series so that this is not necesary.
     observed_new_cases = observed_new_cases.to_numpy()[1:]
