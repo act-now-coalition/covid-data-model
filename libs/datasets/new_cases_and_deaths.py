@@ -112,14 +112,17 @@ def spread_first_reported_value_after_stall(
     num_days_worth_of_cases[~first_report_after_zeros] = 1
     num_days_worth_of_cases[zeros_to_replace] = None
 
-    # Don't spread on first case
+    # Don't mess with leading / trailing zeros.
     first_case = series[series.gt(0)].index[0]
-    is_after_first_case = series.index > first_case
+    last_case = series[series.gt(0)].index[-1]
+    is_between_first_last_case = (series.index > first_case) & (series.index <= last_case)
 
-    series[is_after_first_case] = series[is_after_first_case] / num_days_worth_of_cases
+    series[is_between_first_last_case] = (
+        series[is_between_first_last_case] / num_days_worth_of_cases
+    )
 
-    zeros_to_replace = zeros_to_replace & is_after_first_case
+    zeros_to_replace = zeros_to_replace & is_between_first_last_case
     series[zeros_to_replace] = None
-    series[is_after_first_case] = series[is_after_first_case].bfill()
+    series[is_between_first_last_case] = series[is_between_first_last_case].bfill()
 
     return series

@@ -154,16 +154,6 @@ def test_spread_first_reported_value():
     pd.testing.assert_series_equal(expected, results)
 
 
-def test_spread_first_reported_value_2():
-    series = test_helpers.series_with_date_index([None, None, 10, 5, 0, 0, 0, 12, 0, 4])
-
-    results = new_cases_and_deaths.spread_first_reported_value_after_stall(series)
-
-    expected = test_helpers.series_with_date_index([None, None, 10, 5, 3, 3, 3, 3, 2, 2])
-
-    pd.testing.assert_series_equal(expected, results)
-
-
 def test_spread_first_reported_value_leading_zeros():
     series = test_helpers.series_with_date_index([0, 0, 10, 5, 0, 0, 0, 12, 5])
 
@@ -180,8 +170,8 @@ def test_spread_first_reported_value_trailing_zeros():
 
     results = new_cases_and_deaths.spread_first_reported_value_after_stall(series)
 
-    # We don't spread across leading zeros.
-    expected = test_helpers.series_with_date_index([5, 3, 3, 3, 3, 0, 0])
+    # We should leave trailing zeros intact.
+    expected = test_helpers.series_with_date_index([5.0, 3, 3, 3, 3, 0, 0])
 
     pd.testing.assert_series_equal(expected, results)
 
