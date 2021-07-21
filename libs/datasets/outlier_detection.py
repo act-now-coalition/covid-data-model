@@ -7,12 +7,17 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import taglib
 from libs.datasets import timeseries
+from libs.datasets import new_cases_and_deaths
 
 MultiRegionDataset = timeseries.MultiRegionDataset
 
 
 def _calculate_modified_zscore(
-    series: pd.Series, window: int = 10, min_periods=3, ignore_zeros=True
+    series: pd.Series,
+    window: int = 10,
+    min_periods=3,
+    ignore_zeros=True,
+    spread_first_report_after_zeros=True,
 ) -> pd.Series:
     """Calculates zscore for each point in series comparing current point to past `window` days.
 
@@ -32,6 +37,10 @@ def _calculate_modified_zscore(
     Returns: Array of scores for each datapoint in series.
     """
     series = series.copy()
+
+    if spread_first_report_after_zeros:
+        series = new_cases_and_deaths.spread_first_reported_value_after_stall(series)
+
     if ignore_zeros:
         series[series == 0] = None
 
