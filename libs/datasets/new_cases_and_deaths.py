@@ -74,37 +74,42 @@ def spread_first_reported_value_after_stall(
 ) -> pd.Series:
     """Spreads first reported value after reported zeros.
 
-    TODO(chris): Make a max number of days.
-
     Args:
         series: Series of new cases with date index.
+        max_days_to_spread: Maximum number of days to spread a single report.
     """
     # Find points in the series that are either zeros or the first report after a string of zeros.
     if series.first_valid_index() is None:
         return series
 
+    # Counting consecutive zeros
     zeros = series == 0
     zeros_count = zeros.cumsum()
-    first_report_after_zeros = (series != 0) & (series.shift(1) == 0)
 
     stalled_cases_count = zeros_count.sub(zeros_count.mask(zeros).ffill().fillna(0))
+
+    # Add one more day for spreading on first report after zeros
+    first_report_after_zeros = (series != 0) & (series.shift(1) == 0)
     stalled_cases_count = stalled_cases_count + (
         (stalled_cases_count.shift(1) + 1) * first_report_after_zeros
     )
-
     num_days_worth_of_cases = stalled_cases_count * first_report_after_zeros
 
+    # Backfill number of days to spread to preceding zeros
     temp = num_days_worth_of_cases.copy()
     temp[series == 0] = None
     bfilled_num_days = temp.bfill()
 
+    # Find zeros that are within the boundary of `max_days_to_spread`
     zeros_to_keep = ((bfilled_num_days - stalled_cases_count) >= max_days_to_spread) & (series == 0)
     zeros_to_replace = ~zeros_to_keep & (series == 0)
 
+    # Calculate spreading factor (clipping at max_days_to_spread)
     num_days_worth_of_cases = num_days_worth_of_cases.clip(0, max_days_to_spread)
     num_days_worth_of_cases[~first_report_after_zeros] = 1
     num_days_worth_of_cases[zeros_to_replace] = None
 
+    # Don't spread on first case
     is_after_first_case = series.index > series.first_valid_index()
 
     series[is_after_first_case] = series[is_after_first_case] / num_days_worth_of_cases
