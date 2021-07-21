@@ -7,25 +7,9 @@ from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import taglib
 from libs.datasets import timeseries
+from libs.datasets import new_cases_and_deaths
 
 MultiRegionDataset = timeseries.MultiRegionDataset
-
-
-def _scale_first_value_after_zeros(series: pd.Series) -> pd.Series:
-
-    zeros_or_first_report = (series == 0) | (series.shift(1) == 0)
-    zeros_or_first_report_count = zeros_or_first_report.cumsum()
-    first_report_after_zeros = (series != 0) & (series.shift(1) == 0)
-    num_days_worth_of_cases = (
-        zeros_or_first_report_count.sub(
-            zeros_or_first_report_count.mask(zeros_or_first_report).ffill().fillna(0)
-        )
-        * first_report_after_zeros
-    )
-    num_days_worth_of_cases[num_days_worth_of_cases == 0] = 1
-    series = series / num_days_worth_of_cases
-
-    return series
 
 
 def _calculate_modified_zscore(
@@ -33,7 +17,7 @@ def _calculate_modified_zscore(
     window: int = 10,
     min_periods=3,
     ignore_zeros=True,
-    scale_first_report_after_zeros=True,
+    spread_first_report_after_zeros=True,
 ) -> pd.Series:
     """Calculates zscore for each point in series comparing current point to past `window` days.
 
@@ -54,9 +38,8 @@ def _calculate_modified_zscore(
     """
     series = series.copy()
 
-    # Logic to scale down first value after zeros
-    if scale_first_report_after_zeros:
-        series = _scale_first_value_after_zeros(series)
+    if spread_first_report_after_zeros:
+        series = new_cases_and_deaths.spread_first_reported_value_after_stall(series)
 
     if ignore_zeros:
         series[series == 0] = None

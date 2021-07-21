@@ -74,6 +74,12 @@ class TimeseriesLiteral:
         )
 
 
+def series_with_date_index(data, date: str = "2020-08-25", **series_kwargs):
+    """Creates a series with an increasing date index."""
+    date_series = pd.date_range(date, periods=len(data), freq="D")
+    return pd.Series(data, index=date_series, **series_kwargs)
+
+
 def make_tag_df(
     region: Region,
     metric: CommonFields,
