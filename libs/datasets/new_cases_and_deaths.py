@@ -72,13 +72,16 @@ def add_new_deaths(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
 def spread_first_reported_value_after_stall(
     series: pd.Series, max_days_to_spread: int = 7
 ) -> pd.Series:
-    """Spreads first reported value after reported zeros.
+    """Spreads first reported value after reported zeros by dividing it evenly
+    over the prior days.
 
     Args:
         series: Series of new cases with date index.
-        max_days_to_spread: Maximum number of days to spread a single report.
+        max_days_to_spread: Maximum number of days to spread a single report. If
+            a stall exceeds this number of days, the reported value will be spread
+            over max_days_to_spread and the remaining zeros will be kept as
+            zeros.
     """
-    # Find points in the series that are either zeros or the first report after a string of zeros.
     if series.first_valid_index() is None:
         return series
 
@@ -86,14 +89,14 @@ def spread_first_reported_value_after_stall(
     zeros = series == 0
     zeros_count = zeros.cumsum()
 
-    stalled_cases_count = zeros_count.sub(zeros_count.mask(zeros).ffill().fillna(0))
+    stalled_days_count = zeros_count.sub(zeros_count.mask(zeros).ffill().fillna(0))
 
     # Add one more day for spreading on first report after zeros
     first_report_after_zeros = (series != 0) & (series.shift(1) == 0)
-    stalled_cases_count = stalled_cases_count + (
-        (stalled_cases_count.shift(1) + 1) * first_report_after_zeros
+    stalled_days_count = stalled_days_count + (
+        (stalled_days_count.shift(1).fillna(0) + 1) * first_report_after_zeros
     )
-    num_days_worth_of_cases = stalled_cases_count * first_report_after_zeros
+    num_days_worth_of_cases = stalled_days_count * first_report_after_zeros
 
     # Backfill number of days to spread to preceding zeros
     temp = num_days_worth_of_cases.copy()
@@ -101,7 +104,7 @@ def spread_first_reported_value_after_stall(
     bfilled_num_days = temp.bfill()
 
     # Find zeros that are within the boundary of `max_days_to_spread`
-    zeros_to_keep = ((bfilled_num_days - stalled_cases_count) >= max_days_to_spread) & (series == 0)
+    zeros_to_keep = (bfilled_num_days - stalled_days_count) >= max_days_to_spread
     zeros_to_replace = ~zeros_to_keep & (series == 0)
 
     # Calculate spreading factor (clipping at max_days_to_spread)
@@ -109,12 +112,17 @@ def spread_first_reported_value_after_stall(
     num_days_worth_of_cases[~first_report_after_zeros] = 1
     num_days_worth_of_cases[zeros_to_replace] = None
 
-    # Don't spread on first case
-    is_after_first_case = series.index > series.first_valid_index()
+    # Don't mess with leading / trailing zeros.
+    first_case = series[series.gt(0)].index[0]
+    last_case = series[series.gt(0)].index[-1]
+    is_between_first_last_case = (series.index > first_case) & (series.index <= last_case)
 
-    series[is_after_first_case] = series[is_after_first_case] / num_days_worth_of_cases
+    series[is_between_first_last_case] = (
+        series[is_between_first_last_case] / num_days_worth_of_cases
+    )
 
+    zeros_to_replace = zeros_to_replace & is_between_first_last_case
     series[zeros_to_replace] = None
-    series[is_after_first_case] = series[is_after_first_case].bfill()
+    series[is_between_first_last_case] = series[is_between_first_last_case].bfill()
 
     return series
