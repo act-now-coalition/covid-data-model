@@ -80,15 +80,16 @@ def spread_first_reported_value_after_stall(
         series: Series of new cases with date index.
     """
     # Find points in the series that are either zeros or the first report after a string of zeros.
+    if series.first_valid_index() is None:
+        return series
 
-    zeros_or_first_report = (series == 0) | (series.shift(1) == 0)
-    zeros_or_first_report_count = zeros_or_first_report.cumsum()
+    zeros = series == 0
+    zeros_count = zeros.cumsum()
     first_report_after_zeros = (series != 0) & (series.shift(1) == 0)
 
-    first_report_after_zeros = (series != 0) & (series.shift(1) == 0)
-
-    stalled_cases_count = zeros_or_first_report_count.sub(
-        zeros_or_first_report_count.mask(zeros_or_first_report).ffill().fillna(0)
+    stalled_cases_count = zeros_count.sub(zeros_count.mask(zeros).ffill().fillna(0))
+    stalled_cases_count = stalled_cases_count + (
+        (stalled_cases_count.shift(1) + 1) * first_report_after_zeros
     )
 
     num_days_worth_of_cases = stalled_cases_count * first_report_after_zeros
