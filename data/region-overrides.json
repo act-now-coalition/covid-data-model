@@ -259,15 +259,6 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-07-08",
-      "end_date": "",
-      "region": "IA, 19153, 19163, 19013, 19187",
-      "context": "Block Iowa state and some counties data after 7/8 since either they haven't reported cases or they're getting removed by outlier detection."
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "2021-07-16",
       "end_date": "2021-07-16",
       "region": "48181",
