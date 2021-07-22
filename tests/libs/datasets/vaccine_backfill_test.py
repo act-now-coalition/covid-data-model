@@ -1,5 +1,6 @@
 from covidactnow.datapublic.common_fields import CommonFields
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 
 from libs.datasets.taglib import TagType
 from libs.pipeline import Region

@@ -70,7 +70,12 @@ def test_risk_level_timeseries():
 
     # Last day is expected to be medium because test positivity is stale
     expected_overall = [RiskLevel.CRITICAL] * 15 + [RiskLevel.MEDIUM]
-    expected = pd.Series(expected_overall, name="overall")
-    pd.testing.assert_series_equal(results["overall"], expected)
+    expected_overall = pd.Series(expected_overall, name="overall")
 
-    assert expected_latest_risk_level.overall == expected.iloc[-1]
+    expected_case_density = [RiskLevel.MEDIUM] * 16
+    expected_case_density = pd.Series(expected_case_density, name="caseDensity")
+
+    pd.testing.assert_series_equal(results["caseDensity"], expected_case_density)
+    pd.testing.assert_series_equal(results["overall"], expected_overall)
+
+    assert expected_latest_risk_level.overall == expected_overall.iloc[-1]

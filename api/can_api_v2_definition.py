@@ -435,6 +435,7 @@ class RiskLevels(base_model.APIBaseModel):
 # right now, only the overall risk level.
 class RiskLevelsRow(base_model.APIBaseModel):
     overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region.")
+    caseDensity: RiskLevel = pydantic.Field(..., description="Case density risk level for region.")
 
 
 class RiskLevelTimeseriesRow(RiskLevelsRow):

@@ -318,7 +318,9 @@ def build_bulk_flattened_timeseries(
             risk_levels = risk_levels_by_date.get(date)
             risk_levels_row = None
             if risk_levels:
-                risk_levels_row = RiskLevelsRow(overall=risk_levels.overall)
+                risk_levels_row = RiskLevelsRow(
+                    overall=risk_levels.overall, caseDensity=risk_levels.caseDensity
+                )
 
             data = {
                 "date": date,
