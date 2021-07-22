@@ -179,8 +179,25 @@ CDCVaccinesStatesAndNationDataset = datasource_regions(
     CDCVaccinesDataset, [RegionMask(AggregationLevel.STATE), RegionMask(AggregationLevel.COUNTRY)]
 )
 
-CDC_EXCLUSIONS = RegionMask(states=["CA", "GA", "IL", "NM", "ND", "PA", "SD", "VA", "VT", "WV"])
-CDCVaccineDatasetWithoutExceptions = datasource_regions(CDCVaccinesDataset2, exclude=CDC_EXCLUSIONS)
+CDC_COUNTY_EXCLUSIONS = [
+    # Glacier County, MT
+    Region.from_fips("30035"),
+    # Santa Cruz County, AZ
+    Region.from_fips("04023"),
+    # Arecibo Municipio, PR
+    Region.from_fips("72013"),
+    # Bristol Bay Borough, AK
+    Region.from_fips("02060"),
+    # Culebra Municipio, PR
+    Region.from_fips("72049"),
+]
+
+CDC_STATE_EXCLUSIONS = RegionMask(
+    states=["CA", "GA", "IL", "NM", "ND", "PA", "SD", "VA", "VT", "WV"]
+)
+CDCVaccineDatasetWithoutExceptions = datasource_regions(
+    CDCVaccinesDataset2, exclude=[CDC_STATE_EXCLUSIONS, *CDC_COUNTY_EXCLUSIONS]
+)
 
 # Excludes FL counties for vaccine fields. See
 # https://trello.com/c/0nVivEMt/1435-fix-florida-data-scraper
