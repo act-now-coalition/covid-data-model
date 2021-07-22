@@ -232,7 +232,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-07-03",
-      "end_date": "2021-07-19",
+      "end_date": "2021-07-13",
       "region": "06065",
       "disclaimer": "",
       "context": "Large outliers not caught due to post-7/4 outlier exclusion + corrected a week later (which caused negative value)"
