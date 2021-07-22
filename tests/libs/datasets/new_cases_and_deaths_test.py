@@ -196,3 +196,15 @@ def test_spreading_multiple_zeros():
     expected = test_helpers.series_with_date_index([None, 10, 2.5, 2.5, 5, 5, 5, 10, 10, 5])
 
     pd.testing.assert_series_equal(expected, results)
+
+
+def test_spread_first_reported_value_empty_series():
+    series = test_helpers.series_with_date_index([0])
+
+    results = new_cases_and_deaths.spread_first_reported_value_after_stall(
+        series, max_days_to_spread=2
+    )
+
+    expected = test_helpers.series_with_date_index([0])
+
+    pd.testing.assert_series_equal(expected, results)
