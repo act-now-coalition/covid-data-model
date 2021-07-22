@@ -104,16 +104,7 @@
       "end_date": "",
       "region": "CO",
       "context": "https://trello.com/c/5YPRc90C/1368-colorado-county-level-vaccine-data-via-cdc-seems-low-and-doesnt-sense-check-with-state-level-data",
-      "disclaimer": "As of May 26, only 72% of Colorado vaccinations reported to the CDC had a valid county of residence associated with them. Therefore the above data may underrepresent the true number of vaccinations."
-    },
-    {
-      "include": "region",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "start_date": "",
-      "end_date": "",
-      "region": "29047, 29095, 29097, 29145, 29165",
-      "context": "https://trello.com/c/G1DCxKeu/1188-joplin-mo-metro-likely-wrong"
+      "disclaimer": "As of July 21, only 76% of Colorado vaccinations reported to the CDC had a valid county of residence associated with them. Therefore the above data may underrepresent the true number of vaccinations."
     },
     {
       "include": "subregions",
