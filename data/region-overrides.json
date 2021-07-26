@@ -263,6 +263,16 @@
       "end_date": "",
       "region": "06065",
       "context": "Blocking infection rate since it's inflated by the irregular reporting lately. - July 22, 2021"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "31165, 31097, 31069, 31071, 31141, 31067, 31007, 31053, 31161, 26029, 31041, 31163, 39091, 31019, 31105, 31119, 39163, 31023, 39123, 31035, 31111, 31149, 31009, 31087, 39161, 39127, 31169, 31075, 31145, 31115, 31139, 31065, 39175, 31183, 31123, 31059, 31011, 39137, 31015, 31117, 31125, 31061, 31079, 39005, 31063, 31155, 31001, 31131, 31179, 31091, 31005, 31045, 31085, 31029, 31081, 31049, 30051, 31175, 31089, 31013, 31003, 31039, 31171, 31077, 31157, 39147, 31101, 31181, 39171, 31103, 39075, 31159, 31137, 31051, 39077, 31073, 26161, 31027, 31151, 31143, 39111, 31135, 31107, 31113, 31021, 31167, 31185, 31127, 26081, 31093",
+      "disclaimer": "Note that data for this county is sourced from the CDC which only provides data on fully-vaccinated people and therefore the \"1+ dose\" data above is approximated using the fully-vaccinated data and a state-wide average ratio.",
+      "context": "as of 7/26, these are counties for which only vaccine-completed data is available. Currently, this is set manually, and the CDC data can pick up or drop counties automatically, so this list should be checked periodically. "
     }
   ]
 }
