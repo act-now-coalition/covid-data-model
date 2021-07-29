@@ -1,10 +1,7 @@
 import pytest
-import pandas as pd
 from api.can_api_v2_definition import Metrics
 from libs.metrics.cdc_transmission_levels import TransmissionLevel
 from libs.metrics import cdc_transmission_levels
-from libs.metrics import top_level_metrics
-from tests.libs.metrics import top_level_metrics_test
 
 
 def test_calc_transmission_level_below_limit():
