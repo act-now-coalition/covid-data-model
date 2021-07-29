@@ -58,6 +58,7 @@ SUMMARY_ORDER = [
     "metrics.vaccinationsCompletedRatio",
     "actuals.newDeaths",
     "actuals.vaccinesAdministered",
+    "cdcTransmissionLevel",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -113,6 +114,7 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "metrics.vaccinationsCompletedRatio",
     "actuals.newDeaths",
     "actuals.vaccinesAdministered",
+    "cdcTransmissionLevel",
 ]
 
 
