@@ -13,6 +13,7 @@ from api.can_api_v2_definition import (
     Metrics,
     RiskLevels,
     RiskLevelsRow,
+    CDCTransmissionLevel,
     RegionSummary,
     RegionSummaryWithTimeseries,
     RegionTimeseriesRowWithHeader,
@@ -107,6 +108,7 @@ def build_region_summary(
     one_region: timeseries.OneRegionTimeseriesDataset,
     latest_metrics: Optional[Metrics],
     risk_levels: RiskLevels,
+    transmission_level: CDCTransmissionLevel,
     log,
 ) -> RegionSummary:
     latest_values = one_region.latest
@@ -126,6 +128,7 @@ def build_region_summary(
         actuals=actuals,
         metrics=latest_metrics,
         riskLevels=risk_levels,
+        cdcTransmissionLevel=transmission_level,
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
         url=latest_values.get(CommonFields.CAN_LOCATION_PAGE_URL),

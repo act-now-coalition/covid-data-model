@@ -403,6 +403,21 @@ class RiskLevel(enum.Enum):
     EXTREME = 5
 
 
+@enum.unique
+class CDCTransmissionLevel(enum.Enum):
+    """CDC transmission level."""
+
+    LOW = 0
+
+    MODERATE = 1
+
+    SUBSTANTIAL = 2
+
+    HIGH = 3
+
+    UNKNOWN = 4
+
+
 class RiskLevels(base_model.APIBaseModel):
     """COVID risk levels for a region."""
 
@@ -482,6 +497,11 @@ class RegionSummary(base_model.APIBaseModel):
     )
     metrics: Metrics = pydantic.Field(...)
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
+
+    cdcTransmissionLevel: CDCTransmissionLevel = pydantic.Field(
+        ..., description="CDC transmission levels for region."
+    )
+
     actuals: Actuals = pydantic.Field(...)
     annotations: Annotations = pydantic.Field(...)
 
