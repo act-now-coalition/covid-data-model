@@ -92,6 +92,14 @@
         }
       ]
     },
+    "cdcTransmissionLevel": {
+      "description": "CDC transmission levels for region.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CDCTransmissionLevel"
+        }
+      ]
+    },
     "actuals": {
       "$ref": "#/definitions/Actuals"
     },
@@ -150,6 +158,7 @@
     "population",
     "metrics",
     "riskLevels",
+    "cdcTransmissionLevel",
     "actuals",
     "annotations",
     "lastUpdatedDate",
@@ -481,6 +490,17 @@
         "infectionRate",
         "icuHeadroomRatio",
         "icuCapacityRatio"
+      ]
+    },
+    "CDCTransmissionLevel": {
+      "title": "CDCTransmissionLevel",
+      "description": "CDC transmission level.",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
       ]
     },
     "HospitalResourceUtilization": {
