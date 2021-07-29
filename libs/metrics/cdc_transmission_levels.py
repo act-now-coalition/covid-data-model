@@ -42,6 +42,9 @@ def calc_transmission_level(value: Optional[float], thresholds: List[float]) -> 
 
 
 def case_density_transmission_level(value: float) -> TransmissionLevel:
+    # CDC thresholds are number of cases over a 7 day average. Our case density
+    # metrics are cases over a 7 day average.  To square the two, we should divide
+    # CDC thresholds by 7 to get the equivalent threshold for our 7-day averages.
     thresholds = [10 / 7.0, 50 / 7.0, 100 / 7.0]
     return calc_transmission_level(value, thresholds)
 

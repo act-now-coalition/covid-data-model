@@ -499,7 +499,7 @@ class RegionSummary(base_model.APIBaseModel):
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
 
     cdcTransmissionLevel: CDCTransmissionLevel = pydantic.Field(
-        ..., description="CDC transmission levels for region."
+        ..., description="CDC transmission level for region."
     )
 
     actuals: Actuals = pydantic.Field(...)
