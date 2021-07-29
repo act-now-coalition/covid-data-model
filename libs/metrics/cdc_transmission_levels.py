@@ -70,7 +70,7 @@ def top_level_transmission_level(
     elif TransmissionLevel.UNKNOWN in level_list:
         return TransmissionLevel.UNKNOWN
 
-    return RiskLevel.LOW
+    return TransmissionLevel.LOW
 
 
 def calculate_transmission_level_from_metrics(
