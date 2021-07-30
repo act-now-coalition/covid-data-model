@@ -87,5 +87,5 @@ def calculate_transmission_level_from_metrics(
     case_density_level = case_density_transmission_level(metrics.caseDensity)
     test_positivity_level = test_positivity_transmission_level(metrics.testPositivityRatio)
 
-    overall_level = top_level_transmission_level(case_density_level, test_positivity_level)
+    overall_level = overall_transmission_level(case_density_level, test_positivity_level)
     return overall_level
