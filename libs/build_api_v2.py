@@ -108,7 +108,7 @@ def build_region_summary(
     one_region: timeseries.OneRegionTimeseriesDataset,
     latest_metrics: Optional[Metrics],
     risk_levels: RiskLevels,
-    transmission_level: CDCTransmissionLevel,
+    cdc_transmission_level: CDCTransmissionLevel,
     log,
 ) -> RegionSummary:
     latest_values = one_region.latest
@@ -128,7 +128,7 @@ def build_region_summary(
         actuals=actuals,
         metrics=latest_metrics,
         riskLevels=risk_levels,
-        cdcTransmissionLevel=transmission_level,
+        cdcTransmissionLevel=cdc_transmission_level,
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
         url=latest_values.get(CommonFields.CAN_LOCATION_PAGE_URL),

@@ -14,11 +14,11 @@ TransmissionLevel = can_api_v2_definition.CDCTransmissionLevel
 def calc_transmission_level(value: Optional[float], thresholds: List[float]) -> TransmissionLevel:
     """Check the value against thresholds to determine the transmission level for the metric.
 
-    Each threshold is the upper limit for the risk level.
+    Each threshold is the upper limit for the transmission level.
 
     Args:
         value: value of the metric.
-        thresholds: list of values corresponding to thresholds for different risk levels
+        thresholds: list of values corresponding to thresholds for different transmission levels
 
     Returns:
         A CDCTranmissionLevel.
@@ -54,10 +54,15 @@ def test_positivity_transmission_level(value: float) -> TransmissionLevel:
     return calc_transmission_level(value, thresholds)
 
 
-def top_level_transmission_level(
+def overall_transmission_level(
     case_density_level: TransmissionLevel, test_positivity_level: TransmissionLevel,
 ) -> TransmissionLevel:
-    """Calculate the overall risk for a region based on metric risk levels."""
+    """Calculate the overall transmission level for a region based on metric transmission levels.
+
+    Args:
+        case_density_level: Case density transmission level.
+        test_positivity_level: Test positivity transmission level.
+    """
 
     level_list = [
         test_positivity_level,
@@ -84,32 +89,3 @@ def calculate_transmission_level_from_metrics(
 
     overall_level = top_level_transmission_level(case_density_level, test_positivity_level)
     return overall_level
-
-
-def calculate_transmission_level_from_row(row: pd.Series):
-
-    case_density_level = case_density_transmission_level(row[MetricsFields.CASE_DENSITY_RATIO])
-    test_positivity_level = test_positivity_transmission_level(row[MetricsFields.TEST_POSITIVITY])
-
-    return top_level_transmission_level(case_density_level, test_positivity_level)
-
-
-def calculate_transmission_level_timeseries(
-    metrics_df: pd.DataFrame, metric_max_lookback=top_level_metrics.MAX_METRIC_LOOKBACK_DAYS
-):
-    metrics_df = metrics_df.copy()
-    # Shift infection rate to align with infection rate delay
-    infection_rate = metrics_df[MetricsFields.INFECTION_RATE].shift(
-        top_level_metrics.RT_TRUNCATION_DAYS
-    )
-    metrics_df[MetricsFields.INFECTION_RATE] = infection_rate
-    metrics_df = metrics_df.set_index([CommonFields.DATE, CommonFields.FIPS])
-
-    # We use the last available data within `MAX_METRIC_LOOKBACK_DAYS` to cacluate
-    # the transmission. Propagate the last value forward that many days so calculation for a given
-    # day is the same as `top_level_metrics.calculate_latest_metrics`
-    metrics_df.ffill(limit=metric_max_lookback - 1, inplace=True)
-
-    overall_transmission = metrics_df.apply(calculate_transmission_level_from_row, axis=1)
-
-    return pd.DataFrame({"overall": overall_transmission,}).reset_index()

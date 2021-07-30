@@ -141,11 +141,11 @@ def build_timeseries_for_region(
             metrics_results
         )
         risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(metrics_latest)
-        transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
+        cdc_transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
             metrics_latest
         )
         region_summary = build_api_v2.build_region_summary(
-            regional_input.timeseries, metrics_latest, risk_levels, transmission_level, log
+            regional_input.timeseries, metrics_latest, risk_levels, cdc_transmission_level, log
         )
         region_timeseries = build_api_v2.build_region_timeseries(
             region_summary, fips_timeseries, metrics_results, risk_timeseries,

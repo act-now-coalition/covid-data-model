@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict
 import enum
+import textwrap
 
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import base_model
@@ -499,7 +500,16 @@ class RegionSummary(base_model.APIBaseModel):
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
 
     cdcTransmissionLevel: CDCTransmissionLevel = pydantic.Field(
-        ..., description="CDC transmission level for region."
+        ...,
+        description=textwrap.dedent(
+            """
+            CDC community transmission level for region.
+
+            See [definitions of CDC community transmission levels](
+            https://covid.cdc.gov/covid-data-tracker/#cases_community)
+            for more details.
+            """
+        ),
     )
 
     actuals: Actuals = pydantic.Field(...)
