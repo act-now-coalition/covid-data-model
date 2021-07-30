@@ -332,7 +332,7 @@
     },
     "CDCTransmissionLevel": {
       "title": "CDCTransmissionLevel",
-      "description": "CDC transmission level.",
+      "description": "CDC community transmission level.",
       "enum": [
         0,
         1,
@@ -1080,7 +1080,7 @@
           ]
         },
         "cdcTransmissionLevel": {
-          "description": "CDC transmission levels for region.",
+          "description": "\nCDC community transmission level for region.\n\nPossible values:\n - 0: Low\n - 1: Moderate\n - 2: Substantial\n - 3: High\n - 4: Unknown\n\nSee [definitions of CDC community transmission levels](\nhttps://covid.cdc.gov/covid-data-tracker/#cases_community)\nfor more details.\n",
           "allOf": [
             {
               "$ref": "#/definitions/CDCTransmissionLevel"

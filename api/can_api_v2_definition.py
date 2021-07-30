@@ -406,7 +406,7 @@ class RiskLevel(enum.Enum):
 
 @enum.unique
 class CDCTransmissionLevel(enum.Enum):
-    """CDC transmission level."""
+    """CDC community transmission level."""
 
     LOW = 0
 
@@ -504,6 +504,13 @@ class RegionSummary(base_model.APIBaseModel):
         description=textwrap.dedent(
             """
             CDC community transmission level for region.
+
+            Possible values:
+             - 0: Low
+             - 1: Moderate
+             - 2: Substantial
+             - 3: High
+             - 4: Unknown
 
             See [definitions of CDC community transmission levels](
             https://covid.cdc.gov/covid-data-tracker/#cases_community)
