@@ -330,6 +330,17 @@
         "icuCapacityRatio"
       ]
     },
+    "CDCTransmissionLevel": {
+      "title": "CDCTransmissionLevel",
+      "description": "CDC community transmission level.",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
     "HospitalResourceUtilization": {
       "title": "HospitalResourceUtilization",
       "description": "Base model for API output.",
@@ -1068,6 +1079,14 @@
             }
           ]
         },
+        "cdcTransmissionLevel": {
+          "description": "\nCDC community transmission level for region.\n\nPossible values:\n - 0: Low\n - 1: Moderate\n - 2: Substantial\n - 3: High\n - 4: Unknown\n\nSee [definitions of CDC community transmission levels](\nhttps://covid.cdc.gov/covid-data-tracker/#cases_community)\nfor more details.\n",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CDCTransmissionLevel"
+            }
+          ]
+        },
         "actuals": {
           "$ref": "#/definitions/Actuals"
         },
@@ -1105,6 +1124,7 @@
         "population",
         "metrics",
         "riskLevels",
+        "cdcTransmissionLevel",
         "actuals",
         "annotations",
         "lastUpdatedDate",

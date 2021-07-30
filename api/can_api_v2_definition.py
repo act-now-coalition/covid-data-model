@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict
 import enum
+import textwrap
 
 from libs.datasets.dataset_utils import AggregationLevel
 from libs import base_model
@@ -403,6 +404,21 @@ class RiskLevel(enum.Enum):
     EXTREME = 5
 
 
+@enum.unique
+class CDCTransmissionLevel(enum.Enum):
+    """CDC community transmission level."""
+
+    LOW = 0
+
+    MODERATE = 1
+
+    SUBSTANTIAL = 2
+
+    HIGH = 3
+
+    UNKNOWN = 4
+
+
 class RiskLevels(base_model.APIBaseModel):
     """COVID risk levels for a region."""
 
@@ -482,6 +498,27 @@ class RegionSummary(base_model.APIBaseModel):
     )
     metrics: Metrics = pydantic.Field(...)
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
+
+    cdcTransmissionLevel: CDCTransmissionLevel = pydantic.Field(
+        ...,
+        description=textwrap.dedent(
+            """
+            CDC community transmission level for region.
+
+            Possible values:
+             - 0: Low
+             - 1: Moderate
+             - 2: Substantial
+             - 3: High
+             - 4: Unknown
+
+            See [definitions of CDC community transmission levels](
+            https://covid.cdc.gov/covid-data-tracker/#cases_community)
+            for more details.
+            """
+        ),
+    )
+
     actuals: Actuals = pydantic.Field(...)
     annotations: Annotations = pydantic.Field(...)
 

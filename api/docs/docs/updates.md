@@ -7,6 +7,14 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### CDC Community Transmission Levels
+_Added on 2021-07-30_
+
+You can now access the current CDC Community transmissions levels in the Covid Act Now API.
+
+The CDC community transmission levels are similar to the Covid Act Now risk levels, but have slightly different thresholds.  
+See [definitions of CDC community transmission levels](https://covid.cdc.gov/covid-data-tracker/#cases_community) for more details.
+
 ### Aggregated US data
 _Added on 2021-03-31_
 

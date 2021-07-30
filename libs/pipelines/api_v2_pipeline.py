@@ -18,10 +18,11 @@ from api.can_api_v2_definition import RegionSummary
 from libs import dataset_deployer
 from libs.metrics import top_level_metrics
 from libs.metrics import top_level_metric_risk_levels
+from libs.metrics import cdc_transmission_levels
+
 from libs import parallel_utils
 from libs import pipeline
 from libs import build_api_v2
-
 from libs.datasets import timeseries
 from libs.datasets import vaccine_backfills
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -140,11 +141,14 @@ def build_timeseries_for_region(
             metrics_results
         )
         risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(metrics_latest)
+        cdc_transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
+            metrics_latest
+        )
         region_summary = build_api_v2.build_region_summary(
-            regional_input.timeseries, metrics_latest, risk_levels, log
+            regional_input.timeseries, metrics_latest, risk_levels, cdc_transmission_level, log
         )
         region_timeseries = build_api_v2.build_region_timeseries(
-            region_summary, fips_timeseries, metrics_results, risk_timeseries
+            region_summary, fips_timeseries, metrics_results, risk_timeseries,
         )
     except Exception:
         log.exception(f"Failed to build timeseries for fips.")

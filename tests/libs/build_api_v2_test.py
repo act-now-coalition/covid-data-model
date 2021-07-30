@@ -11,9 +11,11 @@ from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 from api.can_api_v2_definition import RegionSummary
 from api.can_api_v2_definition import RiskLevels
+from api.can_api_v2_definition import CDCTransmissionLevel
 from api.can_api_v2_definition import DemographicDistributions
 from api.can_api_v2_definition import Metrics
 from libs.metrics import top_level_metric_risk_levels
+from libs.metrics import cdc_transmission_levels
 from libs import build_api_v2
 from libs.pipelines import api_v2_pipeline
 from tests import test_helpers
@@ -48,8 +50,13 @@ def test_build_summary_for_fips(
         fips_timeseries, nyc_rt_dataset, log,
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
+    transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
+        latest_metric
+    )
     assert latest_metric
-    summary = build_api_v2.build_region_summary(fips_timeseries, latest_metric, risk_levels, log)
+    summary = build_api_v2.build_region_summary(
+        fips_timeseries, latest_metric, risk_levels, transmission_level, log
+    )
     field_source_hhshospital = FieldSource(
         name="Department of Health and Human Services",
         type=FieldSourceType.OTHER,
@@ -67,6 +74,7 @@ def test_build_summary_for_fips(
         long=None,
         metrics=latest_metric,
         riskLevels=risk_levels,
+        cdcTransmissionLevel=transmission_level,
         actuals=Actuals(
             cases=nyc_latest["cases"],
             deaths=nyc_latest["deaths"],
@@ -173,9 +181,12 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset):
     )
     risk_levels = top_level_metric_risk_levels.calculate_risk_level_from_metrics(latest_metric)
     risk_timeseries = top_level_metric_risk_levels.calculate_risk_level_timeseries(metrics_series)
+    transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
+        latest_metric
+    )
 
     region_summary = build_api_v2.build_region_summary(
-        nyc_timeseries, latest_metric, risk_levels, log
+        nyc_timeseries, latest_metric, risk_levels, transmission_level, log
     )
     region_timeseries = build_api_v2.build_region_timeseries(
         region_summary, nyc_timeseries, metrics_series, risk_timeseries
@@ -197,7 +208,9 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset):
         else:
             assert "vaccinationsInitiatedRatio" in row_data
 
-    summary = build_api_v2.build_region_summary(nyc_timeseries, latest_metric, risk_levels, log)
+    summary = build_api_v2.build_region_summary(
+        nyc_timeseries, latest_metric, risk_levels, transmission_level, log
+    )
 
     assert summary.dict() == region_timeseries.region_summary.dict()
     # Double checking that serialized json does not contain NaNs, all values should
@@ -231,7 +244,7 @@ def test_multiple_distributions():
 
     one_region = ds2.get_one_region(region_ca)
     summary = build_api_v2.build_region_summary(
-        one_region, Metrics.empty(), RiskLevels.empty(), log
+        one_region, Metrics.empty(), RiskLevels.empty(), CDCTransmissionLevel.UNKNOWN, log
     )
     expected_demographics = DemographicDistributions(age={"30-39": 4})
     assert summary.actuals.vaccinesAdministeredDemographics == expected_demographics
