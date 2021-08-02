@@ -113,8 +113,8 @@ def test_estimate_initiated_from_state_ratio():
 
 
 def test_estimate_initiated_from_state_ratio_respects_lookback_days():
-    # lookback period is 15 days so we'll start our data 16 days back.
-    start_date = (datetime.today() - timedelta(days=16)).strftime("%Y-%m-%d")
+    # lookback period is 16 days so we'll start our data 17 days back.
+    start_date = (datetime.today() - timedelta(days=17)).strftime("%Y-%m-%d")
 
     region_to_estimate = Region.from_fips("22071")  # Orleans Parish
     metrics_unmodified_regions = {

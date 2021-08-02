@@ -18,7 +18,7 @@ MOST_RECENT_DATE = "most_recent_date"
 
 # We'll apply the 1st dose estimation backfill if 1st dose data is missing for
 # at least this "lookback days" threshold.
-APPLY_BACKFILL_LOOKBACK_DAYS = 15
+APPLY_BACKFILL_LOOKBACK_DAYS = 16
 
 
 def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
