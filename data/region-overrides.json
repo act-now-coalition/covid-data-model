@@ -97,16 +97,6 @@
       "end_date": "2021-05-15"
     },
     {
-      "include": "region",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "region": "08005, 08009, 08011, 08013, 08014, 08015, 08017, 08021, 08025, 08027, 08029, 08035, 08039, 08043, 08055, 08057, 08063, 08067, 08069, 08071, 08075, 08077, 08085, 08089, 08091, 08093, 08099, 08101, 08103, 08105, 08109, 08119, 08121, 08123",
-      "disclaimer": "As of July 21, only 76% of Colorado vaccinations reported to the CDC had a valid county of residence associated with them. Therefore the above data may underrepresent the true number of vaccinations.\n\nNote that data for this county is sourced from the CDC which, as of 7/26/2021, only provides data on fully-vaccinated people and therefore the \"1+ dose\" data above is approximated using the fully-vaccinated data and a state-wide average ratio.",
-      "context": "context: https://trello.com/c/Q2VorVkg/1484-cms-disclaimers-for-counties-with-1-dose-estimation"
-    },
-    {
       "include": "subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": false,
@@ -114,7 +104,7 @@
       "end_date": "",
       "region": "CO",
       "context": "https://trello.com/c/5YPRc90C/1368-colorado-county-level-vaccine-data-via-cdc-seems-low-and-doesnt-sense-check-with-state-level-data",
-      "disclaimer": "As of July 21, only 76% of Colorado vaccinations reported to the CDC had a valid county of residence associated with them. Therefore the above data may underrepresent the true number of vaccinations."
+      "disclaimer": "The data above reflects data as provided by the CDC. Data for Colorado has been revised multiple times resulting in jumps in the vaccination percentages."
     },
     {
       "include": "subregions",
