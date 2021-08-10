@@ -15,6 +15,22 @@ You can now access the current CDC Community transmissions levels in the Covid A
 The CDC community transmission levels are similar to the Covid Act Now risk levels, but have slightly different thresholds.  
 See [definitions of CDC community transmission levels](https://covid.cdc.gov/covid-data-tracker/#cases_community) for more details.
 
+You can find CDC community transmission levels in the field ``cdcTransmissionLevel`` in all API responses.
+
+The values correspond to the following levels:
+
+| API value | CDC community transmission level |
+| ------------ | ------------------------------- |
+| 0 | Low |
+| 1 | Moderate |
+| 2 | Substantial |
+| 3 | High |
+| 4 | Unknown |
+
+Note that the CDC does not include an "unknown" transmission level.
+We chose to include in cases where either test positivity or case data
+is stale for more than 15 days.
+
 ### Aggregated US data
 _Added on 2021-03-31_
 
