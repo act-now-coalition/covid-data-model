@@ -30,7 +30,6 @@ from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
-from libs.datasets.sources.cms_testing_dataset import CMSTestingDataset
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperCountyProviders
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
@@ -282,7 +281,6 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POSITIVE_CASES_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TESTS_PEOPLE_VIRAL: [CovidTrackingDataSource],
     CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
-    CommonFields.TEST_POSITIVITY_14D: [CMSTestingDataset],
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
     CommonFields.VACCINES_DISTRIBUTED: [
         CDCVaccinesCountiesDataset,
