@@ -27,9 +27,11 @@ The values correspond to the following levels:
 | 3 | High |
 | 4 | Unknown |
 
-Note that the CDC does not include an "unknown" transmission level.
-We chose to include in cases where either test positivity or case data
-is stale for more than 15 days.
+Note that we have introduced an "Unknown" level for when both case data
+and test positivity data are missing for at least 15 days.
+The CDC does not have an "Unknown" level and instead will designate a
+location as "Low" when case and test positivity data are missing.
+
 
 ### Aggregated US data
 _Added on 2021-03-31_
