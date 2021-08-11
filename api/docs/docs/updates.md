@@ -10,12 +10,13 @@ Updates to the API will be reflected here.
 ### CDC Community Transmission Levels
 _Added on 2021-07-30_
 
-You can now access the current CDC Community transmissions levels in the Covid Act Now API.
+We now expose a CDC Community Transmission Level in the API.
 
-The CDC community transmission levels are similar to the Covid Act Now risk levels, but have slightly different thresholds.  
+The CDC community transmission levels are similar to the Covid Act Now risk levels, but have slightly different thresholds.
 See [definitions of CDC community transmission levels](https://covid.cdc.gov/covid-data-tracker/#cases_community) for more details.
 
-You can find CDC community transmission levels in the field ``cdcTransmissionLevel`` in all API responses.
+We calculate the level using the CDC's thresholds and expose it in the field
+``cdcTransmissionLevel`` in all API responses.
 
 The values correspond to the following levels:
 
@@ -27,10 +28,7 @@ The values correspond to the following levels:
 | 3 | High |
 | 4 | Unknown |
 
-Note that we have introduced an "Unknown" level for when both case data
-and test positivity data are missing for at least 15 days.
-The CDC does not have an "Unknown" level and instead will designate a
-location as "Low" when case and test positivity data are missing.
+Note that the value may differ from what the CDC website reports given we have different data sources. We have also introduced an "Unknown" level for when both case data and test positivity data are missing for at least 15 days. The CDC does not have an "Unknown" level and instead will designate a location as "Low" when case and test positivity data are missing.
 
 
 ### Aggregated US data
