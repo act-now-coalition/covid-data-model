@@ -31,6 +31,8 @@ def test_calc_transmission_level_at_limit():
         (0.10, 0.0 / 7, TransmissionLevel.HIGH),
         (0.0, 100.0 / 7, TransmissionLevel.HIGH),
         (0.0, 99.9 / 7, TransmissionLevel.SUBSTANTIAL),
+        (0.0, None, TransmissionLevel.LOW),
+        (None, None, TransmissionLevel.UNKNOWN),
     ],
 )
 def test_calc_transmission_levels(test_positivity, case_density, expected_level):

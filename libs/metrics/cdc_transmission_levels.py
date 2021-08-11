@@ -71,10 +71,10 @@ def overall_transmission_level(
         return TransmissionLevel.SUBSTANTIAL
     elif TransmissionLevel.MODERATE in level_list:
         return TransmissionLevel.MODERATE
-    elif TransmissionLevel.UNKNOWN in level_list:
-        return TransmissionLevel.UNKNOWN
+    if TransmissionLevel.LOW in level_list:
+        return TransmissionLevel.LOW
 
-    return TransmissionLevel.LOW
+    return TransmissionLevel.UNKNOWN
 
 
 def calculate_transmission_level_from_metrics(
