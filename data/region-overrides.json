@@ -273,6 +273,15 @@
       "end_date": "2021-07-08",
       "region": "CA",
       "context": "https://trello.com/c/9yFJDbZo/1486-7-29-21-backlogged-antigen-probable-cases-added-to-ca-cases-on-july-8th"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-08-19",
+      "end_date": "2021-08-19",
+      "region": "48113, 30013",
+      "context": "wagging data in recent dates from new test positivity endpoint caused spikes in test rate"
     }
   ]
 }
