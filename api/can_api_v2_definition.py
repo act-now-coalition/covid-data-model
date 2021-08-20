@@ -503,7 +503,7 @@ class RegionSummary(base_model.APIBaseModel):
         ...,
         description=textwrap.dedent(
             """
-            CDC community transmission level for region.
+            Community transmission level for region, calculated using the CDC definition.
 
             Possible values:
              - 0: Low
@@ -513,8 +513,15 @@ class RegionSummary(base_model.APIBaseModel):
              - 4: Unknown
 
             See [definitions of CDC community transmission levels](
-            https://covid.cdc.gov/covid-data-tracker/#cases_community)
-            for more details.
+            https://covid.cdc.gov/covid-data-tracker/#cases_community) for more
+            details.
+
+            Note that the value may differ from what the CDC website reports
+            given we have different data sources. We have also introduced an
+            "Unknown" level for when both case data and test positivity data are
+            missing for at least 15 days. The CDC does not have an "Unknown"
+            level and instead will designate a location as "Low" when case and
+            test positivity data are missing.
             """
         ),
     )
