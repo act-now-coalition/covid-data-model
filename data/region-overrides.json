@@ -279,8 +279,8 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-15",
-      "end_date": "2021-08-16",
-      "region": "48113, 30013",
+      "end_date": "2021-08-18",
+      "region": "48113, 30013, 10001",
       "context": "wagging data in recent dates from new test positivity endpoint caused spikes in test rate"
     }
   ]
