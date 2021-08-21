@@ -280,8 +280,17 @@
       "blocked": true,
       "start_date": "2021-08-15",
       "end_date": "2021-08-18",
-      "region": "48113, 30013, 10001",
+      "region": "48113, 30013, 10001, 13153",
       "context": "wagging data in recent dates from new test positivity endpoint caused spikes in test rate"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-08-14",
+      "end_date": "2021-08-19",
+      "region": "48309",
+      "context": "volatile test positivity data does not match cdc column value"
     }
   ]
 }
