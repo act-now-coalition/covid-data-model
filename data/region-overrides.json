@@ -276,11 +276,20 @@
     },
     {
       "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-07-01",
+      "end_date": "2021-07-01",
+      "region": "CA",
+      "context": "https://trello.com/c/9yFJDbZo/1486-7-29-21-backlogged-antigen-probable-cases-added-to-ca-cases-on-july-8th"
+    },
+    {
+      "include": "region",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-15",
-      "end_date": "2021-08-18",
-      "region": "48113, 30013, 10001, 13153",
+      "end_date": "2021-08-21",
+      "region": "48113, 30013, 10001, 13153, 48215, 26145, 12021",
       "context": "wagging data in recent dates from new test positivity endpoint caused spikes in test rate"
     },
     {
@@ -291,6 +300,15 @@
       "end_date": "2021-08-19",
       "region": "48309",
       "context": "volatile test positivity data does not match cdc column value"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-08-18",
+      "end_date": "2021-08-21",
+      "region": "12021",
+      "context": "positive test data mismatch from cdc"
     },
     {
       "include": "region",
