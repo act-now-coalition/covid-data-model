@@ -266,7 +266,7 @@
       "context": "context: https://trello.com/c/Q2VorVkg/1484-cms-disclaimers-for-counties-with-1-dose-estimation"
     },
     {
-      "include": "subregions",
+      "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-07-08",
@@ -275,7 +275,7 @@
       "context": "https://trello.com/c/9yFJDbZo/1486-7-29-21-backlogged-antigen-probable-cases-added-to-ca-cases-on-july-8th"
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-07-01",
