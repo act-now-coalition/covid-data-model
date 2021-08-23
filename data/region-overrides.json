@@ -318,6 +318,16 @@
       "end_date": "",
       "region": "38015",
       "context": "data correction dropped 1+ dose rate below fully vaccinated rate"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-08-23",
+      "end_date": "2021-08-23",
+      "region": "NE",
+      "disclaimer": "",
+      "context": "NE cases endpoint did not update, causing cases to drop"
     }
   ]
 }
