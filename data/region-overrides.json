@@ -289,7 +289,7 @@
       "blocked": true,
       "start_date": "2021-08-15",
       "end_date": "2021-08-21",
-      "region": "48113, 30013, 10001, 13153, 48215, 26145, 12021",
+      "region": "48113, 26145",
       "context": "wagging data in recent dates from new test positivity endpoint caused spikes in test rate"
     },
     {
@@ -306,8 +306,8 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-18",
-      "end_date": "2021-08-21",
-      "region": "12021",
+      "end_date": "2021-08-22",
+      "region": "12021, 53007, 53015, 53071, 53061, 53077, 53067, 47179, 08001, 12099",
       "context": "positive test data mismatch from cdc"
     },
     {
@@ -318,16 +318,6 @@
       "end_date": "",
       "region": "38015",
       "context": "data correction dropped 1+ dose rate below fully vaccinated rate"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-08-23",
-      "end_date": "2021-08-23",
-      "region": "NE",
-      "disclaimer": "",
-      "context": "NE cases endpoint did not update, causing cases to drop"
     }
   ]
 }
