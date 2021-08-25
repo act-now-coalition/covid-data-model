@@ -65,6 +65,10 @@ def drop_new_case_outliers(timeseries: MultiRegionDataset) -> MultiRegionDataset
         timeseries,
         CommonFields.NEW_CASES,
         zscore_threshold=8.0,
+        # As delta ramped up, cases increased at a much quicker rate than before.
+        # Because our outlier detection for a given day only looks at the past,
+        # new values were rising above the original threshold.  This adjusts the threshold
+        # to account for cases rapidly rising as delta became more prevalant.
         secondary_zscore_threshold_after_date=(pd.Timestamp("2021-06-01"), 15.0),
         threshold=30,
     )
@@ -106,7 +110,6 @@ def drop_series_outliers(
         field, level=PdFields.VARIABLE, drop_level=False
     )
     zscores = ts_to_filter.apply(_calculate_modified_zscore, axis=1, result_type="reduce")
-
     # Around July 4th 2021, lots of places had delayed reporting (no reporting
     # over the weekend or on July 4/5) leading to a valid spike in cases.
     # Simultaneously, the delta variant was starting to take hold, exacerbating
