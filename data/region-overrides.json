@@ -289,7 +289,7 @@
       "blocked": true,
       "start_date": "2021-08-15",
       "end_date": "2021-08-21",
-      "region": "48113, 26145",
+      "region": "26145",
       "context": "wagging data in recent dates from new test positivity endpoint caused spikes in test rate"
     },
     {
@@ -318,6 +318,15 @@
       "end_date": "",
       "region": "38015",
       "context": "data correction dropped 1+ dose rate below fully vaccinated rate"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-08-21",
+      "end_date": "2021-08-23",
+      "region": "53063, 53033, 53053",
+      "context": "volatile/incorrect cdc test positivity "
     }
   ]
 }
