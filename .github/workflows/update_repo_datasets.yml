@@ -11,9 +11,6 @@ on:
         default: 'false'
 
 env:
-  # !!! Change this to your BRANCH if you want to test it
-  COVID_DATA_MODEL_REF: 'main'
-
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'main'
 
@@ -35,6 +32,9 @@ jobs:
   update-and-promote-datasets:
     runs-on: self-hosted
     steps:
+    - name: Parse covid data model branch name and set env variable
+      run: |
+        echo "COVID_DATA_MODEL_REF=${GITHUB_REF##*/}" >> $GITHUB_ENV
 
     - name: Checkout covid-data-model
       uses: actions/checkout@v2
