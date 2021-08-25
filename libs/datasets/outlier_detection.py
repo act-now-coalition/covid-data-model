@@ -1,8 +1,9 @@
+from typing import Optional, Tuple
 import dataclasses
-from covidactnow.datapublic.common_fields import CommonFields
 
 import pandas as pd
 import numpy as np
+from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import taglib
@@ -61,7 +62,11 @@ def drop_new_case_outliers(timeseries: MultiRegionDataset) -> MultiRegionDataset
     Returns: timeseries with outliers removed from new_cases.
     """
     return drop_series_outliers(
-        timeseries, CommonFields.NEW_CASES, zscore_threshold=8.0, threshold=30,
+        timeseries,
+        CommonFields.NEW_CASES,
+        zscore_threshold=8.0,
+        secondary_zscore_threshold_after_date=(pd.Timestamp("2021-06-01"), 15.0),
+        threshold=30,
     )
 
 
@@ -81,7 +86,8 @@ def drop_new_deaths_outliers(timeseries: MultiRegionDataset) -> MultiRegionDatas
 def drop_series_outliers(
     dataset: MultiRegionDataset,
     field: CommonFields,
-    zscore_threshold: float = 8.0,
+    zscore_threshold: float = 13.0,
+    secondary_zscore_threshold_after_date: Optional[Tuple[pd.Timestamp, float]] = None,
     threshold: int = 30,
 ) -> MultiRegionDataset:
     """Identifies and drops outliers from the new case series.
@@ -90,6 +96,8 @@ def drop_series_outliers(
         timeseries: Timeseries.
         zscore_threshold: Z-score threshold.  All new cases with a zscore greater than the
             threshold will be removed.
+        secondary_zscore_threshold_after_date: If set, optionally apply a secondary zscore threshold
+            after a certain date.
         threshold: Min number of cases needed to count as an outlier.
 
     Returns: timeseries with outliers removed from new_cases.
@@ -107,6 +115,14 @@ def drop_series_outliers(
     # resulting r(t) calculation ended up inflated (e.g. >1.5 in San Francisco),
     # so we just disable outlier detection for the days following July 4th.
     dates_to_keep = ["2021-07-05", "2021-07-06", "2021-07-07"]
+
+    if secondary_zscore_threshold_after_date:
+        # Create a series with zscore thresholds per date, allowing us to
+        zscore_threshold = pd.Series(
+            [zscore_threshold] * len(zscores.columns), index=zscores.columns
+        )
+        secondary_zscore_date, secondary_zscore = secondary_zscore_threshold_after_date
+        zscore_threshold[zscore_threshold.index > secondary_zscore_date] = secondary_zscore
 
     to_exclude = (
         (zscores > zscore_threshold)
