@@ -306,8 +306,8 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-18",
-      "end_date": "2021-08-22",
-      "region": "12021, 53007, 53015, 53071, 53061, 53077, 53067, 47179, 08001, 12099",
+      "end_date": "2021-08-24",
+      "region": "12021, 53007, 53015, 53071, 53061, 53067, 47179, 08001, 12099",
       "context": "positive test data mismatch from cdc"
     },
     {
@@ -324,7 +324,7 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-21",
-      "end_date": "2021-08-23",
+      "end_date": "2021-08-24",
       "region": "53063, 53033, 53053",
       "context": "volatile/incorrect cdc test positivity "
     }
