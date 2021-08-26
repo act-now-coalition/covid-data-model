@@ -1,4 +1,5 @@
 import pytest
+import pandas as pd
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import DemographicBucket
 
@@ -8,6 +9,34 @@ from libs.datasets.taglib import TagType
 import datetime
 
 TimeseriesLiteral = test_helpers.TimeseriesLiteral
+
+
+@pytest.mark.parametrize(
+    "start_date,final_value,outlier_expected", [("2020-06-02", 40, True), ("2021-06-02", 40, False)]
+)
+def test_remove_outliers_secondary_threshold(start_date, final_value, outlier_expected):
+    # This test relies on the `secondary_zscore_threshold_after_date` setting
+    # from `drop_new_case_outliers`.
+    # The two inputs test the same value, making sure that one (before the new zscore
+    # threshold is set) is not an outlier, while that same value after the
+    # secondary threshold is set is an outlier.
+    values = [5.0] * 3 + [10.0] * 3 + [final_value]
+    dataset = test_helpers.build_default_region_dataset(
+        {CommonFields.NEW_CASES: values}, start_date=start_date
+    )
+    dataset = outlier_detection.drop_new_case_outliers(dataset)
+
+    new_cases = dataset.timeseries[CommonFields.NEW_CASES]
+
+    if outlier_expected:
+        # Double check that the last value (the outlier value) generates a tag.
+        assert len(dataset.tag_objects_series) == 1
+        pd.isna(new_cases.values[-1])
+    else:
+        # Double check that no tags are generated and final value is still in the
+        # dataset.
+        assert len(dataset.tag_objects_series) == 0
+        assert new_cases.values[-1] == final_value
 
 
 def test_remove_outliers():
