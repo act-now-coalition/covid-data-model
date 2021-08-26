@@ -90,7 +90,7 @@ def drop_new_deaths_outliers(timeseries: MultiRegionDataset) -> MultiRegionDatas
 def drop_series_outliers(
     dataset: MultiRegionDataset,
     field: CommonFields,
-    zscore_threshold: float = 13.0,
+    zscore_threshold: float = 8.0,
     secondary_zscore_threshold_after_date: Optional[Tuple[pd.Timestamp, float]] = None,
     threshold: int = 30,
 ) -> MultiRegionDataset:
@@ -121,6 +121,7 @@ def drop_series_outliers(
 
     if secondary_zscore_threshold_after_date:
         # Create a series with zscore thresholds per date, allowing us to
+        # override the zscore for dates after start of secondary zscore threshold.
         zscore_threshold = pd.Series(
             [zscore_threshold] * len(zscores.columns), index=zscores.columns
         )
