@@ -323,7 +323,7 @@
       "include": "region",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
-      "start_date": "2021-08-21",
+      "start_date": "2021-08-18",
       "end_date": "2021-08-24",
       "region": "53063, 53033, 53053",
       "context": "volatile/incorrect cdc test positivity "
