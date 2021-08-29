@@ -306,7 +306,7 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-18",
-      "end_date": "2021-08-24",
+      "end_date": "2021-08-25",
       "region": "12021, 53007, 53015, 53071, 53061, 53067, 47179, 08001, 12099",
       "context": "positive test data mismatch from cdc"
     },
