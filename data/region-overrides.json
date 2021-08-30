@@ -294,24 +294,6 @@
     },
     {
       "include": "region",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": true,
-      "start_date": "2021-08-14",
-      "end_date": "2021-08-19",
-      "region": "48309",
-      "context": "volatile test positivity data does not match cdc column value"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": true,
-      "start_date": "2021-08-18",
-      "end_date": "2021-08-25",
-      "region": "12021, 53007, 53015, 53071, 53061, 53067, 47179, 08001, 12099",
-      "context": "positive test data mismatch from cdc"
-    },
-    {
-      "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
       "start_date": "2021-08-21",
@@ -320,13 +302,13 @@
       "context": "data correction dropped 1+ dose rate below fully vaccinated rate"
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-18",
-      "end_date": "2021-08-24",
-      "region": "53063, 53033, 53053",
-      "context": "volatile/incorrect cdc test positivity "
+      "end_date": "2021-08-31",
+      "region": "WA",
+      "context": "WA testing data suspiciously high (85% +)"
     }
   ]
 }
