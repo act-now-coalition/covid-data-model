@@ -309,6 +309,15 @@
       "end_date": "2021-08-31",
       "region": "WA",
       "context": "WA testing data suspiciously high (85% +)"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-08-28",
+      "end_date": "2021-08-31",
+      "region": "48215, 40047, 13139",
+      "context": "test positivity not matching cdc endpoint"
     }
   ]
 }
