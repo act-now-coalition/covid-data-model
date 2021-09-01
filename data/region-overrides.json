@@ -318,6 +318,16 @@
       "end_date": "2021-08-31",
       "region": "48215, 40047, 13139",
       "context": "test positivity not matching cdc endpoint"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-09-27",
+      "end_date": "2021-09-01",
+      "disclaimer": "",
+      "region": "47037,48113,25220,13021,12021",
+      "context": "cdc test positivity data issue"
     }
   ]
 }
