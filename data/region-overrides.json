@@ -323,7 +323,7 @@
       "include": "region",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
-      "start_date": "2021-09-27",
+      "start_date": "2021-08-27",
       "end_date": "2021-09-01",
       "disclaimer": "",
       "region": "47037, 48113, 22105, 13021, 12021",
