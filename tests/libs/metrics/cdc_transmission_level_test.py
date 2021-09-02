@@ -1,7 +1,9 @@
+import pandas as pd
 import pytest
-from api.can_api_v2_definition import Metrics
+from api.can_api_v2_definition import CDCTransmissionLevel, Metrics
 from libs.metrics.cdc_transmission_levels import TransmissionLevel
 from libs.metrics import cdc_transmission_levels
+from tests.libs.metrics import top_level_metrics_test
 
 
 def test_calc_transmission_level_below_limit():
@@ -41,3 +43,25 @@ def test_calc_transmission_levels(test_positivity, case_density, expected_level)
     metrics.caseDensity = case_density
     output = cdc_transmission_levels.calculate_transmission_level_from_metrics(metrics)
     assert expected_level == output
+
+
+def test_transmission_level_timeseries():
+    fips = "36"
+    metrics_df = top_level_metrics_test.build_metrics_df(
+        fips,
+        start_date="2020-12-01",
+        caseDensity=[7.0] * 16,
+        testPositivityRatio=[0.8] * 1 + [None] * 15,
+    )
+
+    results = cdc_transmission_levels.calculate_transmission_level_timeseries(metrics_df)
+
+    # Last day is expected to be MODERATE because test positivity is stale
+    expected_cdc_transmission_level = [CDCTransmissionLevel.HIGH] * 15 + [
+        CDCTransmissionLevel.MODERATE
+    ]
+    expected_cdc_transmission_level = pd.Series(
+        expected_cdc_transmission_level, name="cdcTransmissionLevel"
+    )
+
+    pd.testing.assert_series_equal(results["cdcTransmissionLevel"], expected_cdc_transmission_level)

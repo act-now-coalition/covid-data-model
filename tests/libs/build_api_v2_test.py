@@ -184,12 +184,19 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset):
     transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
         latest_metric
     )
+    transmission_level_timeseries = cdc_transmission_levels.calculate_transmission_level_timeseries(
+        metrics_series
+    )
 
     region_summary = build_api_v2.build_region_summary(
         nyc_timeseries, latest_metric, risk_levels, transmission_level, log
     )
     region_timeseries = build_api_v2.build_region_timeseries(
-        region_summary, nyc_timeseries, metrics_series, risk_timeseries
+        region_summary,
+        nyc_timeseries,
+        metrics_series,
+        risk_timeseries,
+        transmission_level_timeseries,
     )
 
     # Test vaccination fields aren't in before start date

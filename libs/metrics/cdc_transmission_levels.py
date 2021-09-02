@@ -1,6 +1,10 @@
+from covidactnow.datapublic.common_fields import CommonFields
+from libs.metrics.top_level_metrics import MetricsFields
+from libs.metrics import top_level_metrics
 from typing import List, Optional
 import math
 import numpy as np
+import pandas as pd
 
 from api import can_api_v2_definition
 
@@ -77,11 +81,41 @@ def overall_transmission_level(
     return TransmissionLevel.UNKNOWN
 
 
-def calculate_transmission_level_from_metrics(
-    metrics: can_api_v2_definition.Metrics,
+def calculate_transmission_level(
+    case_density: float, test_positivity_ratio: float
 ) -> can_api_v2_definition.CDCTransmissionLevel:
-    case_density_level = case_density_transmission_level(metrics.caseDensity)
-    test_positivity_level = test_positivity_transmission_level(metrics.testPositivityRatio)
+    case_density_level = case_density_transmission_level(case_density)
+    test_positivity_level = test_positivity_transmission_level(test_positivity_ratio)
 
     overall_level = overall_transmission_level(case_density_level, test_positivity_level)
     return overall_level
+
+
+def calculate_transmission_level_from_metrics(
+    metrics: can_api_v2_definition.Metrics,
+) -> can_api_v2_definition.CDCTransmissionLevel:
+    return calculate_transmission_level(metrics.caseDensity, metrics.testPositivityRatio)
+
+
+def calculate_cdc_transmission_level_from_row(row: pd.Series):
+    case_density = row[MetricsFields.CASE_DENSITY_RATIO]
+    test_positivity_ratio = row[MetricsFields.TEST_POSITIVITY]
+
+    return calculate_transmission_level(case_density, test_positivity_ratio)
+
+
+def calculate_transmission_level_timeseries(
+    metrics_df: pd.DataFrame, metric_max_lookback=top_level_metrics.MAX_METRIC_LOOKBACK_DAYS
+):
+    metrics_df = metrics_df.copy()
+    metrics_df = metrics_df.set_index([CommonFields.DATE, CommonFields.FIPS])
+
+    # We use the last available data within `MAX_METRIC_LOOKBACK_DAYS` to cacluate
+    # the cdc_transmission_level. Propagate the last value forward that many
+    # days so calculation for a given day is the same as
+    # `top_level_metrics.calculate_latest_metrics`
+    metrics_df.ffill(limit=metric_max_lookback - 1, inplace=True)
+
+    cdc_transmission_level = metrics_df.apply(calculate_cdc_transmission_level_from_row, axis=1)
+
+    return pd.DataFrame({"cdcTransmissionLevel": cdc_transmission_level}).reset_index()

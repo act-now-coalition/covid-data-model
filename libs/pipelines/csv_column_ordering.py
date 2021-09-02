@@ -159,4 +159,5 @@ TIMESERIES_ORDER = [
     "actuals.newDeaths",
     "actuals.vaccinesAdministered",
     "riskLevels.caseDensity",
+    "cdcTransmissionLevel",
 ]

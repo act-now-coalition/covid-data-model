@@ -10,6 +10,31 @@ import datetime
 from covidactnow.datapublic.common_fields import GetByValueMixin
 
 
+CDC_TRANSMISSION_LEVEL_DESCRIPTION = textwrap.dedent(
+    """
+    Community transmission level for region, calculated using the CDC definition.
+
+    Possible values:
+        - 0: Low
+        - 1: Moderate
+        - 2: Substantial
+        - 3: High
+        - 4: Unknown
+
+    See [definitions of CDC community transmission levels](
+    https://covid.cdc.gov/covid-data-tracker/#cases_community) for more
+    details.
+
+    Note that the value may differ from what the CDC website reports
+    given we have different data sources. We have also introduced an
+    "Unknown" level for when both case data and test positivity data are
+    missing for at least 15 days. The CDC does not have an "Unknown"
+    level and instead will designate a location as "Low" when case and
+    test positivity data are missing.
+    """
+)
+
+
 class TestPositivityRatioMethod(GetByValueMixin, enum.Enum):
     """Method used to determine test positivity ratio."""
 
@@ -466,6 +491,13 @@ class MetricsTimeseriesRow(Metrics):
     date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
 
 
+class CdcTransmissionLevelTimeseriesRow(base_model.APIBaseModel):
+    date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
+    cdcTransmissionLevel: CDCTransmissionLevel = pydantic.Field(
+        ..., description=CDC_TRANSMISSION_LEVEL_DESCRIPTION
+    )
+
+
 class RegionSummary(base_model.APIBaseModel):
     """Summary of actual and prediction data for a single region."""
 
@@ -500,30 +532,7 @@ class RegionSummary(base_model.APIBaseModel):
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
 
     cdcTransmissionLevel: CDCTransmissionLevel = pydantic.Field(
-        ...,
-        description=textwrap.dedent(
-            """
-            Community transmission level for region, calculated using the CDC definition.
-
-            Possible values:
-             - 0: Low
-             - 1: Moderate
-             - 2: Substantial
-             - 3: High
-             - 4: Unknown
-
-            See [definitions of CDC community transmission levels](
-            https://covid.cdc.gov/covid-data-tracker/#cases_community) for more
-            details.
-
-            Note that the value may differ from what the CDC website reports
-            given we have different data sources. We have also introduced an
-            "Unknown" level for when both case data and test positivity data are
-            missing for at least 15 days. The CDC does not have an "Unknown"
-            level and instead will designate a location as "Low" when case and
-            test positivity data are missing.
-            """
-        ),
+        ..., description=CDC_TRANSMISSION_LEVEL_DESCRIPTION
     )
 
     actuals: Actuals = pydantic.Field(...)
@@ -542,6 +551,7 @@ class RegionSummaryWithTimeseries(RegionSummary):
     metricsTimeseries: List[MetricsTimeseriesRow] = pydantic.Field(...)
     actualsTimeseries: List[ActualsTimeseriesRow] = pydantic.Field(...)
     riskLevelsTimeseries: List[RiskLevelTimeseriesRow] = pydantic.Field(...)
+    cdcTransmissionLevelTimeseries: List[CdcTransmissionLevelTimeseriesRow] = pydantic.Field(...)
 
     @property
     def region_summary(self) -> RegionSummary:
@@ -597,6 +607,9 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     metrics: Optional[Metrics] = pydantic.Field(..., description="Metrics for given day")
     riskLevels: Optional[RiskLevelsRow] = pydantic.Field(
         ..., description="Risk Levels for given day"
+    )
+    cdcTransmissionLevel: Optional[CDCTransmissionLevel] = pydantic.Field(
+        ..., description=CDC_TRANSMISSION_LEVEL_DESCRIPTION
     )
 
 

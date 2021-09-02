@@ -5,10 +5,11 @@ import pandas as pd
 from api.can_api_v2_definition import (
     Actuals,
     ActualsTimeseriesRow,
+    AggregateRegionSummaryWithTimeseries,
     Annotations,
+    CdcTransmissionLevelTimeseriesRow,
     FieldAnnotations,
     AggregateFlattenedTimeseries,
-    AggregateRegionSummary,
     DemographicDistributions,
     Metrics,
     RiskLevels,
@@ -256,6 +257,7 @@ def build_region_timeseries(
     timeseries: OneRegionTimeseriesDataset,
     metrics_timeseries: pd.DataFrame,
     risk_level_timeseries: pd.DataFrame,
+    cdc_transmission_level_timeseries: pd.DataFrame,
 ) -> RegionSummaryWithTimeseries:
     actuals_timeseries = []
 
@@ -287,17 +289,22 @@ def build_region_timeseries(
     risk_level_rows = [
         RiskLevelTimeseriesRow(**row) for row in risk_level_timeseries.to_dict(orient="records")
     ]
+    cdc_transmission_level_rows = [
+        CdcTransmissionLevelTimeseriesRow(**row)
+        for row in cdc_transmission_level_timeseries.to_dict(orient="records")
+    ]
     region_summary_data = {key: getattr(region_summary, key) for (key, _) in region_summary}
     return RegionSummaryWithTimeseries(
         **region_summary_data,
         actualsTimeseries=actuals_timeseries,
         metricsTimeseries=metrics_rows,
         riskLevelsTimeseries=risk_level_rows,
+        cdcTransmissionLevelTimeseries=cdc_transmission_level_rows
     )
 
 
 def build_bulk_flattened_timeseries(
-    bulk_timeseries: AggregateRegionSummary,
+    bulk_timeseries: AggregateRegionSummaryWithTimeseries,
 ) -> AggregateFlattenedTimeseries:
     rows = []
     for region_timeseries in bulk_timeseries.__root__:
@@ -316,6 +323,9 @@ def build_bulk_flattened_timeseries(
         actuals_by_date = {row.date: row for row in region_timeseries.actualsTimeseries}
         metrics_by_date = {row.date: row for row in region_timeseries.metricsTimeseries}
         risk_levels_by_date = {row.date: row for row in region_timeseries.riskLevelsTimeseries}
+        cdc_transmission_levels_by_date = {
+            row.date: row for row in region_timeseries.cdcTransmissionLevelTimeseries
+        }
         dates = sorted({*metrics_by_date.keys(), *actuals_by_date.keys()})
         for date in dates:
             risk_levels = risk_levels_by_date.get(date)
@@ -330,6 +340,9 @@ def build_bulk_flattened_timeseries(
                 "actuals": actuals_by_date.get(date),
                 "metrics": metrics_by_date.get(date),
                 "riskLevels": risk_levels_row,
+                "cdcTransmissionLevel": cdc_transmission_levels_by_date.get(
+                    date
+                ).cdcTransmissionLevel,
             }
             data.update(summary_data)
             row = RegionTimeseriesRowWithHeader(**data)
