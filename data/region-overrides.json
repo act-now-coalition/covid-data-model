@@ -326,8 +326,26 @@
       "start_date": "2021-08-27",
       "end_date": "2021-09-01",
       "disclaimer": "",
-      "region": "47037, 48113, 22105, 13021, 12021",
+      "region": "47037, 48113, 22105, 13021, 12021, 47157",
       "context": "cdc test positivity data issue"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-08-30",
+      "end_date": "2021-09-01",
+      "region": "LA",
+      "context": "Missing cases from the 30th and 31st in Louisiana (from lack of reporting due to the hurricane) causing a decrease in cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-09-01",
+      "end_date": "2021-09-01",
+      "region": "06067, 06095, 06077, 06013",
+      "context": "anomalous spikes in case data on 09/1"
     }
   ]
 }
