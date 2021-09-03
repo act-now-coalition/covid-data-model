@@ -324,9 +324,9 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-27",
-      "end_date": "2021-09-01",
+      "end_date": "2021-09-02",
       "disclaimer": "",
-      "region": "47037, 48113, 22105, 13021, 12021, 47157",
+      "region": "47037, 48113, 22105, 13021, 12021, 47157, 40143, 40031",
       "context": "cdc test positivity data issue"
     },
     {
