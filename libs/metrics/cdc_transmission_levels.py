@@ -41,7 +41,7 @@ def calc_transmission_level(value: Optional[float], thresholds: List[float]) -> 
     return TransmissionLevel.HIGH
 
 
-def case_density_transmission_level(value: float) -> TransmissionLevel:
+def case_density_transmission_level(value: Optional[float]) -> TransmissionLevel:
     # CDC thresholds are number of cases over a 7 day average. Our case density
     # metrics are cases over a 7 day average.  To square the two, we should divide
     # CDC thresholds by 7 to get the equivalent threshold for our 7-day averages.
@@ -49,7 +49,7 @@ def case_density_transmission_level(value: float) -> TransmissionLevel:
     return calc_transmission_level(value, thresholds)
 
 
-def test_positivity_transmission_level(value: float) -> TransmissionLevel:
+def test_positivity_transmission_level(value: Optional[float]) -> TransmissionLevel:
     thresholds = [0.05, 0.08, 0.10]
     return calc_transmission_level(value, thresholds)
 
@@ -82,7 +82,7 @@ def overall_transmission_level(
 
 
 def calculate_transmission_level(
-    case_density: float, test_positivity_ratio: float
+    case_density: Optional[float], test_positivity_ratio: Optional[float]
 ) -> can_api_v2_definition.CDCTransmissionLevel:
     case_density_level = case_density_transmission_level(case_density)
     test_positivity_level = test_positivity_transmission_level(test_positivity_ratio)
@@ -110,7 +110,7 @@ def calculate_transmission_level_timeseries(
     metrics_df = metrics_df.copy()
     metrics_df = metrics_df.set_index([CommonFields.DATE, CommonFields.FIPS])
 
-    # We use the last available data within `MAX_METRIC_LOOKBACK_DAYS` to cacluate
+    # We use the last available data within `MAX_METRIC_LOOKBACK_DAYS` to calculate
     # the cdc_transmission_level. Propagate the last value forward that many
     # days so calculation for a given day is the same as
     # `top_level_metrics.calculate_latest_metrics`

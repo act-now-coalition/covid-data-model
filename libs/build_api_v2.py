@@ -13,7 +13,6 @@ from api.can_api_v2_definition import (
     DemographicDistributions,
     Metrics,
     RiskLevels,
-    RiskLevelsRow,
     CDCTransmissionLevel,
     RegionSummary,
     RegionSummaryWithTimeseries,
@@ -328,18 +327,11 @@ def build_bulk_flattened_timeseries(
         }
         dates = sorted({*metrics_by_date.keys(), *actuals_by_date.keys()})
         for date in dates:
-            risk_levels = risk_levels_by_date.get(date)
-            risk_levels_row = None
-            if risk_levels:
-                risk_levels_row = RiskLevelsRow(
-                    overall=risk_levels.overall, caseDensity=risk_levels.caseDensity
-                )
-
             data = {
                 "date": date,
                 "actuals": actuals_by_date.get(date),
                 "metrics": metrics_by_date.get(date),
-                "riskLevels": risk_levels_row,
+                "riskLevels": risk_levels_by_date.get(date),
                 "cdcTransmissionLevel": cdc_transmission_levels_by_date.get(
                     date
                 ).cdcTransmissionLevel,
