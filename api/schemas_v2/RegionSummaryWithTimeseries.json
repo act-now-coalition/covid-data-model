@@ -93,7 +93,7 @@
       ]
     },
     "cdcTransmissionLevel": {
-      "description": "\nCDC community transmission level for region.\n\nPossible values:\n - 0: Low\n - 1: Moderate\n - 2: Substantial\n - 3: High\n - 4: Unknown\n\nSee [definitions of CDC community transmission levels](\nhttps://covid.cdc.gov/covid-data-tracker/#cases_community)\nfor more details.\n",
+      "description": "\nCommunity transmission level for region, calculated using the CDC definition.\n\nPossible values:\n    - 0: Low\n    - 1: Moderate\n    - 2: Substantial\n    - 3: High\n    - 4: Unknown\n\nSee [definitions of CDC community transmission levels](\nhttps://covid.cdc.gov/covid-data-tracker/#cases_community) for more\ndetails.\n\nNote that the value may differ from what the CDC website reports\ngiven we have different data sources. We have also introduced an\n\"Unknown\" level for when both case data and test positivity data are\nmissing for at least 15 days. The CDC does not have an \"Unknown\"\nlevel and instead will designate a location as \"Low\" when case and\ntest positivity data are missing.\n",
       "allOf": [
         {
           "$ref": "#/definitions/CDCTransmissionLevel"
@@ -144,6 +144,13 @@
       "items": {
         "$ref": "#/definitions/RiskLevelTimeseriesRow"
       }
+    },
+    "cdcTransmissionLevelTimeseries": {
+      "title": "Cdctransmissionleveltimeseries",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CdcTransmissionLevelTimeseriesRow"
+      }
     }
   },
   "required": [
@@ -165,7 +172,8 @@
     "url",
     "metricsTimeseries",
     "actualsTimeseries",
-    "riskLevelsTimeseries"
+    "riskLevelsTimeseries",
+    "cdcTransmissionLevelTimeseries"
   ],
   "definitions": {
     "AggregationLevel": {
@@ -1522,6 +1530,31 @@
         "overall",
         "caseDensity",
         "date"
+      ]
+    },
+    "CdcTransmissionLevelTimeseriesRow": {
+      "title": "CdcTransmissionLevelTimeseriesRow",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "title": "Date",
+          "description": "Date of timeseries data point",
+          "type": "string",
+          "format": "date"
+        },
+        "cdcTransmissionLevel": {
+          "description": "\nCommunity transmission level for region, calculated using the CDC definition.\n\nPossible values:\n    - 0: Low\n    - 1: Moderate\n    - 2: Substantial\n    - 3: High\n    - 4: Unknown\n\nSee [definitions of CDC community transmission levels](\nhttps://covid.cdc.gov/covid-data-tracker/#cases_community) for more\ndetails.\n\nNote that the value may differ from what the CDC website reports\ngiven we have different data sources. We have also introduced an\n\"Unknown\" level for when both case data and test positivity data are\nmissing for at least 15 days. The CDC does not have an \"Unknown\"\nlevel and instead will designate a location as \"Low\" when case and\ntest positivity data are missing.\n",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CDCTransmissionLevel"
+            }
+          ]
+        }
+      },
+      "required": [
+        "date",
+        "cdcTransmissionLevel"
       ]
     }
   }
