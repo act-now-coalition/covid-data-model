@@ -297,7 +297,7 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-18",
-      "end_date": "2021-08-31",
+      "end_date": "2021-08-04",
       "region": "WA",
       "context": "WA testing data suspiciously high (85% +)"
     },
@@ -339,13 +339,23 @@
       "context": "anomalous spikes in case data on 09/1"
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-30",
-      "end_date": "2021-09-05",
+      "end_date": "2021-09-04",
       "region": "TN",
       "context": "anamolous spikes in cdc testing data"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-09-06",
+      "end_date": "2021-09-06",
+      "region": "KY, WA, TN, 37035, 37001, 37049, 13181, 13115, 13095, 18167",
+      "context": "DNC dropoff due to lack of reporting on labor day https://trello.com/c/xyuOiMix/1495-lack-of-labor-day-reporting-causing-dnc-decreases",
+      "disclaimer": ""
     }
   ]
 }
