@@ -339,8 +339,10 @@ def load_us_timeseries_dataset(
     filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    warnings.warn("Reading data...")
-    return MultiRegionDataset.read_from_pointer(pointer)
+    warnings.warn("START: MultiRegionDataset.read_from_pointer()")
+    read = MultiRegionDataset.read_from_pointer(pointer)
+    warnings.warn("END: MultiRegionDataset.read_from_pointer()")
+    return read
 
 
 def get_county_name(region: Region) -> Optional[str]:

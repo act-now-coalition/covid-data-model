@@ -1,5 +1,6 @@
 import logging
 import re
+import warnings
 
 import structlog
 
@@ -35,9 +36,12 @@ def test_unique_index_values_us_timeseries():
 @pytest.mark.slow
 @pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_combined_county_has_some_data(fips):
-    region_data = combined_datasets.load_us_timeseries_dataset().get_one_region(
-        Region.from_fips(fips)
-    )
+    warnings.warn("START: load_us_timeseries_dataset()")
+    dataset = combined_datasets.load_us_timeseries_dataset()
+    warnings.warn("END: load_us_timeseries_dataset()...")
+    warnings.warn("START: get_one_region()")
+    region_data = dataset.get_one_region(Region.from_fips(fips))
+    warnings.warn("END: get_one_region()")
     assert region_data.data[CommonFields.POSITIVE_TESTS].all()
     assert region_data.data[CommonFields.NEGATIVE_TESTS].all()
     assert region_data.latest[CommonFields.DEATHS] > 1

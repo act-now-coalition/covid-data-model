@@ -960,9 +960,7 @@ class MultiRegionDataset:
 
     @staticmethod
     def from_wide_dates_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
-        warnings.warn("Reading CSV...")
         wide_dates_df = pd.read_csv(path_or_buf, low_memory=False)
-        warnings.warn("Read CSV.  Processing...")
         bucketed = PdFields.DEMOGRAPHIC_BUCKET in wide_dates_df.columns
         if bucketed:
             wide_dates_df = wide_dates_df.set_index(
@@ -996,11 +994,13 @@ class MultiRegionDataset:
         if not bucketed:
             tag_df_add_all_bucket_in_place(tag_df)
 
-        warnings.warn("Processed.")
-
-        return MultiRegionDataset.from_timeseries_wide_dates_df(
+        warnings.warn("START: MultiRegionDataset.from_timeseries_wide_dates_df()")
+        res = MultiRegionDataset.from_timeseries_wide_dates_df(
             wide_dates_df, bucketed=bucketed
         ).append_tag_df(tag_df)
+        warnings.warn("END: MultiRegionDataset.from_timeseries_wide_dates_df()")
+
+        return res
 
     def add_static_csv_file(self, path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
         assert self.static.empty
@@ -1010,9 +1010,13 @@ class MultiRegionDataset:
     @staticmethod
     def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
         # TODO(tom): Deprecate use of DatasetPointer and remove this method
-        return MultiRegionDataset.from_wide_dates_csv(
-            pointer.path_wide_dates()
-        ).add_static_csv_file(pointer.path_static())
+        warnings.warn("START: MultiRegionDataset.from_wide_dates_csv()")
+        wide_dates_csv = MultiRegionDataset.from_wide_dates_csv(pointer.path_wide_dates())
+        warnings.warn("END: MultiRegionDataset.from_wide_dates_csv()")
+        warnings.warn("START: wide_dates_csv.add_static_csv_file()")
+        res = wide_dates_csv.add_static_csv_file(pointer.path_static())
+        warnings.warn("END: wide_dates_csv.add_static_csv_file()")
+        return res
 
     @staticmethod
     def from_fips_timeseries_df(ts_df: pd.DataFrame) -> "MultiRegionDataset":
