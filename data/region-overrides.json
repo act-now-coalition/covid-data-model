@@ -297,7 +297,7 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-18",
-      "end_date": "2021-08-04",
+      "end_date": "2021-09-04",
       "region": "WA",
       "context": "WA testing data suspiciously high (85% +)"
     },
@@ -353,9 +353,18 @@
       "blocked": true,
       "start_date": "2021-09-06",
       "end_date": "2021-09-06",
-      "region": "KY, WA, TN, 37035, 37001, 37049, 13181, 13115, 13095, 18167",
+      "region": "KY, WA, TN",
       "context": "DNC dropoff due to lack of reporting on labor day https://trello.com/c/xyuOiMix/1495-lack-of-labor-day-reporting-causing-dnc-decreases",
       "disclaimer": ""
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-09-06",
+      "end_date": "2021-09-06",
+      "region": "37035, 37001, 37049, 13181, 13115, 13095, 18167",
+      "context": "DNC dropoff due to lack of reporting on labor day https://trello.com/c/xyuOiMix/1495-lack-of-labor-day-reporting-causing-dnc-decreases"
     }
   ]
 }
