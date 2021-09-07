@@ -338,9 +338,8 @@ def load_us_timeseries_dataset(
     """Returns all combined data. `load_test_dataset` is more suitable for tests."""
     filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
-    warnings.warn("Reading data...")
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    warnings.warn("Read data successfully...")
+    warnings.warn("Reading data...")
     return MultiRegionDataset.read_from_pointer(pointer)
 
 
