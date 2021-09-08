@@ -4,4 +4,4 @@
 line-length = 100
 
 [pytest]
-log_cli = True
+log_cli=true
