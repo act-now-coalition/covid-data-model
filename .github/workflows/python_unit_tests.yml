@@ -66,5 +66,6 @@ jobs:
         make test
       working-directory: ./covid-data-model
     - name: Dump logs
+      if: always()
       run: cat out.txt
       working-directory: ./covid-data-model
