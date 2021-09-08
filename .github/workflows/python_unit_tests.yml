@@ -66,6 +66,5 @@ jobs:
         make test
       working-directory: ./covid-data-model
     - name: Dump logs
-      if: job.status != 'success'
       run: cat out.txt
       working-directory: ./covid-data-model
