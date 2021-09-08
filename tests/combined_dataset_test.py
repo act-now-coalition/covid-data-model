@@ -1,6 +1,7 @@
 import logging
 import re
 import warnings
+import gc
 
 import structlog
 
@@ -38,10 +39,13 @@ def test_unique_index_values_us_timeseries():
 def test_combined_county_has_some_data(fips):
     warnings.warn("STARTING TEST")
     warnings.warn("START: load_us_timeseries_dataset()")
+    gc.collect()
     dataset = combined_datasets.load_us_timeseries_dataset()
+    gc.collect()
     warnings.warn("END: load_us_timeseries_dataset()...")
     warnings.warn("START: get_one_region()")
     region_data = dataset.get_one_region(Region.from_fips(fips))
+    gc.collect()
     warnings.warn("END: get_one_region()")
     assert region_data.data[CommonFields.POSITIVE_TESTS].all()
     assert region_data.data[CommonFields.NEGATIVE_TESTS].all()
@@ -55,10 +59,13 @@ def test_combined_county_has_some_data(fips):
 def test_combined_county_has_some_data(fips):
     warnings.warn("STARTING TEST")
     warnings.warn("START: load_us_timeseries_dataset()")
+    gc.collect()
     dataset = combined_datasets.load_us_timeseries_dataset()
     warnings.warn("END: load_us_timeseries_dataset()...")
     warnings.warn("START: get_one_region()")
+    gc.collect()
     region_data = dataset.get_one_region(Region.from_fips(fips))
+    gc.collect()
     warnings.warn("END: get_one_region()")
     assert region_data.data[CommonFields.POSITIVE_TESTS].all()
     assert region_data.data[CommonFields.NEGATIVE_TESTS].all()
@@ -68,8 +75,11 @@ def test_combined_county_has_some_data(fips):
 
 @pytest.mark.slow
 def test_pr_aggregation():
+    gc.collect()
     dataset = combined_datasets.load_us_timeseries_dataset()
+    gc.collect()
     data = dataset.get_one_region(Region.from_fips("72")).latest
+    gc.collect()
     assert data
     assert data["all_beds_occupancy_rate"] < 1
     assert data["icu_occupancy_rate"] < 1
