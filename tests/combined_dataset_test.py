@@ -37,6 +37,7 @@ def test_unique_index_values_us_timeseries():
 @pytest.mark.slow
 @pytest.mark.parametrize("fips", ["06075"])
 def test_combined_county_has_some_data(fips):
+    print("HELLO WORLD!")
     warnings.warn("STARTING TEST")
     warnings.warn("START: load_us_timeseries_dataset()")
     gc.collect()
