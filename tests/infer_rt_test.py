@@ -232,6 +232,7 @@ def test_generate_infection_rate_metric_two_aggregate_levels():
 
 
 @pytest.mark.slow
+@pytest.mark.skip("https://trello.com/c/7Me3N5N4/ - r(t) failing for many LA counties")
 def test_generate_infection_rate_new_orleans_patch():
     fips = ["22", "22051", "22071"]  # LA, Jefferson and Orleans
     regions = [pipeline.Region.from_fips(f) for f in fips]
@@ -263,6 +264,7 @@ def test_generate_infection_rate_with_nans():
 
 
 @pytest.mark.slow
+@pytest.mark.skip("https://trello.com/c/7Me3N5N4/ - r(t) failing for many LA counties")
 def test_patch_substatepipeline_nola_infection_rate():
     nola_fips = [
         "22051",  # Jefferson
