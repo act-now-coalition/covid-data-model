@@ -321,15 +321,6 @@
       "context": "cdc test positivity data issue"
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-08-30",
-      "end_date": "2021-09-05",
-      "region": "LA",
-      "context": "Missing cases from the 30th and 31st in Louisiana (from lack of reporting due to the hurricane) causing a decrease in cases"
-    },
-    {
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
