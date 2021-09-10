@@ -337,6 +337,16 @@
       "end_date": "2021-09-04",
       "region": "TN",
       "context": "anamolous spikes in cdc testing data"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "LA",
+      "disclaimer": "In September, Louisiana was hit by Hurricane Ida which affected many aspects of daily life, including COVID testing. We expect it to take some time for testing to recover. In the meantime, our metrics and risk levels should be treated with caution.",
+      "context": "Disclaimer for Hurricane Ida"
     }
   ]
 }
