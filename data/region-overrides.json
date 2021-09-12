@@ -316,7 +316,7 @@
       "blocked": true,
       "start_date": "2021-08-29",
       "end_date": "2021-09-10",
-      "region": "47179, 51069, 51015, 47093, 47125",
+      "region": "51069, 51015",
       "context": "cdc positive test rate spikes"
     },
     {
@@ -328,6 +328,15 @@
       "region": "LA",
       "disclaimer": "In September, Louisiana was hit by Hurricane Ida which affected many aspects of daily life, including COVID testing. We expect it to take some time for testing to recover. In the meantime, our metrics and risk levels should be treated with caution.",
       "context": "Disclaimer for Hurricane Ida"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-09-04",
+      "end_date": "2021-09-12",
+      "region": "47179, 47093, 47125, 47037, 47113, 47177, 47041, 47189, 47069, 47109, 47163",
+      "context": "inconsistent cdc test positivity data"
     }
   ]
 }
