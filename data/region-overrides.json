@@ -337,6 +337,15 @@
       "end_date": "2021-09-12",
       "region": "47179, 47093, 47125, 47037, 47113, 47177, 47041, 47189, 47069, 47109, 47163",
       "context": "inconsistent cdc test positivity data"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-09-13",
+      "end_date": "2021-09-13",
+      "region": "NE",
+      "context": "non-reporting for 9/13 caused drop off in DNC"
     }
   ]
 }
