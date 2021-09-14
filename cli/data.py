@@ -6,7 +6,6 @@ from typing import Optional
 import logging
 import pathlib
 import json
-import shutil
 import structlog
 
 import click
@@ -30,7 +29,6 @@ from libs.datasets import combined_datasets
 from libs.datasets import new_cases_and_deaths
 from libs.datasets import vaccine_backfills
 from libs.datasets.dataset_utils import DATA_DIRECTORY
-from libs.datasets.sources import forecast_hub
 from libs.datasets import tail_filter
 from libs.datasets.sources import zeros_filter
 from libs.pipeline import Region
@@ -68,17 +66,6 @@ REGION_OVERRIDES_JSON = DATA_DIRECTORY / "region-overrides.json"
 @click.group("data")
 def main():
     pass
-
-
-@main.command()
-@click.option("--filename", default="external_forecasts.csv")
-def update_forecasts(filename):
-    """Updates external forecasts to the current checked out covid data public commit"""
-    path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
-    data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-    data_path = forecast_hub.ForecastHubDataset.COMMON_DF_CSV_PATH
-    shutil.copy(data_root / data_path, path_prefix / filename)
-    _logger.info(f"Updating External Forecasts at {path_prefix / filename}")
 
 
 @main.command()
