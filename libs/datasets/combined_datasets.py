@@ -25,7 +25,6 @@ from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalStateDataset
 from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalCountyDataset
-from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
@@ -247,14 +246,12 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CURRENT_HOSPITALIZED: [
         CANScraperStateProviders,
         CovidTrackingDataSource,
-        TexasHospitalizations,
         HHSHospitalCountyDataset,
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU: [
         CANScraperStateProviders,
         CovidTrackingDataSource,
-        TexasHospitalizations,
         HHSHospitalCountyDataset,
         HHSHospitalStateDataset,
     ],
