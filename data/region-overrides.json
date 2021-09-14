@@ -311,15 +311,6 @@
       "context": "anomalous spikes in case data on 09/1"
     },
     {
-      "include": "region",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": true,
-      "start_date": "2021-08-29",
-      "end_date": "2021-09-10",
-      "region": "51069, 51015",
-      "context": "cdc positive test rate spikes"
-    },
-    {
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": false,
@@ -337,15 +328,6 @@
       "end_date": "2021-09-12",
       "region": "47179, 47093, 47125, 47037, 47113, 47177, 47041, 47189, 47069, 47109, 47163",
       "context": "inconsistent cdc test positivity data"
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-09-13",
-      "end_date": "2021-09-13",
-      "region": "NE",
-      "context": "non-reporting for 9/13 caused drop off in DNC"
     }
   ]
 }
