@@ -33,7 +33,6 @@ from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScrap
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 from libs.datasets.sources.cdc_testing_dataset import CDCTestingDataset
-from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
 from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
@@ -241,22 +240,17 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         NYTimesDatasetWithoutExceptions,
     ],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
-    CommonFields.CUMULATIVE_HOSPITALIZED: [CovidTrackingDataSource],
-    CommonFields.CUMULATIVE_ICU: [CovidTrackingDataSource],
     CommonFields.CURRENT_HOSPITALIZED: [
         CANScraperStateProviders,
-        CovidTrackingDataSource,
         HHSHospitalCountyDataset,
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU: [
         CANScraperStateProviders,
-        CovidTrackingDataSource,
         HHSHospitalCountyDataset,
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
-    CommonFields.CURRENT_VENTILATED: [CovidTrackingDataSource],
     CommonFields.DEATHS: [
         CANScraperStateProviders,
         CANScraperUSAFactsProviderWithoutNe,
@@ -268,16 +262,10 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         HHSHospitalCountyDataset,
         HHSHospitalStateDataset,
     ],
-    CommonFields.NEGATIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
-    CommonFields.POSITIVE_TESTS: [CovidTrackingDataSource, HHSTestingDataset],
-    CommonFields.TOTAL_TESTS: [CovidTrackingDataSource],
-    # STAFFED_BEDS isn't used right now. Disable to ease refactoring.
-    # CommonFields.STAFFED_BEDS: [CANScraperStateProviders, CovidCountyDataDataSource],
-    CommonFields.POSITIVE_TESTS_VIRAL: [CANScraperStateProviders, CovidTrackingDataSource],
-    CommonFields.TOTAL_TESTS_VIRAL: [CANScraperStateProviders, CovidTrackingDataSource],
-    CommonFields.POSITIVE_CASES_VIRAL: [CovidTrackingDataSource],
-    CommonFields.TOTAL_TESTS_PEOPLE_VIRAL: [CovidTrackingDataSource],
-    CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL: [CovidTrackingDataSource],
+    CommonFields.NEGATIVE_TESTS: [HHSTestingDataset],
+    CommonFields.POSITIVE_TESTS: [HHSTestingDataset],
+    CommonFields.POSITIVE_TESTS_VIRAL: [CANScraperStateProviders],
+    CommonFields.TOTAL_TESTS_VIRAL: [CANScraperStateProviders],
     CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
     CommonFields.VACCINES_DISTRIBUTED: [
         CDCVaccinesCountiesDataset,
