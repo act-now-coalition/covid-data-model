@@ -6,7 +6,6 @@ import pandas as pd
 from libs.datasets import dataset_utils
 from libs.datasets.sources import covid_tracking_source
 from libs.datasets.sources import nytimes_dataset
-from libs.datasets.sources import texas_hospitalizations
 from libs.datasets.sources import can_scraper_local_dashboard_providers
 
 _logger = logging.getLogger(__name__)
@@ -32,7 +31,6 @@ def set_covid_data_public():
 def load_data_sources_by_name() -> Dict[str, pd.DataFrame]:
 
     sources = [
-        texas_hospitalizations.TexasHospitalizations,
         covid_tracking_source.CovidTrackingDataSource,
         nytimes_dataset.NYTimesDataset,
         can_scraper_local_dashboard_providers.CANScraperStateProviders,

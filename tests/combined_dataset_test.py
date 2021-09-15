@@ -8,7 +8,6 @@ from libs.datasets import combined_datasets, CommonFields
 from libs.datasets import data_source
 from libs.datasets import timeseries
 from libs.datasets.combined_datasets import provenance_wide_metrics_to_series
-from libs.datasets.sources.texas_hospitalizations import TexasHospitalizations
 
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.covid_tracking_source import CovidTrackingDataSource
@@ -92,7 +91,7 @@ def test_get_county_name():
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "data_source_cls", [CovidTrackingDataSource, NYTimesDataset, TexasHospitalizations,],
+    "data_source_cls", [CovidTrackingDataSource, NYTimesDataset,],
 )
 def test_unique_timeseries(data_source_cls):
     dataset = data_source_cls.make_dataset()
