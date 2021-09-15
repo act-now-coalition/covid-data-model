@@ -86,7 +86,7 @@ def test_build_summary_for_fips(
             positiveTests=nyc_latest["positive_tests"],
             negativeTests=nyc_latest["negative_tests"],
             hospitalBeds={
-                "capacity": nyc_latest["max_bed_count"],
+                "capacity": nyc_latest["staffed_beds"],
                 "currentUsageCovid": nyc_latest["current_hospitalized"],
                 "currentUsageTotal": nyc_latest["hospital_beds_in_use_any"],
             },

@@ -82,7 +82,7 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
         negativeTests=actual_data.get(CommonFields.NEGATIVE_TESTS),
         contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
         hospitalBeds={
-            "capacity": actual_data.get(CommonFields.MAX_BED_COUNT),
+            "capacity": actual_data.get(CommonFields.STAFFED_BEDS),
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED),
             "currentUsageTotal": actual_data.get(CommonFields.HOSPITAL_BEDS_IN_USE_ANY),
         },

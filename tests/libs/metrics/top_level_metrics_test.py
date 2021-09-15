@@ -156,7 +156,6 @@ def test_top_level_metrics_basic():
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.STATE: "NY",
-        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 30,
     }
     one_region = build_one_region_dataset(
@@ -193,7 +192,6 @@ def test_top_level_metrics_rounding():
     latest = {
         CommonFields.POPULATION: 100_000,
         CommonFields.STATE: "NY",
-        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 30,
     }
     one_region = build_one_region_dataset(
@@ -331,7 +329,6 @@ def test_top_level_metrics_with_rt():
         CommonFields.POPULATION: 100_000,
         CommonFields.FIPS: "36",
         CommonFields.STATE: "NY",
-        CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: 0.5,
         CommonFields.ICU_BEDS: 25,
     }
 

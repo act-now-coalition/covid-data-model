@@ -61,7 +61,6 @@ def test_replace_dc_county(nyc_region):
 
 
 def test_calculate_puerto_rico_bed_occupancy_rate():
-    # TODO(tom): Test ALL_BED_TYPICAL_OCCUPANCY_RATE and ICU_TYPICAL_OCCUPANCY_RATE aggregation.
     field_already_agg = FieldName("already_aggregated")
     field_to_agg = FieldName("to_aggregate")
     field_other = FieldName("other")
@@ -105,17 +104,11 @@ def test_aggregate_to_country():
 
     # State data has some hospital and cases time series.
     states_timeseries = {
-        region_il: {
-            CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [0.5, 0.5],
-            CommonFields.CASES: [1, 2],
-        },
-        region_tx: {
-            CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [0.7, 0.7],
-            CommonFields.CASES: [0, 3],
-        },
+        region_il: {CommonFields.CURRENT_HOSPITALIZED: [5, 5], CommonFields.CASES: [1, 2],},
+        region_tx: {CommonFields.CURRENT_HOSPITALIZED: [7, 7], CommonFields.CASES: [0, 3],},
     }
     states_static = {
-        r: {CommonFields.POPULATION: 100, CommonFields.MAX_BED_COUNT: 10, CommonFields.ICU_BEDS: 2}
+        r: {CommonFields.POPULATION: 100, CommonFields.STAFFED_BEDS: 10, CommonFields.ICU_BEDS: 2}
         for r in [region_il, region_tx]
     }
     # region_us input CASES intentionally not the sum of states CASES to check that the
@@ -136,17 +129,14 @@ def test_aggregate_to_country():
     ds_expected = test_helpers.build_dataset(
         {
             **states_timeseries,
-            region_us: {
-                **us_timeseries_in,
-                CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [0.6, 0.6],
-            },
+            region_us: {**us_timeseries_in, CommonFields.CURRENT_HOSPITALIZED: [12, 12],},
         },
         static_by_region_then_field_name={
             **states_static,
             region_us: {
                 # All of the US static values are aggregated from states_static
                 CommonFields.POPULATION: 200,
-                CommonFields.MAX_BED_COUNT: 20,
+                CommonFields.STAFFED_BEDS: 20,
                 CommonFields.ICU_BEDS: 4,
             },
         },
@@ -173,7 +163,7 @@ def test_aggregate_to_country_unexpected_unaggregated_value_is_logged():
         region_us: {CommonFields.TOTAL_TESTS: [2, 6]},
     }
     states_static = {
-        r: {CommonFields.POPULATION: 100, CommonFields.MAX_BED_COUNT: 10, CommonFields.ICU_BEDS: 2}
+        r: {CommonFields.POPULATION: 100, CommonFields.STAFFED_BEDS: 10, CommonFields.ICU_BEDS: 2}
         for r in [region_il, region_tx]
     }
 
@@ -196,7 +186,7 @@ def test_aggregate_to_country_unexpected_unaggregated_value_is_logged():
             region_us: {
                 # All of the US static values are aggregated from states_static
                 CommonFields.POPULATION: 200,
-                CommonFields.MAX_BED_COUNT: 20,
+                CommonFields.STAFFED_BEDS: 20,
                 CommonFields.ICU_BEDS: 4,
             },
         },

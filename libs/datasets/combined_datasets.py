@@ -33,7 +33,6 @@ from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScrap
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 from libs.datasets.sources.cdc_testing_dataset import CDCTestingDataset
-from libs.datasets.sources.covid_care_map import CovidCareMapBeds
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
@@ -307,12 +306,6 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
-    # TODO(michael): We don't really trust the CCM bed numbers and would ideally remove them entirely.
-    CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.ICU_BEDS: [CovidCareMapBeds, HHSHospitalCountyDataset, HHSHospitalStateDataset],
-    CommonFields.ICU_TYPICAL_OCCUPANCY_RATE: [CovidCareMapBeds],
-    CommonFields.LICENSED_BEDS: [CovidCareMapBeds],
-    CommonFields.MAX_BED_COUNT: [CovidCareMapBeds],
     CommonFields.CAN_LOCATION_PAGE_URL: [CANLocationPageURLS],
 }
 
