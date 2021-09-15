@@ -330,7 +330,7 @@
       "context": "inconsistent cdc test positivity data"
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
       "start_date": "2021-09-14",
