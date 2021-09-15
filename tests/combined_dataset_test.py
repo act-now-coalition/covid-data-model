@@ -42,25 +42,6 @@ def test_combined_county_has_some_data(fips):
     assert region_data.latest[CommonFields.DEATHS] > 1
 
 
-@pytest.mark.slow
-def test_pr_aggregation():
-    dataset = combined_datasets.load_us_timeseries_dataset()
-    data = dataset.get_one_region(Region.from_fips("72")).latest
-    assert data
-    assert data["all_beds_occupancy_rate"] < 1
-    assert data["icu_occupancy_rate"] < 1
-
-
-@pytest.mark.slow
-def test_nyc_aggregation(nyc_region):
-    dataset = combined_datasets.load_us_timeseries_dataset()
-    data = dataset.get_one_region(nyc_region).latest
-    # Check to make sure that beds occupancy rates are below 1,
-    # signaling that it is properly combining occupancy rates.
-    assert data["all_beds_occupancy_rate"] < 1
-    assert data["icu_occupancy_rate"] < 1
-
-
 # Check some counties picked arbitrarily: (Orange County, CA)/06059 and (Harris County, TX)/48201
 @pytest.mark.slow
 @pytest.mark.parametrize("fips", ["06059", "48201"])
