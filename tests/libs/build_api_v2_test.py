@@ -62,6 +62,11 @@ def test_build_summary_for_fips(
         type=FieldSourceType.OTHER,
         url="https://healthdata.gov/Hospital/COVID-19-Reported-Patient-Impact-and-Hospital-Capa/anag-cw7u",
     )
+    field_source_cdcvaccine = FieldSource(
+        name="Centers for Disease Control and Prevention",
+        type=FieldSourceType.OTHER,
+        url="https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-County/8xkx-amqh",
+    )
     expected = RegionSummary(
         population=nyc_latest["population"],
         state="NY",
@@ -111,13 +116,13 @@ def test_build_summary_for_fips(
             newDeaths=FieldAnnotations(
                 anomalies=[
                     {
-                        "date": datetime.date(2020, 4, 14),
-                        "original_observation": 345.0,
+                        "date": datetime.date(2021, 3, 13),
+                        "original_observation": 110.0,
                         "type": "zscore_outlier",
                     },
                     {
-                        "date": datetime.date(2020, 12, 28),
-                        "original_observation": 49.0,
+                        "date": datetime.date(2021, 4, 9),
+                        "original_observation": 182.0,
                         "type": "zscore_outlier",
                     },
                 ],
@@ -139,24 +144,10 @@ def test_build_summary_for_fips(
                 ],
             ),
             vaccinationsCompleted=FieldAnnotations(
-                sources=[
-                    FieldSource(
-                        name="New York State Department of Health",
-                        type=FieldSourceType.CANScrapersStateProviders,
-                        url="https://covid19vaccine.health.ny.gov/covid-19-vaccine-tracker",
-                    )
-                ],
-                anomalies=[],
+                sources=[field_source_cdcvaccine], anomalies=[],
             ),
             vaccinationsInitiated=FieldAnnotations(
-                sources=[
-                    FieldSource(
-                        name="New York State Department of Health",
-                        type=FieldSourceType.CANScrapersStateProviders,
-                        url="https://covid19vaccine.health.ny.gov/covid-19-vaccine-tracker",
-                    )
-                ],
-                anomalies=[],
+                sources=[field_source_cdcvaccine], anomalies=[],
             ),
             caseDensity=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             icuCapacityRatio=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
