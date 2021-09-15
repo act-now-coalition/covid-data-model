@@ -328,6 +328,15 @@
       "end_date": "2021-09-12",
       "region": "47179, 47093, 47125, 47037, 47113, 47177, 47041, 47189, 47069, 47109, 47163",
       "context": "inconsistent cdc test positivity data"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "2021-09-14",
+      "end_date": "",
+      "region": "ND",
+      "context": "9/14 - decreasing vaccination rates due to scraper update"
     }
   ]
 }
