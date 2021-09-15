@@ -194,6 +194,9 @@ CDC_STATE_EXCLUSIONS = RegionMask(
         "GA",
         "IL",
         "NM",
+        # PA - Data irregularities including very high rates in several counties
+        # (e.g. Montgomery, Chester)
+        "PA",
         # SD - Missing a lot of counties and 1st dose data.
         "SD",
         # VA - Very low coverage.
