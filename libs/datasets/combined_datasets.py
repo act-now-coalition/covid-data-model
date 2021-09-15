@@ -177,6 +177,10 @@ CDCVaccinesStatesAndNationDataset = datasource_regions(
 )
 
 CDC_COUNTY_EXCLUSIONS = [
+    # Glacier County, MT - reports 99.9% of 12+ population vaccinated [7/2021]
+    Region.from_fips("30035"),
+    # Santa Cruz County, AZ - reports 99.9% of 12+ population vaccinated [7/2021]
+    Region.from_fips("04023"),
     # Arecibo Municipio, PR - reports 99.9% of 12+ population vaccinated [7/2021]
     Region.from_fips("72013"),
     # Bristol Bay Borough, AK - reports 99.9% of 12+ population vaccinated [7/2021]
