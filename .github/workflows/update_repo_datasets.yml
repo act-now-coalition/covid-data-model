@@ -75,11 +75,6 @@ jobs:
       run: |
         ./run.py data update
 
-    - name: Update External Forecasts
-      working-directory: ./covid-data-model
-      run: |
-        ./run.py data update-forecasts
-
     - name: Create Update Commit
       working-directory: ./covid-data-model
       run: ./tools/push-data-update.sh
