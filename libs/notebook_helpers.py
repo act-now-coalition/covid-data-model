@@ -4,7 +4,6 @@ import os
 import pandas as pd
 
 from libs.datasets import dataset_utils
-from libs.datasets.sources import covid_tracking_source
 from libs.datasets.sources import nytimes_dataset
 from libs.datasets.sources import can_scraper_local_dashboard_providers
 
@@ -31,7 +30,6 @@ def set_covid_data_public():
 def load_data_sources_by_name() -> Dict[str, pd.DataFrame]:
 
     sources = [
-        covid_tracking_source.CovidTrackingDataSource,
         nytimes_dataset.NYTimesDataset,
         can_scraper_local_dashboard_providers.CANScraperStateProviders,
     ]
