@@ -71,21 +71,6 @@ class TestPositivityRatioDetails(base_model.APIBaseModel):
     )
 
 
-class CovidPatientsMethod(enum.Enum):
-    """Method used to determine number of current ICU patients with covid."""
-
-    ACTUAL = "actual"
-    ESTIMATED = "estimated"
-
-
-class NonCovidPatientsMethod(enum.Enum):
-    """Method used to determine number of current ICU patients without covid."""
-
-    ACTUAL = "actual"
-    ESTIMATED_FROM_TYPICAL_UTILIZATION = "estimated_from_typical_utilization"
-    ESTIMATED_FROM_TOTAL_ICU_ACTUAL = "estimated_from_total_icu_actual"
-
-
 class DemographicDistributions(base_model.APIBaseModel):
     """Distributions of demographic data.
 
@@ -102,23 +87,6 @@ class DemographicDistributions(base_model.APIBaseModel):
     sex: Optional[Dict[str, int]] = pydantic.Field(None)
 
 
-class ICUHeadroomMetricDetails(base_model.APIBaseModel):
-    """Details about how the ICU Headroom Metric was calculated."""
-
-    currentIcuCovid: int = pydantic.Field(
-        ..., description="Current number of covid patients in the ICU."
-    )
-    currentIcuCovidMethod: CovidPatientsMethod = pydantic.Field(
-        ..., description="Method used to determine number of current ICU patients with covid."
-    )
-    currentIcuNonCovid: int = pydantic.Field(
-        ..., description="Current number of covid patients in icu."
-    )
-    currentIcuNonCovidMethod: NonCovidPatientsMethod = pydantic.Field(
-        ..., description="Method used to determine number of current ICU patients without covid."
-    )
-
-
 class HospitalResourceUtilization(base_model.APIBaseModel):
     capacity: Optional[int] = pydantic.Field(..., description="Total capacity for resource.")
     currentUsageTotal: Optional[int] = pydantic.Field(
@@ -126,9 +94,6 @@ class HospitalResourceUtilization(base_model.APIBaseModel):
     )
     currentUsageCovid: Optional[int] = pydantic.Field(
         ..., description="Currently used capacity for resource by COVID "
-    )
-    typicalUsageRate: Optional[float] = pydantic.Field(
-        ..., description="Typical used capacity rate for resource. This excludes any COVID usage."
     )
 
 
@@ -160,7 +125,6 @@ Fields:
  * capacity - Current staffed acute bed capacity.
  * currentUsageTotal - Total number of acute beds currently in use
  * currentUsageCovid - Number of acute beds currently in use by COVID patients.
- * typicalUsageRate - Typical acute bed utilization rate.
 """,
     )
     icuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
@@ -172,7 +136,6 @@ Fields:
  * capacity - Current staffed ICU bed capacity.
  * currentUsageTotal - Total number of ICU beds currently in use
  * currentUsageCovid - Number of ICU beds currently in use by COVID patients.
- * typicalUsageRate - Typical ICU utilization rate.
 """,
     )
     newCases: Optional[int] = pydantic.Field(
@@ -331,9 +294,6 @@ class Annotations(base_model.APIBaseModel):
     infectionRateCI90: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for infectionRateCI90"
     )
-    icuHeadroomRatio: Optional[FieldAnnotations] = pydantic.Field(
-        None, description="Annotations for icuHeadroomRatio"
-    )
     icuCapacityRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for icuCapacityRatio"
     )
@@ -375,8 +335,6 @@ class Metrics(base_model.APIBaseModel):
         ...,
         description="90th percentile confidence interval upper endpoint of the infection rate.",
     )
-    icuHeadroomRatio: Optional[float] = pydantic.Field(...)
-    icuHeadroomDetails: Optional[ICUHeadroomMetricDetails] = pydantic.Field(None)
     icuCapacityRatio: Optional[float] = pydantic.Field(
         ...,
         description="Ratio of staffed intensive care unit (ICU) beds that are currently in use.",
@@ -398,7 +356,6 @@ class Metrics(base_model.APIBaseModel):
             contactTracerCapacityRatio=None,
             infectionRate=None,
             infectionRateCI90=None,
-            icuHeadroomRatio=None,
             icuCapacityRatio=None,
         )
 
@@ -456,7 +413,6 @@ class RiskLevels(base_model.APIBaseModel):
         ..., description="Contact tracer capacity ratio risk level."
     )
     infectionRate: RiskLevel = pydantic.Field(..., description="Infection rate risk level.")
-    icuHeadroomRatio: RiskLevel = pydantic.Field(..., description="ICU headroom ratio risk level.")
     icuCapacityRatio: RiskLevel = pydantic.Field(..., description="ICU capacity ratio risk level.")
 
     @classmethod
@@ -467,7 +423,6 @@ class RiskLevels(base_model.APIBaseModel):
             caseDensity=RiskLevel.LOW,
             contactTracerCapacityRatio=RiskLevel.LOW,
             infectionRate=RiskLevel.LOW,
-            icuHeadroomRatio=RiskLevel.LOW,
             icuCapacityRatio=RiskLevel.LOW,
         )
 

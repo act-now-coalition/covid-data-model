@@ -65,7 +65,7 @@
     },
     "hospitalBeds": {
       "title": "Hospitalbeds",
-      "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * typicalUsageRate - Typical acute bed utilization rate.\n",
+      "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n",
       "allOf": [
         {
           "$ref": "#/definitions/HospitalResourceUtilization"
@@ -74,7 +74,7 @@
     },
     "icuBeds": {
       "title": "Icubeds",
-      "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n * typicalUsageRate - Typical ICU utilization rate.\n",
+      "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n",
       "allOf": [
         {
           "$ref": "#/definitions/HospitalResourceUtilization"
@@ -224,25 +224,12 @@
               "type": "null"
             }
           ]
-        },
-        "typicalUsageRate": {
-          "title": "Typicalusagerate",
-          "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ]
         }
       },
       "required": [
         "capacity",
         "currentUsageTotal",
-        "currentUsageCovid",
-        "typicalUsageRate"
+        "currentUsageCovid"
       ]
     },
     "DemographicDistributions": {

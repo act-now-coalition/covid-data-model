@@ -7,6 +7,14 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+### ICU Headroom and Typical Usage Rate removed
+_Added on 2021-09-16_
+
+The following deprecated fields have been removed from the API:
+`icuHeadroomRatio`, `icuHeadroomDetails`, and `typicalUsageRate`. Consider using
+`icuCapacityRatio` instead.
+
+
 ### CDC Community Transmission Levels
 _Added on 2021-07-30_
 
@@ -48,13 +56,13 @@ in the future.
 ### Vaccines administered
 _Added on 2021-03-23_
 
-Added `actuals.vaccinesAdministered` to the API. This represents the total number of doses 
+Added `actuals.vaccinesAdministered` to the API. This represents the total number of doses
 administered for a region.
 
 ### New deaths column
 _Added on 2021-03-08_
 
-Added `actuals.newDeaths` and `actualsTimeseries.*.newDeaths` to the API. 
+Added `actuals.newDeaths` and `actualsTimeseries.*.newDeaths` to the API.
 The processing is similar to `actuals.newCases` - `newDeaths` represent new deaths
 since previous report with erratic values removed by outlier detection.
 
@@ -77,7 +85,7 @@ Fields added:
  * `vaccinationsInitiated`: Total number of people initiating vaccination. For a vaccine with a
    2-dose regimen, this represents the first dose.
  * `vaccinationsCompleted`: Total number of people completing vaccination - currently those
-    completing their second shot. 
+    completing their second shot.
 * `vaccinationsInitiatedRatio`: Ratio of population that has initiated vaccination.
 * `vaccinationsCompletedRatio`: Ratio of population that has completed vaccination.
 
@@ -166,12 +174,12 @@ _Added on 2020-10-29_
 
 In addition to cumulative case counts, we added a `New Cases` field to all
 `actuals` and `actualsTimeseries` values.  The `New Cases` field computes new
-cases and applies outlier detection to remove erratic case values.  
+cases and applies outlier detection to remove erratic case values.
 
 ### Add `locationId` field
 _Added on 2020-10-27_
 
-Adds a generic location ID used to represent regions.  Will allow for 
+Adds a generic location ID used to represent regions.  Will allow for
 greater flexibility as we add more aggregation levels (such as country).
 
 ### Add `riskLevels`

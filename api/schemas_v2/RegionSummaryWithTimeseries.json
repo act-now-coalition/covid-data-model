@@ -217,62 +217,6 @@
         "source"
       ]
     },
-    "CovidPatientsMethod": {
-      "title": "CovidPatientsMethod",
-      "description": "Method used to determine number of current ICU patients with covid.",
-      "enum": [
-        "actual",
-        "estimated"
-      ]
-    },
-    "NonCovidPatientsMethod": {
-      "title": "NonCovidPatientsMethod",
-      "description": "Method used to determine number of current ICU patients without covid.",
-      "enum": [
-        "actual",
-        "estimated_from_typical_utilization",
-        "estimated_from_total_icu_actual"
-      ]
-    },
-    "ICUHeadroomMetricDetails": {
-      "title": "ICUHeadroomMetricDetails",
-      "description": "Details about how the ICU Headroom Metric was calculated.",
-      "type": "object",
-      "properties": {
-        "currentIcuCovid": {
-          "title": "Currenticucovid",
-          "description": "Current number of covid patients in the ICU.",
-          "type": "integer"
-        },
-        "currentIcuCovidMethod": {
-          "description": "Method used to determine number of current ICU patients with covid.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/CovidPatientsMethod"
-            }
-          ]
-        },
-        "currentIcuNonCovid": {
-          "title": "Currenticunoncovid",
-          "description": "Current number of covid patients in icu.",
-          "type": "integer"
-        },
-        "currentIcuNonCovidMethod": {
-          "description": "Method used to determine number of current ICU patients without covid.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/NonCovidPatientsMethod"
-            }
-          ]
-        }
-      },
-      "required": [
-        "currentIcuCovid",
-        "currentIcuCovidMethod",
-        "currentIcuNonCovid",
-        "currentIcuNonCovidMethod"
-      ]
-    },
     "Metrics": {
       "title": "Metrics",
       "description": "Calculated metrics data based on known actuals.",
@@ -348,27 +292,6 @@
             }
           ]
         },
-        "icuHeadroomRatio": {
-          "title": "Icuheadroomratio",
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "icuHeadroomDetails": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ICUHeadroomMetricDetails"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "icuCapacityRatio": {
           "title": "Icucapacityratio",
           "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use.",
@@ -412,7 +335,6 @@
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
-        "icuHeadroomRatio",
         "icuCapacityRatio"
       ]
     },
@@ -473,14 +395,6 @@
             }
           ]
         },
-        "icuHeadroomRatio": {
-          "description": "ICU headroom ratio risk level.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/RiskLevel"
-            }
-          ]
-        },
         "icuCapacityRatio": {
           "description": "ICU capacity ratio risk level.",
           "allOf": [
@@ -496,7 +410,6 @@
         "caseDensity",
         "contactTracerCapacityRatio",
         "infectionRate",
-        "icuHeadroomRatio",
         "icuCapacityRatio"
       ]
     },
@@ -551,25 +464,12 @@
               "type": "null"
             }
           ]
-        },
-        "typicalUsageRate": {
-          "title": "Typicalusagerate",
-          "description": "Typical used capacity rate for resource. This excludes any COVID usage.",
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ]
         }
       },
       "required": [
         "capacity",
         "currentUsageTotal",
-        "currentUsageCovid",
-        "typicalUsageRate"
+        "currentUsageCovid"
       ]
     },
     "DemographicDistributions": {
@@ -702,7 +602,7 @@
         },
         "hospitalBeds": {
           "title": "Hospitalbeds",
-          "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * typicalUsageRate - Typical acute bed utilization rate.\n",
+          "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n",
           "allOf": [
             {
               "$ref": "#/definitions/HospitalResourceUtilization"
@@ -711,7 +611,7 @@
         },
         "icuBeds": {
           "title": "Icubeds",
-          "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n * typicalUsageRate - Typical ICU utilization rate.\n",
+          "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n",
           "allOf": [
             {
               "$ref": "#/definitions/HospitalResourceUtilization"
@@ -1117,15 +1017,6 @@
             }
           ]
         },
-        "icuHeadroomRatio": {
-          "title": "Icuheadroomratio",
-          "description": "Annotations for icuHeadroomRatio",
-          "allOf": [
-            {
-              "$ref": "#/definitions/FieldAnnotations"
-            }
-          ]
-        },
         "icuCapacityRatio": {
           "title": "Icucapacityratio",
           "description": "Annotations for icuCapacityRatio",
@@ -1230,27 +1121,6 @@
             }
           ]
         },
-        "icuHeadroomRatio": {
-          "title": "Icuheadroomratio",
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "icuHeadroomDetails": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ICUHeadroomMetricDetails"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "icuCapacityRatio": {
           "title": "Icucapacityratio",
           "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use.",
@@ -1300,7 +1170,6 @@
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
-        "icuHeadroomRatio",
         "icuCapacityRatio",
         "date"
       ]
@@ -1372,7 +1241,7 @@
         },
         "hospitalBeds": {
           "title": "Hospitalbeds",
-          "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * typicalUsageRate - Typical acute bed utilization rate.\n",
+          "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n",
           "allOf": [
             {
               "$ref": "#/definitions/HospitalResourceUtilization"
@@ -1381,7 +1250,7 @@
         },
         "icuBeds": {
           "title": "Icubeds",
-          "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n * typicalUsageRate - Typical ICU utilization rate.\n",
+          "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n",
           "allOf": [
             {
               "$ref": "#/definitions/HospitalResourceUtilization"

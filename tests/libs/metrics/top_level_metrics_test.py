@@ -163,7 +163,7 @@ def test_top_level_metrics_basic():
         metrics, start_date="2020-08-17", timeseries_columns=INPUT_COLUMNS, latest_override=latest,
     )
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, structlog.get_logger(), require_recent_icu_data=False
+        one_region, None, structlog.get_logger()
     )
 
     expected = build_metrics_df(
@@ -172,7 +172,6 @@ def test_top_level_metrics_basic():
         caseDensity=[10, 10, None, None],
         testPositivityRatio=[None, 0.1, 0.1, 0.1],
         contactTracerCapacityRatio=[0.02, 0.04, None, None],
-        icuHeadroomRatio=[0.5, 0.5, 0.5, 0.5],
         vaccinationsInitiatedRatio=[0.01, 0.02, None, 0.03],
         vaccinationsCompletedRatio=[0.001, 0.002, None, 0.003],
     )
@@ -201,7 +200,7 @@ def test_top_level_metrics_rounding():
         metrics, start_date="2020-08-17", timeseries_columns=INPUT_COLUMNS, latest_override=latest,
     )
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, structlog.get_logger(), require_recent_icu_data=False
+        one_region, None, structlog.get_logger()
     )
 
     expected = build_metrics_df(
@@ -210,7 +209,6 @@ def test_top_level_metrics_rounding():
         caseDensity=[1, 1, 1.7],
         testPositivityRatio=[0.1, 0.101, 0.1],
         contactTracerCapacityRatio=[0.2, 0.4, 0.36],
-        icuHeadroomRatio=[0.33, 0.67, 1.0],
         vaccinationsInitiatedRatio=[0.333, 0.667, 1],
         vaccinationsCompletedRatio=[0.333, 0.667, 1],
     )
@@ -242,7 +240,7 @@ def test_top_level_metrics_incomplete_latest():
         latest_override=latest,
     )
     results, _ = top_level_metrics.calculate_metrics_for_timeseries(
-        one_region, None, structlog.get_logger(), require_recent_icu_data=False
+        one_region, None, structlog.get_logger()
     )
 
     expected = build_metrics_df(
@@ -406,7 +404,7 @@ def test_calculate_latest_rt():
         infectionRate=[prev_rt, 2.0],
         infectionRateCI90=[prev_rt_ci90, 0.2],
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None)
     assert metrics.infectionRate == prev_rt
     assert metrics.infectionRateCI90 == prev_rt_ci90
 
@@ -424,7 +422,7 @@ def test_lookback_days():
         infectionRateCI90=[prev_rt_ci90, None, None],
     )
 
-    metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None)
     assert not metrics.caseDensity
     assert not metrics.testPositivityRatio
     assert not metrics.infectionRate
@@ -441,7 +439,7 @@ def test_calculate_latest_rt_no_previous_row():
         infectionRate=[2.0],
         infectionRateCI90=[0.2],
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None)
     assert not metrics.infectionRate
     assert not metrics.infectionRateCI90
 
@@ -454,7 +452,7 @@ def test_calculate_latest_rt_no_rt():
         testPositivityRatio=[0.1],
         contactTracerCapacityRatio=[0.08],
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data, None, None)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None)
     assert not metrics.infectionRate
     assert not metrics.infectionRateCI90
 
@@ -478,11 +476,9 @@ def test_calculate_latest_different_latest_days():
         contactTracerCapacityRatio=0.08,
         infectionRate=prev_rt,
         infectionRateCI90=prev_rt_ci90,
-        icuHeadroomRatio=None,
-        icuHeadroomDetails=None,
         icuCapacityRatio=0.75,
     )
-    metrics = top_level_metrics.calculate_latest_metrics(data, None, None, max_lookback_days=8)
+    metrics = top_level_metrics.calculate_latest_metrics(data, None, max_lookback_days=8)
     assert metrics == expected_metrics
 
 
@@ -508,6 +504,6 @@ def test_calculate_icu_capacity():
     positivity_method = can_api_v2_definition.TestPositivityRatioDetails(
         source=can_api_v2_definition.TestPositivityRatioMethod.OTHER
     )
-    expected_metrics = top_level_metrics.calculate_latest_metrics(expected, None, positivity_method)
+    expected_metrics = top_level_metrics.calculate_latest_metrics(expected, positivity_method)
     pd.testing.assert_frame_equal(expected, results)
     assert metrics == expected_metrics

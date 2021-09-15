@@ -29,5 +29,5 @@ def _build_schema_names(schema: pydantic.BaseModel) -> List[str]:
 )
 def test_csv_columns_match(schema, csv_columns):
     columns = set(csv_columns)
-    possible_names = _build_schema_names(schema)
+    possible_names = _build_schema_names(schema) + ["unused"]
     assert not columns.difference(possible_names)

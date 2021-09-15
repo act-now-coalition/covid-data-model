@@ -267,6 +267,11 @@ def _model_to_dict(data: dict):
         if isinstance(value, pydantic.BaseModel):
             value = _model_to_dict(value.__dict__)
 
+            # We always add an "unused" entry that will be used for any "unused" columns
+            # in the CSV output (when we remove an API column we replace it with
+            # "unused" to preserve column ordering).
+            results["unused"] = None
+
         if isinstance(value, list):
             values = []
             for item in value:
