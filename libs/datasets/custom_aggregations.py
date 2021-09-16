@@ -93,6 +93,8 @@ def aggregate_puerto_rico_from_counties(
     return dataclasses.replace(dataset, static=patched_static)
 
 
+# TODO(michael): I ripped out some code for aggregating typicalUsageRate. Is
+# this function even still necessary?
 def _aggregate_ignoring_nas(df_in: pd.DataFrame) -> Mapping:
     aggregated = {}
     for field in df_in.columns:
