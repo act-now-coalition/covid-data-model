@@ -284,15 +284,6 @@
       "context": "https://trello.com/c/9yFJDbZo/1486-7-29-21-backlogged-antigen-probable-cases-added-to-ca-cases-on-july-8th"
     },
     {
-      "include": "region",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": true,
-      "start_date": "2021-08-15",
-      "end_date": "2021-08-21",
-      "region": "26145",
-      "context": "wagging data in recent dates from new test positivity endpoint caused spikes in test rate"
-    },
-    {
       "include": "region-and-subregions",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
@@ -324,19 +315,10 @@
       "include": "region",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
-      "start_date": "2021-09-04",
-      "end_date": "2021-09-12",
-      "region": "47179, 47093, 47125, 47037, 47113, 47177, 47041, 47189, 47069, 47109, 47163",
+      "start_date": "2021-09-09",
+      "end_date": "2021-09-14",
+      "region": "47179, 47093, 47113, 47177, 47041, 47189, 47163, 13179, 47157, 47073, 47065",
       "context": "inconsistent cdc test positivity data"
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "start_date": "2021-09-14",
-      "end_date": "",
-      "region": "ND",
-      "context": "9/14 - decreasing vaccination rates due to scraper update"
     }
   ]
 }
