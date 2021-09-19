@@ -233,6 +233,7 @@ def calculate_latest_metrics(
 
     Args:
         data: Top level metrics timeseries data.
+        test_positivity_method: Optional details about how test positivity was calculated.
         max_lookback_days: Number of days back from the latest day to consider metrics.
 
     Returns: Metrics

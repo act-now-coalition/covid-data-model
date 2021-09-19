@@ -66,6 +66,7 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
     Args:
         actual_data: Dictionary of data, generally derived one of the combined datasets.
         intervention: Current state level intervention.
+        distributions_by_field: Optional dictionary of demographic distributions for API fields.
     """
     distributions_by_field = distributions_by_field or {}
     vaccines_administered_demographics = _build_distributions(
