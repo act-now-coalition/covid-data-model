@@ -43,14 +43,6 @@
         }
       ]
     },
-    "icuHeadroomRatio": {
-      "description": "ICU headroom ratio risk level.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/RiskLevel"
-        }
-      ]
-    },
     "icuCapacityRatio": {
       "description": "ICU capacity ratio risk level.",
       "allOf": [
@@ -66,7 +58,6 @@
     "caseDensity",
     "contactTracerCapacityRatio",
     "infectionRate",
-    "icuHeadroomRatio",
     "icuCapacityRatio"
   ],
   "definitions": {

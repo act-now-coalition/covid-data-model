@@ -66,6 +66,7 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
     Args:
         actual_data: Dictionary of data, generally derived one of the combined datasets.
         intervention: Current state level intervention.
+        distributions_by_field: Optional dictionary of demographic distributions for API fields.
     """
     distributions_by_field = distributions_by_field or {}
     vaccines_administered_demographics = _build_distributions(
@@ -82,16 +83,14 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
         negativeTests=actual_data.get(CommonFields.NEGATIVE_TESTS),
         contactTracers=actual_data.get(CommonFields.CONTACT_TRACERS_COUNT),
         hospitalBeds={
-            "capacity": actual_data.get(CommonFields.MAX_BED_COUNT),
+            "capacity": actual_data.get(CommonFields.STAFFED_BEDS),
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED),
             "currentUsageTotal": actual_data.get(CommonFields.HOSPITAL_BEDS_IN_USE_ANY),
-            "typicalUsageRate": actual_data.get(CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE),
         },
         icuBeds={
             "capacity": actual_data.get(CommonFields.ICU_BEDS),
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_ICU),
             "currentUsageTotal": actual_data.get(CommonFields.CURRENT_ICU_TOTAL),
-            "typicalUsageRate": actual_data.get(CommonFields.ICU_TYPICAL_OCCUPANCY_RATE),
         },
         newCases=actual_data.get(CommonFields.NEW_CASES),
         newDeaths=actual_data.get(CommonFields.NEW_DEATHS),
@@ -158,7 +157,6 @@ METRICS_NAME_TO_COMMON_FIELD = {
     "caseDensity": CommonFields.CASES,
     "infectionRate": CommonFields.CASES,
     "testPositivityRatio": CommonFields.TEST_POSITIVITY,
-    "icuHeadroomRatio": CommonFields.CURRENT_ICU_TOTAL,
     "infectionRateCI90": CommonFields.CASES,
     "vaccinationsInitiatedRatio": CommonFields.VACCINATIONS_INITIATED_PCT,
     "vaccinationsCompletedRatio": CommonFields.VACCINATIONS_COMPLETED_PCT,

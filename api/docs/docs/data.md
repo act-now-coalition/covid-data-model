@@ -12,7 +12,7 @@ Read more about the data included in the Covid Act Now API.
 
   Cumulative confirmed or suspected cases.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.cases``
 * JSON file fields: ``actuals.cases``, ``actualsTimeseries.*.cases``
 
@@ -32,7 +32,7 @@ Processing steps:
     seem improbable given recent case numbers.  Many times this is due to a backfill of
     previously unreported cases.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.newCases``
 * JSON file fields: ``actuals.newCases``, ``actualsTimeseries.*.newCases``
 
@@ -40,7 +40,7 @@ Processing steps:
 
   The number of cases per 100k population calculated using a 7-day rolling average.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``metrics.caseDensity``
 * JSON file fields: ``metrics.caseDensity``, ``metricsTimeseries.*.caseDensity``
 
@@ -48,7 +48,7 @@ Processing steps:
 
   R_t, or the estimated number of infections arising from a typical case.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``metrics.infectionRate``
 * JSON file fields: ``metrics.infectionRate``, ``metricsTimeseries.*.infectionRate``
 
@@ -56,7 +56,7 @@ Processing steps:
 
   90th percentile confidence interval upper endpoint of the infection rate.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``metrics.infectionRateCI90``
 * JSON file fields: ``metrics.infectionRateCI90``, ``metricsTimeseries.*.infectionRateCI90``
 
@@ -68,7 +68,7 @@ Processing steps:
 
   Cumulative positive test results to date
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.positiveTests``
 * JSON file fields: ``actuals.positiveTests``, ``actualsTimeseries.*.positiveTests``
 
@@ -76,7 +76,7 @@ Processing steps:
 
   Cumulative negative test results to date
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.negativeTests``
 * JSON file fields: ``actuals.negativeTests``, ``actualsTimeseries.*.negativeTests``
 
@@ -84,15 +84,15 @@ Processing steps:
 
   Ratio of people who test positive calculated using a 7-day rolling average.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``metrics.testPositivityRatio``
 * JSON file fields: ``metrics.testPositivityRatio``, ``metricsTimeseries.*.testPositivityRatio``
 
 ### Test Positivity Ratio Details
 
-  
 
-**Where to access**  
+
+**Where to access**
 * CSV column names: ``metrics.testPositivityRatioDetails``
 * JSON file fields: ``metrics.testPositivityRatioDetails``, ``metricsTimeseries.*.testPositivityRatioDetails``
 
@@ -108,9 +108,8 @@ Fields:
  * capacity - Current staffed ICU bed capacity.
  * currentUsageTotal - Total number of ICU beds currently in use
  * currentUsageCovid - Number of ICU beds currently in use by COVID patients.
- * typicalUsageRate - Typical ICU utilization rate.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.icuBeds``
 * JSON file fields: ``actuals.icuBeds``, ``actualsTimeseries.*.icuBeds``
 
@@ -124,7 +123,7 @@ Fields:
  * currentUsageCovid - Number of acute beds currently in use by COVID patients.
  * typicalUsageRate - Typical acute bed utilization rate.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.hospitalBeds``
 * JSON file fields: ``actuals.hospitalBeds``, ``actualsTimeseries.*.hospitalBeds``
 
@@ -132,18 +131,9 @@ Fields:
 
   Ratio of staffed intensive care unit (ICU) beds that are currently in use.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``metrics.icuCapacityRatio``
 * JSON file fields: ``metrics.icuCapacityRatio``, ``metricsTimeseries.*.icuCapacityRatio``
-
-### Icu Headroom Ratio
-
-  
-
-**Where to access**  
-* CSV column names: ``metrics.icuHeadroomRatio``
-* JSON file fields: ``metrics.icuHeadroomRatio``, ``metricsTimeseries.*.icuHeadroomRatio``
-
 
 
 ## Vaccinations
@@ -152,7 +142,7 @@ Fields:
 
   Number of vaccine doses distributed.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.vaccinesDistributed``
 * JSON file fields: ``actuals.vaccinesDistributed``, ``actualsTimeseries.*.vaccinesDistributed``
 
@@ -163,7 +153,7 @@ Fields:
 This value may vary by type of vaccine, but for Moderna and Pfizer this indicates
 number of people vaccinated with the first dose.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.vaccinationsInitiated``
 * JSON file fields: ``actuals.vaccinationsInitiated``, ``actualsTimeseries.*.vaccinationsInitiated``
 
@@ -174,7 +164,7 @@ number of people vaccinated with the first dose.
 This value may vary by type of vaccine, but for Moderna and Pfizer this indicates
 number of people vaccinated with both the first and second dose.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.vaccinationsCompleted``
 * JSON file fields: ``actuals.vaccinationsCompleted``, ``actualsTimeseries.*.vaccinationsCompleted``
 
@@ -182,7 +172,7 @@ number of people vaccinated with both the first and second dose.
 
   Ratio of population that has initiated vaccination.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``metrics.vaccinationsInitiatedRatio``
 * JSON file fields: ``metrics.vaccinationsInitiatedRatio``, ``metricsTimeseries.*.vaccinationsInitiatedRatio``
 
@@ -190,7 +180,7 @@ number of people vaccinated with both the first and second dose.
 
   Ratio of population that has completed vaccination.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``metrics.vaccinationsCompletedRatio``
 * JSON file fields: ``metrics.vaccinationsCompletedRatio``, ``metricsTimeseries.*.vaccinationsCompletedRatio``
 
@@ -202,7 +192,7 @@ number of people vaccinated with both the first and second dose.
 
   Cumulative deaths that are suspected or confirmed to have been caused by COVID-19.
 
-**Where to access**  
+**Where to access**
 * CSV column names: ``actuals.deaths``
 * JSON file fields: ``actuals.deaths``, ``actualsTimeseries.*.deaths``
 

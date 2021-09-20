@@ -68,13 +68,6 @@ class ICUBedCovidUsageTS(QAMetric):
     threshold = 10
 
 
-class ICUBedTypicalUsageRateTS(QAMetric):
-    name = "ICUBedTypicalUsageRateTS"
-    projection_path = None
-    actual_path = ["actualsTimeseries", "ICUBeds", "typicalUsageRate"]
-    threshold = 10
-
-
 class ICUBedTotalUsageTS(QAMetric):
     name = "ICUBedTotalUsageTS"
     projection_path = None
@@ -190,7 +183,6 @@ TIMESERIES_METRICS = [
     HospitalBedsRequiredTS,
     HospitalBedCapacityTS,
     ICUBedCovidUsageTS,
-    ICUBedTypicalUsageRateTS,
     ICUBedTotalUsageTS,
     ICUBedTotalCapacityTS,
     RtIndicatorTS,

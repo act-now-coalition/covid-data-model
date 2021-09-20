@@ -73,27 +73,6 @@
         }
       ]
     },
-    "icuHeadroomRatio": {
-      "title": "Icuheadroomratio",
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "icuHeadroomDetails": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/ICUHeadroomMetricDetails"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "icuCapacityRatio": {
       "title": "Icucapacityratio",
       "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use.",
@@ -137,7 +116,6 @@
     "contactTracerCapacityRatio",
     "infectionRate",
     "infectionRateCI90",
-    "icuHeadroomRatio",
     "icuCapacityRatio"
   ],
   "definitions": {
@@ -169,62 +147,6 @@
       },
       "required": [
         "source"
-      ]
-    },
-    "CovidPatientsMethod": {
-      "title": "CovidPatientsMethod",
-      "description": "Method used to determine number of current ICU patients with covid.",
-      "enum": [
-        "actual",
-        "estimated"
-      ]
-    },
-    "NonCovidPatientsMethod": {
-      "title": "NonCovidPatientsMethod",
-      "description": "Method used to determine number of current ICU patients without covid.",
-      "enum": [
-        "actual",
-        "estimated_from_typical_utilization",
-        "estimated_from_total_icu_actual"
-      ]
-    },
-    "ICUHeadroomMetricDetails": {
-      "title": "ICUHeadroomMetricDetails",
-      "description": "Details about how the ICU Headroom Metric was calculated.",
-      "type": "object",
-      "properties": {
-        "currentIcuCovid": {
-          "title": "Currenticucovid",
-          "description": "Current number of covid patients in the ICU.",
-          "type": "integer"
-        },
-        "currentIcuCovidMethod": {
-          "description": "Method used to determine number of current ICU patients with covid.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/CovidPatientsMethod"
-            }
-          ]
-        },
-        "currentIcuNonCovid": {
-          "title": "Currenticunoncovid",
-          "description": "Current number of covid patients in icu.",
-          "type": "integer"
-        },
-        "currentIcuNonCovidMethod": {
-          "description": "Method used to determine number of current ICU patients without covid.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/NonCovidPatientsMethod"
-            }
-          ]
-        }
-      },
-      "required": [
-        "currentIcuCovid",
-        "currentIcuCovidMethod",
-        "currentIcuNonCovid",
-        "currentIcuNonCovidMethod"
       ]
     }
   }

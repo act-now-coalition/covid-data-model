@@ -165,15 +165,6 @@
         }
       ]
     },
-    "icuHeadroomRatio": {
-      "title": "Icuheadroomratio",
-      "description": "Annotations for icuHeadroomRatio",
-      "allOf": [
-        {
-          "$ref": "#/definitions/FieldAnnotations"
-        }
-      ]
-    },
     "icuCapacityRatio": {
       "title": "Icucapacityratio",
       "description": "Annotations for icuCapacityRatio",

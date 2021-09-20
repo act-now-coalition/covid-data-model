@@ -109,7 +109,6 @@ Fields:
  * capacity - Current staffed ICU bed capacity.
  * currentUsageTotal - Total number of ICU beds currently in use
  * currentUsageCovid - Number of ICU beds currently in use by COVID patients.
- * typicalUsageRate - Typical ICU utilization rate.
 
 **Where to access**  
 * CSV column names: ``actuals.icuBeds``
@@ -123,7 +122,6 @@ Fields:
  * capacity - Current staffed acute bed capacity.
  * currentUsageTotal - Total number of acute beds currently in use
  * currentUsageCovid - Number of acute beds currently in use by COVID patients.
- * typicalUsageRate - Typical acute bed utilization rate.
 
 **Where to access**  
 * CSV column names: ``actuals.hospitalBeds``
@@ -136,14 +134,6 @@ Fields:
 **Where to access**  
 * CSV column names: ``metrics.icuCapacityRatio``
 * JSON file fields: ``metrics.icuCapacityRatio``, ``metricsTimeseries.*.icuCapacityRatio``
-
-### Icu Headroom Ratio
-
-  
-
-**Where to access**  
-* CSV column names: ``metrics.icuHeadroomRatio``
-* JSON file fields: ``metrics.icuHeadroomRatio``, ``metricsTimeseries.*.icuHeadroomRatio``
 
 
 

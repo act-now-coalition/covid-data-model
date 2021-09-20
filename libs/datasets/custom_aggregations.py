@@ -93,19 +93,12 @@ def aggregate_puerto_rico_from_counties(
     return dataclasses.replace(dataset, static=patched_static)
 
 
+# TODO(michael): I ripped out some code for aggregating typicalUsageRate. Is
+# this function even still necessary?
 def _aggregate_ignoring_nas(df_in: pd.DataFrame) -> Mapping:
     aggregated = {}
     for field in df_in.columns:
-        if field == CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE:
-            licensed_beds = df_in[CommonFields.LICENSED_BEDS]
-            occupancy_rates = df_in[CommonFields.ALL_BED_TYPICAL_OCCUPANCY_RATE]
-            aggregated[field] = (licensed_beds * occupancy_rates).sum() / licensed_beds.sum()
-        elif field == CommonFields.ICU_TYPICAL_OCCUPANCY_RATE:
-            icu_beds = df_in[CommonFields.ICU_BEDS]
-            occupancy_rates = df_in[CommonFields.ICU_TYPICAL_OCCUPANCY_RATE]
-            aggregated[field] = (icu_beds * occupancy_rates).sum() / icu_beds.sum()
-        else:
-            aggregated[field] = df_in[field].sum()
+        aggregated[field] = df_in[field].sum()
     return aggregated
 
 

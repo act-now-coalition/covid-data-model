@@ -25,9 +25,7 @@ CASES_FIELDS = Fields(["cases", "newCases"], ["caseDensity", "infectionRate", "i
 
 DEATHS_FIELDS = Fields(["deaths"], [])
 
-HOSPITALIZATIONS_FIELDS = Fields(
-    ["icuBeds", "hospitalBeds"], ["icuCapacityRatio", "icuHeadroomRatio"],
-)
+HOSPITALIZATIONS_FIELDS = Fields(["icuBeds", "hospitalBeds"], ["icuCapacityRatio"],)
 
 VACCINATION_FIELDS = Fields(
     [
