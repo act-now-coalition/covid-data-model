@@ -41,16 +41,6 @@
       "end_date": ""
     },
     {
-      "include": "subregions",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "region": "IL",
-      "context": "https://trello.com/c/buXoYmKy/1140-il-county-first-doses-underreporting",
-      "disclaimer": "Note that Illinois does not report enough information to correctly distinguish between administration of one dose vaccines and two dose vaccines, and therefore our \"1+ dose\" data above is approximated using the fully-vaccinated data and a state-wide average ratio.",
-      "blocked": false,
-      "start_date": "",
-      "end_date": ""
-    },
-    {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": false,
