@@ -319,6 +319,16 @@
       "end_date": "2021-09-17",
       "region": "47179, 47093, 47113, 47177, 47041, 47189, 47163, 13179, 47157, 47073, 47065",
       "context": "inconsistent cdc test positivity data"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "PA",
+      "context": "Disclaimer to note that county level data is prone to undercounting",
+      "disclaimer": "Vaccination data for Pennsylvania counties are sourced from the Pennsylvania Department of Health. Note that county-level vaccine data may be under-reported for various reasons including doses being administered without recording county-of-residence information or doses being administered through federal programs that aren't tracked by the state. These limitations do not affect the state-level data, and as a result, there may be inconsistencies between the state-level and county-level metrics."
     }
   ]
 }
