@@ -195,7 +195,6 @@ CDC_STATE_EXCLUSIONS = RegionMask(
         "CA",
         # GA - Very low coverage.
         "GA",
-        "IL",
         "NM",
         # PA - Data irregularities including very high rates in several counties
         # (e.g. Montgomery, Chester)
