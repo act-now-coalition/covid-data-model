@@ -29,5 +29,18 @@ def _build_schema_names(schema: pydantic.BaseModel) -> List[str]:
 )
 def test_csv_columns_match(schema, csv_columns):
     columns = set(csv_columns)
-    possible_names = _build_schema_names(schema) + ["unused"]
+    columns = {x for x in columns if not x.startswith("unused")}
+    possible_names = _build_schema_names(schema)
     assert not columns.difference(possible_names)
+
+
+@pytest.mark.parametrize(
+    "csv_columns",
+    [
+        csv_column_ordering.SUMMARY_ORDER,
+        csv_column_ordering.TIMESERIES_ORDER,
+        csv_column_ordering.TIMESERIES_ORDER,
+    ],
+)
+def test_csv_columns_for_duplicates(csv_columns: List[str]):
+    assert len(csv_columns) == len(set(csv_columns))

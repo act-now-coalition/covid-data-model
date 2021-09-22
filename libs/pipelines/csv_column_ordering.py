@@ -24,11 +24,11 @@ SUMMARY_ORDER = [
     "metrics.infectionRateCI90",
     # UPDATE(2021/09/14): ICU Headroom columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
-    "unused",
-    "unused",
-    "unused",
-    "unused",
+    "unused1",
+    "unused2",
+    "unused3",
+    "unused4",
+    "unused5",
     "metrics.icuCapacityRatio",
     "riskLevels.overall",
     "riskLevels.testPositivityRatio",
@@ -37,7 +37,7 @@ SUMMARY_ORDER = [
     "riskLevels.infectionRate",
     # UPDATE(2021/09/14): ICU Headroom columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
+    "unused6",
     "riskLevels.icuCapacityRatio",
     "actuals.cases",
     "actuals.deaths",
@@ -49,13 +49,13 @@ SUMMARY_ORDER = [
     "actuals.hospitalBeds.currentUsageCovid",
     # UPDATE(2021/09/14): Typical Usage columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
+    "unused7",
     "actuals.icuBeds.capacity",
     "actuals.icuBeds.currentUsageTotal",
     "actuals.icuBeds.currentUsageCovid",
     # UPDATE(2021/09/14): Typical Usage columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
+    "unused8",
     "actuals.newCases",
     "actuals.vaccinesDistributed",
     "actuals.vaccinationsInitiated",
@@ -91,8 +91,8 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "metrics.infectionRateCI90",
     # UPDATE(2021/09/14): ICU Headroom columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
-    "unused",
+    "unused1",
+    "unused2",
     "metrics.icuCapacityRatio",
     "riskLevels.overall",
     "riskLevels.testPositivityRatio",
@@ -101,7 +101,7 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "riskLevels.infectionRate",
     # UPDATE(2021/09/14): ICU Headroom columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
+    "unused3",
     "riskLevels.icuCapacityRatio",
     "actuals.cases",
     "actuals.deaths",
@@ -113,13 +113,13 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "actuals.hospitalBeds.currentUsageCovid",
     # UPDATE(2021/09/14): Typical usage columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
+    "unused4",
     "actuals.icuBeds.capacity",
     "actuals.icuBeds.currentUsageTotal",
     "actuals.icuBeds.currentUsageCovid",
     # UPDATE(2021/09/14): Typical usage columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
+    "unused5",
     "actuals.newCases",
     "actuals.vaccinesDistributed",
     "actuals.vaccinationsInitiated",
@@ -153,13 +153,13 @@ TIMESERIES_ORDER = [
     "actuals.hospitalBeds.currentUsageCovid",
     # UPDATE(2021/09/14): Typical usage columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
+    "unused1",
     "actuals.icuBeds.capacity",
     "actuals.icuBeds.currentUsageTotal",
     "actuals.icuBeds.currentUsageCovid",
     # UPDATE(2021/09/14): Typical usage columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
+    "unused2",
     "actuals.newCases",
     "actuals.vaccinesDistributed",
     "actuals.vaccinationsInitiated",
@@ -172,8 +172,8 @@ TIMESERIES_ORDER = [
     "metrics.infectionRateCI90",
     # UPDATE(2021/09/14): ICU Headroom columns have been removed from the API and replaced with
     # "unused" columns.
-    "unused",
-    "unused",
+    "unused3",
+    "unused4",
     "metrics.icuCapacityRatio",
     "riskLevels.overall",
     "metrics.vaccinationsInitiatedRatio",

@@ -267,13 +267,6 @@ def _model_to_dict(data: dict):
         if isinstance(value, pydantic.BaseModel):
             value = _model_to_dict(value.__dict__)
 
-            # When converting API model objects to dicts, we always add an
-            # "unused" entry to the dict. This allows us to use "unused" as a
-            # column in our CSV output to have a blank column. This is handy
-            # since when we remove an API column we replace it with "unused" to
-            # preserve column ordering).
-            results["unused"] = None
-
         if isinstance(value, list):
             values = []
             for item in value:
