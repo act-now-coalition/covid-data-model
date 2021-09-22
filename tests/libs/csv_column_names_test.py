@@ -43,4 +43,8 @@ def test_csv_columns_match(schema, csv_columns):
     ],
 )
 def test_csv_columns_for_duplicates(csv_columns: List[str]):
+    """
+    Verify CSV files don't have duplicate columns. We got complaints from API users when we
+    temporarily had multiple 'unused' columns.
+    """
     assert len(csv_columns) == len(set(csv_columns))
