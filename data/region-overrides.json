@@ -306,8 +306,8 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-09-16",
-      "end_date": "2021-09-20",
-      "region": "47093, 47065",
+      "end_date": "2021-09-21",
+      "region": "47093, 47065, 30013, 13179, 18167",
       "context": "inconsistent cdc test positivity data"
     },
     {
