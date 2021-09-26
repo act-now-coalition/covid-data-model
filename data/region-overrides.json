@@ -325,7 +325,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-09-22",
-      "end_date": "2021-09-22",
+      "end_date": "",
       "region": "44009",
       "context": "https://trello.com/c/3Fl74stg/1503-washington-county-ri-anomalous-spike"
     }
