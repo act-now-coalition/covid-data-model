@@ -302,15 +302,6 @@
       "context": "Disclaimer for Hurricane Ida"
     },
     {
-      "include": "region",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": true,
-      "start_date": "2021-09-16",
-      "end_date": "2021-09-21",
-      "region": "47093, 47065, 30013, 13179, 18167",
-      "context": "inconsistent cdc test positivity data"
-    },
-    {
       "include": "subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": false,
@@ -319,15 +310,6 @@
       "region": "PA",
       "context": "Disclaimer to note that county level data is prone to undercounting",
       "disclaimer": "Vaccination data for Pennsylvania counties are sourced from the Pennsylvania Department of Health. Note that county-level vaccine data may be under-reported for various reasons including doses being administered without recording county-of-residence information or doses being administered through federal programs that aren't tracked by the state. These limitations do not affect the state-level data, and as a result, there may be inconsistencies between the state-level and county-level metrics."
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-09-22",
-      "end_date": "",
-      "region": "44009",
-      "context": "https://trello.com/c/3Fl74stg/1503-washington-county-ri-anomalous-spike"
     }
   ]
 }
