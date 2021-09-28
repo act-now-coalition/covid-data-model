@@ -97,16 +97,6 @@
       "disclaimer": "The data above reflects data as provided by the CDC. Data for Colorado has been revised multiple times resulting in jumps in the vaccination percentages."
     },
     {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "region": "NE",
-      "context": "Counties not updating - we're using disaggregated health district data now.",
-      "disclaimer": "Nebraska no longer publishes county-level case data and therefore the data above represents case data for the broader health district."
-    },
-    {
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
