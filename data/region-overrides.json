@@ -302,7 +302,7 @@
       "context": "Disclaimer for Hurricane Ida"
     },
     {
-      "include": "subregions",
+      "include": "region-and-subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": false,
       "start_date": "",
@@ -310,6 +310,16 @@
       "region": "PA",
       "context": "Disclaimer to note that county level data is prone to undercounting",
       "disclaimer": "Vaccination data for Pennsylvania counties are sourced from the Pennsylvania Department of Health. Note that county-level vaccine data may be under-reported for various reasons including doses being administered without recording county-of-residence information or doses being administered through federal programs that aren't tracked by the state. These limitations do not affect the state-level data, and as a result, there may be inconsistencies between the state-level and county-level metrics."
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "HI",
+      "disclaimer": "Vaccination data for Hawaii counties are sourced from the State of Hawaii Department of Health. Note that county-level vaccine data may be under-reported for various reasons including doses being administered without recording county-of-residence information or doses being administered through federal programs that aren't tracked by the state. These limitations do not affect the state-level data, and as a result, there may be inconsistencies between the state-level and county-level metrics.",
+      "context": "Disclaimer to note that county level data is prone to undercounting"
     }
   ]
 }
