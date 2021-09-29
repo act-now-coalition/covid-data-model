@@ -328,6 +328,15 @@
       "end_date": "2021-09-20",
       "region": "31109",
       "context": "Block outlier on 9/20 that user complained about."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-09-22",
+      "end_date": "",
+      "context": "https://trello.com/c/3Fl74stg/1503-washington-county-ri-anomalous-spike",
+      "region": "44009"
     }
   ]
 }
