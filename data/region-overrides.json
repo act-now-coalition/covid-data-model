@@ -324,10 +324,10 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-09-21",
-      "end_date": "2021-09-21",
+      "start_date": "2021-09-20",
+      "end_date": "2021-09-20",
       "region": "31109",
-      "context": "Block outlier on 9/21 that user complained about."
+      "context": "Block outlier on 9/20 that user complained about."
     }
   ]
 }
