@@ -319,6 +319,15 @@
       "end_date": "2021-09-20",
       "region": "NE",
       "context": "case reporting spike caused by the re-deployment of county level case data"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-09-21",
+      "end_date": "2021-09-21",
+      "region": "31109",
+      "context": "Block outlier on 9/21 that user complained about."
     }
   ]
 }
