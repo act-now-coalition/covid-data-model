@@ -337,6 +337,15 @@
       "end_date": "",
       "context": "https://trello.com/c/3Fl74stg/1503-washington-county-ri-anomalous-spike",
       "region": "44009"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-09-24",
+      "end_date": "",
+      "region": "34620, 29700, 15003, 25060",
+      "context": "cdc test positivity issue"
     }
   ]
 }
