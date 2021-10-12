@@ -364,6 +364,15 @@
       "end_date": "",
       "region": "30013",
       "context": "cdc test positivity issue"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-10-11",
+      "end_date": "2021-10-11",
+      "region": "UT, VA, GA, ID, IL, NM, MT",
+      "context": "states did not report cases over Indigenous Peoples' Day"
     }
   ]
 }
