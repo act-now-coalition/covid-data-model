@@ -9,7 +9,8 @@ from libs.pipeline import Region
 
 
 def test_read_nytimes_anomalies():
-    nytimes_anomalies.read_nytimes_anomalies()
+    anomalies = nytimes_anomalies.read_nytimes_anomalies()
+    assert anomalies.size > 0
 
 
 def test_filter_nytimes_anomalies_expand_subgeographies():

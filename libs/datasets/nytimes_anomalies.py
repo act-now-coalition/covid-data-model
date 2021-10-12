@@ -90,19 +90,18 @@ def _denormalize_nyt_anomalies(df: pd.DataFrame) -> pd.DataFrame:
     """
 
     # Look for rows with an end_date and create separate rows for each date in the [date, end_date] range.
-    df = df.assign(
-        date=df.apply(
-            lambda row: pd.date_range(
-                row[NYTimesFields.DATE],
-                row[NYTimesFields.DATE]
-                if pd.isna(row[NYTimesFields.END_DATE])
-                else row[NYTimesFields.END_DATE],
-                freq="d",
-            ),
-            axis=1,
-        ),
-        end_date=pd.NaT,
-    ).explode(NYTimesFields.DATE)
+    def date_range_for_row(row: pd.Series):
+        return pd.date_range(
+            row[NYTimesFields.DATE],
+            row[NYTimesFields.DATE]
+            if pd.isna(row[NYTimesFields.END_DATE])
+            else row[NYTimesFields.END_DATE],
+            freq="d",
+        )
+
+    df = df.assign(date=df.apply(date_range_for_row, axis=1), end_date=pd.NaT,).explode(
+        NYTimesFields.DATE
+    )
 
     # Look for state rows with omit_from_rolling_average_on_subgeographies and add new rows for each county within the state
     omit_subgeographies_mask = (
@@ -130,10 +129,10 @@ def _denormalize_nyt_anomalies(df: pd.DataFrame) -> pd.DataFrame:
     return df.reset_index()
 
 
-def filter_by_nyt_anomalies(dataset) -> MultiRegionDataset:
-    """
-    Applies NYT anomalies data, dropping case and death data marked with omit_from_rolling_average
-    and tagging all anomalies.
+def filter_by_nyt_anomalies(dataset: MultiRegionDataset) -> MultiRegionDataset:
+    """Applies NYT anomalies data to case and death series.
+
+    NYT Anomalies marked with omit_from_rolling_average are removed and tagged.
     """
     nyt_anomalies = read_nytimes_anomalies()
 
