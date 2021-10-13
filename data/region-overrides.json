@@ -364,6 +364,15 @@
       "end_date": "",
       "region": "39900, 21060",
       "context": "cdc test positivity issue"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2021-10-09",
+      "end_date": "",
+      "region": "IL",
+      "context": "https://trello.com/c/zoFUqdpi/1505-10-13-21-blocked-illinois-icu-data-due-to-spiking-data"
     }
   ]
 }
