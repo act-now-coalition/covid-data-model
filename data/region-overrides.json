@@ -360,7 +360,7 @@
       "include": "subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
-      "start_date": "",
+      "start_date": "2021-10-13",
       "end_date": "",
       "region": "SD",
       "context": "https://trello.com/c/eVH83UMz/1506-south-dakota-vaccine-scraper-broken"
