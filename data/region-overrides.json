@@ -331,24 +331,6 @@
     },
     {
       "include": "region",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": true,
-      "start_date": "",
-      "end_date": "",
-      "region": "30013",
-      "context": "cdc test positivity issue"
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": true,
-      "start_date": "2021-10-06",
-      "end_date": "",
-      "region": "39900, 21060, 16180, 17860, 30980, 43300, 27620",
-      "context": "cdc test positivity issue"
-    },
-    {
-      "include": "region",
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
       "start_date": "2021-10-09",
@@ -364,6 +346,15 @@
       "end_date": "",
       "region": "SD",
       "context": "https://trello.com/c/eVH83UMz/1506-south-dakota-vaccine-scraper-broken"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-10-12",
+      "end_date": "",
+      "region": "41700,12260,29420,48029",
+      "context": "cdc test positivity issue"
     }
   ]
 }
