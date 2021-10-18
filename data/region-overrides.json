@@ -353,7 +353,7 @@
       "blocked": true,
       "start_date": "2021-10-12",
       "end_date": "",
-      "region": "41700,12260,29420,48029",
+      "region": "41700,12260,29420",
       "context": "cdc test positivity issue"
     }
   ]
