@@ -364,6 +364,33 @@
       "end_date": "",
       "region": "48029",
       "context": "cdc test positivity issue"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-10-18",
+      "end_date": "2021-10-18",
+      "region": "25009, 25003, 16083, 16011",
+      "context": "https://trello.com/c/ymcNQTAI/1507-dnc-volatility-due-to-indigenous-peoples-day-reporting-lag"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-10-18",
+      "end_date": "2021-10-18",
+      "region": "MA, RI, ID",
+      "context": "https://trello.com/c/ymcNQTAI/1507-dnc-volatility-due-to-indigenous-peoples-day-reporting-lag"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-10-18",
+      "end_date": "2021-10-18",
+      "region": "WA",
+      "context": "most WA counties did not report cases for 10/18"
     }
   ]
 }
