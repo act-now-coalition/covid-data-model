@@ -357,8 +357,8 @@
       "context": "cdc test positivity issue"
     },
     {
-      "include": "region",
-      "metric": "metrics.testPositivityRatio",
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
       "start_date": "",
       "end_date": "",
