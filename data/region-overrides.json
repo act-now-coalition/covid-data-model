@@ -355,6 +355,15 @@
       "end_date": "",
       "region": "48029",
       "context": "cdc test positivity issue"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-10-16",
+      "end_date": "",
+      "region": "48135, 02090",
+      "context": "cdc test positivity issue"
     }
   ]
 }
