@@ -364,6 +364,15 @@
       "end_date": "",
       "region": "48135, 02090",
       "context": "cdc test positivity issue"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2021-10-19",
+      "end_date": "",
+      "region": "UT",
+      "context": "https://trello.com/c/TMXRMiWy/1508-ut-icu-capacity-used-spike-10-22-21"
     }
   ]
 }
