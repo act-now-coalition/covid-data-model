@@ -198,6 +198,10 @@ CDC_STATE_EXCLUSIONS = RegionMask(
         "VA",
         "VT",
         "WV",
+        # CDC reporting 0.1% vaccinated
+        "HI",
+        # TODO(sean) 10/23/21: Block TX CDC data until we have a chance to properly QA it
+        "TX",
     ]
 )
 CDCNewVaccinesCountiesWithoutExceptions = datasource_regions(
