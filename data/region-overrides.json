@@ -373,6 +373,15 @@
       "end_date": "",
       "region": "UT",
       "context": "https://trello.com/c/TMXRMiWy/1508-ut-icu-capacity-used-spike-10-22-21"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "HI",
+      "context": "new CDC data is of poor quality, and overrided the state source"
     }
   ]
 }
