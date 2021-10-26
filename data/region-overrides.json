@@ -349,30 +349,12 @@
     },
     {
       "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-10-25",
-      "end_date": "2021-10-25",
-      "region": "CA",
-      "context": "No cases data reported for many counties on 10/26 causing a drop in DNC"
-    },
-    {
-      "include": "region",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-10-19",
       "end_date": "",
       "region": "12086, 12127",
       "context": "CDC test positivity issue"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-10-25",
-      "end_date": "2021-10-25",
-      "region": "06027, 06091, 06103, 06063, 06031, 06007, 06021, 06039, 06089, 06033, 06025, 06009, 06017, 06069, 06079, 06083",
-      "context": "No cases data reported for many counties on 10/26 causing a drop in DNC"
     }
   ]
 }
