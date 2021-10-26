@@ -367,7 +367,7 @@
     },
     {
       "include": "region",
-      "metric": "metrics.testPositivityRatio",
+      "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-10-25",
       "end_date": "2021-10-25",
