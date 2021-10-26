@@ -312,15 +312,6 @@
       "context": "Disclaimer to note that county level data is prone to undercounting"
     },
     {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-09-20",
-      "end_date": "2021-09-20",
-      "region": "NE",
-      "context": "case reporting spike caused by the re-deployment of county level case data"
-    },
-    {
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
