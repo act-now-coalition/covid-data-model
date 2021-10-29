@@ -348,7 +348,7 @@
       "context": "CDC test positivity issue"
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-10-27",
