@@ -47,7 +47,7 @@ class CDCTestingDataset(data_source.CanScraperBase):
         ccd_helpers.ScraperVariable(
             variable_name="pcr_tests_positive",
             measurement="rolling_average_7_day",
-            provider="cdc",
+            provider="cdc2",
             unit="percentage",
             common_field=CommonFields.TEST_POSITIVITY_7D,
         ),
