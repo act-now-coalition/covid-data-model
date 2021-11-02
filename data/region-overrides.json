@@ -374,6 +374,16 @@
       "region": "MN",
       "disclaimer": "On November 1st, 2021, Minnesota added a number of backlogged cases of people who have been infected with Covid multiple times.",
       "context": "MN reporting backlog of reinfections"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "KY",
+      "context": "https://trello.com/c/mUcu0jV5/1512-ky-and-il-vaccine-data-discontinuities-10-30-21",
+      "disclaimer": "On October 28th, 2021, a number of Kentucky vaccine doses were discovered to be duplicated. These doses have since been removed, causing the discontinuities seen in the vaccination metrics."
     }
   ]
 }
