@@ -346,6 +346,34 @@
       "end_date": "2021-10-28",
       "region": "AL",
       "context": "https://trello.com/c/O9vhthuu/1511-al-reporting-backlog-of-cases-on-10-28-and-10-29-2021"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-10-27",
+      "end_date": "",
+      "region": "30013",
+      "context": "cdc test positivity issue"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-11-01",
+      "end_date": "2021-11-01",
+      "region": "CA",
+      "context": "DNC spike caused by a delayed reporting day on 10/25"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "MN",
+      "disclaimer": "On November 1st, 2021, Minnesota added a number of backlogged cases of people who have been infected with Covid multiple times.",
+      "context": "MN reporting backlog of reinfections"
     }
   ]
 }
