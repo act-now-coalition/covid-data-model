@@ -346,6 +346,54 @@
       "end_date": "2021-10-28",
       "region": "AL",
       "context": "https://trello.com/c/O9vhthuu/1511-al-reporting-backlog-of-cases-on-10-28-and-10-29-2021"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-10-27",
+      "end_date": "",
+      "region": "30013, 30063, 29077",
+      "context": "cdc test positivity issue"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "MN",
+      "disclaimer": "On November 1st, 2021, Minnesota added a number of backlogged cases of people who have been infected with Covid multiple times.",
+      "context": "MN reporting backlog of reinfections"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "KY",
+      "context": "https://trello.com/c/mUcu0jV5/1512-ky-and-il-vaccine-data-discontinuities-10-30-21",
+      "disclaimer": "On October 28th, 2021, a number of Kentucky vaccine doses were discovered to be duplicated. These doses have since been removed, causing the discontinuities seen in the vaccination metrics."
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "IL",
+      "disclaimer": "The data above reflects data as provided by the CDC. On October 28th, 2021, data for Illinois was revised, resulting in jumps in the vaccination percentages.",
+      "context": "https://trello.com/c/mUcu0jV5/1512-ky-and-il-vaccine-data-discontinuities-10-30-21"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "2021-10-23",
+      "end_date": "",
+      "region": "SD, GA",
+      "context": "Vaccine scrapers broken 11/02/21"
     }
   ]
 }
