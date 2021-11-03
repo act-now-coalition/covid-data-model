@@ -289,7 +289,7 @@ TEST_POSITIVITY_METHODS = (
     SmoothedTests(recent_days=10),
     # HACK: For now we assume TEST_POSITIVITY_7D came from CDC numbers while
     # TEST_POSITIVITY_14D came from CMS.
-    PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
+    PassThruMethod("CDCTestingHistorical", CommonFields.TEST_POSITIVITY_7D),
     PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY_14D),
     DivisionMethod(
         "positiveTestsViral_totalTestsViral",
