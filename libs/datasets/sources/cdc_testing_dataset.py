@@ -60,6 +60,12 @@ class CDCTestingDataset(data_source.CanScraperBase):
 
 
 class CDCHistoricalTestingDataset(CDCTestingDataset):
+    """Data source connecting to the official CDC test positivity dataset.
+    
+    We prioritize this source over the old CDCTesting source, which scraped data from the CDC's
+    internal API. 
+    """
+
     SOURCE_TYPE = "CDCHistoricalTesting"
 
     VARIABLES = [
