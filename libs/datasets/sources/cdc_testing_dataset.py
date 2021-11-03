@@ -47,7 +47,7 @@ class CDCTestingDataset(data_source.CanScraperBase):
         ccd_helpers.ScraperVariable(
             variable_name="pcr_tests_positive",
             measurement="rolling_average_7_day",
-            provider="cdc2",
+            provider="cdc",
             unit="percentage",
             common_field=CommonFields.TEST_POSITIVITY_7D,
         ),
@@ -57,6 +57,20 @@ class CDCTestingDataset(data_source.CanScraperBase):
     @lru_cache(None)
     def make_dataset(cls) -> MultiRegionDataset:
         return modify_dataset(super().make_dataset())
+
+
+class CDCHistoricalTestingDataset(CDCTestingDataset):
+    SOURCE_TYPE = "CDCHistoricalTesting"
+
+    VARIABLES = [
+        ccd_helpers.ScraperVariable(
+            variable_name="pcr_tests_positive",
+            measurement="rolling_average_7_day",
+            provider="cdc2",
+            unit="percentage",
+            common_field=CommonFields.TEST_POSITIVITY_7D,
+        ),
+    ]
 
 
 def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
