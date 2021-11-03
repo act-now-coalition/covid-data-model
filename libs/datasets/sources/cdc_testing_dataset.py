@@ -59,7 +59,7 @@ class CDCTestingDataset(data_source.CanScraperBase):
         return modify_dataset(super().make_dataset())
 
 
-class CDCHistoricalTestingDataset(data_source.CanScraperBase):
+class CDCHistoricalTestingDataset(CDCTestingDataset):
     """Data source connecting to the official CDC test positivity dataset.
     
     We prioritize this source over the old CDCTesting source, which scraped data from the CDC's
@@ -77,11 +77,6 @@ class CDCHistoricalTestingDataset(data_source.CanScraperBase):
             common_field=CommonFields.TEST_POSITIVITY_7D,
         ),
     ]
-
-    @classmethod
-    @lru_cache(None)
-    def make_dataset(cls) -> MultiRegionDataset:
-        return modify_dataset(super().make_dataset())
 
 
 def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
