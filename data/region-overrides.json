@@ -385,15 +385,6 @@
       "region": "IL",
       "disclaimer": "The data above reflects data as provided by the CDC. On October 28th, 2021, data for Illinois was revised, resulting in jumps in the vaccination percentages.",
       "context": "https://trello.com/c/mUcu0jV5/1512-ky-and-il-vaccine-data-discontinuities-10-30-21"
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "start_date": "2021-10-23",
-      "end_date": "",
-      "region": "SD, GA",
-      "context": "Vaccine scrapers broken 11/02/21"
     }
   ]
 }
