@@ -40,33 +40,10 @@ def remove_trailing_zeros(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-class CDCTestingDataset(data_source.CanScraperBase):
+class CDCHistoricalTestingDataset(data_source.CanScraperBase):
+    """Data source connecting to the official CDC test positivity dataset."""
+
     SOURCE_TYPE = "CDCTesting"
-
-    VARIABLES = [
-        ccd_helpers.ScraperVariable(
-            variable_name="pcr_tests_positive",
-            measurement="rolling_average_7_day",
-            provider="cdc",
-            unit="percentage",
-            common_field=CommonFields.TEST_POSITIVITY_7D,
-        ),
-    ]
-
-    @classmethod
-    @lru_cache(None)
-    def make_dataset(cls) -> MultiRegionDataset:
-        return modify_dataset(super().make_dataset())
-
-
-class CDCHistoricalTestingDataset(CDCTestingDataset):
-    """Data source connecting to the official CDC test positivity dataset.
-    
-    We prioritize this source over the old CDCTesting source, which scraped data from the CDC's
-    internal API. 
-    """
-
-    SOURCE_TYPE = "CDCHistoricalTesting"
 
     VARIABLES = [
         ccd_helpers.ScraperVariable(
@@ -77,6 +54,11 @@ class CDCHistoricalTestingDataset(CDCTestingDataset):
             common_field=CommonFields.TEST_POSITIVITY_7D,
         ),
     ]
+
+    @classmethod
+    @lru_cache(None)
+    def make_dataset(cls) -> MultiRegionDataset:
+        return modify_dataset(super().make_dataset())
 
 
 def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
