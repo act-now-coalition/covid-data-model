@@ -376,6 +376,15 @@
       "region": "IL",
       "disclaimer": "The data above reflects data as provided by the CDC. On October 28th, 2021, data for Illinois was revised, resulting in jumps in the vaccination percentages.",
       "context": "https://trello.com/c/mUcu0jV5/1512-ky-and-il-vaccine-data-discontinuities-10-30-21"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-11-01",
+      "end_date": "2021-11-01",
+      "region": "NH",
+      "context": "DNC Spike on 11/01 due to technical reporting issues"
     }
   ]
 }
