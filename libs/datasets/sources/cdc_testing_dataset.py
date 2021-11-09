@@ -40,14 +40,16 @@ def remove_trailing_zeros(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-class CDCTestingDataset(data_source.CanScraperBase):
+class CDCHistoricalTestingDataset(data_source.CanScraperBase):
+    """Data source connecting to the official CDC test positivity dataset."""
+
     SOURCE_TYPE = "CDCTesting"
 
     VARIABLES = [
         ccd_helpers.ScraperVariable(
             variable_name="pcr_tests_positive",
             measurement="rolling_average_7_day",
-            provider="cdc",
+            provider="cdc2",
             unit="percentage",
             common_field=CommonFields.TEST_POSITIVITY_7D,
         ),

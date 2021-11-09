@@ -32,7 +32,7 @@ from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperCountyProviders
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
-from libs.datasets.sources.cdc_testing_dataset import CDCTestingDataset
+from libs.datasets.sources.cdc_testing_dataset import CDCHistoricalTestingDataset
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
@@ -274,7 +274,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POSITIVE_TESTS: [HHSTestingDataset],
     CommonFields.POSITIVE_TESTS_VIRAL: [CANScraperStateProviders],
     CommonFields.TOTAL_TESTS_VIRAL: [CANScraperStateProviders],
-    CommonFields.TEST_POSITIVITY_7D: [CDCTestingDataset],
+    CommonFields.TEST_POSITIVITY_7D: [CDCHistoricalTestingDataset],
     CommonFields.VACCINES_DISTRIBUTED: [
         CDCVaccinesCountiesDataset,
         CANScraperStateProvidersWithoutFLCounties,

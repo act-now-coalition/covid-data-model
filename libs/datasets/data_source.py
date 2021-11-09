@@ -151,7 +151,7 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
             source_type=cls.SOURCE_TYPE,
         )
         data = rows.unstack(PdFields.VARIABLE)
-        data = cls._check_and_removed_unexpected_data(data)
+        data = cls._check_and_removed_unexpected_data(data).sort_index(ascending=True)
         ds = MultiRegionDataset(timeseries_bucketed=data)
         if not source_df.empty:
             # For each FIPS-VARIABLE pair keep the source_url row with the last DATE.
