@@ -403,6 +403,15 @@
       "end_date": "",
       "region": "NE",
       "context": "No cases reported since 11/10 from cases scraper source"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-11-11",
+      "end_date": "2021-11-11",
+      "context": "Errant report of 0 cases causing DNC to go low.",
+      "region": "ID"
     }
   ]
 }
