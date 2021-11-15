@@ -10,13 +10,9 @@ jobs:
     - name: Checkout covid-data-model
       uses: actions/checkout@v2
     - name: Run Black
-      uses: RojerGS/python-black-check@1.0.1
+      uses: psf/black@stable
       with:
-        # This black github action specifies a default line-length instead of
-        # relying on the pyproject.toml file.  If you're suddenly getting a lot
-        # of black errors, maybe the line-length changed in pyproject.toml and
-        # the below value is out of date?
-        line-length: '100'
+        version: 20.8b1
 
   build:
     env:
