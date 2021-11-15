@@ -155,7 +155,7 @@ JOPLIN_COUNTIES = [
 # and we dissaggregate this data to the county level. In these cases, for NE
 # counties we want to use the CANScraperStateProviders data.
 # When NE does report county data, we prefer to pull from the NYT,
-# so this Region mask might not always be in use.
+# so this region mask might not always be in use.
 NE_COUNTIES = RegionMask(AggregationLevel.COUNTY, states=["NE"])
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
