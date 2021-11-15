@@ -12,7 +12,7 @@ jobs:
     - name: Run Black
       uses: psf/black@stable
       with:
-        version: 20.8b1
+        version: 19.10b0
 
   build:
     env:
