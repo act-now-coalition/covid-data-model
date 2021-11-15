@@ -268,9 +268,9 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-08-18",
-      "end_date": "",
+      "end_date": "2021-10-31",
       "region": "WA",
-      "context": "WA testing data suspiciously high (85% +)"
+      "context": "WA stopped reporting negative tests from 09/01 - 10/31"
     },
     {
       "include": "region",
@@ -394,15 +394,6 @@
       "end_date": "2021-11-09",
       "region": "48245",
       "context": "Spike in cases reported on 11/09/21: https://trello.com/c/ABvkk6l4/1515-jefferson-county-case-spike-11-09-21"
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-11-10",
-      "end_date": "",
-      "region": "NE",
-      "context": "No cases reported since 11/10 from cases scraper source"
     },
     {
       "include": "region",
