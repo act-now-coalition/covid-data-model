@@ -150,9 +150,12 @@ JOPLIN_COUNTIES = [
     Region.from_fips("29145"),
 ]
 
-# 10/26/2021: NE has stopped reporting county case data. We access Health Department level
-# data via the state's API, and we dissaggregate this data to the county level. So, for NE
-# counties we want to use the CANScraperStateProviders data
+# 11/15/2021: NE periodically stops reporting county-level case data.
+# When this occurs, we access Health Department level data via the state's API,
+# and we dissaggregate this data to the county level. In these cases, for NE
+# counties we want to use the CANScraperStateProviders data.
+# When NE does report county data, we prefer to pull from the NYT,
+# so this Region mask might not always be in use.
 NE_COUNTIES = RegionMask(AggregationLevel.COUNTY, states=["NE"])
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
@@ -161,8 +164,7 @@ NE_COUNTIES = RegionMask(AggregationLevel.COUNTY, states=["NE"])
 # reporting done by city, as documented at
 # https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions
 NYTimesDatasetWithoutExceptions = datasource_regions(
-    NYTimesDataset,
-    exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES, NE_COUNTIES],
+    NYTimesDataset, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
 )
 
 CANScraperUSAFactsProviderWithoutNe = datasource_regions(
@@ -239,7 +241,7 @@ CANScraperStateProvidersWithoutFLCounties = datasource_regions(
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CASES: [
         CANScraperStateProviders,
-        CANScraperUSAFactsProviderWithoutNe,
+        CANScraperUSAFactsProvider,
         NYTimesDatasetWithoutExceptions,
     ],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
@@ -256,7 +258,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.DEATHS: [
         CANScraperStateProviders,
-        CANScraperUSAFactsProviderWithoutNe,
+        CANScraperUSAFactsProvider,
         NYTimesDatasetWithoutExceptions,
     ],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
