@@ -411,7 +411,8 @@
       "start_date": "",
       "end_date": "",
       "region": "PA",
-      "context": "CDC seems to be including booster shots as 1st doses. https://www.inquirer.com/health/coronavirus/pennsylvania-vaccination-rate-cdc-data-20211113.html"
+      "context": "CDC seems to be including booster shots as 1st doses. https://www.inquirer.com/health/coronavirus/pennsylvania-vaccination-rate-cdc-data-20211113.html",
+      "disclaimer": "We have received user reports and press articles ([example](https://www.inquirer.com/health/coronavirus/pennsylvania-vaccination-rate-cdc-data-20211113.html) with concerns that the CDC-provided vaccine data is incorrectly including booster shots as 1st-dose shots. We are reaching out to the CDC for clarification. In the meantime, accurate vaccine data is not available."
     },
     {
       "include": "region",
@@ -420,7 +421,8 @@
       "start_date": "",
       "end_date": "",
       "region": "NH",
-      "context": "CDC seems to be including booster shots as 1st doses. https://www.nhpr.org/nh-news/2021-11-04/cdc-covid-booster-nh-data"
+      "context": "CDC seems to be including booster shots as 1st doses. https://www.nhpr.org/nh-news/2021-11-04/cdc-covid-booster-nh-data",
+      "disclaimer": "We have received user reports and press articles ([example](https://www.nhpr.org/nh-news/2021-11-04/cdc-covid-booster-nh-data) with concerns that the CDC-provided vaccine data is incorrectly including booster shots as 1st-dose shots. We are reaching out to the CDC for clarification. In the meantime, accurate vaccine data is not available."
     }
   ]
 }
