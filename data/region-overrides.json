@@ -292,7 +292,7 @@
       "context": "Disclaimer for Hurricane Ida"
     },
     {
-      "include": "region-and-subregions",
+      "include": "subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": false,
       "start_date": "",
@@ -403,6 +403,24 @@
       "end_date": "2021-11-11",
       "context": "Errant report of 0 cases causing DNC to go low.",
       "region": "ID"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "PA",
+      "context": "CDC seems to be including booster shots as 1st doses. https://www.inquirer.com/health/coronavirus/pennsylvania-vaccination-rate-cdc-data-20211113.html"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "NH",
+      "context": "CDC seems to be including booster shots as 1st doses. https://www.nhpr.org/nh-news/2021-11-04/cdc-covid-booster-nh-data"
     }
   ]
 }
