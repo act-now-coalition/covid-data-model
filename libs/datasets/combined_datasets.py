@@ -215,8 +215,16 @@ CDC_STATE_EXCLUSIONS = RegionMask(
         "TX",
     ]
 )
-CDCNewVaccinesCountiesWithoutExceptions = datasource_regions(
+CDCNewVaccinesCompletedCountiesWithoutExceptions = datasource_regions(
     CDCNewVaccinesCountiesDataset, exclude=[CDC_STATE_EXCLUSIONS, *CDC_COUNTY_EXCLUSIONS]
+)
+
+# CDC is missing 1st dose data for many NE counties and where it's not missing it, it's
+# often just barely above 2nd dose data, making it suspicious. So we're just blocking
+# it outright.
+CDCNewVaccinesInitiatedCountiesWithoutExceptions = datasource_regions(
+    CDCNewVaccinesCountiesDataset,
+    exclude=[CDC_STATE_EXCLUSIONS, *CDC_COUNTY_EXCLUSIONS, NE_COUNTIES],
 )
 
 # Excludes FL counties for vaccine fields. See
@@ -293,13 +301,13 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
-        CDCNewVaccinesCountiesWithoutExceptions,
+        CDCNewVaccinesInitiatedCountiesWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_COMPLETED: [
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
-        CDCNewVaccinesCountiesWithoutExceptions,
+        CDCNewVaccinesCompletedCountiesWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,
