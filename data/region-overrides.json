@@ -423,6 +423,24 @@
       "region": "NH",
       "context": "CDC seems to be including booster shots as 1st doses. https://www.nhpr.org/nh-news/2021-11-04/cdc-covid-booster-nh-data",
       "disclaimer": "We have received user reports and press articles ([example](https://www.nhpr.org/nh-news/2021-11-04/cdc-covid-booster-nh-data) with concerns that the CDC-provided vaccine data is incorrectly including booster shots as 1st-dose shots. We are reaching out to the CDC for clarification. In the meantime, accurate vaccine data is not available."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-11-16",
+      "end_date": "2021-11-16",
+      "region": "37133",
+      "context": "Onslow County not reporting cases consistently, causing decreases in DNC"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "2021-11-16",
+      "end_date": "2021-11-16",
+      "region": "WV",
+      "context": "Spike in 1+ dose rate from CDC state-level data"
     }
   ]
 }
