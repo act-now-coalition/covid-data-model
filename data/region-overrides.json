@@ -42,16 +42,6 @@
     },
     {
       "include": "region",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "region": "NH",
-      "disclaimer": "The data above reflects data as provided by the CDC. Data for New Hampshire has been revised multiple times resulting in jumps in the vaccination percentages.",
-      "context": "https://trello.com/c/N9qzPb7Q/1416-put-disclaimer-on-nh-vx-data"
-    },
-    {
-      "include": "region",
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
       "region": "15009",
@@ -412,7 +402,7 @@
       "end_date": "",
       "region": "PA",
       "context": "CDC seems to be including booster shots as 1st doses. https://www.inquirer.com/health/coronavirus/pennsylvania-vaccination-rate-cdc-data-20211113.html",
-      "disclaimer": "We have received user reports and press articles ([example](https://www.inquirer.com/health/coronavirus/pennsylvania-vaccination-rate-cdc-data-20211113.html) with concerns that the CDC-provided vaccine data is incorrectly including booster shots as 1st-dose shots. We are reaching out to the CDC for clarification. In the meantime, accurate vaccine data is not available."
+      "disclaimer": "We have received user reports and press articles ([example](https://www.inquirer.com/health/coronavirus/pennsylvania-vaccination-rate-cdc-data-20211113.html)) with concerns that the CDC-provided vaccine data is incorrectly including booster shots as 1st-dose shots. We are reaching out to the CDC for clarification. In the meantime, accurate vaccine data is not available."
     },
     {
       "include": "region-and-subregions",
@@ -422,7 +412,7 @@
       "end_date": "",
       "region": "NH",
       "context": "CDC seems to be including booster shots as 1st doses. https://www.nhpr.org/nh-news/2021-11-04/cdc-covid-booster-nh-data",
-      "disclaimer": "We have received user reports and press articles ([example](https://www.nhpr.org/nh-news/2021-11-04/cdc-covid-booster-nh-data) with concerns that the CDC-provided vaccine data is incorrectly including booster shots as 1st-dose shots. We are reaching out to the CDC for clarification. In the meantime, accurate vaccine data is not available."
+      "disclaimer": "We have received user reports and press articles ([example](https://www.nhpr.org/nh-news/2021-11-04/cdc-covid-booster-nh-data)) with concerns that the CDC-provided vaccine data is incorrectly including booster shots as 1st-dose shots. We are reaching out to the CDC for clarification. In the meantime, accurate vaccine data is not available."
     },
     {
       "include": "region",
