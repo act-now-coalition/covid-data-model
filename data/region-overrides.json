@@ -438,7 +438,7 @@
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
       "start_date": "2021-11-16",
-      "end_date": "2021-11-16",
+      "end_date": "2021-11-17",
       "region": "WV",
       "context": "Spike in 1+ dose rate from CDC state-level data"
     }
