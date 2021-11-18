@@ -415,7 +415,7 @@
       "disclaimer": "We have received user reports and press articles ([example](https://www.inquirer.com/health/coronavirus/pennsylvania-vaccination-rate-cdc-data-20211113.html) with concerns that the CDC-provided vaccine data is incorrectly including booster shots as 1st-dose shots. We are reaching out to the CDC for clarification. In the meantime, accurate vaccine data is not available."
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
       "start_date": "",
