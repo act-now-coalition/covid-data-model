@@ -449,6 +449,15 @@
       "end_date": "",
       "region": "IL",
       "context": "due to some inconsistent reporting there is effectively 8 days of data in the 7 day window."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-11-19",
+      "end_date": "2021-11-19",
+      "region": "54039",
+      "context": "anamolous spike in new cases"
     }
   ]
 }
