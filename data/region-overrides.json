@@ -451,22 +451,13 @@
       "context": "anamolous spike in new cases"
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-11-20",
-      "end_date": "2021-11-20",
-      "region": "CA",
-      "context": "no new cases reported for 11/20 causing artificial decrease in DNC"
-    },
-    {
-      "include": "subregions",
+      "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-11-20",
       "end_date": "2021-11-20",
       "region": "DE",
-      "context": "anamalous case reporting for 11/20 causing large spikes in DNC"
+      "context": "anomalous case reporting on 11/20 caused spike in DNC"
     }
   ]
 }
