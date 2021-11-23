@@ -451,7 +451,7 @@
       "context": "anamolous spike in new cases"
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-11-20",
