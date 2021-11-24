@@ -458,6 +458,16 @@
       "end_date": "2021-11-20",
       "region": "DE",
       "context": "anomalous case reporting on 11/20 caused spike in DNC"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "ID",
+      "disclaimer": "Idaho provides vaccine data only for vaccine recipients who are 18 years and older, in line with state laws. Since no individuals under 18 from Idaho are included in their data, it is not possible to provide accurate overall vaccine metrics for Idaho or its counties.",
+      "context": "Idaho doesn't provide vaccine data for individuals under 18."
     }
   ]
 }
