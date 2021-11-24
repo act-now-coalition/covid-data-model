@@ -468,6 +468,15 @@
       "region": "ID",
       "disclaimer": "Idaho provides vaccine data only for vaccine recipients who are 18 years and older, in line with state laws. Since no individuals under 18 from Idaho are included in their data, it is not possible to provide accurate overall vaccine metrics for Idaho or its counties.",
       "context": "Idaho doesn't provide vaccine data for individuals under 18."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "29041, 29037, 29097, 29095, 29145, 29047, 29165",
+      "context": "backlog of cases reported on 11/24/2021 after a week of non-reporting."
     }
   ]
 }
