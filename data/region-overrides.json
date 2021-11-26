@@ -423,15 +423,6 @@
       "context": "Spike in 1+ dose rate from CDC state-level data"
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-11-18",
-      "end_date": "",
-      "region": "NH",
-      "context": "due to some inconsistent reporting there is effectively 8 days of data in the 7 day window on 11/19"
-    },
-    {
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
