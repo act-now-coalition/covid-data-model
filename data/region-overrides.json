@@ -458,15 +458,6 @@
       "end_date": "2021-11-24",
       "region": "29041, 29037, 29097, 29095, 29145, 29047, 29165",
       "context": "backlog of cases reported on 11/24/2021 after a week of non-reporting."
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-11-24",
-      "end_date": "2021-11-24",
-      "region": "OH, WY, CA, UT, KS, TX, MN, IL, GA, MD",
-      "context": "states with little or no reporting on Thanksgiving (11/25)"
     }
   ]
 }
