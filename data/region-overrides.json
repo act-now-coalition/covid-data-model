@@ -462,7 +462,7 @@
     {
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
-      "blocked": false,
+      "blocked": true,
       "start_date": "2021-11-24",
       "end_date": "2021-11-27",
       "region": "WY, KS, TX, IL, GA, MD, MI, FL, ID, CA",
@@ -471,7 +471,7 @@
     {
       "include": "subregions",
       "metric": "metrics.caseDensity",
-      "blocked": false,
+      "blocked": true,
       "start_date": "2021-11-25",
       "end_date": "2021-11-27",
       "region": "ME, WV",
