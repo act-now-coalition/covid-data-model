@@ -165,13 +165,16 @@ def test_manual_filter_per_bucket_tag():
     region = Region.from_fips("40031")
     kids = DemographicBucket("age:0-9")
     guys = DemographicBucket("sex:male")
+    all_ = DemographicBucket("all")
     other_data = {
         CommonFields.ICU_BEDS: TimeseriesLiteral([3, 4, 5], annotation=[test_helpers.make_tag()])
     }
-    # kids have real values that will be removed so will have a tag. guys do not and are not
-    # expected to get a tag.
+
+    # NOTE(sean): as of 11-29-2021:
+    # demographic buckets have data but will not be removed, and should have no tag.
+    # non-demographic bucket will have data removed and should have a tag
     ds_in = test_helpers.build_default_region_dataset(
-        {CommonFields.CASES: {kids: [1, 2, 3], guys: [4]}, **other_data},
+        {CommonFields.CASES: {kids: [1, 2, 3], guys: [4], all_: [5, 6, 7]}, **other_data},
         start_date="2021-03-14",
         region=region,
     )
@@ -186,15 +189,15 @@ def test_manual_filter_per_bucket_tag():
     ds_expected = test_helpers.build_default_region_dataset(
         {
             CommonFields.CASES: {
-                kids: TimeseriesLiteral([1], annotation=[tag_expected]),
+                kids: [1, 2, 3],
                 guys: [4],
+                all_: TimeseriesLiteral([5], annotation=[tag_expected]),
             },
             **other_data,
         },
         start_date="2021-03-14",
         region=region,
     )
-
     test_helpers.assert_dataset_like(ds_out, ds_expected)
 
 

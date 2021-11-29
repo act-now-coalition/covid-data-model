@@ -85,7 +85,7 @@ def _partition_by_fields(
     timeseries.check_timeseries_wide_dates_structure(ts_in)
 
     # NOTE(sean): By default we only block non-demographic data. The demographic
-    # data does not reach the website, but is used by partners so we want this to flow through,
+    # data does not reach the website, but is used by partners so we want this to flow through
     # regardless of block status.
     mask_selected_fields = ts_in.index.get_level_values(PdFields.VARIABLE).isin(
         fields
