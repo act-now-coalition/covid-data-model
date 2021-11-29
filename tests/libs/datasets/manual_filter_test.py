@@ -277,12 +277,14 @@ def test_region_overrides_transform_and_filter_blocked_false():
         taglib.TagType.KNOWN_ISSUE_NO_DATE,
         public_note=region_overrides["overrides"][0]["disclaimer"],
     )
+    # NOTE(sean): as of 11-29:
+    # demographic buckets are not blocked, and therefore should not have an annotation tag
     ds_expected = test_helpers.build_dataset(
         {
             region_tx: {
                 CommonFields.CASES: {
                     DemographicBucket.ALL: TimeseriesLiteral([6, 8], annotation=[tag]),
-                    kids: TimeseriesLiteral([1, 2], annotation=[tag]),
+                    kids: [1, 2],
                 },
                 CommonFields.ICU_BEDS: [5, 5],
             },
