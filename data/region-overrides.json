@@ -464,8 +464,8 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-11-24",
-      "end_date": "2021-11-27",
-      "region": "WY, KS, TX, IL, GA, MD, MI, FL, ID, CA",
+      "end_date": "2021-11-28",
+      "region": "KS, TX, GA, MI, FL, CA, IL",
       "context": "Lack of case reporting over Thanksgiving"
     },
     {
@@ -473,8 +473,8 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-11-25",
-      "end_date": "2021-11-27",
-      "region": "ME, WV",
+      "end_date": "2021-11-28",
+      "region": "ME, WV, VT",
       "context": "Lack of county case reporting over the days following Thanksgiving"
     }
   ]
