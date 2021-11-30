@@ -467,6 +467,15 @@
       "end_date": "2021-11-29",
       "context": "ICU capcity used drop-offs",
       "region": "CT, NC, ID, WV"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-11-22",
+      "end_date": "2021-11-22",
+      "region": "29097, 29037, 29095, 29047, 29165, 29145",
+      "context": "USAFacts cases backlog for MO counties on 11/22/21"
     }
   ]
 }
