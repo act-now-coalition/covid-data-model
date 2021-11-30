@@ -467,6 +467,15 @@
       "end_date": "2021-11-28",
       "region": "WV, VT, IL, MI",
       "context": "Lack of county case reporting over the days following Thanksgiving"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2021-11-29",
+      "end_date": "2021-11-29",
+      "context": "ICU capcity used drop-offs",
+      "region": "CT, NC, ID, WV"
     }
   ]
 }
