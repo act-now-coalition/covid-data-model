@@ -83,7 +83,13 @@ def _partition_by_fields(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Partitions a DataFrame with timeseries wide dates into two: fields and others."""
     timeseries.check_timeseries_wide_dates_structure(ts_in)
-    mask_selected_fields = ts_in.index.get_level_values(PdFields.VARIABLE).isin(fields)
+
+    # NOTE(sean): By default we only block non-demographic data. The demographic
+    # data does not reach the website, but is used by partners so we want this to flow through
+    # regardless of block status.
+    mask_selected_fields = ts_in.index.get_level_values(PdFields.VARIABLE).isin(
+        fields
+    ) & ts_in.index.get_level_values(PdFields.DEMOGRAPHIC_BUCKET).isin(["all"])
     ts_selected_fields = ts_in.loc[mask_selected_fields]
     ts_not_selected_fields = ts_in.loc[~mask_selected_fields]
     return ts_selected_fields, ts_not_selected_fields
