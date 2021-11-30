@@ -415,15 +415,6 @@
     },
     {
       "include": "region",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "start_date": "2021-11-16",
-      "end_date": "2021-11-18",
-      "region": "WV",
-      "context": "Spike in 1+ dose rate from CDC state-level data"
-    },
-    {
-      "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-11-19",
