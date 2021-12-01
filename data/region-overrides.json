@@ -447,7 +447,7 @@
       "blocked": true,
       "start_date": "2021-11-25",
       "end_date": "2021-11-28",
-      "region": "KS, TX, GA, MI, FL, CA",
+      "region": "GA",
       "context": "Lack of case reporting over Thanksgiving"
     },
     {
@@ -456,7 +456,7 @@
       "blocked": true,
       "start_date": "2021-11-25",
       "end_date": "2021-11-28",
-      "region": "WV, VT, IL, MI",
+      "region": "WV, VT",
       "context": "Lack of county case reporting over the days following Thanksgiving"
     },
     {
