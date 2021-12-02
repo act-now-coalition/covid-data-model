@@ -476,6 +476,15 @@
       "end_date": "2021-11-22",
       "region": "29097, 29037, 29095, 29047, 29165, 29145",
       "context": "USAFacts cases backlog for MO counties on 11/22/21"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-12-24",
+      "end_date": "",
+      "region": "FL",
+      "context": "FL missed reporting day on Thanksgiving"
     }
   ]
 }
