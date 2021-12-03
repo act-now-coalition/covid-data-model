@@ -456,7 +456,7 @@
       "blocked": true,
       "start_date": "2021-11-29",
       "end_date": "2021-11-29",
-      "region": "WV, VT",
+      "region": "NH,WV, VT",
       "context": "Lack of county case reporting over the days following Thanksgiving"
     },
     {
@@ -494,6 +494,15 @@
       "end_date": "2021-11-29",
       "region": "IL",
       "context": "DNC Spike caused by bulk reporting on 11/29/21"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "2021-12-02",
+      "end_date": "",
+      "region": "WV",
+      "context": "Spike in Vaccination Rate"
     }
   ]
 }
