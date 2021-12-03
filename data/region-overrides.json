@@ -454,8 +454,8 @@
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-11-25",
-      "end_date": "2021-11-28",
+      "start_date": "2021-11-29",
+      "end_date": "2021-11-29",
       "region": "WV, VT",
       "context": "Lack of county case reporting over the days following Thanksgiving"
     },
