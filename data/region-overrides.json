@@ -485,6 +485,15 @@
       "end_date": "",
       "region": "FL",
       "context": "FL missed reporting day on Thanksgiving"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-11-29",
+      "end_date": "2021-11-29",
+      "region": "IL",
+      "context": "DNC Spike caused by bulk reporting on 11/29/21"
     }
   ]
 }
