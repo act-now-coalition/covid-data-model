@@ -454,8 +454,8 @@
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-11-29",
-      "end_date": "2021-11-29",
+      "start_date": "2021-11-28",
+      "end_date": "2021-11-28",
       "region": "NH,WV, VT",
       "context": "Lack of county case reporting over the days following Thanksgiving"
     },
@@ -490,8 +490,8 @@
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-11-29",
-      "end_date": "2021-11-29",
+      "start_date": "2021-11-28",
+      "end_date": "2021-11-28",
       "region": "IL",
       "context": "DNC Spike caused by bulk reporting on 11/29/21"
     },
