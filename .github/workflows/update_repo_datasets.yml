@@ -30,7 +30,7 @@ env:
 
 jobs:
   update-and-promote-datasets:
-    runs-on: self-hosted
+    runs-on: [self-hosted, gce-runner]
     steps:
     - name: Parse covid data model branch name and set env variable
       run: |

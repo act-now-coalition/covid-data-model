@@ -31,7 +31,7 @@ env:
 
   # Used by execute-model (for now) to optimize parallelization on self-hosted
   # runner.
-  COVID_MODEL_CORES: 96
+  COVID_MODEL_CORES: 24
 
   # Used by python code that reports errors to sentry.
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -47,7 +47,7 @@ env:
 
 jobs:
   build-and-publish-snapshot:
-    runs-on: self-hosted
+    runs-on: [self-hosted, gce-runner]
     steps:
     - name: Parse covid data model branch name and set env variable
       run: |
