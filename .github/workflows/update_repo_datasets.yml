@@ -103,20 +103,20 @@ jobs:
     #   run: |
     #     ./run.py data update-availability-report
 
-    - name: Slack notification
-      if: failure()
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
-        STATUS: ${{job.status}}
-      uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
-      with:
-        args: 'update-dataset-snapshot failed'
-    - name: Slack notification
-      if: success()
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
-        STATUS: ${{job.status}}
-        DATA_AVAILABILITY_URL: http://tiny.cc/can-data
-      uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
-      with:
-        args: 'update-dataset-snapshot succeeded. View Data Availability Report at {{DATA_AVAILABILITY_URL}}'
+    # - name: Slack notification
+    #   if: failure()
+    #   env:
+    #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+    #     STATUS: ${{job.status}}
+    #   uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
+    #   with:
+    #     args: 'update-dataset-snapshot failed'
+    # - name: Slack notification
+    #   if: success()
+    #   env:
+    #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+    #     STATUS: ${{job.status}}
+    #     DATA_AVAILABILITY_URL: http://tiny.cc/can-data
+    #   uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
+    #   with:
+    #     args: 'update-dataset-snapshot succeeded. View Data Availability Report at {{DATA_AVAILABILITY_URL}}'
