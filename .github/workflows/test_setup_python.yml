@@ -1,3 +1,7 @@
+name: Test Python Setup on GCE Runner
+
+on: [push]
+
 jobs:
   build:
     runs-on: [self-hosted, gce-runner]
