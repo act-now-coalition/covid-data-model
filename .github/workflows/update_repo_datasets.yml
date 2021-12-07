@@ -58,7 +58,6 @@ jobs:
         python-version: '3.8'
       env:
         AGENT_TOOLSDIRECTORY: /opt/hostedtoolcache
-        RUNNER_TOOL_CACHE: /opt/hostedtoolcache
 
     - name: Cache Pip
       uses: actions/cache@v1
