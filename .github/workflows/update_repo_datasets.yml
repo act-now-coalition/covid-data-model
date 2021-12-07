@@ -53,9 +53,9 @@ jobs:
         ref: '${{env.COVID_DATA_PUBLIC_REF}}'
 
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v1
       with:
-        python-version: '3.7.9'
+        python-version: '3.7'
 
     - name: Cache Pip
       uses: actions/cache@v1
