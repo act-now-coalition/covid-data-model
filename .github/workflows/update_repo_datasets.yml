@@ -55,10 +55,9 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.7.7'
+        python-version: '3.6.9'
       env:
         AGENT_TOOLSDIRECTORY: /opt/hostedtoolcache
-        RUNNER_ALLOW_RUNASROOT: true
 
     - name: Cache Pip
       uses: actions/cache@v1
