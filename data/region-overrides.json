@@ -469,15 +469,6 @@
       "context": "USAFacts cases backlog for MO counties on 11/22/21"
     },
     {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-11-24",
-      "end_date": "",
-      "region": "FL",
-      "context": "FL missed reporting day on Thanksgiving"
-    },
-    {
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
