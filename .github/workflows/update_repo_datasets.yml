@@ -70,10 +70,10 @@ jobs:
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
 
-    # - name: Update and Promote dataset.
-    #   working-directory: ./covid-data-model
-    #   run: |
-    #     ./run.py data update
+    - name: Update and Promote dataset.
+      working-directory: ./covid-data-model
+      run: |
+        ./run.py data update
 
     - name: Create Update Commit
       working-directory: ./covid-data-model
