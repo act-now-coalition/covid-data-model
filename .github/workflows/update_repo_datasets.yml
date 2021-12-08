@@ -55,9 +55,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v1
       with:
-        python-version: '3.8.0'
-      env:
-        AGENT_TOOLSDIRECTORY: /opt/hostedtoolcache
+        python-version: '3.7'
 
     - name: Cache Pip
       uses: actions/cache@v1
