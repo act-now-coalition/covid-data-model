@@ -458,15 +458,6 @@
       "end_date": "",
       "region": "WV",
       "context": "Spike in Vaccination Rate"
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-12-06",
-      "end_date": "",
-      "region": "WI",
-      "context": "No cases reported since 12/03/21 as of 12/08/21"
     }
   ]
 }
