@@ -12,6 +12,7 @@ from covidactnow.datapublic import common_fields
 from api import can_api_v2_definition
 from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
 from libs import series_utils
+from libs.datasets.new_cases_and_deaths import spread_first_reported_value_after_stall
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.metrics import icu_capacity
 
@@ -199,8 +200,9 @@ def calculate_case_density(
     Returns:
         Population cases density.
     """
-    smoothed_daily_cases = _calculate_smoothed_daily_cases(new_cases, smooth=smooth)
-    return smoothed_daily_cases / (population / normalize_by)
+    spread_daily_cases = spread_first_reported_value_after_stall(new_cases)
+    smoothed_spread_daily_cases = _calculate_smoothed_daily_cases(spread_daily_cases, smooth=smooth)
+    return smoothed_spread_daily_cases / (population / normalize_by)
 
 
 def calculate_contact_tracers(

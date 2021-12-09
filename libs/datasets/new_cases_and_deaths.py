@@ -10,11 +10,11 @@ MultiRegionDataset = timeseries.MultiRegionDataset
 
 # TODO(michael): We used to apply special logic to keep the first date's cases
 # as new_cases, but we have removed that.  This function could be removed.
-def _diff_and_apply_backfill(cases: pd.Series):
+def _diff_preserving_first_value(cases: pd.Series):
     # cases is a pd.Series (a 1-D vector) with DATE index
     assert cases.index.names == [CommonFields.DATE]
     new_cases = cases.diff()
-    return spread_first_reported_value_after_stall(new_cases)
+    return new_cases
 
 
 def add_incident_column(
@@ -37,9 +37,9 @@ def add_incident_column(
     # the first day as appropriate new case data.
     # We want as_index=True so that the DataFrame returned by each _diff_preserving_first_value call
     # has the location_id added as an index before being concat-ed.
-    new_cases = wide_dates_var.apply(_diff_and_apply_backfill, axis=1, result_type="reduce").rename(
-        {field_in: field_out}, axis="index", level=PdFields.VARIABLE
-    )
+    new_cases = wide_dates_var.apply(
+        _diff_preserving_first_value, axis=1, result_type="reduce"
+    ).rename({field_in: field_out}, axis="index", level=PdFields.VARIABLE)
 
     # Replacing days with single back tracking adjustments to be 0, reduces
     # number of na days in timeseries
