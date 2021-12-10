@@ -123,6 +123,7 @@ def update(
             ],
         )
         multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
+        _logger.info("Wrote pickle.")
         if print_stats:
             multiregion_dataset.print_stats("combined")
     else:
@@ -132,6 +133,7 @@ def update(
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
     # need to remove CBSAs because they don't exist yet.
+    _logger.info("Aggregating.")
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     region_overrides_config = manual_filter.transform_region_overrides(
         json.load(open(REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
@@ -143,6 +145,7 @@ def update(
         dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH,
         dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH,
     )
+    _logger.info("manual filter ran.")
     if print_stats:
         multiregion_dataset.print_stats("manual filter")
 
