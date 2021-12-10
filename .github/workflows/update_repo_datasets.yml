@@ -70,6 +70,14 @@ jobs:
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
 
+    - name: Hello world
+      working-directory: ./covid-data-model
+      run: echo hello world
+
+    - name: Get Hlep
+      working-directory: ./covid-data-model
+      run: ./run.py --help
+
     - name: Update and Promote dataset.
       working-directory: ./covid-data-model
       run: |
