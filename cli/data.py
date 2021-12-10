@@ -115,10 +115,13 @@ def update(
         )
         _logger.info("Finished combining datasets")
         # HACK(michael): Remove demographic data.
-        multiregion_dataset.timeseries_bucketed = multiregion_dataset.timeseries_bucketed.loc[
-            multiregion_dataset.timeseries_bucketed.index.get_level_values("demographic_bucket")
-            == "all"
-        ]
+        multiregion_dataset = dataclasses.replace(
+            multiregion_dataset,
+            timeseries_bucketed=multiregion_dataset.timeseries_bucketed.loc[
+                multiregion_dataset.timeseries_bucketed.index.get_level_values("demographic_bucket")
+                == "all"
+            ],
+        )
         multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
         if print_stats:
             multiregion_dataset.print_stats("combined")
