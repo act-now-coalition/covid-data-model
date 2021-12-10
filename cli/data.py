@@ -125,12 +125,13 @@ def update(
         )
         multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
         _logger.info("Wrote pickle.")
-        if print_stats:
-            multiregion_dataset.print_stats("combined")
+        multiregion_dataset.print_stats("combined")
+        _logger.info("Wrote stats.")
     else:
         multiregion_dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
             dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH
         )
+        multiregion_dataset.print_stats("testing")
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
     # need to remove CBSAs because they don't exist yet.
@@ -150,15 +151,19 @@ def update(
     if print_stats:
         multiregion_dataset.print_stats("manual filter")
 
+    _logger.info("Dropping observations.")
     multiregion_dataset = timeseries.drop_observations(
         multiregion_dataset, after=datetime.datetime.utcnow().date()
     )
+    _logger.info("Dropped observations.")
 
     multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
+    _logger.info("Dropped tail positivity outliers.")
     if print_stats:
         multiregion_dataset.print_stats("drop_tail")
     # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
     _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
+    _logger.info("Ran tail filter.")
     if print_stats:
         multiregion_dataset.print_stats("TailFilter")
     multiregion_dataset = zeros_filter.drop_all_zero_timeseries(
@@ -170,6 +175,7 @@ def update(
             CommonFields.VACCINATIONS_INITIATED,
         ],
     )
+    _logger.info("Dropped zero timeseries.")
     if print_stats:
         multiregion_dataset.print_stats("zeros_filter")
 
@@ -197,6 +203,7 @@ def update(
     if print_stats:
         multiregion_dataset.print_stats("drop_regions_without_population")
 
+    _logger.info("Aggregating puerto rico from counties.")
     multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
         multiregion_dataset
     )
@@ -209,6 +216,7 @@ def update(
     if print_stats:
         multiregion_dataset.print_stats("replace_dc_county_with_state_data")
 
+    _logger.info("Aggregating CBSAs.")
     cbsa_dataset = aggregator.aggregate(
         multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
     )
@@ -228,7 +236,9 @@ def update(
         if print_stats:
             multiregion_dataset.print_stats("aggregate_to_country")
 
+    _logger.info("Persisting dataset.")
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
+    _logger.info("Persisted dataset.")
     if print_stats:
         multiregion_dataset.print_stats("persist")
 

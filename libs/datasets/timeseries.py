@@ -741,6 +741,9 @@ class MultiRegionDataset:
                 textwrap.indent(by_level.to_string(), "  "),
             ]
         )
+        structlog.get_logger().info(
+            f"Observations in dataset {name}:\n" + textwrap.indent(stats_in_text, "  ")
+        )
         print(f"Observations in dataset {name}:\n" + textwrap.indent(stats_in_text, "  "))
 
     @cached_property
