@@ -70,6 +70,14 @@ jobs:
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
 
+    - name: prune covid-data-model
+      working-directory: ./covid-data-model
+      run: git lfs prune
+
+    - name: prune covid-data-public
+      working-directory: ./covid-data-public
+      run: git lfs prune
+
     - name: df
       working-directory: ./covid-data-model
       run: df
