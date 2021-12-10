@@ -97,6 +97,7 @@ def update(
     state: Optional[str],
     fips: Optional[str],
 ):
+    print_stats = True
     _logger.info("1: update()")
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
