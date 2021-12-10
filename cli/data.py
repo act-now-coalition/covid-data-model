@@ -97,10 +97,12 @@ def update(
     state: Optional[str],
     fips: Optional[str],
 ):
+    _logger.info("1: update()")
     """Updates latest and timeseries datasets to the current checked out covid data public commit"""
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
     if refresh_datasets:
+        _logger.info("2: refresh_datasets")
         timeseries_field_datasets = load_datasets_by_field(
             ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
         )
@@ -112,6 +114,11 @@ def update(
             timeseries_field_datasets, static_field_datasets
         )
         _logger.info("Finished combining datasets")
+        # HACK(michael): Remove demographic data.
+        multiregion_dataset.timeseries_bucketed = multiregion_dataset.timeseries_bucketed.loc[
+            multiregion_dataset.timeseries_bucketed.index.get_level_values("demographic_bucket")
+            == "all"
+        ]
         multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
         if print_stats:
             multiregion_dataset.print_stats("combined")
