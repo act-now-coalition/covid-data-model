@@ -458,6 +458,15 @@
       "end_date": "",
       "region": "WV",
       "context": "Spike in Vaccination Rate"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-12-10",
+      "end_date": "2021-12-10",
+      "region": "12620, 36220",
+      "context": "anomalous case reporting in Penobscot County, ME and Ector County, TX"
     }
   ]
 }
