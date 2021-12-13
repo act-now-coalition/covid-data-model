@@ -442,24 +442,6 @@
       "context": "Idaho doesn't provide vaccine data for individuals under 18."
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-11-25",
-      "end_date": "2021-11-28",
-      "region": "GA",
-      "context": "Lack of case reporting over Thanksgiving"
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-11-28",
-      "end_date": "2021-11-28",
-      "region": "NH,WV, VT,MI,KS,NM",
-      "context": "Lack of county case reporting over the days following Thanksgiving"
-    },
-    {
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
@@ -481,19 +463,28 @@
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-12-06",
-      "end_date": "",
-      "region": "WI",
-      "context": "No cases reported since 12/03/21 as of 12/08/21"
+      "start_date": "2021-12-10",
+      "end_date": "2021-12-10",
+      "region": "12620, 36220",
+      "context": "anomalous case reporting in Penobscot County, ME and Ector County, TX"
     },
     {
-      "include": "subregions",
-      "metric": "metrics.vaccinationsInitiatedRatio",
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-12-07",
+      "start_date": "2021-12-05",
       "end_date": "",
-      "region": "WV",
-      "context": "decrease in vaccination rate after scraper fix on 12/08/21"
+      "region": "MD",
+      "context": "MD not reporting after cyber attack https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-12-12",
+      "end_date": "2021-12-12",
+      "region": "36109",
+      "context": "spike in DNC on 12/13/2021"
     }
   ]
 }
