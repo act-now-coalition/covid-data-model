@@ -476,6 +476,15 @@
       "end_date": "",
       "region": "MD",
       "context": "MD not reporting after cyber attack https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-12-12",
+      "end_date": "2021-12-12",
+      "region": "36109",
+      "context": "spike in DNC on 12/13/2021"
     }
   ]
 }
