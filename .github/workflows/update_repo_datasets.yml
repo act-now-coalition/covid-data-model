@@ -73,7 +73,7 @@ jobs:
     - name: Update and Promote dataset.
       working-directory: ./covid-data-model
       run: |
-        ./run.py data update
+        echo "hello world" > data/foo.txt
 
     - name: Create Update Commit
       working-directory: ./covid-data-model
