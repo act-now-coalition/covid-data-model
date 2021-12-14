@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "15d5539afc45228077ae297d9b1b4d4de507a536",
+    "sha": "de9827fdcf0df0793ea5adac54e09bc00f42b774",
     "branch": "main",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "ae8b6b6174da1ed561d2cec9c38491940e802cc6",
+    "sha": "1b96388b84a5fb2071e10a8bb3fa43734785fb14",
     "branch": "smcclure17-test-gce-runner",
     "is_dirty": true
   },
-  "updated_at": "2021-12-13T22:13:50.639437"
+  "updated_at": "2021-12-14T23:20:46.640807"
 }
