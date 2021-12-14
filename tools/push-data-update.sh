@@ -8,4 +8,4 @@ git config --local user.email "action@github.com"
 git config --local user.name "GitHub Action"
 git add -A data
 git commit -m "Updating saved datasets at $now"
-GIT_TRACE=1 GIT_CURL_VERBOSE=1 git push "https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF}
+GIT_TRACE=1 GIT_CURL_VERBOSE=1 git push "https://${PAT}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF}
