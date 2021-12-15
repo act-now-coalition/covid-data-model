@@ -106,12 +106,12 @@ jobs:
 
 #     - name: Build API (run.sh .. .. execute_api)
 #       run: |
-#         ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
+#         ./covid-data-model/run.sh ./covid-data-public ./data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
 
     - name: make and copy to local tmp directory
       run: |
         mkdir -p ./tmp/data/
-        cp -r /data/api-results-${{env.SNAPSHOT_ID}}/ ./tmp/data/
+        cp -r ./data/api-results-2690/ ./tmp/data/
 
 #     - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
 #       uses: jakejarvis/s3-sync-action@master
