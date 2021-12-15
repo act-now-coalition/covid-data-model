@@ -487,15 +487,6 @@
       "context": "spike in DNC on 12/13/2021"
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2021-12-13",
-      "end_date": "2021-12-13",
-      "region": "WI",
-      "context": "WI reported 2 days of case data on 12/08, causing a spike in DNC on 12/13 b/c 8 days of case data were in the 7-day-window."
-    },
-    {
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
