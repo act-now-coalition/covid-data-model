@@ -90,52 +90,52 @@ jobs:
       working-directory: ./covid-data-model
       run: git lfs pull
 
-    - name: Build Model Results (run.sh .. .. execute_model)
-      run: |
-        ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
+#     - name: Build Model Results (run.sh .. .. execute_model)
+#       run: |
+#         ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
 
-    - name: Zip Model Results (run.sh .. .. execute_zip_folder)
-      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
+#     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
+#       run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
 
-    - name: Upload Raw Data QA and Model Results
-      uses: actions/upload-artifact@v2-preview
-      with:
-        name: model-results-${{env.SNAPSHOT_ID}}
-        path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
+#     - name: Upload Raw Data QA and Model Results
+#       uses: actions/upload-artifact@v2-preview
+#       with:
+#         name: model-results-${{env.SNAPSHOT_ID}}
+#         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
 
 
-    - name: Build API (run.sh .. .. execute_api)
-      run: |
-        ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
+#     - name: Build API (run.sh .. .. execute_api)
+#       run: |
+#         ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
 
     - name: make and copy to local tmp directory
       run: |
         mkdir -p ./tmp/data/
         cp -r /data/api-results-${{env.SNAPSHOT_ID}}/ ./tmp/data/
 
-    - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
-      uses: jakejarvis/s3-sync-action@master
-      with:
-        args: --acl public-read --follow-symlinks
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        SOURCE_DIR: './tmp/data/api-results-${{env.SNAPSHOT_ID}}/'
-        DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}/'
+#     - name: Deploy Artifacts to S3 (https://data.covidactnow.org/snapshot/${{env.SNAPSHOT_ID}}/).
+#       uses: jakejarvis/s3-sync-action@master
+#       with:
+#         args: --acl public-read --follow-symlinks
+#       env:
+#         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#         SOURCE_DIR: './tmp/data/api-results-${{env.SNAPSHOT_ID}}/'
+#         DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}/'
 
-    - name: remove local tmp directory and local data build
-      run: |
-        rm -rf ./tmp/data/
-        # /data is a persistent volume on our build machines that does not get
-        # automatically cleaned up.
-        rm -r /data/api-results-${{env.SNAPSHOT_ID}}
+#     - name: remove local tmp directory and local data build
+#       run: |
+#         rm -rf ./tmp/data/
+#         # /data is a persistent volume on our build machines that does not get
+#         # automatically cleaned up.
+#         rm -r /data/api-results-${{env.SNAPSHOT_ID}}
 
-    - name: Trigger website PR generation if main branch build
-      env:
-        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
-      run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
+#     - name: Trigger website PR generation if main branch build
+#       env:
+#         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+#       run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
 
-    - name: Trigger Label API if main branch build
-      env:
-        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
-      run: ./covid-data-model/tools/maybe-trigger-label-api.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}}
+#     - name: Trigger Label API if main branch build
+#       env:
+#         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+#       run: ./covid-data-model/tools/maybe-trigger-label-api.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}}
