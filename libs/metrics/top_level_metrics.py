@@ -191,7 +191,7 @@ def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7):
         return new_cases
 
     new_cases = new_cases.copy()
-    # NOTE(sean) 12/15/2021: When applying ...
+    # NOTE(sean) 12/15/2021: When applying ... (ADD MORE EXPLANATION)
     # After a certain number of days (7 by default) we consider trailing
     # series of zeroes to be real data and not a reporting lag.
     # After this threshold we no longer remove the trailing zeroes.
