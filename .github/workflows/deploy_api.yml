@@ -123,12 +123,12 @@ jobs:
 #         SOURCE_DIR: './tmp/data/api-results-${{env.SNAPSHOT_ID}}/'
 #         DEST_DIR: 'snapshot/${{env.SNAPSHOT_ID}}/'
 
-#     - name: remove local tmp directory and local data build
-#       run: |
-#         rm -rf ./tmp/data/
-#         # /data is a persistent volume on our build machines that does not get
-#         # automatically cleaned up.
-#         rm -r /data/api-results-${{env.SNAPSHOT_ID}}
+    - name: remove local tmp directory and local data build
+      run: |
+        rm -rf ./tmp/data/
+        # /data is a persistent volume on our build machines that does not get
+        # automatically cleaned up.
+        rm -r /data/api-results
 
 #     - name: Trigger website PR generation if main branch build
 #       env:
