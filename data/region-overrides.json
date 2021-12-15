@@ -503,6 +503,24 @@
       "end_date": "",
       "region": "DC",
       "context": "DC not reporting data since 12/10 causing dropoff in DNC"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-12-14",
+      "end_date": "2021-12-14",
+      "region": "39061",
+      "context": "Blocking case metric for Hamilton County, OH (NY Times reported an anomaly) on Dec 14th."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "24021",
+      "context": "ICU capacity has been sitting at 100% for a while. That said, looks like they only have 15 ICU beds (Dec 14th)"
     }
   ]
 }
