@@ -453,12 +453,12 @@
     {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": false,
+      "blocked": true,
       "start_date": "",
       "end_date": "",
       "region": "WV",
       "context": "Spike in Vaccination Rate",
-      "disclaimer": "The metric above reflects data as provided by the CDC. Data for West Virginia has been revised multiple times resulting in jumps in the vaccination percentages."
+      "disclaimer": ""
     },
     {
       "include": "region-and-subregions",
