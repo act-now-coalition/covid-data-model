@@ -85,7 +85,7 @@ def spread_first_reported_value_after_stall(
     if not (series > 0).any():
         return series
 
-    # Counting consecutive zeros and include NaN as a "zero value"
+    # Counting consecutive zeros including NaN as a "zero value"
     zeros = series.isin([0, None])
     zeros_count = zeros.cumsum()
 
