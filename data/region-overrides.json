@@ -500,15 +500,6 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-12-11",
-      "end_date": "",
-      "region": "DC",
-      "context": "DC not reporting data since 12/10 causing dropoff in DNC"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "2021-12-14",
       "end_date": "2021-12-14",
       "region": "39061",
