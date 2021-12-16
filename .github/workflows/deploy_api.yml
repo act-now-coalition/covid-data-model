@@ -47,7 +47,7 @@ env:
 
 jobs:
   build-and-publish-snapshot:
-    runs-on: [self-hosted, gce-runner] 
+    runs-on: self-hosted
     steps:
     - name: Parse covid data model branch name and set env variable
       run: |
