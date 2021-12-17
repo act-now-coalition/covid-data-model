@@ -518,19 +518,10 @@
       "include": "region",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
-      "start_date": "2021-12-09",
-      "end_date": "",
-      "region": "24510",
-      "context": "Baltimore volatile reporting after cyber attack https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "2021-12-13",
       "end_date": "2021-12-13",
-      "region": "DC",
-      "context": "blocking 12/13/21 to remove stalled data reporting on 12/14 that was causing issues with the DNC rate"
+      "region": "24510",
+      "context": "Huge >40% spike on 2021-12-13"
     }
   ]
 }
