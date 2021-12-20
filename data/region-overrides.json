@@ -476,7 +476,8 @@
       "start_date": "2021-12-05",
       "end_date": "",
       "region": "MD",
-      "context": "MD not reporting after cyber attack https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html"
+      "context": "MD not reporting after cyber attack https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html",
+      "disclaimer": "Due to technical issues, the Maryland Department of Health has been unable to report new cases since December 4th."
     },
     {
       "include": "region",
@@ -532,6 +533,16 @@
       "disclaimer": "We have received reports with concerns that the CDC-provided vaccine data is inaccurately overestimating the number of vaccinated individuals in this location. We are investigating this issue. In the meantime, accurate vaccine data is not available.",
       "context": "suspiciously high vaccination rates presumably caused by incorrect counting of booster doses",
       "region": "37135, 37183, 06025"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "47900",
+      "disclaimer": "Due to technical issues, the Maryland Department of Health has been unable to report new cases since December 4th. As a result, up-to-date data for the Washington DC metropolitan area is unavailable.",
+      "context": "DC metro data missing because of MD technical issue"
     }
   ]
 }
