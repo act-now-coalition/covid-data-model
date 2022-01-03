@@ -101,7 +101,7 @@ def test_calculate_case_density():
         cases, pop, smooth=smooth, normalize_by=every_ten
     )
     pd.testing.assert_series_equal(
-        density, _series_with_date_index([0.0, 0.0, 1.0, 3.0, 5.0, 6, None, 6]),
+        density, _series_with_date_index([0.0, 0.0, 1.0, 3.0, 5.0, 6.0, None, 6.0]),
     )
 
 

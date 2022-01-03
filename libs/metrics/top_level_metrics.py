@@ -149,15 +149,15 @@ def _lookup_test_positivity_method(
     return method
 
 
-def _remove_trailing_zeros(series: pd.Series, stall_length: int = 7) -> pd.Series:
+def _remove_trailing_zeros_until_threshold(series: pd.Series, stall_length: int = 7) -> pd.Series:
 
     series = pd.Series(series.values.copy(), index=series.index.get_level_values(CommonFields.DATE))
     last_nonzero_index = series.loc[series != 0].last_valid_index()
     last_index = series.last_valid_index()
 
-    # if data has been zero for at least stall_length days then
+    # If data has been zero for at least stall_length days then
     # we consider the data reported to be actual zeros instead of a reporting stall.
-    # In this case, we do not want to remove the trailing zeros.
+    # When this is the case we do not want to remove the trailing zeros.
     if (last_index - last_nonzero_index) >= pd.to_timedelta(stall_length, unit="day"):
         return series
 
@@ -191,11 +191,15 @@ def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7):
         return new_cases
 
     new_cases = new_cases.copy()
-    # NOTE(sean) 12/15/2021: When applying ... (ADD MORE EXPLANATION)
+    # NOTE(sean) 12/15/2021: When spread_first_reported_value_after_stall is applied,
+    # the timeseries for locations with non-daily (e.g. weekly) reporting cadences are
+    # pulled towards zero in between reporting days. This is because the backfilling removes some of the
+    # weekly cases out of the 7-day window. To combat this, we remove trailing zeros from the data.
+
     # After a certain number of days (7 by default) we consider trailing
     # series of zeros to be real data and not a reporting lag.
     # After this threshold we no longer remove the trailing zeros.
-    new_cases = _remove_trailing_zeros(new_cases)
+    new_cases = _remove_trailing_zeros_until_threshold(new_cases)
 
     # Front filling all cases with 0s.  We're assuming all regions are accurately
     # reporting the first day a new case occurs.  This will affect the first few cases
