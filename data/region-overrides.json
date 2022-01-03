@@ -474,7 +474,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-12-27",
-      "end_date": "2022-01-27",
+      "end_date": "2021-12-27",
       "region": "MD",
       "context": "remove backlog reporting after cyber attack https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html",
       "disclaimer": ""
