@@ -82,14 +82,20 @@ def spread_first_reported_value_after_stall(
             over max_days_to_spread and the remaining zeros will be kept as
             zeros.
     """
+
+    # Treat NaN values as zeros. This means if a day is blocked,
+    # the following day will be spread over the missing day
+    # series = series.fillna(0)
+
     if not (series > 0).any():
         return series
 
-    # Counting consecutive zeros including NaN as a "zero value"
-    zeros = series.isin([0, None])
+    # Counting consecutive zeros
+    zeros = series == 0
     zeros_count = zeros.cumsum()
 
     stalled_days_count = zeros_count.sub(zeros_count.mask(zeros).ffill().fillna(0))
+    print(stalled_days_count)
 
     # Add one more day for spreading on first report after zeros
     first_report_after_zeros = (series != 0) & (series.shift(1) == 0)
