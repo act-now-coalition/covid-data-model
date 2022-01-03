@@ -92,8 +92,8 @@ def test_calculate_case_density():
     """
     It should use population, smoothing and a normalizing factor to calculate case density.
     """
-    cases = _series_with_date_index([56, 68, 68, 11, 37, 32, 73, 103, 109, 105, None, 182, 238])
-    pop = 100000
+    cases = _series_with_date_index([1785, 0, 0, 0, 0, 0, 0, 1864, 0, 0, 0, 0, 0, 0, None, 3272])
+    pop = 640000
     every_ten = 100000
     smooth = 7
 
