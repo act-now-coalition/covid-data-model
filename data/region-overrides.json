@@ -562,15 +562,6 @@
       "region": "36061",
       "context": "New York County vaccination rate near 100%. Either boosters or non-residents seem to be included in data",
       "disclaimer": "We have received reports with concerns that the CDC-provided vaccine data is inaccurately overestimating the number of vaccinated individuals in this location. We are investigating this issue. In the meantime, accurate vaccine data is not available."
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
-      "start_date": "",
-      "end_date": "",
-      "region": "CA",
-      "context": "https://trello.com/c/PpwYmOSe/1518-ca-county-vax-rates-dropped-to-tiny-values"
     }
   ]
 }
