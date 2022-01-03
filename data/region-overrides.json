@@ -470,13 +470,14 @@
       "context": "anomalous case reporting in Penobscot County, ME and Ector County, TX"
     },
     {
-      "include": "region-and-subregions",
+      "include": "subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2021-12-05",
-      "end_date": "",
+      "start_date": "2021-12-27",
+      "end_date": "2022-01-27",
       "region": "MD",
-      "context": "MD not reporting after cyber attack https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html"
+      "context": "remove backlog reporting after cyber attack https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html",
+      "disclaimer": ""
     },
     {
       "include": "region",
@@ -513,6 +514,63 @@
       "end_date": "",
       "region": "24021",
       "context": "ICU capacity has been sitting at 100% for a while. That said, looks like they only have 15 ICU beds (Dec 14th)"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2021-12-13",
+      "end_date": "2021-12-13",
+      "region": "24510",
+      "context": "Huge >40% spike on 2021-12-13"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "disclaimer": "We have received reports with concerns that the CDC-provided vaccine data is inaccurately overestimating the number of vaccinated individuals in this location. We are investigating this issue. In the meantime, accurate vaccine data is not available.",
+      "context": "suspiciously high vaccination rates presumably caused by incorrect counting of booster doses",
+      "region": "37135, 37183, 06025"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "47900",
+      "disclaimer": "Due to technical issues, the Maryland Department of Health has been unable to report new cases since December 4th. As a result, up-to-date data for the Washington DC metropolitan area is unavailable.",
+      "context": "DC metro data missing because of MD technical issue"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-12-19",
+      "end_date": "2021-12-19",
+      "region": "MD",
+      "context": "blocking backlog of cases reported after cyber attack stall https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "36061",
+      "context": "New York County vaccination rate near 100%. Either boosters or non-residents seem to be included in data",
+      "disclaimer": "We have received reports with concerns that the CDC-provided vaccine data is inaccurately overestimating the number of vaccinated individuals in this location. We are investigating this issue. In the meantime, accurate vaccine data is not available."
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "CA",
+      "context": "https://trello.com/c/PpwYmOSe/1518-ca-county-vax-rates-dropped-to-tiny-values"
     }
   ]
 }
