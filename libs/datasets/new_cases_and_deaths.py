@@ -82,13 +82,12 @@ def spread_first_reported_value_after_stall(
             over max_days_to_spread and the remaining zeros will be kept as
             zeros.
     """
-
     if not (series > 0).any():
         return series
 
     # Remove NaN values from backfill calculations.
     # We will re-add the NaN indices at the end,
-    # this way NaN values due not have cases spread to them and they do
+    # this way NaN values do not have cases spread to them and they do
     # not reset stalled_days_count
     empty_dates = series[series.isna()]
     series = series.dropna()
