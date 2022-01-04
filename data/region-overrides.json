@@ -474,7 +474,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2021-12-27",
-      "end_date": "2022-01-27",
+      "end_date": "2021-12-27",
       "region": "MD",
       "context": "remove backlog reporting after cyber attack https://www.baltimoresun.com/coronavirus/bs-md-maryland-department-of-health-cyberattack-covid-numbers-20211208-jowfs4kes5aprd7y3yzzp5o4je-story.html",
       "disclaimer": ""
@@ -564,13 +564,14 @@
       "disclaimer": "We have received reports with concerns that the CDC-provided vaccine data is inaccurately overestimating the number of vaccinated individuals in this location. We are investigating this issue. In the meantime, accurate vaccine data is not available."
     },
     {
-      "include": "subregions",
+      "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
       "start_date": "",
       "end_date": "",
-      "region": "CA",
-      "context": "https://trello.com/c/PpwYmOSe/1518-ca-county-vax-rates-dropped-to-tiny-values"
+      "region": "35620",
+      "disclaimer": "We have received reports with concerns that the CDC-provided vaccine data is inaccurately overestimating the number of vaccinated individuals in this location. We are investigating this issue. In the meantime, accurate vaccine data is not available.",
+      "context": "https://trello.com/c/hDOIWdM4/133-add-disclaimer-to-nyc-metro-too"
     }
   ]
 }
