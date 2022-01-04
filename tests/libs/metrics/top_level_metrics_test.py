@@ -92,16 +92,35 @@ def test_calculate_case_density():
     """
     It should use population, smoothing, zero-backfilling, and a normalizing factor to calculate case density.
     """
-    cases = _series_with_date_index([0, 0, 20, 40, 60, 0, None, 120])
+    cases = _series_with_date_index([0, 0, 20, 40, 60, 0, None, 120, 0, 0])
     pop = 100
     every_ten = 10
     smooth = 2
+    truncate_threshold = 3
 
     density = top_level_metrics.calculate_case_density(
-        cases, pop, smooth=smooth, normalize_by=every_ten
+        cases, pop, smooth=smooth, normalize_by=every_ten, stall_length=truncate_threshold
     )
     pd.testing.assert_series_equal(
         density, _series_with_date_index([0.0, 0.0, 1.0, 3.0, 5.0, 6.0, None, 6.0]),
+    )
+
+
+def test_calculate_case_density_trailing_zeros():
+    """
+    It should calculate case density without removing trailing zeros due to the stall_length threshold.
+    """
+    cases = _series_with_date_index([0, 0, 20, 40, 60, 0, 0, 0])
+    pop = 100
+    every_ten = 10
+    smooth = 2
+    truncate_threshold = 3
+
+    density = top_level_metrics.calculate_case_density(
+        cases, pop, smooth=smooth, normalize_by=every_ten, stall_length=truncate_threshold
+    )
+    pd.testing.assert_series_equal(
+        density, _series_with_date_index([0.0, 0.0, 1.0, 3.0, 5.0, 3.0, 0, 0]),
     )
 
 
