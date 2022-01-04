@@ -12,6 +12,7 @@ from covidactnow.datapublic import common_fields
 from api import can_api_v2_definition
 from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
 from libs import series_utils
+from libs.datasets.new_cases_and_deaths import spread_first_reported_value_after_stall
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.metrics import icu_capacity
 
@@ -148,6 +149,22 @@ def _lookup_test_positivity_method(
     return method
 
 
+def _remove_trailing_zeros_until_threshold(series: pd.Series, stall_length: int) -> pd.Series:
+
+    series = pd.Series(series.values.copy(), index=series.index.get_level_values(CommonFields.DATE))
+    last_nonzero_index = series.loc[series != 0].last_valid_index()
+    last_index = series.last_valid_index()
+
+    # If data has been zero for at least stall_length days then
+    # we consider the data reported to be actual zeros instead of a reporting stall.
+    # When this is the case we do not want to remove the trailing zeros.
+    if (last_index - last_nonzero_index) >= pd.to_timedelta(stall_length, unit="day"):
+        return series
+
+    series[last_nonzero_index + pd.DateOffset(1) :] = None
+    return series
+
+
 def copy_test_positivity(
     dataset_in: OneRegionTimeseriesDataset, log,
 ) -> Tuple[pd.Series, TestPositivityRatioDetails]:
@@ -168,12 +185,21 @@ def copy_test_positivity(
     return test_positivity, TestPositivityRatioDetails(source=method)
 
 
-def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7):
+def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7, stall_length: int = 10):
 
     if new_cases.first_valid_index() is None:
         return new_cases
 
     new_cases = new_cases.copy()
+    # NOTE(sean) 12/15/2021: When spread_first_reported_value_after_stall is applied,
+    # the timeseries for locations with non-daily (e.g. weekly) reporting cadences are
+    # pulled towards zero in between reporting days. This is because the backfilling removes some of the
+    # weekly cases out of the 7-day window. To combat this, we remove trailing zeros from the data.
+
+    # After a certain number of days (10 by default) we consider trailing
+    # zeros to be real data and not a reporting lag.
+    # After this threshold we no longer remove the trailing zeros.
+    new_cases = _remove_trailing_zeros_until_threshold(new_cases, stall_length)
 
     # Front filling all cases with 0s.  We're assuming all regions are accurately
     # reporting the first day a new case occurs.  This will affect the first few cases
@@ -186,7 +212,11 @@ def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7):
 
 
 def calculate_case_density(
-    new_cases: pd.Series, population: int, smooth: int = 7, normalize_by: int = 100_000
+    new_cases: pd.Series,
+    population: int,
+    smooth: int = 7,
+    normalize_by: int = 100_000,
+    stall_length: int = 10,
 ) -> pd.Series:
     """Calculates normalized daily case density.
 
@@ -195,12 +225,17 @@ def calculate_case_density(
         population: Population.
         smooth: days to smooth data.
         normalized_by: Normalize data by a constant.
+        stall_length: Days worth of trailing zeros to truncate.
 
     Returns:
         Population cases density.
     """
-    smoothed_daily_cases = _calculate_smoothed_daily_cases(new_cases, smooth=smooth)
-    return smoothed_daily_cases / (population / normalize_by)
+
+    spread_cases = spread_first_reported_value_after_stall(new_cases)
+    smoothed_spread_daily_cases = _calculate_smoothed_daily_cases(
+        spread_cases, smooth=smooth, stall_length=stall_length
+    )
+    return smoothed_spread_daily_cases / (population / normalize_by)
 
 
 def calculate_contact_tracers(

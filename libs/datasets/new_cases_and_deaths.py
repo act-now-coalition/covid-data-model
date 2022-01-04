@@ -85,6 +85,13 @@ def spread_first_reported_value_after_stall(
     if not (series > 0).any():
         return series
 
+    # Remove NaN values from backfill calculations.
+    # We will re-add the NaN indices at the end,
+    # this way NaN values do not have cases spread to them and they do not reset stalled_days_count.
+    # NaNs are created from data blocked through manual region overrides and outlier detection.
+    empty_dates = series[series.isna()]
+    series = series.dropna()
+
     # Counting consecutive zeros
     zeros = series == 0
     zeros_count = zeros.cumsum()
@@ -125,4 +132,5 @@ def spread_first_reported_value_after_stall(
     series[zeros_to_replace] = None
     series[is_between_first_last_case] = series[is_between_first_last_case].bfill()
 
-    return series
+    # Re-insert NaN values into the timeseries in their proper locations
+    return series.combine_first(empty_dates)
