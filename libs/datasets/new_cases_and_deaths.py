@@ -87,8 +87,8 @@ def spread_first_reported_value_after_stall(
 
     # Remove NaN values from backfill calculations.
     # We will re-add the NaN indices at the end,
-    # this way NaN values do not have cases spread to them and they do
-    # not reset stalled_days_count
+    # this way NaN values do not have cases spread to them and they do not reset stalled_days_count.
+    # NaNs are created from data blocked through manual region overrides and outlier detection.
     empty_dates = series[series.isna()]
     series = series.dropna()
 
