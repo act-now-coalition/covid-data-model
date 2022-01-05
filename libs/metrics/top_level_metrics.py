@@ -155,6 +155,9 @@ def _remove_trailing_zeros_until_threshold(series: pd.Series, stall_length: int)
     last_nonzero_index = series.loc[series != 0].last_valid_index()
     last_index = series.last_valid_index()
 
+    if last_nonzero_index is None:
+        return series
+
     # If data has been zero for at least stall_length days then
     # we consider the data reported to be actual zeros instead of a reporting stall.
     # When this is the case we do not want to remove the trailing zeros.
