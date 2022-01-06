@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "45ef7ca13b47cecd9ba8eeef9049f61e8c91fa06",
+    "sha": "4f33f6dbaa659728003f91f458857e4a28134959",
     "branch": "main",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "e02f1fe94903a3d1d566c157b83c49ed6f250a1d",
-    "branch": "main",
+    "sha": "07b40c2364961a82aaa33083c0f228677209d128",
+    "branch": "smcclure17-cap-vaccinations",
     "is_dirty": true
   },
-  "updated_at": "2022-01-06T12:44:02.266142"
+  "updated_at": "2022-01-06T21:05:34.424528"
 }
