@@ -20,8 +20,13 @@ MOST_RECENT_DATE = "most_recent_date"
 # at least this "lookback days" threshold.
 APPLY_BACKFILL_LOOKBACK_DAYS = 15
 
+# Limit the vaccination rate to at most this value
+MAX_VACCINATION_PERCENTAGE = 95
 
-def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
+
+def derive_vaccine_pct(
+    ds_in: MultiRegionDataset, cap_percentage: bool = True
+) -> MultiRegionDataset:
     """Returns a new dataset with vaccination percentage metrics derived from their
     corresponding non-percentage fields where the percentage metric is missing or less fresh."""
     field_map = {
@@ -67,6 +72,12 @@ def derive_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:
         .droplevel(MOST_RECENT_DATE)
     )
     most_recent_pcts = combined_pcts.loc[~combined_pcts.index.duplicated(keep="last")]
+
+    # Cap the vaccination rate at some level to prevent percentages from going over 100% and to block bad data
+    if cap_percentage:
+        most_recent_pcts[
+            most_recent_pcts.gt(MAX_VACCINATION_PERCENTAGE)
+        ] = MAX_VACCINATION_PERCENTAGE
 
     # Double check that there is no overlap between the time series in most_recent_pcts and
     # ts_in_without_pcts.
