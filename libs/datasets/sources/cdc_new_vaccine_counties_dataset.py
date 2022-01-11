@@ -33,7 +33,7 @@ class CDCNewVaccinesCountiesDataset(data_source.CanScraperBase):
             common_field=CommonFields.VACCINES_ADMINISTERED,
         ),
         ccd_helpers.ScraperVariable(
-            variable_name="total_vaccine_initiated",
+            variable_name="total_vaccine_additional_dose",
             measurement="cumulative",
             unit="people",
             provider="cdc2",
