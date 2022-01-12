@@ -32,7 +32,6 @@ jobs:
   update-and-promote-datasets:
     runs-on: self-hosted
     steps:
-
     - name: Parse covid data model branch name and set env variable
       run: |
         echo "COVID_DATA_MODEL_REF=${GITHUB_REF##*/}" >> $GITHUB_ENV
@@ -53,10 +52,9 @@ jobs:
         lfs: true
         ref: '${{env.COVID_DATA_PUBLIC_REF}}'
 
-    - name: Update NYTimes anomalies file
-      working-directory: ./covid-data-model
-      run: |
-        echo "test"
+    # - name: Update NYTimes anomalies file
+    #   working-directory: ./covid-data-model
+    #   run: |
         # curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/nyt_anomalies.csv
 
     - name: Setup Python
