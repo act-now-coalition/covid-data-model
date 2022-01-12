@@ -1,10 +1,24 @@
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets import data_source
+from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
-class HHSTestingDataset(data_source.DataSource):
+class HHSTestingDataset(data_source.CanScraperBase):
     SOURCE_TYPE = "HHSTesting"
 
-    COMMON_DF_CSV_PATH = "data/testing-hhs/timeseries-common.csv"
-
-    EXPECTED_FIELDS = [CommonFields.NEGATIVE_TESTS, CommonFields.POSITIVE_TESTS]
+    VARIABLES = [
+        ccd_helpers.ScraperVariable(
+            variable_name="pcr_tests_negative",
+            measurement="cumulative",
+            unit="specimens",
+            provider="hhs",
+            common_field=CommonFields.NEGATIVE_TESTS,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="pcr_tests_positive",
+            measurement="cumulative",
+            unit="specimens",
+            provider="hhs",
+            common_field=CommonFields.POSITIVE_TESTS,
+        ),
+    ]

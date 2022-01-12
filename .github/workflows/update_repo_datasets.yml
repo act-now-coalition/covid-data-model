@@ -30,8 +30,13 @@ env:
 
 jobs:
   update-and-promote-datasets:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest  # just for testing, revert to self-hosted
     steps:
+
+    - name: Update NYTimes anomalies file
+      run: |
+         curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/anomalies.csv
+
     - name: Parse covid data model branch name and set env variable
       run: |
         echo "COVID_DATA_MODEL_REF=${GITHUB_REF##*/}" >> $GITHUB_ENV
@@ -78,29 +83,29 @@ jobs:
       working-directory: ./covid-data-public
       run: git lfs prune
 
-    - name: Update and Promote dataset.
-      working-directory: ./covid-data-model
-      run: |
-        ./run.py data update
+    # - name: Update and Promote dataset.
+    #   working-directory: ./covid-data-model
+    #   run: |
+    #     ./run.py data update
 
     - name: Create Update Commit
       working-directory: ./covid-data-model
       run: ./tools/push-data-update.sh
 
-    - name: Maybe Trigger API build
-      if: env.TRIGGER_API_BUILD == 'true'
-      working-directory: ./covid-data-model
-      env:
-        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
-      run: |
-        ./tools/build-snapshot.sh main
-    - name: Slack notification
-      if: env.TRIGGER_API_BUILD == 'true'
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
-      uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
-      with:
-        args: 'Started new API build from dataset updater action.'
+    # - name: Maybe Trigger API build
+    #   if: env.TRIGGER_API_BUILD == 'true'
+    #   working-directory: ./covid-data-model
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+    #   run: |
+    #     ./tools/build-snapshot.sh main
+    # - name: Slack notification
+    #   if: env.TRIGGER_API_BUILD == 'true'
+    #   env:
+    #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+    #   uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
+    #   with:
+    #     args: 'Started new API build from dataset updater action.'
 
     # TODO(https://trello.com/c/4dFFtQiH/1239-fix-data-availability-report-or-officially-replace-it-with-toms-dashboard)
     # - name: Update Data Availability Sheet
@@ -108,20 +113,20 @@ jobs:
     #   run: |
     #     ./run.py data update-availability-report
 
-    - name: Slack notification
-      if: failure()
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
-        STATUS: ${{job.status}}
-      uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
-      with:
-        args: 'update-dataset-snapshot failed'
-    - name: Slack notification
-      if: success()
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
-        STATUS: ${{job.status}}
-        DATA_AVAILABILITY_URL: http://tiny.cc/can-data
-      uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
-      with:
-        args: 'update-dataset-snapshot succeeded. View Data Availability Report at {{DATA_AVAILABILITY_URL}}'
+    # - name: Slack notification
+    #   if: failure()
+    #   env:
+    #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+    #     STATUS: ${{job.status}}
+    #   uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
+    #   with:
+    #     args: 'update-dataset-snapshot failed'
+    # - name: Slack notification
+    #   if: success()
+    #   env:
+    #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+    #     STATUS: ${{job.status}}
+    #     DATA_AVAILABILITY_URL: http://tiny.cc/can-data
+    #   uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
+    #   with:
+    #     args: 'update-dataset-snapshot succeeded. View Data Availability Report at {{DATA_AVAILABILITY_URL}}'
