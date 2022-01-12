@@ -111,7 +111,10 @@ def test_data_source_make_dataset(tmpdir):
 
 
 @pytest.mark.skip(
-    reason="01/12/2022: NYTimesDataset now reads from the Parquet file, reducing the usefulness of this test."
+    reason=(
+        "01/12/2022: NYTimesDataset now reads from the Parquet file"
+        "making this test redundant to test_data_source_truncates_dates_can_scraper"
+    )
 )
 def test_data_source_truncates_dates():
     df = test_helpers.read_csv_str(
