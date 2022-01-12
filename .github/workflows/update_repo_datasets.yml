@@ -45,11 +45,6 @@ jobs:
         ref: '${{env.COVID_DATA_MODEL_REF}}'
         lfs: true
 
-    - name: Update NYTimes anomalies file
-      run: |
-        working-directory: ./covid-data-model
-        curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/anomalies.csv
-
     - name: Checkout covid-data-public
       uses: actions/checkout@v2
       with:
@@ -57,6 +52,11 @@ jobs:
         path: covid-data-public
         lfs: true
         ref: '${{env.COVID_DATA_PUBLIC_REF}}'
+
+    - name: Update NYTimes anomalies file
+      working-directory: ./covid-data-model
+      run: |
+        curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/anomalies.csv
 
     - name: Setup Python
       uses: actions/setup-python@v2
