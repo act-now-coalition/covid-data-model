@@ -13,16 +13,6 @@
     {
       "include": "subregions",
       "metric": "metrics.caseDensity",
-      "region": "CA",
-      "context": "[michael] https://www.cdph.ca.gov/Programs/CID/DCDC/Pages/COVID-19/COVID19CountyMonitoringOverview.aspx",
-      "disclaimer": "Note that our daily new cases per 100k metric is different than the \"adjusted case rate\" metric used by California for determining reopening tier assignments. Their adjusted case rate is adjusted to account for testing levels.",
-      "blocked": false,
-      "start_date": "",
-      "end_date": ""
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
       "region": "TX",
       "context": "https://twitter.com/TexasDSHS/status/1407806450135666699",
       "disclaimer": "Texas DSHS: This week's increase in new cases is due to some catch-up in case reporting by counties",
