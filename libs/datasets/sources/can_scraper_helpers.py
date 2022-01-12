@@ -277,9 +277,6 @@ class CanScraperLoader:
     def load() -> "CanScraperLoader":
         """Returns a CanScraperLoader which holds data loaded from the CAN Scraper."""
 
-        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        input_path = data_root / PARQUET_PATH
-
-        all_df = pd.read_parquet(input_path)
+        all_df = pd.read_parquet(PARQUET_PATH)
 
         return CanScraperLoader(all_df)
