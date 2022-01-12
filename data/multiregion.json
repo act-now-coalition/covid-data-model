@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "111c473d76248dec68db98005e12ac737e71bfcc",
+    "sha": "51acc916f32287b4dedff1b0055c597e11ef3e5b",
     "branch": "main",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "dac95fb24184e854e806b32b528460c9fcb5e410",
+    "sha": "918d19104c455ca23315a1da3f00b19bc06660fb",
     "branch": "smcclure17-booster-patch",
     "is_dirty": true
   },
-  "updated_at": "2022-01-12T00:40:58.523330"
+  "updated_at": "2022-01-12T21:39:37.211501"
 }
