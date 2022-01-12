@@ -19,9 +19,7 @@ from libs.datasets import dataset_utils
 MultiRegionDataset = timeseries.MultiRegionDataset
 
 
-NYTIMES_ANOMALIES_CSV = dataset_utils.LOCAL_PUBLIC_DATA_PATH / pathlib.Path(
-    "data/cases-nytimes/anomalies.csv"
-)
+NYTIMES_ANOMALIES_CSV = dataset_utils.REPO_ROOT / "data/nyt_anomalies.csv"
 
 
 @enum.unique
