@@ -11,6 +11,7 @@ from libs.datasets import timeseries
 from libs.datasets.combined_datasets import provenance_wide_metrics_to_series
 
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
+from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 
 from libs.pipeline import Region
@@ -72,7 +73,7 @@ def test_get_county_name():
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "data_source_cls", [NYTimesDataset,],
+    "data_source_cls", [HHSTestingDataset,],
 )
 def test_unique_timeseries(data_source_cls):
     dataset = data_source_cls.make_dataset()
@@ -86,7 +87,7 @@ def test_unique_timeseries(data_source_cls):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "data_source_cls", [NYTimesDataset],
+    "data_source_cls", [HHSTestingDataset],
 )
 def test_expected_field_in_sources(data_source_cls):
     dataset = data_source_cls.make_dataset()
