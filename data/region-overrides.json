@@ -13,16 +13,6 @@
     {
       "include": "subregions",
       "metric": "metrics.caseDensity",
-      "region": "CA",
-      "context": "[michael] https://www.cdph.ca.gov/Programs/CID/DCDC/Pages/COVID-19/COVID19CountyMonitoringOverview.aspx",
-      "disclaimer": "Note that our daily new cases per 100k metric is different than the \"adjusted case rate\" metric used by California for determining reopening tier assignments. Their adjusted case rate is adjusted to account for testing levels.",
-      "blocked": false,
-      "start_date": "",
-      "end_date": ""
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
       "region": "TX",
       "context": "https://twitter.com/TexasDSHS/status/1407806450135666699",
       "disclaimer": "Texas DSHS: This week's increase in new cases is due to some catch-up in case reporting by counties",
@@ -562,6 +552,16 @@
       "end_date": "",
       "region": "CA",
       "context": "Dropoff in ICU % (81% -> 34%)"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "ID",
+      "disclaimer": "We have received [reports](https://apnews.com/article/coronavirus-pandemic-lifestyle-health-public-health-idaho-96b67c8d8c5c733aa68b1fe3fa8408e0) that Idaho is significantly under-reporting cases due to an inability to keep up with the current volume. We don't have accurate case counts to report at this time.",
+      "context": "https://apnews.com/article/coronavirus-pandemic-lifestyle-health-public-health-idaho-96b67c8d8c5c733aa68b1fe3fa8408e0"
     }
   ]
 }
