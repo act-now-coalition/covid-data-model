@@ -33,11 +33,6 @@ jobs:
     runs-on: ubuntu-latest  # just for testing, revert to self-hosted
     steps:
 
-    - name: Update NYTimes anomalies file
-      run: |
-        working-directory: ./covid-data-model
-        curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/anomalies.csv
-
     - name: Parse covid data model branch name and set env variable
       run: |
         echo "COVID_DATA_MODEL_REF=${GITHUB_REF##*/}" >> $GITHUB_ENV
@@ -49,6 +44,11 @@ jobs:
         path: covid-data-model
         ref: '${{env.COVID_DATA_MODEL_REF}}'
         lfs: true
+
+    - name: Update NYTimes anomalies file
+      run: |
+        working-directory: ./covid-data-model
+        curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/anomalies.csv
 
     - name: Checkout covid-data-public
       uses: actions/checkout@v2
