@@ -56,7 +56,8 @@ jobs:
     - name: Update NYTimes anomalies file
       working-directory: ./covid-data-model
       run: |
-        curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/nyt_anomalies.csv
+        echo "test"
+        # curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/nyt_anomalies.csv
 
     - name: Setup Python
       uses: actions/setup-python@v2
