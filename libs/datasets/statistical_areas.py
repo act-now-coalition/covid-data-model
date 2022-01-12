@@ -11,7 +11,7 @@ from libs.datasets import dataset_utils
 from libs.datasets import region_aggregation
 from libs.pipeline import Region
 
-CBSA_LIST_PATH = "data/census-msa/list1_2020.xls"
+CBSA_LIST_PATH = "data/misc/list1_2020.xls"
 
 
 CBSA_COLUMN = "CBSA"
@@ -58,7 +58,7 @@ class CountyToCBSAAggregator:
     def from_local_public_data() -> "CountyToCBSAAggregator":
         """Creates a new object using data in the covid-data-public repo."""
         df = pd.read_excel(
-            dataset_utils.LOCAL_PUBLIC_DATA_PATH / CBSA_LIST_PATH,
+            dataset_utils.REPO_ROOT / CBSA_LIST_PATH,
             header=2,
             convert_float=False,
             dtype={"FIPS State Code": str, "FIPS County Code": str},
