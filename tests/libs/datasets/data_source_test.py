@@ -73,6 +73,9 @@ def test_can_scraper_returns_source_url(reverse_observation_order):
     ]
 
 
+@pytest.mark.skip(
+    reason="01/12/2022: NYTimesDataset now reads from the Parquet file, rendering this obsolete."
+)
 def test_data_source_make_dataset(tmpdir):
     # Make a new subclass to keep this test separate from others in the make_dataset lru_cache.
     class NYTimesForTest(nytimes_dataset.NYTimesDataset):
@@ -107,6 +110,12 @@ def test_data_source_make_dataset(tmpdir):
     test_helpers.assert_dataset_like(dataset_expected, dataset_read)
 
 
+@pytest.mark.skip(
+    reason=(
+        "01/12/2022: NYTimesDataset now reads from the Parquet file"
+        "making this test redundant to test_data_source_truncates_dates_can_scraper"
+    )
+)
 def test_data_source_truncates_dates():
     df = test_helpers.read_csv_str(
         "fips,      date,cases,deaths\n"

@@ -21,7 +21,9 @@ from libs.datasets.demographics import DistributionBucket
 
 # Airflow jobs output a single parquet file with all of the data - this is where
 # it is currently stored.
-PARQUET_PATH = "data/can-scrape/can_scrape_api_covid_us.parquet"
+PARQUET_PATH = (
+    "https://storage.googleapis.com/can-scrape-outputs/final/can_scrape_api_covid_us.parquet"
+)
 
 
 _logger = structlog.getLogger()
@@ -275,9 +277,6 @@ class CanScraperLoader:
     def load() -> "CanScraperLoader":
         """Returns a CanScraperLoader which holds data loaded from the CAN Scraper."""
 
-        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
-        input_path = data_root / PARQUET_PATH
-
-        all_df = pd.read_parquet(input_path)
+        all_df = pd.read_parquet(PARQUET_PATH)
 
         return CanScraperLoader(all_df)
