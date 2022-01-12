@@ -2,14 +2,14 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "data_git_info": {
-    "sha": "a0d34dbde936c785be4b5052d64c1a297ecc2e69",
+    "sha": "51acc916f32287b4dedff1b0055c597e11ef3e5b",
     "branch": "main",
     "is_dirty": false
   },
   "model_git_info": {
-    "sha": "2bb0c4c3748564b32f0402651b1dffb6c4e7066f",
-    "branch": "main",
+    "sha": "7f74da9ebac6463e87ce8efca3506d6a86ba5d4a",
+    "branch": "smcclure17-nyt-hhs-from-scraper",
     "is_dirty": true
   },
-  "updated_at": "2022-01-12T16:21:15.281530"
+  "updated_at": "2022-01-12T23:53:52.654250"
 }
