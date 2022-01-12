@@ -215,7 +215,6 @@ CDC_STATE_EXCLUSIONS = RegionMask(
         "TX",
     ]
 )
-CDCNewVaccinesCompletedCountiesWithoutExceptions = datasource_regions(CDCNewVaccinesCountiesDataset)
 
 # CDC is missing 1st dose data for many NE counties and where it's not missing it, it's
 # often just barely above 2nd dose data, making it suspicious. So we're just blocking
