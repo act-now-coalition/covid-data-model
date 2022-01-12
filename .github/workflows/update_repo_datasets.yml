@@ -35,7 +35,7 @@ jobs:
 
     - name: Update NYTimes anomalies file
       run: |
-         curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/anomalies.csv
+         curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output ../../data/anomalies.csv
 
     - name: Parse covid data model branch name and set env variable
       run: |
