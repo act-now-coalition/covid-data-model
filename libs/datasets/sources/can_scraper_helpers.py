@@ -21,7 +21,9 @@ from libs.datasets.demographics import DistributionBucket
 
 # Airflow jobs output a single parquet file with all of the data - this is where
 # it is currently stored.
-PARQUET_PATH = "data/can-scrape/can_scrape_api_covid_us.parquet"
+PARQUET_PATH = (
+    "https://storage.googleapis.com/can-scrape-outputs/final/can_scrape_api_covid_us.parquet"
+)
 
 
 _logger = structlog.getLogger()

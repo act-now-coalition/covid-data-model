@@ -74,6 +74,9 @@ def test_get_county_name():
 @pytest.mark.parametrize(
     "data_source_cls", [NYTimesDataset,],
 )
+@pytest.mark.skip(
+    reason="01/12/2022: NYTimesDataset now reads from Parquet file, reducing the usefulness of this test."
+)
 def test_unique_timeseries(data_source_cls):
     dataset = data_source_cls.make_dataset()
     # Check for duplicate rows with the same INDEX_FIELDS. Sort by index so duplicates are next to
