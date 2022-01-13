@@ -309,6 +309,10 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CDCVaccinesStatesAndNationDataset,
         CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
     ],
+    CommonFields.VACCINATIONS_ADDITIONAL_DOSE: [
+        CDCVaccinesStatesAndNationDataset,
+        CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
+    ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
@@ -318,6 +322,10 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperCountyProviders,
     ],
     CommonFields.VACCINATIONS_COMPLETED_PCT: [
+        CDCVaccinesStatesAndNationDataset,
+        CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
+    ],
+    CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [
         CDCVaccinesStatesAndNationDataset,
         CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
     ],
