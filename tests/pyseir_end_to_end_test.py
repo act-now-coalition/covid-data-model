@@ -19,7 +19,7 @@ import pytest
 def test_pyseir_end_to_end_idaho(tmp_path):
     # This covers a lot of edge cases.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
-        fips = "16001"
+        fips = "06037"
         region = Region.from_fips(fips)
 
         # prepare data
