@@ -97,6 +97,7 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
         vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
         vaccinationsInitiated=actual_data.get(CommonFields.VACCINATIONS_INITIATED),
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
+        vaccinationsAdditionalDose=actual_data.get(CommonFields.VACCINATIONS_ADDITIONAL_DOSE),
         vaccinesAdministered=actual_data.get(CommonFields.VACCINES_ADMINISTERED),
         vaccinesAdministeredDemographics=vaccines_administered_demographics,
         vaccinationsInitiatedDemographics=vaccines_initiated_demographics,
@@ -149,6 +150,7 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
     "vaccinesDistributed": CommonFields.VACCINES_DISTRIBUTED,
     "vaccinationsInitiated": CommonFields.VACCINATIONS_INITIATED,
     "vaccinationsCompleted": CommonFields.VACCINATIONS_COMPLETED,
+    "vaccinationsAdditionalDose": CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
 }
 
 
@@ -160,6 +162,7 @@ METRICS_NAME_TO_COMMON_FIELD = {
     "infectionRateCI90": CommonFields.CASES,
     "vaccinationsInitiatedRatio": CommonFields.VACCINATIONS_INITIATED_PCT,
     "vaccinationsCompletedRatio": CommonFields.VACCINATIONS_COMPLETED_PCT,
+    "vaccinationsAdditionalDoseRatio": CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT,
     "icuCapacityRatio": CommonFields.CURRENT_ICU,
 }
 
