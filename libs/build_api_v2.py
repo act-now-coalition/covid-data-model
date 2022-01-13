@@ -273,7 +273,7 @@ def build_region_timeseries(
             del actual["vaccinesDistributed"]
             del actual["vaccinationsInitiated"]
             del actual["vaccinationsCompleted"]
-            del actual["vaccinationsAdditionalDoseRatio"]
+            del actual["vaccinationsAdditionalDose"]
 
         timeseries_row = ActualsTimeseriesRow(**actual, date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
