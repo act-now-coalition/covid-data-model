@@ -1,6 +1,9 @@
 name: Update combined datasets
 
 on:
+  schedule:
+    # Run job everyday at 2:00 am EST
+    - cron: '0 8 * * *'
   # This workflow is automatically triggered by
   # https://github.com/covid-projections/covid-data-public/blob/main/.github/workflows/update_data.yml
   # after covid-data-public datasets have been updated.
@@ -8,7 +11,7 @@ on:
     inputs:
       trigger_api_build:
         description: 'If "true" API snapshot build will be triggered after dataset update.'
-        default: 'false'
+        default: 'true'
 
 env:
   # To pin to an old data sets, put the branch/tag/commit here:
