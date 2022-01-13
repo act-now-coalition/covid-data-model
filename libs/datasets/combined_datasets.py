@@ -322,8 +322,9 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperCountyProviders,
     ],
     CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [
-        CDCVaccinesStatesAndNationDataset,
-        CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
+        # We don't collect any % booster data.
+        # But, we want to include this so that the
+        # % data will be calculated from the raw data.
     ],
 }
 
