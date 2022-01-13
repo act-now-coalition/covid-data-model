@@ -170,6 +170,7 @@ def test_top_level_metrics_basic():
         CommonFields.ICU_BEDS: [None, None, None, None],
         CommonFields.VACCINATIONS_INITIATED_PCT: [1, 2, None, 3],
         CommonFields.VACCINATIONS_COMPLETED_PCT: [0.1, 0.2, None, 0.3],
+        CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [0.1, 0.2, None, 0.3],
     }
     latest = {
         CommonFields.POPULATION: 100_000,
@@ -191,6 +192,7 @@ def test_top_level_metrics_basic():
         contactTracerCapacityRatio=[0.02, 0.04, None, None],
         vaccinationsInitiatedRatio=[0.01, 0.02, None, 0.03],
         vaccinationsCompletedRatio=[0.001, 0.002, None, 0.003],
+        vaccinationsAdditionalDoseRatio=[0.001, 0.002, None, 0.003],
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -206,6 +208,7 @@ def test_top_level_metrics_rounding():
         CommonFields.ICU_BEDS: [None, None, None],
         CommonFields.VACCINATIONS_INITIATED_PCT: [33.3333, 66.666, 100],
         CommonFields.VACCINATIONS_COMPLETED_PCT: [33.3333, 66.6666, 100],
+        CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [33.3333, 66.6666, 100],
     }
     latest = {
         CommonFields.POPULATION: 100_000,
@@ -227,6 +230,7 @@ def test_top_level_metrics_rounding():
         contactTracerCapacityRatio=[0.2, 0.4, 0.36],
         vaccinationsInitiatedRatio=[0.333, 0.667, 1],
         vaccinationsCompletedRatio=[0.333, 0.667, 1],
+        vaccinationsAdditionalDoseRatio=[0.333, 0.667, 1],
     )
     pd.testing.assert_frame_equal(expected, results)
 

@@ -44,6 +44,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     ICU_CAPACITY_RATIO = "icuCapacityRatio"
     VACCINATIONS_INITIATED_RATIO = "vaccinationsInitiatedRatio"
     VACCINATIONS_COMPLETED_RATIO = "vaccinationsCompletedRatio"
+    VACCINATIONS_ADDITIONAL_DOSE_RATIO = "vaccinationsAdditionalDoseRatio"
 
 
 # These precisions should be inline with
@@ -61,6 +62,7 @@ METRIC_ROUNDING_PRECISION = {
     MetricsFields.ICU_CAPACITY_RATIO: 2,
     MetricsFields.VACCINATIONS_INITIATED_RATIO: 3,
     MetricsFields.VACCINATIONS_COMPLETED_RATIO: 3,
+    MetricsFields.VACCINATIONS_ADDITIONAL_DOSE_RATIO: 3,
 }
 
 
@@ -110,6 +112,13 @@ def calculate_metrics_for_timeseries(
         / 100.0
     )
 
+    vaccines_additional_dose_ratio = (
+        common_df.get_timeseries(
+            timeseries.date_indexed, CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT, EMPTY_TS
+        )
+        / 100.0
+    )
+
     top_level_metrics_data = {
         CommonFields.FIPS: fips,
         MetricsFields.CASE_DENSITY_RATIO: case_density,
@@ -120,6 +129,7 @@ def calculate_metrics_for_timeseries(
         MetricsFields.ICU_CAPACITY_RATIO: icu_capacity_ratio,
         MetricsFields.VACCINATIONS_INITIATED_RATIO: vaccines_initiated_ratio,
         MetricsFields.VACCINATIONS_COMPLETED_RATIO: vaccines_completed_ratio,
+        MetricsFields.VACCINATIONS_ADDITIONAL_DOSE_RATIO: vaccines_additional_dose_ratio,
     }
     metrics = pd.DataFrame(top_level_metrics_data)
     metrics = metrics.round(METRIC_ROUNDING_PRECISION)

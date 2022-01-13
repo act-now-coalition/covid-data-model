@@ -273,6 +273,7 @@ def build_region_timeseries(
             del actual["vaccinesDistributed"]
             del actual["vaccinationsInitiated"]
             del actual["vaccinationsCompleted"]
+            del actual["vaccinationsAdditionalDoseRatio"]
 
         timeseries_row = ActualsTimeseriesRow(**actual, date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
@@ -284,6 +285,7 @@ def build_region_timeseries(
         if metric_row[CommonFields.DATE] < USA_VACCINATION_START_DATE:
             del metric_row["vaccinationsInitiatedRatio"]
             del metric_row["vaccinationsCompletedRatio"]
+            del metric_row["vaccinationsAdditionalDoseRatio"]
         metrics_rows.append(MetricsTimeseriesRow(**metric_row))
 
     risk_level_rows = [
