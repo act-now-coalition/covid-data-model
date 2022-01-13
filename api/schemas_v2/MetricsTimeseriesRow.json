@@ -109,6 +109,18 @@
         }
       ]
     },
+    "vaccinationsAdditionalDoseRatio": {
+      "title": "Vaccinationsadditionaldoseratio",
+      "description": "Ratio of population that are fully vaccinated and received a booster (additional) dose.",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "date": {
       "title": "Date",
       "description": "Date of timeseries data point",

@@ -103,7 +103,6 @@ def test_build_summary_for_fips(
             vaccinesAdministered=nyc_latest["vaccines_administered"],
             vaccinationsInitiated=nyc_latest["vaccinations_initiated"],
             vaccinationsCompleted=nyc_latest.get("vaccinations_completed"),
-            vaccinationsAdditionalDose=nyc_latest.get("vaccinations_additional_dose"),
             vaccinesAdministeredDemographics=None,
             vaccinesInitiatedDemographics=None,
         ),
@@ -146,9 +145,6 @@ def test_build_summary_for_fips(
                 sources=[field_source_cdcvaccine], anomalies=[],
             ),
             vaccinationsInitiated=FieldAnnotations(
-                sources=[field_source_cdcvaccine], anomalies=[],
-            ),
-            vaccinationsAdditionalDose=FieldAnnotations(
                 sources=[field_source_cdcvaccine], anomalies=[],
             ),
             caseDensity=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),

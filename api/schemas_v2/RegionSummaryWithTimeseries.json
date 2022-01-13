@@ -327,6 +327,18 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinationsAdditionalDoseRatio": {
+          "title": "Vaccinationsadditionaldoseratio",
+          "description": "Ratio of population that are fully vaccinated and received a booster (additional) dose.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -678,6 +690,18 @@
             }
           ]
         },
+        "vaccinationsAdditionalDose": {
+          "title": "Vaccinationsadditionaldose",
+          "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "vaccinesAdministered": {
           "title": "Vaccinesadministered",
           "description": "Total number of vaccine doses administered.",
@@ -963,6 +987,15 @@
             }
           ]
         },
+        "vaccinationsAdditionalDose": {
+          "title": "Vaccinationsadditionaldose",
+          "description": "Annotations for vaccinationsAdditionalDose",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
         "vaccinesAdministered": {
           "title": "Vaccinesadministered",
           "description": "Annotations for vaccinesAdministered",
@@ -1038,6 +1071,15 @@
         "vaccinationsCompletedRatio": {
           "title": "Vaccinationscompletedratio",
           "description": "Annotations for vaccinationsCompletedRatio",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinationsAdditionalDoseRatio": {
+          "title": "Vaccinationsadditionaldoseratio",
+          "description": "Ratio of population that are fully vaccinated and received a booster (additional) dose.",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"
@@ -1148,6 +1190,18 @@
         "vaccinationsCompletedRatio": {
           "title": "Vaccinationscompletedratio",
           "description": "Ratio of population that has completed vaccination.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vaccinationsAdditionalDoseRatio": {
+          "title": "Vaccinationsadditionaldoseratio",
+          "description": "Ratio of population that are fully vaccinated and received a booster (additional) dose.",
           "anyOf": [
             {
               "type": "number"
@@ -1308,6 +1362,18 @@
         "vaccinationsCompleted": {
           "title": "Vaccinationscompleted",
           "description": "\nNumber of vaccinations completed.\n\nThis value may vary by type of vaccine, but for Moderna and Pfizer this indicates\nnumber of people vaccinated with both the first and second dose.\n",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vaccinationsAdditionalDose": {
+          "title": "Vaccinationsadditionaldose",
+          "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose.",
           "anyOf": [
             {
               "type": "integer"
