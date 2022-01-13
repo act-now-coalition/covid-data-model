@@ -5,12 +5,14 @@ from typing import Optional
 from typing import Union
 
 import structlog
+from covidactnow.datapublic import common_df
 from covidactnow.datapublic.common_fields import CommonFields
 from covidactnow.datapublic.common_fields import PdFields
 
 from libs.datasets import taglib
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
+from libs.datasets import dataset_utils
 from libs.datasets import timeseries
 from libs.datasets.dataset_utils import TIMESERIES_INDEX_FIELDS
 from libs.datasets.taglib import UrlStr
@@ -99,6 +101,22 @@ class DataSource(object):
                 missing_fields=missing_fields,
             )
         return data
+
+    @classmethod
+    def _load_data(cls) -> pd.DataFrame:
+        """Loads the CSV, override to inject data in a test."""
+        assert cls.COMMON_DF_CSV_PATH, f"No path in {cls}"
+        data_root = dataset_utils.DATA_DIRECTORY
+        input_path = data_root / cls.COMMON_DF_CSV_PATH
+        return common_df.read_csv(input_path, set_index=False)
+
+    @classmethod
+    @lru_cache(None)
+    def make_dataset(cls) -> timeseries.MultiRegionDataset:
+        """Default implementation of make_dataset that loads timeseries data from a CSV."""
+        data = cls._load_data()
+        data = cls._check_and_removed_unexpected_data(data)
+        return MultiRegionDataset.from_fips_timeseries_df(data).add_tag_all_bucket(cls.source_tag())
 
 
 # TODO(tom): Once using Python 3.9 replace all this metaclass stuff with @classmethod and
