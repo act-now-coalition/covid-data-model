@@ -1561,7 +1561,7 @@
                 "type": "null"
               }
             ],
-            "description": "Ratio of population that are fully vaccinated and received a booster (additional) dose."
+            "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
           }
         },
         "description": "Calculated metrics data based on known actuals."
@@ -2161,7 +2161,7 @@
                 "$ref": "#/components/schemas/FieldAnnotations"
               }
             ],
-            "description": "Ratio of population that are fully vaccinated and received a booster (additional) dose."
+            "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
           }
         },
         "description": "Annotations for each field."
@@ -2449,7 +2449,7 @@
                 "type": "null"
               }
             ],
-            "description": "Ratio of population that are fully vaccinated and received a booster (additional) dose."
+            "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
           },
           "date": {
             "title": "Date",

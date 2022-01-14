@@ -111,7 +111,7 @@
     },
     "vaccinationsAdditionalDoseRatio": {
       "title": "Vaccinationsadditionaldoseratio",
-      "description": "Ratio of population that are fully vaccinated and received a booster (additional) dose.",
+      "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose.",
       "anyOf": [
         {
           "type": "number"

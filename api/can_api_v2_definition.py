@@ -313,7 +313,7 @@ class Annotations(base_model.APIBaseModel):
     vaccinationsAdditionalDoseRatio: Optional[FieldAnnotations] = pydantic.Field(
         None,
         description=(
-            "Ratio of population that are fully vaccinated and received a booster (additional) dose."
+            "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
         ),
     )
 
@@ -362,7 +362,7 @@ class Metrics(base_model.APIBaseModel):
     vaccinationsAdditionalDoseRatio: Optional[float] = pydantic.Field(
         None,
         description=(
-            "Ratio of population that are fully vaccinated and received a booster (additional) dose."
+            "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
         ),
     )
 

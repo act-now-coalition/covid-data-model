@@ -13,8 +13,8 @@ _Added on 2022-01-13_
 Vaccine booster shot (or additional dose) data is now available within the Covid Act Now API.
 
 Fields added:
- * `vaccinationsAdditionalDose`: Number of individuals who are fully vaccinated and have received a booster (or additional) dose.
-* `vaccinationsAdditionalDoseRatio`: Ratio of population that are fully vaccinated and have received a booster (additional) dose.
+  * `actuals.vaccinationsAdditionalDose`: Number of individuals who are fully vaccinated and have received a booster (or additional) dose.
+  * `metrics.vaccinationsAdditionalDoseRatio`: Ratio of population that are fully vaccinated and have received a booster (or additional) dose.
 
 ### ICU Headroom and Typical Usage Rate removed
 _Added on 2021-09-16_

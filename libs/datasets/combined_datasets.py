@@ -321,10 +321,6 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
     ],
-    CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [
-        # We don't collect any % booster data from sources.
-        # But, we eventually calculate it from the raw data
-    ],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
