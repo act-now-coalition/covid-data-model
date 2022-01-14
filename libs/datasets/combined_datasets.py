@@ -322,9 +322,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperCountyProviders,
     ],
     CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [
-        # We don't collect any % booster data.
-        # But, we want to include this so that the
-        # % data will be calculated from the raw data.
+        # We don't collect any % booster data from sources.
+        # But, we eventually calculate it from the raw data
     ],
 }
 
