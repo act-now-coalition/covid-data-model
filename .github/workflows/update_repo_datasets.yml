@@ -2,8 +2,8 @@ name: Update combined datasets
 
 on:
   schedule:
-    # Run job everyday at 2:00 am EST
-    - cron: '0 8 * * *'
+    # Run job everyday at 2:00 and 4:00 am EST
+    - cron: '0 8,10 * * *'
   # This workflow is automatically triggered by
   # https://github.com/covid-projections/covid-data-public/blob/main/.github/workflows/update_data.yml
   # after covid-data-public datasets have been updated.
