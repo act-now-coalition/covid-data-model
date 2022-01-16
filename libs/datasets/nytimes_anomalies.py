@@ -2,7 +2,6 @@ import enum
 from functools import lru_cache
 from typing import List
 import dataclasses
-import pathlib
 
 import pandas as pd
 import numpy as np
@@ -19,9 +18,7 @@ from libs.datasets import dataset_utils
 MultiRegionDataset = timeseries.MultiRegionDataset
 
 
-NYTIMES_ANOMALIES_CSV = dataset_utils.LOCAL_PUBLIC_DATA_PATH / pathlib.Path(
-    "data/cases-nytimes/anomalies.csv"
-)
+NYTIMES_ANOMALIES_CSV = dataset_utils.DATA_DIRECTORY / "nyt_anomalies.csv"
 
 
 @enum.unique
