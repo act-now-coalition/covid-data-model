@@ -215,7 +215,7 @@ CDC_STATE_EXCLUSIONS = RegionMask(
         "TX",
     ]
 )
-CDCNewVaccinesCompletedCountiesWithoutExceptions = datasource_regions(
+CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions = datasource_regions(
     CDCNewVaccinesCountiesDataset, exclude=[CDC_STATE_EXCLUSIONS, *CDC_COUNTY_EXCLUSIONS]
 )
 
@@ -307,7 +307,11 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
         CDCVaccinesStatesAndNationDataset,
-        CDCNewVaccinesCompletedCountiesWithoutExceptions,
+        CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
+    ],
+    CommonFields.VACCINATIONS_ADDITIONAL_DOSE: [
+        CDCVaccinesStatesAndNationDataset,
+        CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,

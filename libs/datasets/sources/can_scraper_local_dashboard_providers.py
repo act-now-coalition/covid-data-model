@@ -127,6 +127,13 @@ def make_scraper_variables(provider: str):
             common_field=CommonFields.VACCINATIONS_COMPLETED,
         ),
         ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_additional_dose",
+            measurement="cumulative",
+            unit="people",
+            provider=provider,
+            common_field=CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
+        ),
+        ccd_helpers.ScraperVariable(
             variable_name="total_vaccine_completed",
             measurement="current",
             unit="percentage",
