@@ -571,6 +571,16 @@
       "end_date": "2022-01-16",
       "region": "WI",
       "context": "WI elevated case data due to backlog https://www.dhs.wisconsin.gov/news/releases/011422.htm"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "context": "Disclaimer for WI backlog",
+      "region": "WI",
+      "disclaimer": "On the week of January 14th, 2022, the Wisconsin Department of Health Services updated its data collection processes. As a result of the new process, COVID case data is expected to be temporarily elevated over the following days while this process occurs and back-logged cases are brought into the live system. [See the Department of Health Services' press release for more information.](https://www.dhs.wisconsin.gov/news/releases/011422.htm)"
     }
   ]
 }
