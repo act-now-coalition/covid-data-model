@@ -11,9 +11,7 @@ _logger = structlog.getLogger(__name__)
 
 
 def persist_dataset(
-    dataset: timeseries.MultiRegionDataset,
-    data_directory: pathlib.Path,
-    data_public_path: pathlib.Path = dataset_utils.LOCAL_PUBLIC_DATA_PATH,
+    dataset: timeseries.MultiRegionDataset, data_directory: pathlib.Path,
 ) -> DatasetPointer:
     """Saves dataset and associated pointer in same data directory.
 
@@ -25,7 +23,6 @@ def persist_dataset(
     Returns: DatasetPointer describing persisted dataset.
     """
     model_git_info = GitSummary.from_repo_path(dataset_utils.REPO_ROOT)
-    data_git_info = GitSummary.from_repo_path(data_public_path)
 
     dataset_type = dataset.dataset_type
 
@@ -33,7 +30,6 @@ def persist_dataset(
     dataset_pointer = DatasetPointer(
         dataset_type=dataset_type,
         path=dataset_path,
-        data_git_info=data_git_info,
         model_git_info=model_git_info,
         updated_at=datetime.datetime.utcnow(),
     )

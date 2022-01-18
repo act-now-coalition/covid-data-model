@@ -22,9 +22,6 @@ class DatasetPointer(pydantic.BaseModel):
 
     path: pathlib.Path
 
-    # Sha of covid-data-public for dataset
-    data_git_info: GitSummary
-
     # Sha of covid-data-model used to create dataset.
     model_git_info: GitSummary
 

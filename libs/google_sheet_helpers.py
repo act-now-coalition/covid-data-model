@@ -141,7 +141,6 @@ def update_info_sheet(
         ("Field", "Value"),
         ("Updated at", datetime.datetime.utcnow().isoformat()),
         ("Covid Data Model SHA", pointer.model_git_info.sha),
-        ("Covid Data Public SHA", pointer.data_git_info.sha),
     ]
     worksheet = create_or_replace_worksheet(sheet, sheet_name)
     worksheet.update(data)

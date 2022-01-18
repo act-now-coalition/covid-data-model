@@ -44,7 +44,6 @@ def _make_dataset_pointer(tmpdir, filename: str = "somefile.csv") -> dataset_poi
     return dataset_pointer.DatasetPointer(
         dataset_type=dataset_pointer.DatasetType.MULTI_REGION,
         path=path,
-        data_git_info=fake_git_summary,
         model_git_info=fake_git_summary,
         updated_at=datetime.datetime.utcnow(),
     )
