@@ -29,7 +29,7 @@ env:
   # Use trigger_api_build if specified, else use true. This automatically triggers
   # the API build on scheduled runs where trigger_api_build is not defined.
   # https://github.community/t/how-can-you-use-expressions-as-the-workflow-dispatch-input-default/141454/4
-  TRIGGER_API_BUILD: ${{ github.event.inputs.trigger_api_build || 'true'}}
+  TRIGGER_API_BUILD: ${{ github.event.inputs.trigger_api_build || 'true' }}
 
 jobs:
   update-and-promote-datasets:
