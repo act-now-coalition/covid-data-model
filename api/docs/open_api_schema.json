@@ -282,7 +282,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor the source of CBSA codes, refer to the\n[Census.gov Delineation Files](https://www.census.gov/geographies/reference-files/time-series/demo/metro-micro/delineation-files.html). This list includes a CBSA code to County mapping.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -331,7 +331,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor the source of CBSA codes, refer to the\n[Census.gov Delineation Files](https://www.census.gov/geographies/reference-files/time-series/demo/metro-micro/delineation-files.html). This list includes a CBSA code to County mapping.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
