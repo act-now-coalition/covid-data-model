@@ -46,4 +46,11 @@ class CDCNewVaccinesCountiesDataset(data_source.CanScraperBase):
             provider="cdc2",
             common_field=CommonFields.VACCINATIONS_COMPLETED,
         ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_additional_dose",
+            measurement="cumulative",
+            unit="people",
+            provider="cdc2",
+            common_field=CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
+        ),
     ]

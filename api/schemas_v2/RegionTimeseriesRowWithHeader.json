@@ -377,6 +377,18 @@
             }
           ]
         },
+        "vaccinationsAdditionalDose": {
+          "title": "Vaccinationsadditionaldose",
+          "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "vaccinesAdministered": {
           "title": "Vaccinesadministered",
           "description": "Total number of vaccine doses administered.",
@@ -552,6 +564,18 @@
         "vaccinationsCompletedRatio": {
           "title": "Vaccinationscompletedratio",
           "description": "Ratio of population that has completed vaccination.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vaccinationsAdditionalDoseRatio": {
+          "title": "Vaccinationsadditionaldoseratio",
+          "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose.",
           "anyOf": [
             {
               "type": "number"

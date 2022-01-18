@@ -16,7 +16,7 @@ import pytest
 # (https://stackoverflow.com/questions/27476642/matplotlib-get-rid-of-max-open-warning-output)
 @pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
 @pytest.mark.slow
-def test_pyseir_end_to_end_idaho(tmp_path):
+def test_pyseir_end_to_end_california(tmp_path):
     # This covers a lot of edge cases.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
         fips = "06037"

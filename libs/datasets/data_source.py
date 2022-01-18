@@ -137,7 +137,9 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
     @staticmethod
     @lru_cache(None)
     def _get_covid_county_dataset() -> ccd_helpers.CanScraperLoader:
-        return ccd_helpers.CanScraperLoader.load()
+        # fetch and persist Parquet file from GCS, then load it
+        ccd_helpers.CanScraperLoader.persist_parquet()
+        return ccd_helpers.CanScraperLoader.load_from_local()
 
     @classmethod
     @lru_cache(None)

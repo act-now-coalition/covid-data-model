@@ -43,6 +43,9 @@ WEIGHTED_AGGREGATIONS = (
     StaticWeightedAverageAggregation(
         CommonFields.VACCINATIONS_COMPLETED_PCT, CommonFields.POPULATION
     ),
+    StaticWeightedAverageAggregation(
+        CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT, CommonFields.POPULATION
+    ),
 )
 
 

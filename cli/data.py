@@ -154,6 +154,7 @@ def update(
             CommonFields.VACCINES_ADMINISTERED,
             CommonFields.VACCINATIONS_COMPLETED,
             CommonFields.VACCINATIONS_INITIATED,
+            CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
         ],
     )
     if print_stats:

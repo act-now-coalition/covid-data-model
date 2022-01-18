@@ -196,6 +196,10 @@ This value may vary by type of vaccine, but for Moderna and Pfizer this indicate
 number of people vaccinated with both the first and second dose.
 """,
     )
+    vaccinationsAdditionalDose: Optional[int] = pydantic.Field(
+        None,
+        description="Number of individuals who are fully vaccinated and have received a booster (or additional) dose.",
+    )
     vaccinesAdministered: Optional[int] = pydantic.Field(
         None, description="Total number of vaccine doses administered."
     )
@@ -275,6 +279,9 @@ class Annotations(base_model.APIBaseModel):
     vaccinationsCompleted: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinationsCompleted"
     )
+    vaccinationsAdditionalDose: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsAdditionalDose"
+    )
     vaccinesAdministered: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinesAdministered"
     )
@@ -302,6 +309,12 @@ class Annotations(base_model.APIBaseModel):
     )
     vaccinationsCompletedRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinationsCompletedRatio"
+    )
+    vaccinationsAdditionalDoseRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None,
+        description=(
+            "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
+        ),
     )
 
 
@@ -345,6 +358,12 @@ class Metrics(base_model.APIBaseModel):
     )
     vaccinationsCompletedRatio: Optional[float] = pydantic.Field(
         None, description=("Ratio of population that has completed vaccination.")
+    )
+    vaccinationsAdditionalDoseRatio: Optional[float] = pydantic.Field(
+        None,
+        description=(
+            "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
+        ),
     )
 
     @staticmethod

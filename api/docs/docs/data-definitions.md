@@ -169,6 +169,14 @@ number of people vaccinated with both the first and second dose.
 * CSV column names: ``actuals.vaccinationsCompleted``
 * JSON file fields: ``actuals.vaccinationsCompleted``, ``actualsTimeseries.*.vaccinationsCompleted``
 
+### Vaccinations Additional Dose
+
+  Number of individuals who are fully vaccinated and have received a booster (or additional) dose.
+
+**Where to access**  
+* CSV column names: ``actuals.vaccinationsAdditionalDose``
+* JSON file fields: ``actuals.vaccinationsAdditionalDose``, ``actualsTimeseries.*.vaccinationsAdditionalDose``
+
 ### Vaccines Administered
 
   Total number of vaccine doses administered.
@@ -206,6 +214,14 @@ number of people vaccinated with both the first and second dose.
 **Where to access**  
 * CSV column names: ``metrics.vaccinationsCompletedRatio``
 * JSON file fields: ``metrics.vaccinationsCompletedRatio``, ``metricsTimeseries.*.vaccinationsCompletedRatio``
+
+### Vaccinations Additional Dose Ratio
+
+  Ratio of population that are fully vaccinated and have received a booster (or additional) dose.
+
+**Where to access**  
+* CSV column names: ``metrics.vaccinationsAdditionalDoseRatio``
+* JSON file fields: ``metrics.vaccinationsAdditionalDoseRatio``, ``metricsTimeseries.*.vaccinationsAdditionalDoseRatio``
 
 
 

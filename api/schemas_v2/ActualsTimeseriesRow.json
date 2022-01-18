@@ -141,6 +141,18 @@
         }
       ]
     },
+    "vaccinationsAdditionalDose": {
+      "title": "Vaccinationsadditionaldose",
+      "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose.",
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "vaccinesAdministered": {
       "title": "Vaccinesadministered",
       "description": "Total number of vaccine doses administered.",

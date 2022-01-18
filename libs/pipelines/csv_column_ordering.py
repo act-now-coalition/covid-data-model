@@ -67,6 +67,8 @@ SUMMARY_ORDER = [
     "actuals.newDeaths",
     "actuals.vaccinesAdministered",
     "cdcTransmissionLevel",
+    "actuals.vaccinationsAdditionalDose",
+    "metrics.vaccinationsAdditionalDoseRatio",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -131,6 +133,8 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "actuals.newDeaths",
     "actuals.vaccinesAdministered",
     "cdcTransmissionLevel",
+    "actuals.vaccinationsAdditionalDose",
+    "metrics.vaccinationsAdditionalDoseRatio",
 ]
 
 
@@ -182,4 +186,6 @@ TIMESERIES_ORDER = [
     "actuals.vaccinesAdministered",
     "riskLevels.caseDensity",
     "cdcTransmissionLevel",
+    "actuals.vaccinationsAdditionalDose",
+    "metrics.vaccinationsAdditionalDoseRatio",
 ]
