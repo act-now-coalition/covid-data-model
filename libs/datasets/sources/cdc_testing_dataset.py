@@ -41,9 +41,9 @@ def remove_trailing_zeros(data: pd.DataFrame) -> pd.DataFrame:
 
 
 class CDCHistoricalTestingDataset(data_source.CanScraperBase):
-    """Data source connecting to the official CDC test positivity dataset."""
+    """Data source connecting to the official CDC historical test positivity dataset."""
 
-    SOURCE_TYPE = "CDCTesting"
+    SOURCE_TYPE = "CDCHistoricalTesting"
 
     VARIABLES = [
         ccd_helpers.ScraperVariable(
@@ -58,7 +58,57 @@ class CDCHistoricalTestingDataset(data_source.CanScraperBase):
     @classmethod
     @lru_cache(None)
     def make_dataset(cls) -> MultiRegionDataset:
-        return modify_dataset(super().make_dataset())
+        ds = super().make_dataset()
+        return dataclasses.replace(
+            ds, timeseries=remove_trailing_zeros(ds.timeseries), timeseries_bucketed=None
+        )
+
+
+class CDCOriginallyPostedTestingDataset(CDCHistoricalTestingDataset):
+    """Data source connecting to the official as-originally-posted CDC test positivity dataset."""
+
+    SOURCE_TYPE = "CDCOriginallyPostedTesting"
+
+    VARIABLES = [
+        ccd_helpers.ScraperVariable(
+            variable_name="pcr_tests_positive",
+            measurement="rolling_average_7_day",
+            provider="cdc_originally_posted",
+            unit="percentage",
+            common_field=CommonFields.TEST_POSITIVITY_7D,
+        ),
+    ]
+
+
+class CDCCombinedTestingDataset(data_source.DataSource):
+    """Data source combining the CDC's historical and as-originally-posted datasets."""
+
+    SOURCE_TYPE = "CDCTesting"
+    EXPECTED_FIELDS = [CommonFields.TEST_POSITIVITY_7D]
+
+    @classmethod
+    @lru_cache(None)
+    def make_dataset(cls) -> MultiRegionDataset:
+        """Use historical data when possible, use as-originally-posted for data that the historical dataset does not have.
+        
+        The historical data is usually delayed behind the as-originally-posted by ~3 days. 
+        To get the combination of the most up-to-date and accurate data we use the historical dataset
+        by default, but use the as-originally-posted for the most recent days that the historical dataset
+        does not yet have.
+        """
+
+        historical_ds = CDCHistoricalTestingDataset().make_dataset()
+        as_posted_ds = CDCOriginallyPostedTestingDataset().make_dataset()
+
+        historical_ts = historical_ds.timeseries
+        as_posted_ts = as_posted_ds.timeseries
+
+        merged_ts = historical_ts.combine_first(as_posted_ts)
+
+        merged_ds = dataclasses.replace(
+            historical_ds, timeseries=merged_ts, timeseries_bucketed=None,
+        )
+        return modify_dataset(merged_ds)
 
 
 def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
