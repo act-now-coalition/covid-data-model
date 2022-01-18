@@ -574,7 +574,7 @@
     },
     {
       "include": "region-and-subregions",
-      "metric": "metrics.testPositivityRatio",
+      "metric": "metrics.caseDensity",
       "blocked": false,
       "start_date": "",
       "end_date": "",
