@@ -1,6 +1,5 @@
 import functools
 from typing import Optional, Type
-import os
 import enum
 import logging
 import pathlib
