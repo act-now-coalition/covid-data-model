@@ -83,6 +83,9 @@ class CDCOriginallyPostedTestingDataset(CDCHistoricalTestingDataset):
 class CDCCombinedTestingDataset(data_source.DataSource):
     """Data source combining the CDC's historical and as-originally-posted datasets."""
 
+    # This becomes overwritten by the tags generated in CDCOriginallyPostedTestingDataset.
+    # We use the as-originally-posted source for the tags as this is the dataset with the
+    # most up-to-date data points
     SOURCE_TYPE = "CDCTesting"
     EXPECTED_FIELDS = [CommonFields.TEST_POSITIVITY_7D]
 
@@ -106,7 +109,7 @@ class CDCCombinedTestingDataset(data_source.DataSource):
         merged_ts = historical_ts.combine_first(as_posted_ts)
 
         merged_ds = dataclasses.replace(
-            historical_ds, timeseries=merged_ts, timeseries_bucketed=None,
+            as_posted_ds, timeseries=merged_ts, timeseries_bucketed=None,
         )
         return modify_dataset(merged_ds)
 
