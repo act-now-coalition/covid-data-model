@@ -545,15 +545,6 @@
       "context": "https://www.dropbox.com/scl/fi/9nxnpdtwlgn6lwe5cf4g9/CDC-Vaccine-Irregularities.paper?dl=0&rlkey=dxqax20k09p4el1pkivayq7h9"
     },
     {
-      "include": "region",
-      "metric": "metrics.icuCapacityRatio",
-      "blocked": true,
-      "start_date": "2022-01-08",
-      "end_date": "",
-      "region": "CA",
-      "context": "Dropoff in ICU % (81% -> 34%)"
-    },
-    {
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
@@ -562,6 +553,24 @@
       "region": "ID",
       "disclaimer": "We have received [reports](https://apnews.com/article/coronavirus-pandemic-lifestyle-health-public-health-idaho-96b67c8d8c5c733aa68b1fe3fa8408e0) that Idaho is significantly under-reporting cases due to an inability to keep up with the current volume. We don't have accurate case counts to report at this time.",
       "context": "https://apnews.com/article/coronavirus-pandemic-lifestyle-health-public-health-idaho-96b67c8d8c5c733aa68b1fe3fa8408e0"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-01-06",
+      "end_date": "2022-01-13",
+      "region": "35660",
+      "context": "ICU % Usage dropoff (80% -> 45%)"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-01-16",
+      "end_date": "2022-01-16",
+      "region": "WI",
+      "context": "WI elevated case data due to backlog https://www.dhs.wisconsin.gov/news/releases/011422.htm"
     }
   ]
 }
