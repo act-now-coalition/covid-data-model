@@ -18,7 +18,6 @@ def persist_dataset(
     Args:
         dataset: Dataset to persist.
         data_directory: Data directory
-        data_public_path: Path to covid data public folder.
 
     Returns: DatasetPointer describing persisted dataset.
     """
