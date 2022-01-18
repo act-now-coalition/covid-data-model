@@ -2,11 +2,8 @@ name: Update combined datasets
 
 on:
   schedule:
-    # Run job everyday at 2:00 and 4:00 am EST
+    # Run job everyday at 3:00 and 5:00 am EST
     - cron: '0 8,10 * * *'
-  # This workflow is automatically triggered by
-  # https://github.com/covid-projections/covid-data-public/blob/main/.github/workflows/update_data.yml
-  # after covid-data-public datasets have been updated.
   workflow_dispatch:
     inputs:
       trigger_api_build:
@@ -29,7 +26,10 @@ env:
 
   GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA }}
 
-  TRIGGER_API_BUILD: ${{ github.event.inputs.trigger_api_build }}
+  # Use trigger_api_build if specified, else use true. This automatically triggers
+  # the API build on scheduled runs where trigger_api_build is not defined.
+  # https://github.community/t/how-can-you-use-expressions-as-the-workflow-dispatch-input-default/141454/4
+  TRIGGER_API_BUILD: ${{ github.event.inputs.trigger_api_build || 'true' }}
 
 jobs:
   update-and-promote-datasets:
