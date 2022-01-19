@@ -31,7 +31,7 @@ from libs.datasets import new_cases_and_deaths
 from libs.datasets import vaccine_backfills
 from libs.datasets.dataset_utils import DATA_DIRECTORY
 from libs.datasets import tail_filter
-from libs.datasets.sources import zeros_filter
+from libs.datasets.sources import can_scraper_helpers, zeros_filter
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
 from libs.us_state_abbrev import ABBREV_US_UNKNOWN_COUNTY_FIPS
@@ -101,6 +101,8 @@ def update(
     path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
     if refresh_datasets:
+        # fetch parquet file from GCS and persist it in data/
+        can_scraper_helpers.CanScraperLoader.persist_parquet()
         timeseries_field_datasets = load_datasets_by_field(
             ALL_TIMESERIES_FEATURE_DEFINITION, state=state, fips=fips
         )
