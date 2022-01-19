@@ -83,7 +83,7 @@ class CDCOriginallyPostedTestingDataset(CDCHistoricalTestingDataset):
 class CDCCombinedTestingDataset(data_source.DataSource):
     """Data source combining the CDC's historical and as-originally-posted datasets."""
 
-    # This becomes overwritten by the tags generated in CDCOriginallyPostedTestingDataset.
+    # This gets overwritten by the tags generated in CDCOriginallyPostedTestingDataset.
     # We use the as-originally-posted source for the tags as this is the dataset with the
     # most up-to-date data points
     SOURCE_TYPE = "CDCTesting"
@@ -96,7 +96,7 @@ class CDCCombinedTestingDataset(data_source.DataSource):
         
         The historical data is usually delayed behind the as-originally-posted by ~3 days. 
         To get the combination of the most up-to-date and accurate data we use the historical dataset
-        by default, but use the as-originally-posted for the most recent days that the historical dataset
+        by default, but use as-originally-posted for the most recent days that the historical dataset
         does not yet have.
         """
 
