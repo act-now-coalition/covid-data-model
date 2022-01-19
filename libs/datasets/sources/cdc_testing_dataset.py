@@ -4,6 +4,7 @@ from functools import lru_cache
 from libs.datasets import AggregationLevel
 from libs.datasets import data_source
 import pandas as pd
+import abc
 from covidactnow.datapublic.common_fields import CommonFields
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.timeseries import MultiRegionDataset
@@ -40,7 +41,16 @@ def remove_trailing_zeros(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-class CDCHistoricalTestingDataset(data_source.CanScraperBase):
+class CDCTestingBase(data_source.CanScraperBase, abc.ABC):
+    """Default CanScraperBase class with make_dataset() overridden to handle CDC test data."""
+
+    @classmethod
+    @lru_cache(None)
+    def make_dataset(cls) -> MultiRegionDataset:
+        return modify_dataset(super().make_dataset())
+
+
+class CDCHistoricalTestingDataset(CDCTestingBase):
     """Data source connecting to the official CDC historical test positivity dataset."""
 
     SOURCE_TYPE = "CDCHistoricalTesting"
@@ -55,16 +65,8 @@ class CDCHistoricalTestingDataset(data_source.CanScraperBase):
         ),
     ]
 
-    @classmethod
-    @lru_cache(None)
-    def make_dataset(cls) -> MultiRegionDataset:
-        ds = super().make_dataset()
-        return dataclasses.replace(
-            ds, timeseries=remove_trailing_zeros(ds.timeseries), timeseries_bucketed=None
-        )
 
-
-class CDCOriginallyPostedTestingDataset(CDCHistoricalTestingDataset):
+class CDCOriginallyPostedTestingDataset(CDCTestingBase):
     """Data source connecting to the official as-originally-posted CDC test positivity dataset."""
 
     SOURCE_TYPE = "CDCOriginallyPostedTesting"
@@ -111,7 +113,7 @@ class CDCCombinedTestingDataset(data_source.DataSource):
         merged_ds = dataclasses.replace(
             as_posted_ds, timeseries=merged_ts, timeseries_bucketed=None,
         )
-        return modify_dataset(merged_ds)
+        return merged_ds
 
 
 def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
@@ -140,4 +142,6 @@ def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
 
     ts_copy = ts_copy.append(dc_results, verify_integrity=True).sort_index()
 
-    return dataclasses.replace(ds, timeseries=ts_copy, timeseries_bucketed=None)
+    return dataclasses.replace(
+        ds, timeseries=remove_trailing_zeros(ts_copy), timeseries_bucketed=None
+    )

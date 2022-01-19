@@ -23,7 +23,7 @@ def test_cdc_testing_modify_dataset():
     ds_out = cdc_testing_dataset.modify_dataset(ds_in)
 
     dc_data_after_filter = {
-        CommonFields.TEST_POSITIVITY_7D: [0.5, 0.6, 0, 0, 0, 0],
+        CommonFields.TEST_POSITIVITY_7D: [0.5, 0.6],
         CommonFields.CASES: [1, 2, 3, 4, 5, 6],
     }
     other_data_after_filter = {CommonFields.TEST_POSITIVITY_7D: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]}
