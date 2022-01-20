@@ -591,6 +591,15 @@
       "region": "WA",
       "context": "WA testing reporting data",
       "disclaimer": "The Washington State Department of Health has paused reporting on all testing data in order to increase the department's capacity. Data reporting is not expected to restart until approximately February 28, 2022. As a result, we do not have accurate test-positivity data at this time."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-01-17",
+      "end_date": "2022-01-17",
+      "region": "MI",
+      "context": "almost-0 reporting day threw off backfill code"
     }
   ]
 }
