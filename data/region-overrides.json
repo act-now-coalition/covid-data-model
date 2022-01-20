@@ -600,6 +600,15 @@
       "end_date": "2022-01-17",
       "region": "MI",
       "context": "almost-0 reporting day threw off backfill code"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "20061",
+      "context": "20% spike in vacc rate to > 95%"
     }
   ]
 }
