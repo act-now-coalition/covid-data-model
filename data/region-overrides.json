@@ -221,8 +221,8 @@
       "blocked": false,
       "start_date": "",
       "end_date": "",
-      "region": "26029, 26081,  30051, 31091, 31001, 31003, 31005, 31007, 31009, 31011, 31013, 31015, 31019, 31021, 31023, 31027, 31029, 31035, 31039, 31041, 31045, 31049, 31051, 31053, 31059, 31061, 31063, 31065, 31067, 31069, 31071, 31073, 31075, 31077, 31079, 31081, 31085, 31087, 31089, 31093, 31097, 31101, 31103, 31105, 31107, 31111, 31113, 31115, 31117, 31119, 31123, 31125, 31127, 31131, 31135, 31137, 31139, 31141, 31143, 31145, 31149, 31151, 31155, 31157, 31159, 31161, 31163, 31165, 31167, 31169, 31171, 31175, 31179, 31181, 31183, 31185, 39005, 39075, 39077, 39091, 39111, 39123, 39127, 39137, 39147, 39161, 39163, 39171, 39175",
-      "disclaimer": "Note that data for this county is sourced from the CDC which, as of 7/26/2021, only provides data on fully-vaccinated people and therefore the \"1+ dose\" data above is approximated using the fully-vaccinated data and a state-wide average ratio.",
+      "region": "NE",
+      "disclaimer": "Note that data for this county is sourced from the CDC which, as of 7/26/2021, only provides trustworthy data on fully-vaccinated people and therefore the \"1+ dose\" data above is approximated using the fully-vaccinated data and a state-wide average ratio.",
       "context": "context: https://trello.com/c/Q2VorVkg/1484-cms-disclaimers-for-counties-with-1-dose-estimation"
     },
     {
