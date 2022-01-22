@@ -229,7 +229,11 @@ class RtInferenceEngine:
     """
 
     def __init__(
-        self, cases: pd.Series, display_name, regional_input: RegionalInput, figure_collector=None,
+        self,
+        cases: pd.Series,
+        display_name,
+        regional_input: RegionalInput = None,
+        figure_collector=None,
     ):
 
         self.dates = cases.index
@@ -522,11 +526,9 @@ class RtInferenceEngine:
         df = pd.DataFrame()
         try:
             dates, posteriors, start_idx = self.get_posteriors(self.dates, self.cases)
-        except Exception as e:
-            rt_log.exception(
-                event="Posterior Calculation Error", region=self.regional_input.display_name,
-            )
-            raise e
+        except Exception:
+            # pipeline can handle an empty dataframe it seems from line 609
+            return pd.DataFrame()
 
         # Note that it is possible for the dates to be missing days
         # This can cause problems when:
