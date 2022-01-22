@@ -523,7 +523,7 @@ class RtInferenceEngine:
         try:
             dates, posteriors, start_idx = self.get_posteriors(self.dates, self.cases)
         except Exception:
-            # pipeline can handle an empty dataframe it seems from line 609
+            # pipeline can handle an empty dataframe it seems from line 601
             return pd.DataFrame()
 
         # Note that it is possible for the dates to be missing days
