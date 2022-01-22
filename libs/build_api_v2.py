@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List, Dict, Optional
 import pandas as pd
+from math import isinf
 
 from api.can_api_v2_definition import (
     Actuals,
@@ -76,6 +77,11 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
         distributions_by_field.get(CommonFields.VACCINATIONS_INITIATED, {})
     )
 
+    # HACK: Unbreak Nebraska counties.
+    vaccinations_initiated = actual_data.get(CommonFields.VACCINATIONS_INITIATED)
+    if vaccinations_initiated and isinf(vaccinations_initiated):
+        vaccinations_initiated = None
+
     return Actuals(
         cases=actual_data.get(CommonFields.CASES),
         deaths=actual_data.get(CommonFields.DEATHS),
@@ -95,7 +101,7 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
         newCases=actual_data.get(CommonFields.NEW_CASES),
         newDeaths=actual_data.get(CommonFields.NEW_DEATHS),
         vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
-        vaccinationsInitiated=actual_data.get(CommonFields.VACCINATIONS_INITIATED),
+        vaccinationsInitiated=vaccinations_initiated,
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
         vaccinationsAdditionalDose=actual_data.get(CommonFields.VACCINATIONS_ADDITIONAL_DOSE),
         vaccinesAdministered=actual_data.get(CommonFields.VACCINES_ADMINISTERED),
