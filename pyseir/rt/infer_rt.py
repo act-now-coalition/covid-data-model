@@ -229,11 +229,7 @@ class RtInferenceEngine:
     """
 
     def __init__(
-        self,
-        cases: pd.Series,
-        display_name,
-        regional_input: RegionalInput = None,
-        figure_collector=None,
+        self, cases: pd.Series, display_name, regional_input: RegionalInput, figure_collector=None,
     ):
 
         self.dates = cases.index
