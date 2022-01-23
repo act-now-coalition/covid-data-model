@@ -216,7 +216,7 @@
       "context": "Blocking infection rate since it's inflated by the irregular reporting lately. - July 22, 2021"
     },
     {
-      "include": "region",
+      "include": "subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": false,
       "start_date": "",
