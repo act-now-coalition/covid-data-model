@@ -161,11 +161,14 @@ function generate_version_json() {
   local api_output_dir="$1"
   local model_repo_json=$(get_repo_status_json)
 
+  data_repo_sha=$(jq .data_git_info.sha data/multiregion.json || echo '"<unknown: failed to get git hash from data/multiregion.json>"')
+
   local timestamp=$(iso_timestamp)
 
   cat > "${api_output_dir}/version.json" << END
 {
   "timestamp": "${timestamp}",
+  "covid-data-public": ${data_repo_sha},
   "covid-data-model": ${model_repo_json}
 }
 END
