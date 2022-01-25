@@ -609,6 +609,16 @@
       "end_date": "",
       "region": "20061",
       "context": "20% spike in vacc rate to > 95%"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "MN",
+      "disclaimer": "Due to the recent surge of COVID-19 cases, the Minnesota Department of Health has [reported](https://www.health.state.mn.us/diseases/coronavirus/situation.html) having a larger than normal number of lab reports to process, leading to daily new cases being an undercount earlier in January. We expect things will be resolved within the next couple of weeks. In the meantime, please note daily case counts may now be an overcount as they are catching up on reports that have been awaiting review.",
+      "context": "Based on email thread with MN DOH."
     }
   ]
 }
