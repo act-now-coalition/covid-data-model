@@ -1,11 +1,11 @@
-from covidactnow.datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import DemographicBucket
 
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets import AggregationLevel
 from libs.pipeline import Region
 
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import PdFields
 
 
 def derive_ca_county_vaccine_pct(ds_in: MultiRegionDataset) -> MultiRegionDataset:

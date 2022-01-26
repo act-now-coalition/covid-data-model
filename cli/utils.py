@@ -8,7 +8,7 @@ from io import BytesIO
 import click
 import git
 
-from covidactnow.datapublic import common_df
+from datapublic import common_df
 from libs import github_utils
 from libs import update_api_user_metrics
 from libs import google_sheet_helpers

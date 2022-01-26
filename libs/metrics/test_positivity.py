@@ -13,8 +13,8 @@ from typing import Union
 import structlog
 
 import pandas as pd
-from covidactnow.datapublic.common_fields import CommonFields, FieldName
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic.common_fields import CommonFields, FieldName
+from datapublic.common_fields import PdFields
 from libs import series_utils
 from typing_extensions import final
 

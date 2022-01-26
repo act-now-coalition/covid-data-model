@@ -1,6 +1,6 @@
 import pandas as pd
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import FieldName
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import FieldName
 
 from libs import pipeline
 from libs.qa import common_df_diff

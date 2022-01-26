@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 import pandas as pd
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 from libs.datasets import statistical_areas
 from libs.datasets.timeseries import MultiRegionDataset

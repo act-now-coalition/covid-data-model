@@ -1,7 +1,7 @@
 from typing import List, Optional
 import pandas as pd
 
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from libs import google_sheet_helpers
 from libs.datasets.sources import fips_population
 from libs import notebook_helpers

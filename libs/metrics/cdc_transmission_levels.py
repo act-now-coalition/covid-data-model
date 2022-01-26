@@ -1,4 +1,4 @@
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from libs.metrics.top_level_metrics import MetricsFields
 from libs.metrics import top_level_metrics
 from typing import List, Optional

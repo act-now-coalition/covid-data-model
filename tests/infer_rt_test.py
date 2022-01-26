@@ -8,7 +8,7 @@ import pyseir.cli
 import pyseir.run
 import pyseir.utils
 from libs.datasets import combined_datasets
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from libs import pipeline
 from libs.datasets import timeseries
 from pyseir import cli

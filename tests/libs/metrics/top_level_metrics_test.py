@@ -5,7 +5,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 import structlog
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 import libs.metrics.test_positivity
 from api import can_api_v2_definition

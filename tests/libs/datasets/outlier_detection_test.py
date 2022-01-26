@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import DemographicBucket
 
 from tests import test_helpers
 from libs.datasets import outlier_detection

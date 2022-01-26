@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from libs.metrics.top_level_metrics import MetricsFields
 from libs.metrics import top_level_metrics
 from api import can_api_v2_definition

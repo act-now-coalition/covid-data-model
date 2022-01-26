@@ -1,5 +1,5 @@
 import numpy as np
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral

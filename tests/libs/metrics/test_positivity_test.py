@@ -4,10 +4,10 @@ from typing import List
 
 import pandas as pd
 import pytest
-from covidactnow.datapublic import common_df
+from datapublic import common_df
 
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import FieldName
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import FieldName
 from freezegun import freeze_time
 
 from libs.datasets.tail_filter import TagType

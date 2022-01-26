@@ -7,8 +7,8 @@ from typing import Optional
 import click
 
 import us
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import PdFields
 
 import api
 import pyseir.cli

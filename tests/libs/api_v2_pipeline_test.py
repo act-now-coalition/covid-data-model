@@ -1,5 +1,5 @@
 import pytest
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from more_itertools import one
 
 from api import can_api_v2_definition

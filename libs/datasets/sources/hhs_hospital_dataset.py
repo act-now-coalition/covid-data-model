@@ -2,7 +2,7 @@ import dataclasses
 from functools import lru_cache
 from libs import pipeline
 
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 import pandas as pd
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets import data_source

@@ -1,7 +1,7 @@
 import pathlib
 
 import pytest
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 from libs.datasets import AggregationLevel
 from libs.datasets import combined_dataset_utils

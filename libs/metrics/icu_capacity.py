@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 
 def calculate_icu_capacity(region_df: pd.DataFrame):

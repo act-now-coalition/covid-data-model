@@ -15,7 +15,7 @@ from functools import lru_cache
 import pandas as pd
 import numpy as np
 
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 import pyseir.utils
 

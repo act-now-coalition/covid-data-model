@@ -21,7 +21,7 @@ from api.can_api_v2_definition import (
     MetricsTimeseriesRow,
     RiskLevelTimeseriesRow,
 )
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 from api.can_api_v2_definition import AnomalyAnnotation
 from api.can_api_v2_definition import FieldSource

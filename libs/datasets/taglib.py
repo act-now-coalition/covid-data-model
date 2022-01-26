@@ -16,12 +16,12 @@ from typing import Optional
 from typing import Tuple
 
 import pandas as pd
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
-from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import GetByValueMixin
-from covidactnow.datapublic.common_fields import PdFields
-from covidactnow.datapublic.common_fields import ValueAsStrMixin
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import FieldName
+from datapublic.common_fields import GetByValueMixin
+from datapublic.common_fields import PdFields
+from datapublic.common_fields import ValueAsStrMixin
 
 from libs.dataclass_utils import dataclass_with_default_init
 

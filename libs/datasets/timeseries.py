@@ -23,11 +23,11 @@ from collections import defaultdict
 
 import compress_pickle
 import more_itertools
-from covidactnow.datapublic import common_fields
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
-from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic import common_fields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import FieldName
+from datapublic.common_fields import PdFields
 from pandas.core.generic import FrameOrSeries
 from pandas.core.dtypes.common import is_numeric_dtype
 from pandas.core.dtypes.common import is_bool_dtype
@@ -36,7 +36,7 @@ from typing_extensions import final
 import pandas as pd
 import numpy as np
 import structlog
-from covidactnow.datapublic import common_df
+from datapublic import common_df
 from libs import pipeline
 from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import dataset_pointer
