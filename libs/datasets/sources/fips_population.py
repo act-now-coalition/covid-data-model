@@ -42,7 +42,7 @@ class FIPSPopulation(data_source.DataSource):
     @classmethod
     @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
-        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        data_root = dataset_utils.REPO_ROOT
         data = pd.read_csv(data_root / cls.FILE_PATH, dtype={"fips": str})
         data["fips"] = data.fips.str.zfill(5)
         data = cls.standardize_data(data)

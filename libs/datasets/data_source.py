@@ -106,7 +106,7 @@ class DataSource(object):
     def _load_data(cls) -> pd.DataFrame:
         """Loads the CSV, override to inject data in a test."""
         assert cls.COMMON_DF_CSV_PATH, f"No path in {cls}"
-        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        data_root = dataset_utils.DATA_DIRECTORY
         input_path = data_root / cls.COMMON_DF_CSV_PATH
         return common_df.read_csv(input_path, set_index=False)
 

@@ -30,8 +30,7 @@ cbsa_parameter = {
 5 Letter core-based statistical area (CBSA) Code.
 
 For a list of all CBSA codes, refer to the
-[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.
-""",
+[Census.gov Delineation Files](https://www.census.gov/geographies/reference-files/time-series/demo/metro-micro/delineation-files.html)""",
     "schema": {"type": "string"},
 }
 state_parameter = {

@@ -19,7 +19,7 @@ class CANLocationPageURLS(data_source.DataSource):
     @classmethod
     @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
-        data_root = dataset_utils.LOCAL_PUBLIC_DATA_PATH
+        data_root = dataset_utils.REPO_ROOT
         input_path = data_root / cls.STATIC_CSV
         # Can't use common_df.read_csv because it expects a date column
         data = pd.read_csv(input_path, dtype={CommonFields.FIPS: str})
