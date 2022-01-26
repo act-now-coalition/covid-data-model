@@ -1,6 +1,6 @@
 import pytest
 
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 from libs.datasets.taglib import TagType
 from libs.datasets.tail_filter import TailFilter

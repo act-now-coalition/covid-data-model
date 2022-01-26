@@ -1,4 +1,4 @@
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from datetime import datetime
 from datetime import timedelta
 

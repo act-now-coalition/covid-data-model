@@ -1,12 +1,12 @@
 import io
 import pandas as pd
-from covidactnow.datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import DemographicBucket
 
 from libs.datasets import timeseries
 from libs.datasets import new_cases_and_deaths
 from tests import test_helpers
 from libs.pipeline import Region
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 
 def test_calculate_new_cases():

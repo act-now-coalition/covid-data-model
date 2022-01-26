@@ -12,11 +12,11 @@ import dash_table
 import git
 import more_itertools
 import pandas as pd
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic import common_fields
-from covidactnow.datapublic.common_fields import GetByValueMixin
-from covidactnow.datapublic.common_fields import PdFields
-from covidactnow.datapublic.common_fields import ValueAsStrMixin
+from datapublic.common_fields import CommonFields
+from datapublic import common_fields
+from datapublic.common_fields import GetByValueMixin
+from datapublic.common_fields import PdFields
+from datapublic.common_fields import ValueAsStrMixin
 from dash.dependencies import Input
 from dash.dependencies import Output
 from plotly import express as px

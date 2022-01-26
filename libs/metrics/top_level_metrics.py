@@ -5,9 +5,9 @@ from datetime import timedelta
 import more_itertools
 import pandas as pd
 import numpy as np
-from covidactnow.datapublic import common_df
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic import common_fields
+from datapublic import common_df
+from datapublic.common_fields import CommonFields
+from datapublic import common_fields
 
 from api import can_api_v2_definition
 from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityRatioDetails

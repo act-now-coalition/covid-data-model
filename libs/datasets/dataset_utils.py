@@ -6,7 +6,7 @@ import logging
 import pathlib
 import pandas as pd
 import structlog.stdlib
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from libs.us_state_abbrev import US_STATE_ABBREV
 
 

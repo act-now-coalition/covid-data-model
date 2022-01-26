@@ -4,7 +4,7 @@ import more_itertools
 import pytest
 import pandas as pd
 import structlog
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 from libs import pipeline
 from libs.datasets import data_source

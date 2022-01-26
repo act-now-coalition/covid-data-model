@@ -5,7 +5,7 @@ from typing import Mapping, List
 import pandas as pd
 import numpy as np
 
-from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS, CommonFields
+from datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS, CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets.dataset_utils import AggregationLevel
 import pytest

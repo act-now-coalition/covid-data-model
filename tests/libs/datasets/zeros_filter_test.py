@@ -1,7 +1,7 @@
 import more_itertools
 import structlog
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import DemographicBucket
 
 from libs.datasets import taglib
 from libs.datasets.sources import zeros_filter

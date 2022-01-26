@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import List, Optional, Mapping, Sequence
 
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import FieldName
+from datapublic.common_fields import PdFields
 
 import pandas as pd
 import structlog

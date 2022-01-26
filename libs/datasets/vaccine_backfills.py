@@ -1,9 +1,9 @@
 import pandas as pd
 from datetime import datetime
 from datetime import timedelta
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import PdFields
 
 from libs.datasets import AggregationLevel
 from libs.datasets import taglib

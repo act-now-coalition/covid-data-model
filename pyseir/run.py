@@ -5,7 +5,7 @@ from typing import List
 
 import pandas as pd
 import structlog
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from typing_extensions import final
 
 from libs import pipeline

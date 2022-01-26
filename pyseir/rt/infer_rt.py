@@ -8,7 +8,7 @@ import numpy as np
 import numba
 import math
 import pandas as pd
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from scipy import stats as sps
 from matplotlib import pyplot as plt
 

@@ -1,9 +1,9 @@
-from covidactnow.datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import DemographicBucket
 
 from tests import test_helpers
 import pytest
 from libs.pipeline import Region
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 from libs.datasets import ca_vaccination_backfill
 

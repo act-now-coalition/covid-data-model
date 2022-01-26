@@ -8,9 +8,9 @@ from typing import Optional
 from typing import Union
 
 import pytest
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 import pandas as pd
-from covidactnow.datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import DemographicBucket
 
 from libs.datasets import data_source
 from libs.datasets import taglib

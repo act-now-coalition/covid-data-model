@@ -5,12 +5,12 @@ from typing import Sequence
 
 import more_itertools
 import pandas as pd
-from covidactnow.datapublic import common_fields
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
-from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import PdFields
-from covidactnow.datapublic.common_fields import ValueAsStrMixin
+from datapublic import common_fields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import FieldName
+from datapublic.common_fields import PdFields
+from datapublic.common_fields import ValueAsStrMixin
 from pandas.core.dtypes.common import is_numeric_dtype
 
 from libs.datasets import AggregationLevel

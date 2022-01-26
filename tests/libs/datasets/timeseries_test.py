@@ -9,12 +9,12 @@ import pandas as pd
 import numpy as np
 import structlog
 
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
-from covidactnow.datapublic.common_fields import FieldName
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import FieldName
+from datapublic.common_fields import PdFields
 
-from covidactnow.datapublic.common_test_helpers import to_dict
+from datapublic.common_test_helpers import to_dict
 
 from libs import github_utils
 from libs.datasets import AggregationLevel

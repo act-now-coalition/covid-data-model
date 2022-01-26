@@ -9,10 +9,10 @@ import requests
 import more_itertools
 import structlog
 import pandas as pd
-from covidactnow.datapublic.common_fields import FieldNameAndCommonField
-from covidactnow.datapublic.common_fields import GetByValueMixin
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic.common_fields import FieldNameAndCommonField
+from datapublic.common_fields import GetByValueMixin
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import PdFields
 
 from libs.dataclass_utils import dataclass_with_default_init
 from libs.datasets import dataset_utils

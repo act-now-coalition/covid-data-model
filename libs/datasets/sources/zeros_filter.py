@@ -2,8 +2,8 @@ import dataclasses
 from typing import Collection
 
 import structlog
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import PdFields
 
 from libs.datasets import timeseries
 import pandas as pd

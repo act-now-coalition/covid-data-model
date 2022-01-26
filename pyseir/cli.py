@@ -8,8 +8,8 @@ import us
 import click
 
 
-from covidactnow.datapublic import common_init
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic import common_init
+from datapublic.common_fields import CommonFields
 
 from libs.pipelines import api_v2_pipeline
 from libs import parallel_utils

@@ -5,7 +5,7 @@ from libs.datasets import AggregationLevel
 from libs.datasets import data_source
 import pandas as pd
 import abc
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.pipeline import Region

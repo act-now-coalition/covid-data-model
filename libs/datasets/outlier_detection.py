@@ -3,8 +3,8 @@ import dataclasses
 
 import pandas as pd
 import numpy as np
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import PdFields
 
 from libs.datasets import taglib
 from libs.datasets import timeseries

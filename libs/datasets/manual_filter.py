@@ -8,10 +8,10 @@ from typing import Mapping
 
 import pydantic
 import structlog
-from covidactnow.datapublic import common_fields
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import FieldGroup
-from covidactnow.datapublic.common_fields import PdFields
+from datapublic import common_fields
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import FieldGroup
+from datapublic.common_fields import PdFields
 import pandas as pd
 
 from libs.datasets import AggregationLevel

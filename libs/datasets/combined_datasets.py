@@ -11,8 +11,8 @@ from typing import Union
 import pandas as pd
 import structlog
 
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import FieldName
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import FieldName
 from typing_extensions import final
 
 from libs.datasets import AggregationLevel
@@ -41,7 +41,7 @@ from libs.datasets.sources.cdc_new_vaccine_counties_dataset import CDCNewVaccine
 from libs.pipeline import Region
 from libs.pipeline import RegionMask
 from libs.pipeline import RegionMaskOrRegion
-from covidactnow.datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
+from datapublic.common_fields import COMMON_FIELDS_TIMESERIES_KEYS
 
 
 # structlog makes it very easy to bind extra attributes to `log` as it is passed down the stack.

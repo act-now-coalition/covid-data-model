@@ -1,4 +1,4 @@
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 
 from libs import pipeline
 from libs.datasets.sources import cdc_testing_dataset

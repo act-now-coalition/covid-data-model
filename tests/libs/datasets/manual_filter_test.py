@@ -4,11 +4,11 @@ from typing import Optional
 from typing import Type
 
 import pytest
-from covidactnow.datapublic import common_fields
+from datapublic import common_fields
 
-from covidactnow.datapublic.common_fields import CommonFields
-from covidactnow.datapublic.common_fields import DemographicBucket
-from covidactnow.datapublic.common_fields import FieldGroup
+from datapublic.common_fields import CommonFields
+from datapublic.common_fields import DemographicBucket
+from datapublic.common_fields import FieldGroup
 
 from cli import data
 from libs.datasets import AggregationLevel

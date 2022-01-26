@@ -6,7 +6,7 @@ import pandas as pd
 
 from libs import pipeline
 from libs.datasets.timeseries import MultiRegionDataset
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import region_aggregation
 from libs.pipeline import Region

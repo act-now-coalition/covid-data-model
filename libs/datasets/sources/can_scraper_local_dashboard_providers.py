@@ -1,5 +1,5 @@
 from libs.datasets import data_source
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 

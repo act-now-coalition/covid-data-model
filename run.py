@@ -5,7 +5,7 @@ Entry point for covid-data-model CLI.
 """
 import logging
 import click
-from covidactnow.datapublic import common_init
+from datapublic import common_init
 from pandarallel import pandarallel
 
 from cli import api

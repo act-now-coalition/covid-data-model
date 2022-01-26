@@ -7,7 +7,7 @@ from libs import base_model
 from libs.datasets import timeseries
 import pydantic
 import datetime
-from covidactnow.datapublic.common_fields import GetByValueMixin
+from datapublic.common_fields import GetByValueMixin
 
 
 CDC_TRANSMISSION_LEVEL_DESCRIPTION = textwrap.dedent(

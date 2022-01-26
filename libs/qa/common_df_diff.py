@@ -52,7 +52,7 @@ import pandas as pd
 import numpy as np
 from pydantic import BaseModel
 
-from covidactnow.datapublic.common_fields import CommonFields, PdFields
+from datapublic.common_fields import CommonFields, PdFields
 
 
 TIMESERIES_KEYS = [CommonFields.LOCATION_ID, CommonFields.DATE]
