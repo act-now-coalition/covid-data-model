@@ -11,8 +11,6 @@ on:
         default: 'true'
 
 env:
-  # To pin to an old data sets, put the branch/tag/commit here:
-  COVID_DATA_PUBLIC_REF: 'main'
 
   # Used by python code that reports errors to sentry.
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -47,14 +45,6 @@ jobs:
         ref: '${{env.COVID_DATA_MODEL_REF}}'
         lfs: true
 
-    - name: Checkout covid-data-public
-      uses: actions/checkout@v2
-      with:
-        repository: covid-projections/covid-data-public
-        path: covid-data-public
-        lfs: true
-        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
-
     - name: Update NYTimes anomalies file
       working-directory: ./covid-data-model
       run: |
@@ -80,10 +70,6 @@ jobs:
 
     - name: prune covid-data-model
       working-directory: ./covid-data-model
-      run: git lfs prune
-
-    - name: prune covid-data-public
-      working-directory: ./covid-data-public
       run: git lfs prune
 
     - name: Update and Promote dataset.

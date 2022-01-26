@@ -1,8 +1,7 @@
 
 #!/bin/bash
 # run.sh - Runs everything necessary to generate our API artifacts (for
-# website, external consumers, etc.) based on our inputs (from
-# covid-data-public).
+# website, external consumers, etc.)
 
 set -o nounset
 set -o errexit
@@ -11,11 +10,11 @@ set -o errexit
 prepare () {
   # Parse args if specified.
   if [ $# -lt 2 ] || [ $# -gt 3 ]; then
-    echo "Usage: $0 [covid-data-public directory] [output-directory] (optional - specific function)"
+    echo "Usage: $0 [covid-data-model directory] [output-directory] (optional - specific function)"
     echo
-    echo "Example: $0 ../covid-data-public/ ./api-results/"
-    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_model"
-    echo "Example: $0 ../covid-data-public/ ./api-results/ execute_api"
+    echo "Example: $0 ../covid-data-model/ ./api-results/"
+    echo "Example: $0 ../covid-data-model/ ./api-results/ execute_model"
+    echo "Example: $0 ../covid-data-model/ ./api-results/ execute_api"
     exit 1
   else
     DATA_SOURCES_DIR="$(abs_path $1)"
@@ -161,14 +160,11 @@ function generate_version_json() {
   local api_output_dir="$1"
   local model_repo_json=$(get_repo_status_json)
 
-  data_repo_sha=$(jq .data_git_info.sha data/multiregion.json || echo '"<unknown: failed to get git hash from data/multiregion.json>"')
-
   local timestamp=$(iso_timestamp)
 
   cat > "${api_output_dir}/version.json" << END
 {
   "timestamp": "${timestamp}",
-  "covid-data-public": ${data_repo_sha},
   "covid-data-model": ${model_repo_json}
 }
 END

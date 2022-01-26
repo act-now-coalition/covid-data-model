@@ -16,8 +16,6 @@ on:
         required: true
 
 env:
-  # TODO: This may no longer be used for anything anymore. Remove?
-  COVID_DATA_PUBLIC_REF: 'main'
 
   # S3 Bucket (used by s3-sync-action tasks) to store final API snapshot.
   AWS_S3_BUCKET: 'data.covidactnow.org'
@@ -59,13 +57,6 @@ jobs:
         path: covid-data-model
         lfs: true
         ref: '${{env.COVID_DATA_MODEL_REF}}'
-    - name: Checkout covid-data-public (${{ env.COVID_DATA_PUBLIC_REF }})
-      uses: actions/checkout@v2
-      with:
-        repository: covid-projections/covid-data-public
-        path: covid-data-public
-        lfs: true
-        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
 
     - name: Setup Python
       uses: actions/setup-python@v2
@@ -92,10 +83,10 @@ jobs:
 
     - name: Build Model Results (run.sh .. .. execute_model)
       run: |
-        ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_model
+        ./covid-data-model/run.sh ./covid-data-model /data/api-results-${{env.SNAPSHOT_ID}} execute_model
 
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
-      run: ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
+      run: ./covid-data-model/run.sh ./covid-data-model /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
 
     - name: Upload Raw Data QA and Model Results
       uses: actions/upload-artifact@v2-preview
@@ -106,7 +97,7 @@ jobs:
 
     - name: Build API (run.sh .. .. execute_api)
       run: |
-        ./covid-data-model/run.sh ./covid-data-public /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
+        ./covid-data-model/run.sh ./covid-data-model /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
 
     - name: make and copy to local tmp directory
       run: |
@@ -133,7 +124,7 @@ jobs:
     - name: Trigger website PR generation if main branch build
       env:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
-      run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}} ${{env.COVID_DATA_PUBLIC_REF}}
+      run: ./covid-data-model/tools/maybe-trigger-web-snapshot-update.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}}
 
     - name: Trigger Label API if main branch build
       env:

@@ -21,7 +21,6 @@ prepare () {
   else
     SNAPSHOT_ID=$1
     COVID_DATA_MODEL_REF=$2
-    COVID_DATA_PUBLIC_REF=$3
   fi
 
   if ! [[ $SNAPSHOT_ID =~ ^[0-9]+$ ]] ; then
@@ -30,7 +29,7 @@ prepare () {
     exit_with_usage
   fi
 
-  if [[ $COVID_DATA_MODEL_REF != "main" ]] || [[ $COVID_DATA_PUBLIC_REF != "main" ]]; then
+  if [[ $COVID_DATA_MODEL_REF != "main" ]] ; then
     echo "Not triggering covid-projections update-snapshot since this isn't a 'main' branch run."
     exit 0
   fi
