@@ -2,9 +2,9 @@ import structlog
 import click
 import requests
 import pandas as pd
-from covidactnow.datapublic import common_init
-from covidactnow.datapublic import common_df
-from covidactnow.datapublic.common_fields import CommonFields
+from datapublic import common_init
+from datapublic import common_df
+from datapublic.common_fields import CommonFields
 from libs.datasets.dataset_utils import DATA_DIRECTORY
 
 
