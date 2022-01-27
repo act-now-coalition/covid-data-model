@@ -530,7 +530,7 @@
       "blocked": true,
       "start_date": "",
       "end_date": "",
-      "region": "DC, NC",
+      "region": "DC",
       "disclaimer": "The CDC-reported vaccine data for this location has an unusually large gap between 1+ dose and completed vaccinations, suggesting a likely data reporting issue. We are monitoring the data and will resume showing vaccine data once the issue is resolved.",
       "context": "https://www.dropbox.com/scl/fi/9nxnpdtwlgn6lwe5cf4g9/CDC-Vaccine-Irregularities.paper?dl=0&rlkey=dxqax20k09p4el1pkivayq7h9"
     },
