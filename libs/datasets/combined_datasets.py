@@ -25,7 +25,6 @@ from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalStateDataset
 from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalCountyDataset
-from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
@@ -252,7 +251,6 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperUSAFactsProvider,
         NYTimesDatasetWithoutExceptions,
     ],
-    CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CANScraperStateProviders,
         HHSHospitalCountyDataset,
