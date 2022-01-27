@@ -26,7 +26,7 @@ prepare () {
   if [ $# -eq 1 ]; then
     EXECUTE_FUNC="execute"
   else
-    EXECUTE_FUNC="${3}"
+    EXECUTE_FUNC="${2}"
   fi
 
   if [ ! -d "${API_OUTPUT_DIR}" ] ; then
