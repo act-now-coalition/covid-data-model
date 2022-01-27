@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "8cd87a57264248cbaea9056b25611fd93677ed9a",
+    "sha": "f6ab4060e5a99f13dd3472872fbbf17265742a9d",
     "branch": "smcclure17-nc-state-provider",
     "is_dirty": true
   },
-  "updated_at": "2022-01-27T19:46:04.834733"
+  "updated_at": "2022-01-27T22:31:10.753431"
 }
