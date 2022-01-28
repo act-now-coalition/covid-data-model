@@ -629,6 +629,16 @@
       "disclaimer": "The CDC-reported vaccine data for North Carolina has an unusually large gap between 1+ dose and completed vaccinations, suggesting a likely data reporting issue. We are monitoring the data and will resume showing state-level vaccine data once the issue is resolved.",
       "region": "NC",
       "context": "NC CDC data 1+ dose inflated due to booster data issue"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "CA",
+      "context": "CA CDC data revision 1/27/2021",
+      "disclaimer": "On 1/27/2022, California made updates to data previously submitted to CDC that resulted in a decrease of 1,593,072 vaccine doses administered."
     }
   ]
 }
