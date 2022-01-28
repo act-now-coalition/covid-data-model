@@ -314,7 +314,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
     ],
     CommonFields.VACCINATIONS_ADDITIONAL_DOSE: [
-        CANScraperCountyProviders,
+        CANScraperStateProvidersWithoutFLCounties,
         CDCVaccinesStatesAndNationDataset,
         CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
     ],
