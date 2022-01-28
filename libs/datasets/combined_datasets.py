@@ -159,10 +159,6 @@ JOPLIN_COUNTIES = [
 NE_COUNTIES = RegionMask(AggregationLevel.COUNTY, states=["NE"])
 
 
-# 1/27/2020: North Carolina CDC data is inaccurate due to issues tracking
-# booster doses. So we use the state provided data instead.
-NC_COUNTIES = RegionMask(AggregationLevel.COUNTY, states=["NC"])
-
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
 # Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
 # Remove counties in MO that overlap with Kansas City and Joplin because we don't handle the
@@ -218,11 +214,13 @@ CDC_STATE_EXCLUSIONS = RegionMask(
         "HI",
         # TODO(sean) 10/23/21: Block TX CDC data until we have a chance to properly QA it
         "TX",
+        # 1/27/2022: North Carolina CDC data is inaccurate due to issues tracking
+        # booster doses. So we use the state provided data instead.
+        "NC",
     ]
 )
 CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions = datasource_regions(
-    CDCNewVaccinesCountiesDataset,
-    exclude=[CDC_STATE_EXCLUSIONS, *CDC_COUNTY_EXCLUSIONS, NC_COUNTIES],
+    CDCNewVaccinesCountiesDataset, exclude=[CDC_STATE_EXCLUSIONS, *CDC_COUNTY_EXCLUSIONS],
 )
 
 # CDC is missing 1st dose data for many NE counties and where it's not missing it, it's
@@ -230,7 +228,7 @@ CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions = datasource_regions(
 # it outright.
 CDCNewVaccinesInitiatedCountiesWithoutExceptions = datasource_regions(
     CDCNewVaccinesCountiesDataset,
-    exclude=[CDC_STATE_EXCLUSIONS, *CDC_COUNTY_EXCLUSIONS, NE_COUNTIES, NC_COUNTIES],
+    exclude=[CDC_STATE_EXCLUSIONS, *CDC_COUNTY_EXCLUSIONS, NE_COUNTIES],
 )
 
 # Excludes FL counties for vaccine fields. See
