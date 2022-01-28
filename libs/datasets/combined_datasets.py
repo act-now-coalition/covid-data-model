@@ -214,7 +214,7 @@ CDC_STATE_EXCLUSIONS = RegionMask(
         "HI",
         # TODO(sean) 10/23/21: Block TX CDC data until we have a chance to properly QA it
         "TX",
-        # 1/27/2022: North Carolina CDC data is inaccurate due to issues tracking
+        # NC - 1/27/2022: North Carolina CDC data is inaccurate due to issues tracking
         # booster doses. So we use the state provided data instead.
         "NC",
     ]
