@@ -619,6 +619,16 @@
       "region": "MN",
       "disclaimer": "Due to the recent surge of COVID-19 cases, the Minnesota Department of Health has [reported](https://www.health.state.mn.us/diseases/coronavirus/situation.html) having a larger than normal number of lab reports to process, leading to daily new cases being an undercount earlier in January. We expect things will be resolved within the next couple of weeks. In the meantime, please note daily case counts may now be an overcount as they are catching up on reports that have been awaiting review.",
       "context": "Based on email thread with MN DOH."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "disclaimer": "The CDC-reported vaccine data for North Carolina has an unusually large gap between 1+ dose and completed vaccinations, suggesting a likely data reporting issue. We are monitoring the data and will resume showing state-level vaccine data once the issue is resolved.",
+      "region": "NC",
+      "context": "NC CDC data 1+ dose inflated due to booster data issue"
     }
   ]
 }
