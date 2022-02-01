@@ -16,7 +16,7 @@ BRANCH="develop"
 # Checks command-line arguments, sets variables, etc.
 prepare () {
   # Parse args if specified.
-  if [ $# -ne 3 ]; then
+  if [ $# -ne 2 ]; then
     exit_with_usage
   else
     SNAPSHOT_ID=$1
