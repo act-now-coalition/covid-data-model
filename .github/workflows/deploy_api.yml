@@ -83,10 +83,10 @@ jobs:
 
     - name: Build Model Results (run.sh .. .. execute_model)
       run: |
-        ./covid-data-model/run.sh ./covid-data-model /data/api-results-${{env.SNAPSHOT_ID}} execute_model
+        ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_model
 
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
-      run: ./covid-data-model/run.sh ./covid-data-model /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
+      run: ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
 
     - name: Upload Raw Data QA and Model Results
       uses: actions/upload-artifact@v2-preview
@@ -97,7 +97,7 @@ jobs:
 
     - name: Build API (run.sh .. .. execute_api)
       run: |
-        ./covid-data-model/run.sh ./covid-data-model /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
+        ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
 
     - name: make and copy to local tmp directory
       run: |
