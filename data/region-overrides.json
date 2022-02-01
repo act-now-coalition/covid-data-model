@@ -639,6 +639,15 @@
       "region": "CA",
       "context": "CA CDC data revision 1/27/2021",
       "disclaimer": "On 1/27/2022, California made updates to data previously submitted to CDC that resulted in a decrease of 1,593,072 vaccine doses administered."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-01-27",
+      "end_date": "",
+      "region": "MA",
+      "context": "dropoff in ICU usage on 1/28/2022"
     }
   ]
 }
