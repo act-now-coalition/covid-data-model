@@ -16,12 +16,11 @@ BRANCH="develop"
 # Checks command-line arguments, sets variables, etc.
 prepare () {
   # Parse args if specified.
-  if [ $# -ne 3 ]; then
+  if [ $# -ne 2 ]; then
     exit_with_usage
   else
     SNAPSHOT_ID=$1
     COVID_DATA_MODEL_REF=$2
-    COVID_DATA_PUBLIC_REF=$3
   fi
 
   if ! [[ $SNAPSHOT_ID =~ ^[0-9]+$ ]] ; then
@@ -30,7 +29,7 @@ prepare () {
     exit_with_usage
   fi
 
-  if [[ $COVID_DATA_MODEL_REF != "main" ]] || [[ $COVID_DATA_PUBLIC_REF != "main" ]]; then
+  if [[ $COVID_DATA_MODEL_REF != "main" ]] ; then
     echo "Not triggering covid-projections update-snapshot since this isn't a 'main' branch run."
     exit 0
   fi
@@ -43,10 +42,10 @@ prepare () {
 }
 
 exit_with_usage () {
-  echo "Usage: $CMD <snapshot-id> <covid-data-model-ref> <covid-data-public-ref>"
+  echo "Usage: $CMD <snapshot-id> <covid-data-model-ref>"
   echo
   echo "Examples:"
-  echo "$CMD 123 main main"
+  echo "$CMD 123 main"
   exit 1
 }
 
