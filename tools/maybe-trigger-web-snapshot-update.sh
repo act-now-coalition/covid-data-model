@@ -42,10 +42,10 @@ prepare () {
 }
 
 exit_with_usage () {
-  echo "Usage: $CMD <snapshot-id> <covid-data-model-ref> <covid-data-public-ref>"
+  echo "Usage: $CMD <snapshot-id> <covid-data-model-ref>
   echo
   echo "Examples:"
-  echo "$CMD 123 main main"
+  echo "$CMD 123 main"
   exit 1
 }
 
