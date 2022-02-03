@@ -158,6 +158,9 @@ JOPLIN_COUNTIES = [
 # so this region mask might not always be in use.
 NE_COUNTIES = RegionMask(AggregationLevel.COUNTY, states=["NE"])
 
+# 02/01/2022: CDC NC data is inaccurate due to an issue with categorizing
+# booster shots. So we instead use state-provided data
+NC_STATE = Region.from_state("NC")
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
 # Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
@@ -177,7 +180,9 @@ CDCVaccinesCountiesDataset = datasource_regions(
 )
 
 CDCVaccinesStatesAndNationDataset = datasource_regions(
-    CDCVaccinesDataset, [RegionMask(AggregationLevel.STATE), RegionMask(AggregationLevel.COUNTRY)]
+    CDCVaccinesDataset,
+    [RegionMask(AggregationLevel.STATE), RegionMask(AggregationLevel.COUNTRY)],
+    exclude=[NC_STATE],
 )
 
 CDC_COUNTY_EXCLUSIONS = [
