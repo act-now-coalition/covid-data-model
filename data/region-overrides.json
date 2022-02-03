@@ -623,7 +623,7 @@
     {
       "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
-      "blocked": true,
+      "blocked": false,
       "start_date": "",
       "end_date": "",
       "disclaimer": "The CDC-reported vaccine data for North Carolina has an unusually large gap between 1+ dose and completed vaccinations, suggesting a likely data reporting issue. We are monitoring the data and will resume showing state-level vaccine data once the issue is resolved.",
