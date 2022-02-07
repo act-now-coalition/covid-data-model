@@ -196,6 +196,8 @@ CDC_COUNTY_EXCLUSIONS = [
     Region.from_fips("02060"),
     # Culebra Municipio, PR - reports 99.9% of 12+ population vaccinated [7/2021]
     Region.from_fips("72049"),
+    # Chattahoochee County, GA - reports well over 100% 1+ dose vaccinated [2/2022]
+    Region.from_fips("13053"),
 ]
 
 # Excluded for a variety of reasons (lower overall coverage, data irregularities, etc.)
@@ -203,22 +205,15 @@ CDC_STATE_EXCLUSIONS = RegionMask(
     states=[
         # CA - Data irregularities including 99.9% of 12+ vaccinated in San Diego
         "CA",
-        # GA - Very low coverage.
-        "GA",
         "NM",
         # PA - Data irregularities including very high rates in several counties
         # (e.g. Montgomery, Chester)
         "PA",
-        # SD - Missing a lot of counties and 1st dose data.
-        "SD",
         # VA - Very low coverage.
         "VA",
         "VT",
-        "WV",
         # CDC reporting 0.1% vaccinated
         "HI",
-        # TODO(sean) 10/23/21: Block TX CDC data until we have a chance to properly QA it
-        "TX",
         # NC - 1/27/2022: North Carolina CDC data is inaccurate due to issues tracking
         # booster doses. So we use the state provided data instead.
         "NC",
