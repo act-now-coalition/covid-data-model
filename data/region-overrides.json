@@ -619,6 +619,15 @@
       "region": "CA",
       "context": "CA CDC data revision 1/27/2021",
       "disclaimer": "On 1/27/2022, California made updates to data previously submitted to the CDC that resulted in a decrease of 1,593,072 vaccine doses administered."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.vaccinationsInitiatedRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "42101",
+      "context": "temporary block due to incorrect booster source"
     }
   ]
 }
