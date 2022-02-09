@@ -10,7 +10,7 @@ MD_COUNTIES = RegionMask(AggregationLevel.COUNTY, states=["MD"])
 MD_STATE = RegionMask(AggregationLevel.STATE, states=["MD"])
 
 
-def patch_maryland_missing_case_data(dataset: timeseries.MultiRegionDataset = None):
+def patch_maryland_missing_case_data(dataset: timeseries.MultiRegionDataset):
     """Patch to fill in strings of days where the MD department of health did not report case data. 
     
     In December 2021, MD was hit with a cyber attack and could not report case data for most of the month.
