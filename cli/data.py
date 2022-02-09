@@ -14,7 +14,7 @@ from datapublic.common_fields import FieldName
 
 from libs import google_sheet_helpers
 from libs import pipeline
-from libs.datasets import combined_dataset_utils
+from libs.datasets import combined_dataset_utils, custom_patches
 from libs.datasets import nytimes_anomalies
 from libs.datasets import custom_aggregations
 from libs.datasets import manual_filter
@@ -170,6 +170,10 @@ def update(
     multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
     if print_stats:
         multiregion_dataset.print_stats("new_cases_and_deaths")
+
+    multiregion_dataset = custom_patches.patch_maryland_missing_case_data(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("patch_maryland_missing_case_data")
 
     multiregion_dataset = nytimes_anomalies.filter_by_nyt_anomalies(multiregion_dataset)
     if print_stats:
