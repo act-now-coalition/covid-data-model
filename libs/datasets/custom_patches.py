@@ -37,5 +37,5 @@ def fill_zero_days(
 
     modified_ts.loc[missing_dates_index, CommonFields.NEW_CASES] = 0
 
-    md_state = dataclasses.replace(location_ds, timeseries=modified_ts, timeseries_bucketed=None)
-    return other.append_regions(md_state)
+    subset_ds = dataclasses.replace(location_ds, timeseries=modified_ts, timeseries_bucketed=None)
+    return other.append_regions(subset_ds)
