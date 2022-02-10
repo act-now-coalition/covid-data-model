@@ -1,3 +1,4 @@
+from typing import List
 from datapublic.common_fields import CommonFields
 from libs.datasets import AggregationLevel
 from libs.datasets import timeseries
@@ -12,9 +13,10 @@ MD_STATE = RegionMask(AggregationLevel.STATE, states=["MD"])
 
 
 def patch_maryland_missing_case_data(
-    dataset: timeseries.MultiRegionDataset = None,
+    dataset: timeseries.MultiRegionDataset,
     start: str = "2021-12-04",
     end: str = "2021-12-29",
+    locations: List[RegionMask] = [MD_STATE, MD_COUNTIES],
 ) -> timeseries.MultiRegionDataset:
     """Patch to fill in strings of days where the MD department of health did not report case data. 
     
@@ -29,7 +31,7 @@ def patch_maryland_missing_case_data(
     number_of_days = (pd.to_datetime(end) - pd.to_datetime(start)).days
     assert number_of_days > 7  # if the stall is <= 7 days it will be spread automatically
 
-    location_ds, other = dataset.partition_by_region(include=[MD_STATE, MD_COUNTIES])
+    location_ds, other = dataset.partition_by_region(include=[locations])
     dates_to_replace = list(pd.date_range(start=start, end=end))
 
     modified_ts = location_ds.timeseries
