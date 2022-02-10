@@ -21,8 +21,8 @@ def patch_maryland_missing_case_data(
     """Patch to fill in strings of days where the MD department of health did not report case data. 
     
     In December 2021, MD was hit with a cyber attack and could not report case data for most of the month.
-    As such, the days are null. The R(t) metric failed due to the missing data, so this fills in the data with
-    zeros in order to revive the R(t) calculation.
+    As such, the days are null. The R(t) metric failed due to the missing data, so this backfills
+    the data reported after the cyber attack in order to revive the R(t) calculation.
 
     Enables the reporting stall backfill code to spread cases for stalls between the specified date range. 
     Overrides the default maximum backfill length of 7 days.
