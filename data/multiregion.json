@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "68b35b19d5f901692e498168de73b486402f3b70",
-    "branch": "smcclure17-patch-md",
+    "sha": "a86855a1dfd96b84c5f066cb477fea925f6daeec",
+    "branch": "main",
     "is_dirty": true
   },
-  "updated_at": "2022-02-09T16:57:26.893196"
+  "updated_at": "2022-02-10T09:06:58.700597"
 }
