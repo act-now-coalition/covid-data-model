@@ -31,7 +31,7 @@ def patch_maryland_missing_case_data(
     number_of_days = (pd.to_datetime(end) - pd.to_datetime(start)).days
     assert number_of_days > 7  # if the stall is <= 7 days it will be spread automatically
 
-    location_ds, other = dataset.partition_by_region(include=[locations])
+    location_ds, other = dataset.partition_by_region(include=locations)
     dates_to_replace = list(pd.date_range(start=start, end=end))
 
     modified_ts = location_ds.timeseries
