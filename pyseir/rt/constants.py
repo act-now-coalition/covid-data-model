@@ -63,7 +63,7 @@ class InferRtConstants:
     SERIAL_PERIOD = 1 / _sigma + 0.5 * 1 / _delta
 
     # The quantization of the R Buckets
-    R_BUCKETS = np.linspace(0, 10, 501).astype(np.float64)
+    R_BUCKETS = np.linspace(0, 10, 501).astype(float)
 
     # Reference date to compute from.
     REF_DATE = datetime(year=2020, month=1, day=1)
