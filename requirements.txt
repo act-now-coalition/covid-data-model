@@ -73,3 +73,4 @@ PyYAML==5.3.1
 retrying==1.3.3
 six==1.15.0
 Werkzeug==1.0.1
+pyseir
