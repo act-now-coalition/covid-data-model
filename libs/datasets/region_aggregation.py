@@ -237,7 +237,7 @@ def _apply_scaling_factor(
     )
     # Check that scale_factors has location index and CommonFields in columns.
     assert scale_factors.index.names == [CommonFields.LOCATION_ID]
-    assert scale_factors.columns.difference(CommonFields).empty
+    assert scale_factors.columns.difference(CommonFields.list()).empty
 
     # Scaled fields are modified in-place
     df_out = df_in.copy()

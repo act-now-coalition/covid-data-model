@@ -119,7 +119,7 @@ def _make_output_dataset(
     # Drop all-NA timeseries now, as done in from_timeseries_wide_dates_df. This makes sure
     # `locations` is used to build provenance information for only timeseries in the returned
     # MultiRegionDataset.
-    wide_date_df = wide_date_df.dropna("rows", "all")
+    wide_date_df = wide_date_df.dropna(axis="rows", how="all")
     locations = wide_date_df.index.unique(CommonFields.LOCATION_ID)
     _append_variable_index_level(wide_date_df, output_metric)
 

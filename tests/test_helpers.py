@@ -284,9 +284,9 @@ def _timeseries_sorted_by_location_date(
     """Returns the timeseries data, sorted by LOCATION_ID, DEMOGRAPHIC_BUCKET, DATE."""
     df = dataset.timeseries_bucketed
     if drop_na:
-        df = df.dropna("columns", "all")
+        df = df.dropna(axis="columns", how="all")
     if drop_na_dates:
-        df = df.dropna("rows", "all")
+        df = df.dropna(axis="rows", how="all")
     df = df.reset_index().sort_values(
         [CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE],
         ignore_index=True,
@@ -302,7 +302,7 @@ def _latest_sorted_by_location_date(
         [CommonFields.LOCATION_ID], ignore_index=True
     )
     if drop_na:
-        df = df.dropna("columns", "all")
+        df = df.dropna(axis="columns", how="all")
     return df
 
 
