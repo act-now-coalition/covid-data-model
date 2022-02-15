@@ -286,7 +286,7 @@ def _timeseries_sorted_by_location_date(
     if drop_na:
         df = df.dropna(axis="columns", how="all")
     if drop_na_dates:
-        df = df.dropna(axis="rows", how="all")
+        df = df.dropna(axis="index", how="all")
     df = df.reset_index().sort_values(
         [CommonFields.LOCATION_ID, PdFields.DEMOGRAPHIC_BUCKET, CommonFields.DATE],
         ignore_index=True,

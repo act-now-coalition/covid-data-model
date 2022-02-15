@@ -216,7 +216,7 @@ class OneRegionTimeseriesDataset:
 
     @property
     def date_indexed(self) -> pd.DataFrame:
-        return self.data.set_index(CommonFields.DATE)
+        return self.data.set_index(CommonFields.DATE).asfreq("D")
 
     @property
     def empty(self):
