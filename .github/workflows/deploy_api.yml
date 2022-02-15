@@ -15,8 +15,9 @@ on:
         description: 'Sentry environment of build. Should be "production" on main build and "staging" for other branches.'
         required: true
       pyseir_snapshot:
-        description: 'Optionally use pyseir build-all artifacts from a previous snapshot build.'
-          required: true
+        description: 'Optionally download an existing pyseir model artifact to use instead of generating a new one.'     
+        required: false
+        default: '9999'
 
 env:
 
