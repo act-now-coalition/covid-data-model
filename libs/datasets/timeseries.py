@@ -183,7 +183,7 @@ class OneRegionTimeseriesDataset:
                 # variables with different buckets for a given distribution, including none's
                 # will mix buckets.  To properly fix, consider passing latest in a long format
                 # rather than a wide variables format.
-                if value is None:
+                if value is None or np.isnan(value):
                     continue
                 bucket = DistributionBucket.from_str(short_name)
                 result[field][bucket.distribution][bucket.name] = value
