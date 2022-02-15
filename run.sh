@@ -78,8 +78,8 @@ execute_model() {
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
 
-  Capture all the PDFs pyseir creates in output/pyseir since they are
-  extremely helpful for debugging / QA'ing the model results.
+  # Capture all the PDFs pyseir creates in output/pyseir since they are
+  # extremely helpful for debugging / QA'ing the model results.
   echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
   pushd output
   zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
