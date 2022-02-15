@@ -31,7 +31,7 @@ prepare () {
   fi
 
   if [ $# -eq 3 ]; then
-    SNAPSHOT_MODEL_ARTIFACT="$2"
+    PYSEIR_ARTIFACT_SNAPSHOT="$3"
   fi
 
   if [ ! -d "${API_OUTPUT_DIR}" ] ; then
@@ -66,9 +66,9 @@ execute_model() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
 
-  if [$SNAPSHOT_MODEL_ARTIFACT] then;
-    echo ">>> Downloading state and county models from snapshot ${SNAPSHOT_MODEL_ARTIFACT}"
-    ./run.py utils download-model-artifact "${SNAPSHOT_MODEL_ARTIFACT}" --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
+  if [ ! -z "$PYSEIR_ARTIFACT_SNAPSHOT" ]; then
+    echo ">>> Downloading state and county models from existing snapshot ${PYSEIR_ARTIFACT_SNAPSHOT}"
+    ./run.py utils download-model-artifact "${PYSEIR_ARTIFACT_SNAPSHOT}" --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
   else
     echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
     # TODO(#148): We need to clean up the output of these scripts!
@@ -78,8 +78,8 @@ execute_model() {
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/
 
-  # Capture all the PDFs pyseir creates in output/pyseir since they are
-  # extremely helpful for debugging / QA'ing the model results.
+  Capture all the PDFs pyseir creates in output/pyseir since they are
+  extremely helpful for debugging / QA'ing the model results.
   echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
   pushd output
   zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'

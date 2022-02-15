@@ -17,7 +17,7 @@ on:
       pyseir_snapshot:
         description: 'Optionally download an existing pyseir model artifact to use instead of generating a new one.'     
         required: false
-        default: '9999'
+        default: ""
 
 env:
 
@@ -47,6 +47,7 @@ env:
   # Setting openblas threading to one to speed up numpy in multiprocessing.
   OPENBLAS_NUM_THREADS: 1
 
+  # Optional Snapshot number to use pyseir model output from. An empty string by default
   PYSEIR_SNAPSHOT: ${{ github.event.inputs.pyseir_snapshot }}  
 
 jobs:
@@ -88,6 +89,8 @@ jobs:
       run: git lfs pull
 
     - name: Build Model Results (run.sh .. .. execute_model)
+      env:
+        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: |
         ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_model
 
