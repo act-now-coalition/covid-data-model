@@ -9,12 +9,13 @@ set -o errexit
 # Checks command-line arguments, sets variables, etc.
 prepare () {
   # Parse args if specified.
-  if [ $# -lt 1 ] || [ $# -gt 2 ]; then
-    echo "Usage: $0 [output-directory] (optional - specific function)"
+  if [ $# -lt 1 ] || [ $# -gt 3 ]; then
+    echo "Usage: $0 [output-directory] (optional - specific function) (optional - model snapshot number)"
     echo
     echo "Example: $0 ./api-results/"
     echo "Example: $0 ./api-results/ execute_model"
     echo "Example: $0 ./api-results/ execute_api"
+    echo "Example: $0 ./api-results/ execute_api 2920"
     exit 1
   else
     API_OUTPUT_DIR="$(abs_path $1)"
@@ -27,6 +28,10 @@ prepare () {
     EXECUTE_FUNC="execute"
   else
     EXECUTE_FUNC="${2}"
+  fi
+
+  if [ $# -eq 3 ]; then
+    SNAPSHOT_MODEL_ARTIFACT="$2"
   fi
 
   if [ ! -d "${API_OUTPUT_DIR}" ] ; then
@@ -61,9 +66,14 @@ execute_model() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
 
-  echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
-  # TODO(#148): We need to clean up the output of these scripts!
-  python pyseir/cli.py build-all --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
+  if [$SNAPSHOT_MODEL_ARTIFACT] then;
+    echo ">>> Downloading state and county models from snapshot ${SNAPSHOT_MODEL_ARTIFACT}"
+    ./run.py utils download-model-artifact "${SNAPSHOT_MODEL_ARTIFACT}" --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
+  else
+    echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
+    # TODO(#148): We need to clean up the output of these scripts!
+    python pyseir/cli.py build-all --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
+  fi
 
   # Move state output to the expected location.
   mkdir -p ${API_OUTPUT_DIR}/

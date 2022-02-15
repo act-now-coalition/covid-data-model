@@ -14,6 +14,9 @@ on:
       sentry_environment:
         description: 'Sentry environment of build. Should be "production" on main build and "staging" for other branches.'
         required: true
+      pyseir_snapshot:
+        description: 'Optionally use pyseir build-all artifacts from a previous snapshot build.'
+          required: false
 
 env:
 
@@ -42,6 +45,8 @@ env:
 
   # Setting openblas threading to one to speed up numpy in multiprocessing.
   OPENBLAS_NUM_THREADS: 1
+
+  PYSEIR_SNAPSHOT: ${{ github.event.inputs.pyseir_snapshot }}  
 
 jobs:
   build-and-publish-snapshot:
