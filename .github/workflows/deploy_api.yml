@@ -92,7 +92,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: |
-        ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_model ${{OPTIONAL_PYSEIR_SNAPSHOT}}
+        ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_model ${{env.OPTIONAL_PYSEIR_SNAPSHOT}}
 
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
       run: ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
