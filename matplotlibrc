@@ -1,7 +1,0 @@
-# On MacOSX, certain backends require a framework build of python to
-# function properly which doesn't play nicely with virtualenv installed python
-# versions.
-# Setting backend to Agg globally to make matplotlib on mac happy.
-# https://matplotlib.org/3.1.0/faq/osx_framework.html
-# https://github.com/pypa/virtualenv/issues/54#issuecomment-491348526
-backend: Agg
