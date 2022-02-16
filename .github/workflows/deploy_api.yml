@@ -15,7 +15,7 @@ on:
         description: 'Sentry environment of build. Should be "production" on main build and "staging" for other branches.'
         required: true
       pyseir_snapshot:
-        description: 'Optionally download an existing pyseir model artifact to use instead of generating a new one.'     
+        description: 'Optionally download an existing pyseir model artifact from a previous snapshot instead of generating a new one.'     
         required: false
         default: ""
 
@@ -48,7 +48,7 @@ env:
   OPENBLAS_NUM_THREADS: 1
 
   # Optional Snapshot number to use pyseir model output from. An empty string by default
-  OPTIONAL_PYSEIR_SNAPSHOT: ${{ github.event.inputs.pyseir_snapshot }}  
+  PYSEIR_ARTIFACT_SNAPSHOT: ${{ github.event.inputs.pyseir_snapshot }}  
 
 jobs:
   build-and-publish-snapshot:
@@ -92,7 +92,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: |
-        ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_model ${{env.OPTIONAL_PYSEIR_SNAPSHOT}}
+        ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_model ${{env.PYSEIR_ARTIFACT_SNAPSHOT}}
 
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
       run: ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
