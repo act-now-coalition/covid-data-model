@@ -10,7 +10,7 @@ set -o errexit
 prepare () {
   # Parse args if specified.
   if [ $# -lt 1 ] || [ $# -gt 3 ]; then
-    echo "Usage: $0 [output-directory] (optional - specific function) (optional - model snapshot number)"
+    echo "Usage: $0 [output-directory] (optional - specific function) (optional - pyseir model snapshot number)"
     echo
     echo "Example: $0 ./api-results/"
     echo "Example: $0 ./api-results/ execute_model"
