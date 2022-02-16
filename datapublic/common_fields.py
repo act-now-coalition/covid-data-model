@@ -71,6 +71,10 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
         o.field_group = field_group
         return o
 
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c.value, cls))
+
     FIPS = "fips", None
 
     DATE = "date", None
