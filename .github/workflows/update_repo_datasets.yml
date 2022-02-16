@@ -2,8 +2,8 @@ name: Update combined datasets
 
 on:
   schedule:
-    # Run job everyday at 5:00 am EST
-    - cron: '0 10 * * *'
+    # Run job everyday at 3:00 and 5:00 am EST
+    - cron: '0 8,10 * * *'
   workflow_dispatch:
     inputs:
       trigger_api_build:
