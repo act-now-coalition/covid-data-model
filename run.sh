@@ -30,8 +30,10 @@ prepare () {
     EXECUTE_FUNC="${2}"
   fi
 
-  if [ $# -eq 3 ]; then
+  if [ $# -ge 3 ]; then
     PYSEIR_ARTIFACT_SNAPSHOT="$3"
+  else
+    PYSEIR_ARTIFACT_SNAPSHOT=""
   fi
 
   if [ ! -d "${API_OUTPUT_DIR}" ] ; then
