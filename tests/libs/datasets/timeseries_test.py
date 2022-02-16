@@ -92,7 +92,7 @@ def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Pat
         )
     )
     region_97111 = multiregion.get_one_region(Region.from_fips("97111"))
-    assert region_97111.date_indexed.at["2020-04-02", "m1"] == 2
+    assert region_97111.date_indexed.at[pd.to_datetime("2020-04-02"), "m1"] == 2
     assert region_97111.latest["c1"] == 3
     assert multiregion.get_one_region(Region.from_fips("01")).latest["c2"] == 123.4
 
@@ -100,7 +100,7 @@ def test_multi_region_to_from_timeseries_and_latest_values(tmp_path: pathlib.Pat
     multiregion.to_csv(csv_path)
     multiregion_loaded = timeseries.MultiRegionDataset.from_csv(csv_path)
     region_97111 = multiregion_loaded.get_one_region(Region.from_fips("97111"))
-    assert region_97111.date_indexed.at["2020-04-02", "m1"] == 2
+    assert region_97111.date_indexed.at[pd.to_datetime("2020-04-02"), "m1"] == 2
     assert region_97111.latest["c1"] == 3
     assert region_97111.region.fips == "97111"
     assert multiregion_loaded.get_one_region(Region.from_fips("01")).latest["c2"] == 123.4
