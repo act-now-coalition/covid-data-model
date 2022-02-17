@@ -15,7 +15,7 @@ prepare () {
     echo "Example: $0 ./api-results/"
     echo "Example: $0 ./api-results/ execute_model"
     echo "Example: $0 ./api-results/ execute_api"
-    echo "Example: $0 ./api-results/ execute_api 2920"
+    echo "Example: $0 ./api-results/ execute_model 2920"
     exit 1
   else
     API_OUTPUT_DIR="$(abs_path $1)"
