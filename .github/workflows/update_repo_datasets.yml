@@ -9,6 +9,7 @@ on:
       trigger_api_build:
         description: 'If "true" API snapshot build will be triggered after dataset update.'
         default: 'true'
+  repository_dispatch:
 
 env:
 
