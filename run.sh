@@ -70,11 +70,13 @@ execute_model() {
 
   if [ ! -z "$PYSEIR_ARTIFACT_SNAPSHOT" ]; then
     echo ">>> Downloading state and county models from existing snapshot ${PYSEIR_ARTIFACT_SNAPSHOT}."
-    ./run.py utils download-model-artifact "${PYSEIR_ARTIFACT_SNAPSHOT}" --output-dir=${API_OUTPUT_DIR%/*}
+    # TODO(sean): Might be simpler to just download the model results to /tmp/
+    API_OUTPUT_PARENT="${API_OUTPUT_DIR%/*}"
+    ./run.py utils download-model-artifact "${PYSEIR_ARTIFACT_SNAPSHOT}" --output-dir=${API_OUTPUT_PARENT}
     
     echo ">>> Moving downloaded models to the expected locations."
     rm -r "${API_OUTPUT_DIR}"  # remove the empty directories created above
-    mv "${API_OUTPUT_DIR%/*}"/api-results-${PYSEIR_ARTIFACT_SNAPSHOT} "${API_OUTPUT_DIR}"
+    mv "${API_OUTPUT_PARENT}"/api-results-${PYSEIR_ARTIFACT_SNAPSHOT} "${API_OUTPUT_DIR}"
   else
     echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
     # TODO(#148): We need to clean up the output of these scripts!
