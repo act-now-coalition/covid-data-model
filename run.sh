@@ -9,12 +9,13 @@ set -o errexit
 # Checks command-line arguments, sets variables, etc.
 prepare () {
   # Parse args if specified.
-  if [ $# -lt 1 ] || [ $# -gt 2 ]; then
-    echo "Usage: $0 [output-directory] (optional - specific function)"
+  if [ $# -lt 1 ] || [ $# -gt 3 ]; then
+    echo "Usage: $0 [output-directory] (optional - specific function) (optional - pyseir model snapshot number)"
     echo
     echo "Example: $0 ./api-results/"
     echo "Example: $0 ./api-results/ execute_model"
     echo "Example: $0 ./api-results/ execute_api"
+    echo "Example: $0 ./api-results/ execute_model 2920"
     exit 1
   else
     API_OUTPUT_DIR="$(abs_path $1)"
@@ -27,6 +28,12 @@ prepare () {
     EXECUTE_FUNC="execute"
   else
     EXECUTE_FUNC="${2}"
+  fi
+
+  if [ $# -ge 3 ]; then
+    PYSEIR_ARTIFACT_SNAPSHOT="$3"
+  else
+    PYSEIR_ARTIFACT_SNAPSHOT=""
   fi
 
   if [ ! -d "${API_OUTPUT_DIR}" ] ; then
@@ -61,19 +68,31 @@ execute_model() {
   # Go to repo root (where run.sh lives).
   cd "$(dirname "$0")"
 
-  echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
-  # TODO(#148): We need to clean up the output of these scripts!
-  python pyseir/cli.py build-all --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
+  if [ ! -z "$PYSEIR_ARTIFACT_SNAPSHOT" ]; then
+    echo ">>> Downloading state and county models from existing snapshot ${PYSEIR_ARTIFACT_SNAPSHOT}."
+    # TODO(sean): Might be simpler to just download the model results to /tmp/
+    API_OUTPUT_PARENT="${API_OUTPUT_DIR%/*}"
+    ./run.py utils download-model-artifact "${PYSEIR_ARTIFACT_SNAPSHOT}" --output-dir=${API_OUTPUT_PARENT}
+    
+    echo ">>> Moving downloaded models to the expected locations."
+    rm -r "${API_OUTPUT_DIR}"  # remove the empty directories created above
+    mv "${API_OUTPUT_PARENT}"/api-results-${PYSEIR_ARTIFACT_SNAPSHOT} "${API_OUTPUT_DIR}"
+  else
+    echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
+    # TODO(#148): We need to clean up the output of these scripts!
+    python pyseir/cli.py build-all --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
+  
 
-  # Move state output to the expected location.
-  mkdir -p ${API_OUTPUT_DIR}/
+    # Move state output to the expected location.
+    mkdir -p ${API_OUTPUT_DIR}/
 
-  # Capture all the PDFs pyseir creates in output/pyseir since they are
-  # extremely helpful for debugging / QA'ing the model results.
-  echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
-  pushd output
-  zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
-  popd
+    # Capture all the PDFs pyseir creates in output/pyseir since they are
+    # extremely helpful for debugging / QA'ing the model results.
+    echo ">>> Generating pyseir.zip from PDFs in output/pyseir."
+    pushd output
+    zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
+    popd
+  fi
 }
 
 execute_api() {
