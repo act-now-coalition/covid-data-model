@@ -627,6 +627,15 @@
       "end_date": "",
       "region": "ME",
       "context": "2/17/22: State officials have said recent case counts in Maine may be affected by a significant backlog of test results."
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-02-17",
+      "end_date": "",
+      "region": "13020, 20100",
+      "context": "trello cards: https://trello.com/c/k2TE7gY2/310-bay-county-mi-icu-capacity-dropoff-2-22-22, https://trello.com/c/LncGLM0Z/311-dover-county-de-icu-capacity-dropoff-2-22-22"
     }
   ]
 }
