@@ -636,6 +636,15 @@
       "end_date": "",
       "region": "13020, 20100",
       "context": "trello cards: https://trello.com/c/k2TE7gY2/310-bay-county-mi-icu-capacity-dropoff-2-22-22, https://trello.com/c/LncGLM0Z/311-dover-county-de-icu-capacity-dropoff-2-22-22"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-02-11",
+      "end_date": "",
+      "region": "WA",
+      "context": "WA reporting issues 2/23/2022"
     }
   ]
 }
