@@ -654,7 +654,7 @@
       "end_date": "",
       "region": "WA",
       "context": "https://trello.com/c/zNhtWGsT/312-wa-case-reporting-issues-2-22-22",
-      "disclaimer": "Due to the current surge in COVID-19 cases, The Washington Department of Health is experiencing substantial slowdowns in our data systems, resulting in delays in reporting cases, hospitalizations, and deaths. For more information, please visit Washington's [COVID-19 Data Dashboard](https://doh.wa.gov/emergencies/covid-19/data-dashboard)"
+      "disclaimer": "Due to the current surge in COVID-19 cases, The Washington Department of Health is experiencing substantial slowdowns in their data systems, resulting in delays in reporting cases, hospitalizations, and deaths. For more information, please visit Washington's [COVID-19 Data Dashboard](https://doh.wa.gov/emergencies/covid-19/data-dashboard)"
     },
     {
       "include": "subregions",
