@@ -251,11 +251,7 @@ CANScraperStateProvidersWithoutFLCounties = datasource_regions(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [
-        CANScraperStateProviders,
-        CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutExceptions,
-    ],
+    CommonFields.CASES: [CANScraperStateProviders, CANScraperUSAFactsProvider,],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CANScraperStateProviders,
@@ -268,11 +264,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
-    CommonFields.DEATHS: [
-        CANScraperStateProviders,
-        CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutExceptions,
-    ],
+    CommonFields.DEATHS: [CANScraperStateProviders, CANScraperUSAFactsProvider,],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
         CANScraperStateProviders,
