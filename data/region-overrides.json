@@ -664,6 +664,15 @@
       "end_date": "",
       "region": "WA",
       "context": "https://trello.com/c/zNhtWGsT/312-wa-case-reporting-issues-2-22-22"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-02-25",
+      "end_date": "",
+      "region": "CA",
+      "context": "4,400 backlog of cases from one lab"
     }
   ]
 }
