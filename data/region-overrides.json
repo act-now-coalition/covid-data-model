@@ -655,6 +655,16 @@
       "end_date": "",
       "region": "CA",
       "context": "4,400 backlog of cases from one lab"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2022-02-16",
+      "end_date": "",
+      "region": "IA",
+      "disclaimer": "As of February, 16th, 2022, The Iowa Department of Public Health no longer reports negative test result data. As a result, we do not have a source for accurate positive test rate data at this time.",
+      "context": "https://trello.com/c/FpzeEiGz/338-ia-no-longer-reporting-negative-total-tests"
     }
   ]
 }
