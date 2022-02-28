@@ -665,6 +665,15 @@
       "region": "IA",
       "disclaimer": "As of February, 16th, 2022, [The Iowa Department of Public Health](https://governor.iowa.gov/press-release/gov-reynolds-announces-expiration-of%C2%A0public-health%C2%A0proclamation%C2%A0changes-to-covid-19) no longer reports negative test result data. As a result, we do not have a source for accurate positive test rate data at this time.",
       "context": "https://trello.com/c/FpzeEiGz/338-ia-no-longer-reporting-negative-total-tests"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-02-17",
+      "end_date": "",
+      "region": "53057, 53037, 53065",
+      "context": "Some WA counties missing case data from 2/17/2022 onward"
     }
   ]
 }
