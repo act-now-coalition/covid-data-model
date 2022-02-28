@@ -663,7 +663,7 @@
       "start_date": "2022-02-16",
       "end_date": "",
       "region": "IA",
-      "disclaimer": "As of February, 16th, 2022, The Iowa Department of Public Health no longer reports negative test result data. As a result, we do not have a source for accurate positive test rate data at this time.",
+      "disclaimer": "As of February, 16th, 2022, [The Iowa Department of Public Health](https://governor.iowa.gov/press-release/gov-reynolds-announces-expiration-of%C2%A0public-health%C2%A0proclamation%C2%A0changes-to-covid-19) no longer reports negative test result data. As a result, we do not have a source for accurate positive test rate data at this time.",
       "context": "https://trello.com/c/FpzeEiGz/338-ia-no-longer-reporting-negative-total-tests"
     }
   ]
