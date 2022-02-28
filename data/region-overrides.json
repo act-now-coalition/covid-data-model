@@ -624,7 +624,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2022-02-15",
-      "end_date": "",
+      "end_date": "2022-02-20",
       "region": "ME",
       "context": "2/17/22: State officials have said recent case counts in Maine may be affected by a significant backlog of test results."
     },
@@ -638,23 +638,14 @@
       "context": "trello cards: https://trello.com/c/k2TE7gY2/310-bay-county-mi-icu-capacity-dropoff-2-22-22, https://trello.com/c/LncGLM0Z/311-dover-county-de-icu-capacity-dropoff-2-22-22"
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2022-02-11",
-      "end_date": "",
-      "region": "WA",
-      "context": "WA reporting issues 2/23/2022"
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
+      "blocked": false,
       "start_date": "",
       "end_date": "",
       "region": "WA",
       "context": "https://trello.com/c/zNhtWGsT/312-wa-case-reporting-issues-2-22-22",
-      "disclaimer": "Due to the current surge in COVID-19 cases, The Washington Department of Health is experiencing substantial slowdowns in their data systems, resulting in delays in reporting cases, hospitalizations, and deaths. As a result, we currently do not have accurate case data to display. For more information, please visit Washington's [COVID-19 Data Dashboard](https://doh.wa.gov/emergencies/covid-19/data-dashboard)"
+      "disclaimer": "Due to the recent surge in COVID-19 cases, The Washington Department of Health is experiencing substantial slowdowns in their data systems, resulting in delays in reporting cases, hospitalizations, and deaths. For more information, please visit Washington's [COVID-19 Data Dashboard](https://doh.wa.gov/emergencies/covid-19/data-dashboard)"
     },
     {
       "include": "region-and-subregions",
