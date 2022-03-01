@@ -652,7 +652,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2022-02-25",
-      "end_date": "2022-03-25",
+      "end_date": "2022-02-25",
       "region": "CA",
       "context": "4,400 backlog of cases from one lab"
     },
