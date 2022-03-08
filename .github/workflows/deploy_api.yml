@@ -14,6 +14,10 @@ on:
       sentry_environment:
         description: 'Sentry environment of build. Should be "production" on main build and "staging" for other branches.'
         required: true
+      pyseir_snapshot:
+        description: 'Optionally download an existing pyseir model artifact from a previous snapshot number instead of generating a new one.'     
+        required: false
+        default: ""
 
 env:
 
@@ -42,6 +46,9 @@ env:
 
   # Setting openblas threading to one to speed up numpy in multiprocessing.
   OPENBLAS_NUM_THREADS: 1
+
+  # Optional Snapshot number to use pyseir model output from. An empty string by default
+  PYSEIR_ARTIFACT_SNAPSHOT: ${{ github.event.inputs.pyseir_snapshot }}  
 
 jobs:
   build-and-publish-snapshot:
@@ -82,8 +89,10 @@ jobs:
       run: git lfs pull
 
     - name: Build Model Results (run.sh .. .. execute_model)
+      env:
+        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: |
-        ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_model
+        ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_model ${{env.PYSEIR_ARTIFACT_SNAPSHOT}}
 
     - name: Zip Model Results (run.sh .. .. execute_zip_folder)
       run: ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_zip_folder
