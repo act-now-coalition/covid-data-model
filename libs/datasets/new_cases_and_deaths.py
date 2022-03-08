@@ -70,7 +70,7 @@ def add_new_deaths(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
 
 
 def spread_first_reported_value_after_stall(
-    series: pd.Series, max_days_to_spread: int = 7
+    series: pd.Series, max_days_to_spread: int = 7, is_multiindex: bool = False
 ) -> pd.Series:
     """Spreads first reported value after reported zeros by dividing it evenly
     over the prior days.
@@ -81,6 +81,8 @@ def spread_first_reported_value_after_stall(
             a stall exceeds this number of days, the reported value will be spread
             over max_days_to_spread and the remaining zeros will be kept as
             zeros.
+        is_multiindex: Whether or not the series contains a multi-level index. If
+            true, one level must be a date index.
     """
     if not (series > 0).any():
         return series
@@ -120,9 +122,16 @@ def spread_first_reported_value_after_stall(
     num_days_worth_of_cases[zeros_to_replace] = None
 
     # Don't mess with leading / trailing zeros.
-    first_case = series[series.gt(0)].index[0]
-    last_case = series[series.gt(0)].index[-1]
-    is_between_first_last_case = (series.index > first_case) & (series.index <= last_case)
+    if is_multiindex:
+        non_zero_date_index = series[series.gt(0)].index.get_level_values("date")
+        first_case = non_zero_date_index[0]
+        last_case = non_zero_date_index[-1]
+        date_index = series.index.get_level_values("date")
+        is_between_first_last_case = (date_index > first_case) & (date_index <= last_case)
+    else:
+        first_case = series[series.gt(0)].index[0]
+        last_case = series[series.gt(0)].index[-1]
+        is_between_first_last_case = (series.index > first_case) & (series.index <= last_case)
 
     series[is_between_first_last_case] = (
         series[is_between_first_last_case] / num_days_worth_of_cases
