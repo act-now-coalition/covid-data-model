@@ -155,6 +155,14 @@ def filter_by_nyt_anomalies(dataset: MultiRegionDataset) -> MultiRegionDataset:
     for index, row in applicable_nyt_anomalies.iterrows():
         if row[NYTimesFields.OMIT_FROM_ROLLING_AVERAGE] == "yes":
             location_id = row[CommonFields.LOCATION_ID]
+
+            # NOTE(sean) 03/08/22: ignoring MD anamolies in december 2021 to allow
+            # test_patch_maryland_missing_case_data to take effect.
+            if "iso1:us#iso2:us-md" in location_id:
+                date = row[NYTimesFields.DATE]
+                if date >= pd.to_datetime("2021-12-01") and date < pd.to_datetime("2022-01-01"):
+                    continue
+
             bucket = row[PdFields.DEMOGRAPHIC_BUCKET]
             date = row[NYTimesFields.DATE]
             description = "NYTimes: {}".format(row["description"])
