@@ -721,6 +721,15 @@
       "end_date": "",
       "region": "DE",
       "context": "DE state spike to 100% ICU usage, Dover drop to < 50% usage"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-06",
+      "end_date": "2022-03-06",
+      "region": "CT",
+      "context": "CT backlog reporting on 03/07/2022"
     }
   ]
 }
