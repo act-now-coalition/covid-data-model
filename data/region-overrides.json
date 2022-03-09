@@ -697,8 +697,18 @@
       "include": "subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2022-03-02",
-      "end_date": "2022-03-02",
+      "start_date": "2022-02-24",
+      "end_date": "",
+      "context": "IA counties backlog for cases on 03/02/2022",
+      "region": "IA",
+      "disclaimer": ""
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
       "context": "IA counties backlog for cases on 03/02/2022",
       "region": "IA",
       "disclaimer": "We have removed Iowa case data for March 2nd, 2022 due to concerns of an [apparent backlog of cases being reported](https://www.desmoinesregister.com/story/news/health/2022/03/02/iowa-covid-19-hospitalizations-continue-decline-cases-weekly-update/6896213001/)."
