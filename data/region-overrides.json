@@ -710,6 +710,15 @@
       "end_date": "2022-03-06",
       "region": "CT",
       "context": "CT backlog reporting on 03/07/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-11",
+      "end_date": "2022-03-11",
+      "region": "48141, 27119",
+      "context": "potential backlogs on 3/11/2020"
     }
   ]
 }
