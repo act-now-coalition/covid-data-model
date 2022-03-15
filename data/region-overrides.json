@@ -671,7 +671,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2022-02-28",
-      "end_date": "",
+      "end_date": "2022-02-28",
       "region": "48355",
       "context": "Nueces County, TX backlog"
     },
