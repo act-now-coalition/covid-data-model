@@ -719,6 +719,15 @@
       "end_date": "2022-03-11",
       "region": "48141, 27119",
       "context": "potential backlogs on 3/11/2020"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "2022-03-14",
+      "end_date": "2022-03-14",
+      "region": "KY, 31055",
+      "context": "https://trello.com/c/n2xYLzfz/434-kentucky-suspected-case-backlog-3-15-2022 https://trello.com/c/uMhV3MFE/435-douglas-county-ne-suspected-backlog-3-15-2022"
     }
   ]
 }
