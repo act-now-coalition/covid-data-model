@@ -723,7 +723,7 @@
     {
       "include": "region",
       "metric": "metrics.caseDensity",
-      "blocked": false,
+      "blocked": true,
       "start_date": "2022-03-14",
       "end_date": "2022-03-14",
       "region": "KY, 31055",
