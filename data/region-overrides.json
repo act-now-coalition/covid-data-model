@@ -737,6 +737,15 @@
       "end_date": "2022-03-14",
       "region": "48355",
       "context": "https://trello.com/c/6S7KKBIk/438-nueces-county-tx-suspected-backlog-3-15-2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-03-16",
+      "end_date": "2022-03-16",
+      "region": "MN",
+      "context": "MN dropoff in ICU usage (80->60%)"
     }
   ]
 }
