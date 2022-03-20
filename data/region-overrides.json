@@ -746,6 +746,15 @@
       "end_date": "2022-03-16",
       "region": "MN",
       "context": "MN dropoff in ICU usage (80->60%)"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-11",
+      "end_date": "2022-03-11",
+      "region": "20173",
+      "context": "Sedgwick County, KS no case reporting week of 3/20/22"
     }
   ]
 }
