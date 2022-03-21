@@ -22,6 +22,6 @@ It is parsed by code landing in the covid-data-model repo at `libs/datasets/stat
 An HSA is a collection of one or more contiguous counties which are relatively self-contained with respect to hospital care. 
 For more information see https://seer.cancer.gov/seerstat/variables/countyattribs/hsa.html.
 
-The source for our county to HSA mappings is `data/misc/cdc_hsa_mapping.csv` which follows the HSA mappings used by the CDC in
-their [Community Level data](https://www.cdc.gov/coronavirus/2019-ncov/your-health/covid-by-county.html). 
+The source for our county to HSA mappings is `data/misc/cdc_hsa_mapping.csv` which follows the HSA definitions used by the CDC in
+their [COVID-19 Community Levels](https://www.cdc.gov/coronavirus/2019-ncov/your-health/covid-by-county.html). 
 
