@@ -17,3 +17,11 @@ The source file `list1_2020.xls` is from the
 [Census.gov Delineation Files](https://www.census.gov/geographies/reference-files/time-series/demo/metro-micro/delineation-files.html).
 It is parsed by code landing in the covid-data-model repo at `libs/datasets/statistical_areas.py`.
 
+# Source data for Health Service Areas (HSAs)
+
+An HSA is a collection of one or more contiguous counties which are relatively self-contained with respect to hospital care. 
+For more information see https://seer.cancer.gov/seerstat/variables/countyattribs/hsa.html.
+
+The source for our county to HSA mappings is `data/cdc_hsa_mappings.csv` which follows the HSA mappings used by the CDC in
+their [Community Level data](https://www.cdc.gov/coronavirus/2019-ncov/your-health/covid-by-county.html). 
+
