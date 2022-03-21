@@ -14,7 +14,6 @@ from typing import Optional
 from typing import Union
 
 import us
-import pandas as pd
 from datapublic.common_fields import CommonFields
 from typing_extensions import NewType
 from typing_extensions import final
