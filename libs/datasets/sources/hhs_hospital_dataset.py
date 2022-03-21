@@ -80,7 +80,15 @@ class HHSHospitalCountyDataset(data_source.CanScraperBase):
     VARIABLES = [
         make_hhs_variable(can_field, common_field, "rolling_average_7_day")
         for can_field, common_field in FIELD_MAPPING.items()
-    ]
+    ] + [
+        ccd_helpers.ScraperVariable(
+            variable_name="hospital_admissions_covid",
+            measurement="new_7_day",
+            unit="people",
+            provider="hhs",
+            common_field=CommonFields.HOSPITAL_ADMISSIONS_COVID_7D,
+        ),
+    ]  # NOTE: temp -- fix this
 
     @classmethod
     @lru_cache(None)

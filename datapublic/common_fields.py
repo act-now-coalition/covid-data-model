@@ -143,6 +143,9 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     CURRENT_HOSPITALIZED_TOTAL = "current_hospitalized_total", FieldGroup.HEALTHCARE_CAPACITY
     CURRENT_ICU_TOTAL = "current_icu_total", FieldGroup.HEALTHCARE_CAPACITY
 
+    HOSPITAL_ADMISSIONS_COVID_7D = "hospital_admissions_covid_7d", FieldGroup.HEALTHCARE_CAPACITY
+    HOSPITAL_BEDS_IN_USE_COVID = "hospital_beds_in_use_covid", FieldGroup.HEALTHCARE_CAPACITY
+
     CONTACT_TRACERS_COUNT = "contact_tracers_count", FieldGroup.HEALTHCARE_CAPACITY
     LATITUDE = "latitude", None
     LONGITUDE = "longitude", None

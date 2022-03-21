@@ -162,6 +162,11 @@ def update(
     if print_stats:
         multiregion_dataset.print_stats("zeros_filter")
 
+    hsa_disaggregator = statistical_areas.CountyHSADisaggregator.from_local_data()
+    multiregion_dataset = hsa_disaggregator.spread_data(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("CountyHSADisaggregator")
+
     multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(multiregion_dataset)
     if print_stats:
         multiregion_dataset.print_stats("estimate_initiated_from_state_ratio")
