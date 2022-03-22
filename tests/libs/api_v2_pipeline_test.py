@@ -165,6 +165,8 @@ def test_annotation(rt_dataset):
         region=region,
         static={
             CommonFields.POPULATION: 100_000,
+            CommonFields.HSA: 202,
+            CommonFields.HSA_POPULATION: 100_000,
             CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
         },
     )
@@ -244,6 +246,8 @@ def test_source(rt_dataset):
         region=region,
         static={
             CommonFields.POPULATION: 100_000,
+            CommonFields.HSA: 202,
+            CommonFields.HSA_POPULATION: 200_000,
             CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
         },
     )

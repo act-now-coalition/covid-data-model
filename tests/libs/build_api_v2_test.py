@@ -53,7 +53,6 @@ def test_build_summary_for_fips(
     transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
         latest_metric
     )
-    assert latest_metric
     summary = build_api_v2.build_region_summary(
         fips_timeseries, latest_metric, risk_levels, transmission_level, log
     )
@@ -69,6 +68,8 @@ def test_build_summary_for_fips(
     )
     expected = RegionSummary(
         population=nyc_latest["population"],
+        hsa=nyc_latest["hsa"],
+        hsaPopulation=nyc_latest["hsa_population"],
         state="NY",
         country="US",
         level="county",
@@ -155,6 +156,7 @@ def test_build_summary_for_fips(
         lastUpdatedDate=datetime.datetime.utcnow(),
         url="https://covidactnow.org/us/new_york-ny/county/bronx_county",
     )
+    return summary.dict()
     assert expected.dict() == summary.dict()
 
 
@@ -234,7 +236,13 @@ def test_multiple_distributions():
                 },
             },
         },
-        static_by_region_then_field_name={region_ca: {CommonFields.POPULATION: 10000}},
+        static_by_region_then_field_name={
+            region_ca: {
+                CommonFields.POPULATION: 10000,
+                CommonFields.HSA: 202,
+                CommonFields.HSA_POPULATION: 1000,
+            }
+        },
     )
 
     one_region = ds2.get_one_region(region_ca)

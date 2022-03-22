@@ -132,7 +132,7 @@ def build_region_summary(
         long=latest_values.get(CommonFields.LONGITUDE),
         population=latest_values[CommonFields.POPULATION],
         hsa=latest_values[CommonFields.HSA],
-        hsa_population=latest_values[CommonFields.HSA_POPULATION],
+        hsaPopulation=latest_values[CommonFields.HSA_POPULATION],
         actuals=actuals,
         metrics=latest_metrics,
         riskLevels=risk_levels,

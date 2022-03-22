@@ -29,7 +29,11 @@ def test_generate_from_loaded_data_country(tmpdir):
             CommonFields.VACCINATIONS_INITIATED: [400, 450, 500],
             CommonFields.VACCINES_DISTRIBUTED: [400, 450, 500],
         },
-        static={CommonFields.POPULATION: 1000},
+        static={
+            CommonFields.POPULATION: 1000,
+            CommonFields.HSA: 202,
+            CommonFields.HSA_POPULATION: 10000,
+        },
         region=Region.from_iso1("us"),
     )
 

@@ -569,10 +569,6 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     country: str = pydantic.Field(..., description="2-letter ISO-3166 Country code.")
     state: Optional[str] = pydantic.Field(..., description="2-letter ANSI state code.")
     county: Optional[str] = pydantic.Field(..., description="County name")
-    hsa: Optional[str] = pydantic.Field(
-        ...,
-        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted.",
-    )
     fips: str = pydantic.Field(
         ...,
         description=(
