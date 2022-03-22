@@ -282,7 +282,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Census.gov Delineation Files](https://www.census.gov/geographies/reference-files/time-series/demo/metro-micro/delineation-files.html)",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -331,7 +331,7 @@
         {
           "name": "cbsa_code",
           "in": "path",
-          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Spreadsheet of CBSA Codes](https://github.com/covid-projections/covid-data-public/raw/main/data/census-msa/list1_2020.xls). This list includes a CBSA code to County mapping.\n",
+          "description": "\n5 Letter core-based statistical area (CBSA) Code.\n\nFor a list of all CBSA codes, refer to the\n[Census.gov Delineation Files](https://www.census.gov/geographies/reference-files/time-series/demo/metro-micro/delineation-files.html)",
           "required": true,
           "deprecated": false,
           "allowEmptyValue": false,
@@ -1623,6 +1623,7 @@
           "country",
           "state",
           "county",
+          "hsa",
           "fips",
           "lat",
           "long",
@@ -1668,6 +1669,18 @@
               }
             ],
             "description": "County name"
+          },
+          "hsa": {
+            "title": "Hsa",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted."
           },
           "fips": {
             "title": "Fips",
@@ -2173,11 +2186,13 @@
           "country",
           "state",
           "county",
+          "hsa",
           "level",
           "lat",
           "locationId",
           "long",
           "population",
+          "hsaPopulation",
           "metrics",
           "riskLevels",
           "cdcTransmissionLevel",
@@ -2222,6 +2237,18 @@
             ],
             "description": "County name"
           },
+          "hsa": {
+            "title": "Hsa",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted."
+          },
           "level": {
             "allOf": [
               {
@@ -2264,6 +2291,19 @@
             "exclusiveMinimum": false,
             "type": "integer",
             "description": "Total Population in geographic region."
+          },
+          "hsaPopulation": {
+            "title": "Hsapopulation",
+            "exclusiveMinimum": false,
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total Population in counties Health Service Area."
           },
           "metrics": {
             "$ref": "#/components/schemas/Metrics"
@@ -2731,11 +2771,13 @@
           "country",
           "state",
           "county",
+          "hsa",
           "level",
           "lat",
           "locationId",
           "long",
           "population",
+          "hsaPopulation",
           "metrics",
           "riskLevels",
           "cdcTransmissionLevel",
@@ -2784,6 +2826,18 @@
             ],
             "description": "County name"
           },
+          "hsa": {
+            "title": "Hsa",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted."
+          },
           "level": {
             "allOf": [
               {
@@ -2826,6 +2880,19 @@
             "exclusiveMinimum": false,
             "type": "integer",
             "description": "Total Population in geographic region."
+          },
+          "hsaPopulation": {
+            "title": "Hsapopulation",
+            "exclusiveMinimum": false,
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total Population in counties Health Service Area."
           },
           "metrics": {
             "$ref": "#/components/schemas/Metrics"

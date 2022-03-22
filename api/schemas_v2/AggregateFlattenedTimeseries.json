@@ -568,6 +568,18 @@
             }
           ]
         },
+        "hsa": {
+          "title": "Hsa",
+          "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "fips": {
           "title": "Fips",
           "description": "FIPS Code. FIPS codes are either 2-digit state codes, 5-digit county codes, 5-digit CBSA codes, or 1-digit '0' for the entire USA.",
@@ -643,6 +655,7 @@
         "country",
         "state",
         "county",
+        "hsa",
         "fips",
         "lat",
         "long",

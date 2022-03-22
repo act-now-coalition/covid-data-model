@@ -1361,6 +1361,18 @@
             }
           ]
         },
+        "hsa": {
+          "title": "Hsa",
+          "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "level": {
           "description": "Level of region.",
           "allOf": [
@@ -1403,6 +1415,19 @@
           "description": "Total Population in geographic region.",
           "exclusiveMinimum": 0,
           "type": "integer"
+        },
+        "hsaPopulation": {
+          "title": "Hsapopulation",
+          "description": "Total Population in counties Health Service Area.",
+          "exclusiveMinimum": 0,
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "metrics": {
           "$ref": "#/definitions/Metrics"
@@ -1482,11 +1507,13 @@
         "country",
         "state",
         "county",
+        "hsa",
         "level",
         "lat",
         "locationId",
         "long",
         "population",
+        "hsaPopulation",
         "metrics",
         "riskLevels",
         "cdcTransmissionLevel",
