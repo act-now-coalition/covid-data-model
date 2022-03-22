@@ -98,7 +98,9 @@ class CountyToHSAAggregator:
     @staticmethod
     def from_local_data() -> "CountyToHSAAggregator":
         """Creates a new object using the HSA data stored in data/."""
-        hsa_raw_map = dict(pd.read_csv(HSA_LIST_PATH, dtype={"HSA": str, "FIPS": str}).values)
+        hsa_df = pd.read_csv(HSA_LIST_PATH, dtype={"HSA": str, "FIPS": str})
+        hsa_df["HSA"] = hsa_df["HSA"].str.zfill(3)
+        hsa_raw_map = dict(hsa_df.values)
         return CountyToHSAAggregator(county_map=hsa_raw_map)
 
     # TODO(sean): Add an aggregate() function here when aggregating hospital data to HSAs
