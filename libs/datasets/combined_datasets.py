@@ -33,7 +33,7 @@ from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScrap
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 from libs.datasets.sources.cdc_testing_dataset import CDCCombinedTestingDataset
-from libs.datasets.sources.fips_population import FIPSPopulation
+from libs.datasets.sources.fips_population import FIPSPopulation, HSAPopulation
 from libs.datasets.sources.hhs_testing_dataset import HHSTestingDataset
 from libs.datasets.sources.can_location_page_urls import CANLocationPageURLS
 from libs.datasets.sources.cdc_vaccine_dataset import CDCVaccinesDataset
@@ -331,6 +331,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
+    CommonFields.HSA_POPULATION: [HSAPopulation],
+    CommonFields.HSA: [HSAPopulation],
     CommonFields.CAN_LOCATION_PAGE_URL: [CANLocationPageURLS],
 }
 
