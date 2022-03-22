@@ -20,8 +20,12 @@ def get_location_level(location_id):
 
 
 class HSAPopulation(data_source.DataSource):
-    """HSA number and population for each US county. 
+    """HSA number and HSA population for each US county. 
     
+    HSA populations are calculated as the sum of the populations of the contained counties. 
+
+    For more information on HSAs see:
+        https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md
     """
 
     EXPECTED_FIELDS = [CommonFields.HSA_POPULATION, CommonFields.HSA]
