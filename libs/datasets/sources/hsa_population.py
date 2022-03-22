@@ -11,7 +11,7 @@ from libs.datasets.sources.fips_population import FIPSPopulation
 
 def get_location_level(location_id):
     location = Region.from_location_id(location_id)
-    # TODO(sean): Weed out locations who's levels cant be determined.
+    # TODO(sean): Weed out locations whose levels cant be determined.
     # In this case it's fine because we only want to select counties.
     try:
         return location.level

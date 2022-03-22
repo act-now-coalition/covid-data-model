@@ -490,10 +490,7 @@ class RegionSummary(base_model.APIBaseModel):
 
     hsa: Optional[str] = pydantic.Field(
         ...,
-        description=(
-            "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. "
-            "For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
-        ),
+        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
     )
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")
     lat: Optional[float] = pydantic.Field(
@@ -512,10 +509,7 @@ class RegionSummary(base_model.APIBaseModel):
 
     hsaPopulation: Optional[int] = pydantic.Field(
         ...,
-        description=(
-            "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. "
-            "For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
-        ),
+        description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
         gt=0,
     )
 
