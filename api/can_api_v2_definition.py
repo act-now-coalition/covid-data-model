@@ -488,6 +488,10 @@ class RegionSummary(base_model.APIBaseModel):
     )
     county: Optional[str] = pydantic.Field(..., description="County name")
 
+    hsa: Optional[str] = pydantic.Field(
+        ...,
+        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted.",
+    )
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")
     lat: Optional[float] = pydantic.Field(
         ..., description="Latitude of point within the state or county. Currently a placeholder."
@@ -502,6 +506,11 @@ class RegionSummary(base_model.APIBaseModel):
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
     )
+
+    hsaPopulation: Optional[int] = pydantic.Field(
+        ..., description="Total Population in counties Health Service Area.", gt=0
+    )
+
     metrics: Metrics = pydantic.Field(...)
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
 
@@ -560,6 +569,10 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     country: str = pydantic.Field(..., description="2-letter ISO-3166 Country code.")
     state: Optional[str] = pydantic.Field(..., description="2-letter ANSI state code.")
     county: Optional[str] = pydantic.Field(..., description="County name")
+    hsa: Optional[str] = pydantic.Field(
+        ...,
+        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted.",
+    )
     fips: str = pydantic.Field(
         ...,
         description=(

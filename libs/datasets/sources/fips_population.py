@@ -106,6 +106,8 @@ class HSAPopulation(data_source.DataSource):
 
     EXPECTED_FIELDS = [CommonFields.HSA_POPULATION, CommonFields.HSA]
 
+    SOURCE_TYPE = "HSA"
+
     @classmethod
     @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
