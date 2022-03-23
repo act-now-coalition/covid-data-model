@@ -773,6 +773,15 @@
       "end_date": "2022-03-20",
       "region": "48381",
       "context": "https://trello.com/c/3poWnXco/460-suspected-backlog-in-randall-county-tx-fips-48381-3-22-22"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-18",
+      "end_date": "2022-03-18",
+      "region": "06037",
+      "context": "NYT reported a backlog of 2051 cases for LA."
     }
   ]
 }
