@@ -307,7 +307,7 @@ def test_annotation_all_fields_copied(rt_dataset):
     )
 
     timeseries_for_region = api_v2_pipeline.build_timeseries_for_region(regional_input)
-
+    print(timeseries_for_region.annotations)
     # Check that build_annotations set every field in Annotations.
     expected_names = set(can_api_v2_definition.Annotations.__fields__.keys())
     missing_names = []

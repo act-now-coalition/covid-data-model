@@ -292,6 +292,9 @@ class Annotations(base_model.APIBaseModel):
     caseDensity: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for caseDensity"
     )
+    weeklyCaseDensity: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for weeklyCaseDensity"
+    )
     contactTracerCapacityRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for contactTracerCapacityRatio"
     )
@@ -328,6 +331,11 @@ class Metrics(base_model.APIBaseModel):
     testPositivityRatioDetails: Optional[TestPositivityRatioDetails] = pydantic.Field(None)
 
     caseDensity: Optional[float] = pydantic.Field(
+        ...,
+        description="The number of cases per 100k population calculated using a 7-day rolling average.",
+    )
+
+    weeklyCaseDensity: Optional[float] = pydantic.Field(
         ...,
         description="The number of cases per 100k population calculated using a 7-day rolling average.",
     )
@@ -372,6 +380,7 @@ class Metrics(base_model.APIBaseModel):
         return Metrics(
             testPositivityRatio=None,
             caseDensity=None,
+            weeklyCaseDensity=None,
             contactTracerCapacityRatio=None,
             infectionRate=None,
             infectionRateCI90=None,

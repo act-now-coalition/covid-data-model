@@ -188,6 +188,7 @@ def test_top_level_metrics_basic():
         DEFAULT_REGION.fips,
         start_date="2020-08-17",
         caseDensity=[10, 10, None, None],
+        weeklyCaseDensity=[70, 70, None, None],
         testPositivityRatio=[None, 0.1, 0.1, 0.1],
         contactTracerCapacityRatio=[0.02, 0.04, None, None],
         vaccinationsInitiatedRatio=[0.01, 0.02, None, 0.03],
@@ -226,6 +227,7 @@ def test_top_level_metrics_rounding():
         DEFAULT_REGION.fips,
         start_date="2020-08-17",
         caseDensity=[1, 1, 1.7],
+        weeklyCaseDensity=[7, 7, 11.7],
         testPositivityRatio=[0.1, 0.101, 0.1],
         contactTracerCapacityRatio=[0.2, 0.4, 0.36],
         vaccinationsInitiatedRatio=[0.333, 0.667, 1],
@@ -267,6 +269,7 @@ def test_top_level_metrics_incomplete_latest():
         "36",
         start_date="2020-08-17",
         caseDensity=[10, 10, 10, 10],
+        weeklyCaseDensity=[70, 70, 70, 70],
         testPositivityRatio=[None, 0.1, 0.1, 0.1],
         contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08],
     )
@@ -303,6 +306,7 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
         "36",
         start_date="2020-08-17",
         caseDensity=[10.0, 10.0, 10.0, 10.0],
+        weeklyCaseDensity=[70.0, 70.0, 70.0, 70.0],
         contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08],
     )
     pd.testing.assert_frame_equal(expected, results)
@@ -340,6 +344,7 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
         "36",
         start_date="2020-08-17",
         caseDensity=[10, 10, 10, 10],
+        weeklyCaseDensity=[70, 70, 70, 70],
         testPositivityRatio=[0.02, 0.03, 0.04, 0.05],
     )
     pd.testing.assert_frame_equal(expected, results, check_dtype=False)
@@ -383,6 +388,7 @@ def test_top_level_metrics_with_rt():
         "36",
         start_date="2020-08-17",
         caseDensity=[0, 5, None, None],
+        weeklyCaseDensity=[0, 35, None, None],
         testPositivityRatio=[None, 0.1, 0.1, 0.1],
         contactTracerCapacityRatio=[None, 0.08, None, None],
         infectionRate=[1.1, 1.2, 1.1, 1.1],
@@ -483,6 +489,7 @@ def test_calculate_latest_different_latest_days():
         "36",
         dates=["2020-08-13", "2020-08-20"],
         caseDensity=[10, None],
+        weeklyCaseDensity=[70, None],
         testPositivityRatio=[0.1, 0.2],
         contactTracerCapacityRatio=[0.06, 0.08],
         infectionRate=[prev_rt, 2.01],
@@ -492,6 +499,7 @@ def test_calculate_latest_different_latest_days():
     expected_metrics = can_api_v2_definition.Metrics(
         testPositivityRatio=0.2,
         caseDensity=10,
+        weeklyCaseDensity=70,
         contactTracerCapacityRatio=0.08,
         infectionRate=prev_rt,
         infectionRateCI90=prev_rt_ci90,
