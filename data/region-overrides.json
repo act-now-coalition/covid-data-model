@@ -787,7 +787,7 @@
       "include": "subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2022-03-12",
+      "start_date": "",
       "end_date": "",
       "region": "FL",
       "context": "FL biweekly reporting casuses DNC to go to zero"
