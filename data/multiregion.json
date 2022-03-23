@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "d51840b5720fd7ddeb6d8098b915e7b9f8aa0be9",
+    "sha": "f0069bf3cb8a811b34bff0ccda16ad3afe5bae74",
     "branch": "smcclure17-add-hsa-metadata-to-api",
     "is_dirty": true
   },
-  "updated_at": "2022-03-22T18:54:10.283801"
+  "updated_at": "2022-03-23T01:50:54.287579"
 }
