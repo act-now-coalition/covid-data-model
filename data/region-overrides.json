@@ -782,6 +782,24 @@
       "end_date": "2022-03-18",
       "region": "06037",
       "context": "NYT reported a backlog of 2051 cases for LA."
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-12",
+      "end_date": "",
+      "region": "FL",
+      "context": "FL biweekly reporting casuses DNC to go to zero"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-03-17",
+      "end_date": "",
+      "region": "OK",
+      "context": "OK ICU % dropoff"
     }
   ]
 }
