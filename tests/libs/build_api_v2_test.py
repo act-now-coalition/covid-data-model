@@ -53,6 +53,7 @@ def test_build_summary_for_fips(
     transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
         latest_metric
     )
+    assert latest_metric
     summary = build_api_v2.build_region_summary(
         fips_timeseries, latest_metric, risk_levels, transmission_level, log
     )
