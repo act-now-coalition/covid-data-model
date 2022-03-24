@@ -147,9 +147,9 @@
         }
       ]
     },
-    "weeklyCaseDensity": {
-      "title": "Weeklycasedensity",
-      "description": "Annotations for weeklyCaseDensity",
+    "weeklyNewCasesPer100k": {
+      "title": "weeklyNewCasesPer100k",
+      "description": "Annotations for weeklyNewCasesPer100k",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"

@@ -37,7 +37,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     # Note that the values of these fields must match the field names of the `Metrics`
     # class in `can_api_v2_definition`
     CASE_DENSITY_RATIO = "caseDensity"
-    WEEKLY_CASE_DENSITY_RATIO = "weeklyCaseDensity"
+    WEEKLY_CASE_DENSITY_RATIO = "weeklyNewCasesPer100k"
     TEST_POSITIVITY = "testPositivityRatio"
     CONTACT_TRACER_CAPACITY_RATIO = "contactTracerCapacityRatio"
     INFECTION_RATE = "infectionRate"

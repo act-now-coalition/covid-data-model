@@ -163,7 +163,7 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
 METRICS_NAME_TO_COMMON_FIELD = {
     "contactTracerCapacityRatio": CommonFields.CONTACT_TRACERS_COUNT,
     "caseDensity": CommonFields.CASES,
-    "weeklyCaseDensity": CommonFields.CASES,
+    "weeklyNewCasesPer100k": CommonFields.CASES,
     "infectionRate": CommonFields.CASES,
     "testPositivityRatio": CommonFields.TEST_POSITIVITY,
     "infectionRateCI90": CommonFields.CASES,

@@ -1438,7 +1438,7 @@
         "required": [
           "testPositivityRatio",
           "caseDensity",
-          "weeklyCaseDensity",
+          "weeklyNewCasesPer100k",
           "contactTracerCapacityRatio",
           "infectionRate",
           "infectionRateCI90",
@@ -1480,8 +1480,8 @@
             ],
             "description": "The number of cases per 100k population calculated using a 7-day rolling average."
           },
-          "weeklyCaseDensity": {
-            "title": "Weeklycasedensity",
+          "weeklyNewCasesPer100k": {
+            "title": "weeklyNewCasesPer100k",
             "anyOf": [
               {
                 "type": "number"
@@ -2113,14 +2113,14 @@
             ],
             "description": "Annotations for caseDensity"
           },
-          "weeklyCaseDensity": {
-            "title": "Weeklycasedensity",
+          "weeklyNewCasesPer100k": {
+            "title": "weeklyNewCasesPer100k",
             "allOf": [
               {
                 "$ref": "#/components/schemas/FieldAnnotations"
               }
             ],
-            "description": "Annotations for weeklyCaseDensity"
+            "description": "Annotations for weeklyNewCasesPer100k"
           },
           "contactTracerCapacityRatio": {
             "title": "Contacttracercapacityratio",
@@ -2347,7 +2347,7 @@
         "required": [
           "testPositivityRatio",
           "caseDensity",
-          "weeklyCaseDensity",
+          "weeklyNewCasesPer100k",
           "contactTracerCapacityRatio",
           "infectionRate",
           "infectionRateCI90",
@@ -2390,8 +2390,8 @@
             ],
             "description": "The number of cases per 100k population calculated using a 7-day rolling average."
           },
-          "weeklyCaseDensity": {
-            "title": "Weeklycasedensity",
+          "weeklyNewCasesPer100k": {
+            "title": "weeklyNewCasesPer100k",
             "anyOf": [
               {
                 "type": "number"

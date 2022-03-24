@@ -501,8 +501,8 @@
             }
           ]
         },
-        "weeklyCaseDensity": {
-          "title": "Weeklycasedensity",
+        "weeklyNewCasesPer100k": {
+          "title": "weeklyNewCasesPer100k",
           "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
           "anyOf": [
             {
@@ -601,7 +601,7 @@
       "required": [
         "testPositivityRatio",
         "caseDensity",
-        "weeklyCaseDensity",
+        "weeklyNewCasesPer100k",
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
