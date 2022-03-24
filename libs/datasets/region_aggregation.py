@@ -20,6 +20,13 @@ MultiRegionDataset = timeseries.MultiRegionDataset
 # Column for the aggregated location_id
 LOCATION_ID_AGG = "location_id_agg"
 
+FIELDS_NOT_TO_AGGREGATE = [
+    # There's no way to meaningfully aggregate the raw CDC community levels across regions. So
+    # they'll only be available at the county-level. (But we'll calculate our own community level
+    # for all regions later in the pipeline.)
+    CommonFields.CDC_COMMUNITY_LEVEL
+]
+
 
 @dataclass(frozen=True)
 class StaticWeightedAverageAggregation:
@@ -286,6 +293,10 @@ def _aggregate_dataframe_by_region(
 
     # Aggregate by location_id_agg, optional date and variable.
     long_agg = long_all_values.groupby(groupby_columns, sort=False).sum()
+
+    long_agg = long_agg.loc[
+        ~long_agg.index.get_level_values(PdFields.VARIABLE).isin(FIELDS_NOT_TO_AGGREGATE)
+    ]
 
     if reporting_ratio_required:
         weighted_reporting_ratio = _calculate_weighted_reporting_ratio(

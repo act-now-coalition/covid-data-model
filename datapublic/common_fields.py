@@ -143,6 +143,12 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     CURRENT_HOSPITALIZED_TOTAL = "current_hospitalized_total", FieldGroup.HEALTHCARE_CAPACITY
     CURRENT_ICU_TOTAL = "current_icu_total", FieldGroup.HEALTHCARE_CAPACITY
 
+    NEW_HOSPITAL_ADMISSIONS_COVID = "new_hospital_admissions_covid", FieldGroup.HEALTHCARE_CAPACITY
+    WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID = (
+        "weekly_new_hospital_admissions_covid",
+        FieldGroup.HEALTHCARE_CAPACITY,
+    )
+
     CONTACT_TRACERS_COUNT = "contact_tracers_count", FieldGroup.HEALTHCARE_CAPACITY
     LATITUDE = "latitude", None
     LONGITUDE = "longitude", None
@@ -170,6 +176,9 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     VACCINATIONS_ADDITIONAL_DOSE_PCT = "vaccinations_additional_dose_pct", FieldGroup.VACCINES
     VACCINATIONS_COMPLETED = "vaccinations_completed", FieldGroup.VACCINES
     VACCINATIONS_COMPLETED_PCT = "vaccinations_completed_pct", FieldGroup.VACCINES
+
+    # The "raw" CDC community level, directly from the CDC source.
+    CDC_COMMUNITY_LEVEL = "cdc_community_level", None
 
 
 COMMON_FIELD_TO_GROUP = {f: f.field_group for f in CommonFields if f.field_group}

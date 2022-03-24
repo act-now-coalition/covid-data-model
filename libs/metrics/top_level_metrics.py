@@ -198,7 +198,7 @@ def copy_test_positivity(
     return test_positivity, TestPositivityRatioDetails(source=method)
 
 
-def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7, stall_length: int = 10):
+def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7, stall_length: int = 15):
 
     if new_cases.first_valid_index() is None:
         return new_cases
@@ -209,7 +209,7 @@ def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7, stall
     # pulled towards zero in between reporting days. This is because the backfilling removes some of the
     # weekly cases out of the 7-day window. To combat this, we remove trailing zeros from the data.
 
-    # After a certain number of days (10 by default) we consider trailing
+    # After a certain number of days (15 by default) we consider trailing
     # zeros to be real data and not a reporting lag.
     # After this threshold we no longer remove the trailing zeros.
     new_cases = _remove_trailing_zeros_until_threshold(new_cases, stall_length)
