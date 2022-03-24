@@ -24,7 +24,9 @@ FIELDS_NOT_TO_AGGREGATE = [
     # There's no way to meaningfully aggregate the raw CDC community levels across regions. So
     # they'll only be available at the county-level. (But we'll calculate our own community level
     # for all regions later in the pipeline.)
-    CommonFields.CDC_COMMUNITY_LEVEL
+    CommonFields.CDC_COMMUNITY_LEVEL,
+    CommonFields.HSA,
+    CommonFields.HSA_POPULATION,
 ]
 
 

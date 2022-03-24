@@ -16,12 +16,11 @@ GEO_DATA_COLUMNS = [
     CommonFields.AGGREGATE_LEVEL,
     CommonFields.COUNTRY,
     CommonFields.COUNTY,
+    CommonFields.HSA,
 ]
 
 NON_NUMERIC_COLUMNS = GEO_DATA_COLUMNS + [
     CommonFields.CAN_LOCATION_PAGE_URL,
-    CommonFields.HSA,
-    CommonFields.HSA_POPULATION,
 ]
 
 STATIC_INDEX_FIELDS = [
