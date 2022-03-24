@@ -115,14 +115,14 @@
       "end_date": ""
     },
     {
-      "include": "region-and-subregions",
+      "include": "subregions",
       "metric": "metrics.caseDensity",
       "blocked": false,
       "start_date": "",
       "end_date": "",
       "region": "FL",
       "context": "https://trello.com/c/3uunA3oU/1419-data-paused-for-now-florida-counties-switching-to-weekly-reporting",
-      "disclaimer": "As of June 2021, Florida only reports data once a week and therefore the above data may be up to a week old."
+      "disclaimer": "As of March 2022, Florida only reports county data once every two weeks and therefore the above data may be up to two weeks old."
     },
     {
       "include": "region",
@@ -661,15 +661,6 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2022-02-17",
-      "end_date": "",
-      "region": "53057, 53037, 53065",
-      "context": "Some WA counties missing case data from 2/17/2022 onward"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "2022-02-28",
       "end_date": "2022-02-28",
       "region": "48355",
@@ -764,6 +755,51 @@
       "end_date": "",
       "region": "32031",
       "context": "https://trello.com/c/AEQSWwRL/453-washoe-county-nv-no-case-reporting-week-of-3-21-22"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-20",
+      "end_date": "2022-03-20",
+      "region": "48381",
+      "context": "https://trello.com/c/3poWnXco/460-suspected-backlog-in-randall-county-tx-fips-48381-3-22-22"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-18",
+      "end_date": "2022-03-18",
+      "region": "06037",
+      "context": "NYT reported a backlog of 2051 cases for LA."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-03-17",
+      "end_date": "",
+      "region": "OK",
+      "context": "OK ICU % dropoff"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-23",
+      "end_date": "2022-03-23",
+      "region": "48201",
+      "context": "Suspicious large spike "
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-12",
+      "end_date": "2022-03-23",
+      "region": "FL",
+      "context": "Biweekly reporting is causing counties to drop to zero. https://trello.com/c/UldMhG3k/471-data-quality-counties-drop-to-0-dnc-before-15-days-of-no-cases-reported"
     }
   ]
 }
