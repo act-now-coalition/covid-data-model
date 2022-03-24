@@ -64,6 +64,16 @@ class HHSHospitalStateDataset(data_source.CanScraperBase):
     VARIABLES = [
         make_hhs_variable(can_field, common_field, "current")
         for can_field, common_field in FIELD_MAPPING.items()
+    ] + [
+        # hospital admissions are daily at the state-level and weekly at the
+        # county-level so we specify them separate from FIELD_MAPPING.
+        ccd_helpers.ScraperVariable(
+            variable_name="hospital_admissions_covid",
+            measurement="new",
+            unit="people",
+            provider="hhs",
+            common_field=CommonFields.NEW_HOSPITAL_ADMISSIONS_COVID,
+        ),
     ]
 
     @classmethod
@@ -80,6 +90,16 @@ class HHSHospitalCountyDataset(data_source.CanScraperBase):
     VARIABLES = [
         make_hhs_variable(can_field, common_field, "rolling_average_7_day")
         for can_field, common_field in FIELD_MAPPING.items()
+    ] + [
+        # hospital admissions are daily at the state-level and weekly at the
+        # county-level so we specify them separate from FIELD_MAPPING.
+        ccd_helpers.ScraperVariable(
+            variable_name="hospital_admissions_covid",
+            measurement="new_7_day",
+            unit="people",
+            provider="hhs",
+            common_field=CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID,
+        )
     ]
 
     @classmethod

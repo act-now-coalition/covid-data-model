@@ -9,6 +9,7 @@ from typing import TypeVar
 from typing import Union
 
 import pandas as pd
+from libs.datasets.sources.cdc_community_levels_dataset import CDCCommunityLevelsDataset
 import structlog
 
 from datapublic.common_fields import CommonFields
@@ -284,6 +285,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         HHSHospitalCountyDataset,
         HHSHospitalStateDataset,
     ],
+    CommonFields.NEW_HOSPITAL_ADMISSIONS_COVID: [HHSHospitalStateDataset],
+    CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [HHSHospitalCountyDataset],
     CommonFields.NEGATIVE_TESTS: [HHSTestingDataset],
     CommonFields.POSITIVE_TESTS: [HHSTestingDataset],
     CommonFields.POSITIVE_TESTS_VIRAL: [CANScraperStateProviders],
@@ -327,6 +330,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,
     ],
+    CommonFields.CDC_COMMUNITY_LEVEL: [CDCCommunityLevelsDataset],
 }
 
 ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
