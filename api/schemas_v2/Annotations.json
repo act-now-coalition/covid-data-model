@@ -147,6 +147,15 @@
         }
       ]
     },
+    "weeklyNewCasesPer100k": {
+      "title": "weeklyNewCasesPer100k",
+      "description": "Annotations for weeklyNewCasesPer100k",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
     "contactTracerCapacityRatio": {
       "title": "Contacttracercapacityratio",
       "description": "Annotations for contactTracerCapacityRatio",

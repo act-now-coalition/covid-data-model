@@ -256,6 +256,18 @@
             }
           ]
         },
+        "weeklyNewCasesPer100k": {
+          "title": "weeklyNewCasesPer100k",
+          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "contactTracerCapacityRatio": {
           "title": "Contacttracercapacityratio",
           "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
@@ -344,6 +356,7 @@
       "required": [
         "testPositivityRatio",
         "caseDensity",
+        "weeklyNewCasesPer100k",
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
@@ -1023,6 +1036,15 @@
             }
           ]
         },
+        "weeklyNewCasesPer100k": {
+          "title": "weeklyNewCasesPer100k",
+          "description": "Annotations for weeklyNewCasesPer100k",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
         "contactTracerCapacityRatio": {
           "title": "Contacttracercapacityratio",
           "description": "Annotations for contactTracerCapacityRatio",
@@ -1127,6 +1149,18 @@
             }
           ]
         },
+        "weeklyNewCasesPer100k": {
+          "title": "weeklyNewCasesPer100k",
+          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "contactTracerCapacityRatio": {
           "title": "Contacttracercapacityratio",
           "description": "Ratio of currently hired tracers to estimated tracers needed based on 7-day daily case average.",
@@ -1221,6 +1255,7 @@
       "required": [
         "testPositivityRatio",
         "caseDensity",
+        "weeklyNewCasesPer100k",
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
