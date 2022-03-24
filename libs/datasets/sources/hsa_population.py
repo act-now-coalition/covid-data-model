@@ -62,4 +62,8 @@ class HSAPopulation(data_source.DataSource):
         )
 
         data = counties.loc[:, [CommonFields.HSA_POPULATION, CommonFields.FIPS, CommonFields.HSA]]
-        return timeseries.MultiRegionDataset.new_without_timeseries().add_fips_static_df(data)
+        out = timeseries.MultiRegionDataset.new_without_timeseries().add_fips_static_df(data)
+        # HACK: HSA column gets converted to int somwhere in add_fips_static_df. This converts
+        # it back to a 3 digit string.
+        out.static[CommonFields.HSA] = out.static[CommonFields.HSA].astype(str).str.zfill(3)
+        return out

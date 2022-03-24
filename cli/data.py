@@ -114,16 +114,6 @@ def update(
             timeseries_field_datasets, static_field_datasets
         )
 
-        # Remove demo data to speed up testing.
-        idx = (
-            multiregion_dataset.timeseries_bucketed.index.get_level_values("demographic_bucket")
-            == "all"
-        )
-        no_demo_tsb = multiregion_dataset.timeseries_bucketed[idx]
-        multiregion_dataset = dataclasses.replace(
-            multiregion_dataset, timeseries=None, timeseries_bucketed=no_demo_tsb
-        )
-
         _logger.info("Finished combining datasets")
         multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
         if print_stats:
