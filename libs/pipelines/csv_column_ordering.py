@@ -69,6 +69,7 @@ SUMMARY_ORDER = [
     "cdcTransmissionLevel",
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
+    "metrics.weeklyNewCasesPer100k",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -135,6 +136,7 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "cdcTransmissionLevel",
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
+    "metrics.weeklyNewCasesPer100k",
 ]
 
 
@@ -188,4 +190,5 @@ TIMESERIES_ORDER = [
     "cdcTransmissionLevel",
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
+    "metrics.weeklyNewCasesPer100k",
 ]
