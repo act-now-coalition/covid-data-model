@@ -115,14 +115,14 @@
       "end_date": ""
     },
     {
-      "include": "region-and-subregions",
+      "include": "subregions",
       "metric": "metrics.caseDensity",
       "blocked": false,
       "start_date": "",
       "end_date": "",
       "region": "FL",
       "context": "https://trello.com/c/3uunA3oU/1419-data-paused-for-now-florida-counties-switching-to-weekly-reporting",
-      "disclaimer": "As of June 2021, Florida only reports data once a week and therefore the above data may be up to a week old."
+      "disclaimer": "As of March 2022, Florida only reports county data once every two weeks and therefore the above data may be up to two weeks old."
     },
     {
       "include": "region",
