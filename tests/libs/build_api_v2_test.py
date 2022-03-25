@@ -150,6 +150,7 @@ def test_build_summary_for_fips(
                 sources=[field_source_cdcvaccine], anomalies=[],
             ),
             caseDensity=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
+            weeklyNewCasesPer100k=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             icuCapacityRatio=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
             infectionRate=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             infectionRateCI90=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),

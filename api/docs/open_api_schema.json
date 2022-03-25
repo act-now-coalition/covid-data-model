@@ -1438,6 +1438,7 @@
         "required": [
           "testPositivityRatio",
           "caseDensity",
+          "weeklyNewCasesPer100k",
           "contactTracerCapacityRatio",
           "infectionRate",
           "infectionRateCI90",
@@ -1469,6 +1470,18 @@
           },
           "caseDensity": {
             "title": "Casedensity",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
+          },
+          "weeklyNewCasesPer100k": {
+            "title": "weeklyNewCasesPer100k",
             "anyOf": [
               {
                 "type": "number"
@@ -2113,6 +2126,15 @@
             ],
             "description": "Annotations for caseDensity"
           },
+          "weeklyNewCasesPer100k": {
+            "title": "weeklyNewCasesPer100k",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for weeklyNewCasesPer100k"
+          },
           "contactTracerCapacityRatio": {
             "title": "Contacttracercapacityratio",
             "allOf": [
@@ -2365,6 +2387,7 @@
         "required": [
           "testPositivityRatio",
           "caseDensity",
+          "weeklyNewCasesPer100k",
           "contactTracerCapacityRatio",
           "infectionRate",
           "infectionRateCI90",
@@ -2397,6 +2420,18 @@
           },
           "caseDensity": {
             "title": "Casedensity",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
+          },
+          "weeklyNewCasesPer100k": {
+            "title": "weeklyNewCasesPer100k",
             "anyOf": [
               {
                 "type": "number"

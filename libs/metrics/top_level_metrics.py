@@ -37,6 +37,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     # Note that the values of these fields must match the field names of the `Metrics`
     # class in `can_api_v2_definition`
     CASE_DENSITY_RATIO = "caseDensity"
+    WEEKLY_CASE_DENSITY_RATIO = "weeklyNewCasesPer100k"
     TEST_POSITIVITY = "testPositivityRatio"
     CONTACT_TRACER_CAPACITY_RATIO = "contactTracerCapacityRatio"
     INFECTION_RATE = "infectionRate"
@@ -55,6 +56,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
 
 METRIC_ROUNDING_PRECISION = {
     MetricsFields.CASE_DENSITY_RATIO: 1,
+    MetricsFields.WEEKLY_CASE_DENSITY_RATIO: 1,
     MetricsFields.TEST_POSITIVITY: 3,
     MetricsFields.CONTACT_TRACER_CAPACITY_RATIO: 2,
     MetricsFields.INFECTION_RATE: 2,
@@ -90,6 +92,7 @@ def calculate_metrics_for_timeseries(
 
     new_cases = data[CommonFields.NEW_CASES]
     case_density = calculate_case_density(new_cases, population)
+    weekly_cases = case_density * 7
 
     test_positivity, test_positivity_details = copy_test_positivity(timeseries, log)
 
@@ -122,6 +125,7 @@ def calculate_metrics_for_timeseries(
     top_level_metrics_data = {
         CommonFields.FIPS: fips,
         MetricsFields.CASE_DENSITY_RATIO: case_density,
+        MetricsFields.WEEKLY_CASE_DENSITY_RATIO: weekly_cases,
         MetricsFields.TEST_POSITIVITY: test_positivity,
         MetricsFields.CONTACT_TRACER_CAPACITY_RATIO: contact_tracer_capacity,
         MetricsFields.INFECTION_RATE: infection_rate,

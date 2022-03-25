@@ -751,15 +751,6 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2022-03-11",
-      "end_date": "",
-      "region": "32031",
-      "context": "https://trello.com/c/AEQSWwRL/453-washoe-county-nv-no-case-reporting-week-of-3-21-22"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "2022-03-20",
       "end_date": "2022-03-20",
       "region": "48381",
