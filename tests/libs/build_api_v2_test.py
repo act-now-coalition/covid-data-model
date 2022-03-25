@@ -99,6 +99,7 @@ def test_build_summary_for_fips(
             contactTracers=nyc_latest["contact_tracers_count"],
             newCases=nyc_latest["new_cases"],
             newDeaths=nyc_latest["new_deaths"],
+            weeklyHospitalAdmissions=nyc_latest["weekly_new_hospital_admissions_covid"],
             vaccinesDistributed=nyc_latest["vaccines_distributed"],
             vaccinesAdministered=nyc_latest["vaccines_administered"],
             vaccinationsInitiated=nyc_latest["vaccinations_initiated"],
