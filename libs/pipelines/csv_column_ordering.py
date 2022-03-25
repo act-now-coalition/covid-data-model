@@ -195,6 +195,4 @@ TIMESERIES_ORDER = [
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
     "metrics.weeklyNewCasesPer100k",
-    "hsa",
-    "hsaPopulation",
 ]
