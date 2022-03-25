@@ -125,7 +125,7 @@ def build_region_summary(
     # HACK: HSA codes are converted to numerics somewhere in the pipeline, this
     # transforms them back into 3 character strings.
     hsa = latest_values.get(CommonFields.HSA)
-    hsa = str(hsa).zfill(3) if hsa is not None else None
+    hsa = str(int(hsa)).zfill(3) if hsa is not None else None
     return RegionSummary(
         fips=region.fips_for_api,
         country=region.country,
