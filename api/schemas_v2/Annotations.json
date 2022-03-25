@@ -148,7 +148,7 @@
       ]
     },
     "weeklyNewCasesPer100k": {
-      "title": "weeklyNewCasesPer100k",
+      "title": "Weeklynewcasesper100K",
       "description": "Annotations for weeklyNewCasesPer100k",
       "allOf": [
         {
