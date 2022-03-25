@@ -334,6 +334,8 @@ def build_bulk_flattened_timeseries(
             "long": region_timeseries.long,
             "locationId": region_timeseries.locationId,
             "lastUpdatedDate": datetime.utcnow(),
+            "hsa": region_timeseries.hsa,
+            "hsaPopulation": region_timeseries.hsaPopulation,
         }
         actuals_by_date = {row.date: row for row in region_timeseries.actualsTimeseries}
         metrics_by_date = {row.date: row for row in region_timeseries.metricsTimeseries}
