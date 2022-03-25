@@ -40,9 +40,6 @@ METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE = "More than one provenance for a field"
 USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
 
 
-_logger = structlog.get_logger()
-
-
 def _build_distributions(
     distributions: Dict[str, Dict[str, int]]
 ) -> Optional[DemographicDistributions]:
@@ -100,6 +97,7 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
         },
         newCases=actual_data.get(CommonFields.NEW_CASES),
         newDeaths=actual_data.get(CommonFields.NEW_DEATHS),
+        weeklyHospitalAdmissions=actual_data.get(CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID),
         vaccinesDistributed=actual_data.get(CommonFields.VACCINES_DISTRIBUTED),
         vaccinationsInitiated=vaccinations_initiated,
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
