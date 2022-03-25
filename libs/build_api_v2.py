@@ -275,10 +275,8 @@ def build_region_timeseries(
     actuals_timeseries = []
 
     for row in timeseries.yield_records():
-        # Timeseries records don't have population or HSA data
+        # Timeseries records don't have population
         row[CommonFields.POPULATION] = region_summary.population
-        row[CommonFields.HSA] = region_summary.hsa
-        row[CommonFields.HSA_POPULATION] = region_summary.hsaPopulation
         actual = _build_actuals(row).dict()
 
         # Don't include vaccinations in timeseries before first possible vaccination
