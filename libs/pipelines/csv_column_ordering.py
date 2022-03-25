@@ -70,6 +70,8 @@ SUMMARY_ORDER = [
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
     "metrics.weeklyNewCasesPer100k",
+    "hsa",
+    "hsaPopulation",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -137,6 +139,8 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
     "metrics.weeklyNewCasesPer100k",
+    "hsa",
+    "hsaPopulation",
 ]
 
 
@@ -191,4 +195,6 @@ TIMESERIES_ORDER = [
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
     "metrics.weeklyNewCasesPer100k",
+    "hsa",
+    "hsaPopulation",
 ]
