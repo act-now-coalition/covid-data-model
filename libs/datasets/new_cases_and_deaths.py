@@ -70,7 +70,7 @@ def add_new_deaths(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
 
 
 def spread_first_reported_value_after_stall(
-    series: pd.Series, max_days_to_spread: int = 7, is_multiindex: bool = False
+    series: pd.Series, max_days_to_spread: int = 14, is_multiindex: bool = False
 ) -> pd.Series:
     """Spreads first reported value after reported zeros by dividing it evenly
     over the prior days.
