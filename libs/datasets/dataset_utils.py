@@ -66,6 +66,9 @@ class AggregationLevel(enum.Enum):
 
     PLACE = "place"
 
+    # Health Service Area
+    HSA = "hsa"
+
 
 class DatasetType(enum.Enum):
     MULTI_REGION = "multiregion"
