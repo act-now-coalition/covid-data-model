@@ -1,8 +1,11 @@
 import collections
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 from typing import Mapping
 import pandas as pd
+import dataclasses
+
+# from libs.datasets import taglib
 
 from libs import pipeline
 from libs.datasets.timeseries import MultiRegionDataset
@@ -10,6 +13,7 @@ from datapublic.common_fields import CommonFields
 from libs.datasets import dataset_utils
 from libs.datasets import region_aggregation
 from libs.pipeline import Region
+from libs.datasets.dataset_utils import AggregationLevel
 
 CBSA_LIST_PATH = "data/misc/list1_2020.xls"
 HSA_LIST_PATH = "data/misc/cdc_hsa_mapping.csv"
@@ -87,13 +91,20 @@ class CountyToCBSAAggregator:
 class CountyToHSAAggregator:
     county_map: Mapping[str, str]
 
-    # Mapping of county location_ids -> hsa codes
+    # Mapping of county location_ids -> hsa location_ids
     @property
     def county_to_hsa_region_map(self) -> Mapping[str, str]:
         return {
-            Region.from_fips(fips).location_id: Region.from_hsa_code(hsa_code).location_id
+            Region.from_fips(fips): Region.from_hsa_code(hsa_code)
             for fips, hsa_code in self.county_map.items()
         }
+
+    @property
+    def hsa_to_counties_region_map(self) -> Mapping[Region, List[Region]]:
+        hsa_to_counties = collections.defaultdict(list)
+        for county, hsa in self.county_to_hsa_region_map.items():
+            hsa_to_counties[hsa].append(county)
+        return hsa_to_counties
 
     @staticmethod
     def from_local_data() -> "CountyToHSAAggregator":
@@ -103,4 +114,47 @@ class CountyToHSAAggregator:
         hsa_raw_map = dict(hsa_df.values)
         return CountyToHSAAggregator(county_map=hsa_raw_map)
 
-    # TODO(sean): Add an aggregate() function here when aggregating hospital data to HSAs
+    def aggregate(
+        self,
+        dataset_in: MultiRegionDataset,
+        fields_to_aggregate: Dict[CommonFields, CommonFields] = {
+            CommonFields.STAFFED_BEDS: CommonFields.STAFFED_BEDS_HSA
+        },
+    ) -> MultiRegionDataset:
+
+        # Only aggregate county-level data for specified fields
+        counties = dataset_in.get_subset(aggregation_level=AggregationLevel.COUNTY)
+        counties_ts: pd.DataFrame = counties.timeseries.loc[:, list(fields_to_aggregate.keys())]
+        counties_selected_ds = dataclasses.replace(
+            counties, timeseries=counties_ts, timeseries_bucketed=None
+        )
+
+        # TODO: Make sure to add any special aggregations to currently empty list.
+        hsa_ts: pd.DataFrame = region_aggregation.aggregate_regions(
+            counties_selected_ds, self.county_to_hsa_region_map, [],
+        ).timeseries
+
+        # Map counties back onto HSAs.
+        location_id_map = {
+            hsa.location_id: [county.location_id for county in counties]
+            for hsa, counties in self.hsa_to_counties_region_map.items()
+        }
+        hsa_ts[CommonFields.LOCATION_ID] = hsa_ts.index.get_level_values(
+            CommonFields.LOCATION_ID
+        ).map(location_id_map)
+
+        # Create an row for each county in each HSA using HSA data.
+        # NOTE: Every county in an HSA will have data attributed to it, regardless of whether or
+        # not we have actually collected data for that county.
+        aggregated_ts = hsa_ts.explode(CommonFields.LOCATION_ID)
+
+        # Here we are dropping the index level "location_id", which is HSAs,
+        # and replacing them with the newly added "location_id" column, which are the counties.
+        aggregated_ts = aggregated_ts.droplevel(CommonFields.LOCATION_ID)
+        aggregated_ts = aggregated_ts.set_index(CommonFields.LOCATION_ID, append=True).sort_index()
+        aggregated_ts = aggregated_ts.rename(columns=fields_to_aggregate)
+
+        assert not set(aggregated_ts.columns) & set(dataset_in.timeseries.columns)
+        out_ts = dataset_in.timeseries.combine_first(aggregated_ts)
+        out_ds = dataclasses.replace(dataset_in, timeseries=out_ts, timeseries_bucketed=None)
+        return out_ds

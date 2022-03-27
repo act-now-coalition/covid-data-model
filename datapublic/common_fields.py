@@ -152,6 +152,9 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
         FieldGroup.HEALTHCARE_CAPACITY,
     )
 
+    # HSA level Healthcare Fields
+    STAFFED_BEDS_HSA = "staffed_beds_hsa", FieldGroup.HEALTHCARE_CAPACITY
+
     CONTACT_TRACERS_COUNT = "contact_tracers_count", FieldGroup.HEALTHCARE_CAPACITY
     LATITUDE = "latitude", None
     LONGITUDE = "longitude", None

@@ -36,6 +36,7 @@ class HSAPopulation(data_source.DataSource):
     @lru_cache(None)
     def make_dataset(cls) -> timeseries.MultiRegionDataset:
         location_map = CountyToHSAAggregator.from_local_data().county_to_hsa_region_map
+        location_map = {county.location_id: hsa.location_id for county, hsa in location_map.items()}
         populations = FIPSPopulation.make_dataset().static
         county_index = populations.index.map(get_location_level) == AggregationLevel.COUNTY
         counties = populations[county_index].copy()  # copy to remove SettingWithCopy error
