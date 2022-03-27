@@ -9,9 +9,6 @@ on:
       trigger_api_build:
         description: 'If "true" API snapshot build will be triggered after dataset update.'
         default: 'true'
-      refresh_datasets:
-        description: 'Set to "false" to skip downloading / re-combining the latest datasets.'
-        default: 'true'
   repository_dispatch:
 
 env:
@@ -33,15 +30,13 @@ env:
   # https://github.community/t/how-can-you-use-expressions-as-the-workflow-dispatch-input-default/141454/4
   TRIGGER_API_BUILD: ${{ github.event.inputs.trigger_api_build || 'true' }}
 
-  REFRESH_DATASETS_ARG: ${{ (github.event.inputs.refresh_datasets == 'true') && '--refresh-datasets' || '--no-refresh-datasets' }}
-
 jobs:
   update-and-promote-datasets:
     runs-on: self-hosted
     steps:
     - name: Parse covid data model branch name and set env variable
       run: |
-        echo "COVID_DATA_MODEL_REF=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+        echo "COVID_DATA_MODEL_REF=${GITHUB_REF##*/}" >> $GITHUB_ENV
 
     - name: Checkout covid-data-model
       uses: actions/checkout@v2
@@ -81,7 +76,7 @@ jobs:
     - name: Update and Promote dataset.
       working-directory: ./covid-data-model
       run: |
-        ./run.py data update ${{env.REFRESH_DATASETS_ARG}}
+        ./run.py data update
 
     - name: Create Update Commit
       working-directory: ./covid-data-model
