@@ -1,4 +1,3 @@
-
 #!/bin/bash
 # run.sh - Runs everything necessary to generate our API artifacts (for
 # website, external consumers, etc.)
@@ -14,7 +13,7 @@ prepare () {
     echo
     echo "Example: $0 ./api-results/"
     echo "Example: $0 ./api-results/ execute_model"
-    echo "Example: $0 ./api-results/ execute_api"
+    echo "Example: $0 ./api-results/ execute_api_v2"
     echo "Example: $0 ./api-results/ execute_model 2920"
     exit 1
   else
@@ -53,13 +52,6 @@ prepare () {
   API_OUTPUT_COUNTIES="${API_OUTPUT_DIR}/us/counties"
   API_OUTPUT_STATES="${API_OUTPUT_DIR}/us/states"
   API_OUTPUT_US="${API_OUTPUT_DIR}/us"
-  API_OUTPUT_QA="${API_OUTPUT_DIR}/qa"
-  # Create QA dir
-  if [ ! -d "${API_OUTPUT_QA}" ] ; then
-    echo "Directory ${API_OUTPUT_QA} does not exist. Creating."
-    mkdir -p "${API_OUTPUT_QA}"
-    echo "made dir"
-  fi
 
   SOURCE_DATA_DIR="./data"
 }
@@ -73,7 +65,7 @@ execute_model() {
     # TODO(sean): Might be simpler to just download the model results to /tmp/
     API_OUTPUT_PARENT="${API_OUTPUT_DIR%/*}"
     ./run.py utils download-model-artifact "${PYSEIR_ARTIFACT_SNAPSHOT}" --output-dir=${API_OUTPUT_PARENT}
-    
+
     echo ">>> Moving downloaded models to the expected locations."
     rm -r "${API_OUTPUT_DIR}"  # remove the empty directories created above
     mv "${API_OUTPUT_PARENT}"/api-results-${PYSEIR_ARTIFACT_SNAPSHOT} "${API_OUTPUT_DIR}"
@@ -81,7 +73,7 @@ execute_model() {
     echo ">>> Generating state and county models to ${API_OUTPUT_DIR}"
     # TODO(#148): We need to clean up the output of these scripts!
     python pyseir/cli.py build-all --output-dir="${API_OUTPUT_DIR}" | tee "${API_OUTPUT_DIR}/stdout.log"
-  
+
 
     # Move state output to the expected location.
     mkdir -p ${API_OUTPUT_DIR}/
@@ -93,29 +85,6 @@ execute_model() {
     zip -r "${API_OUTPUT_DIR}/pyseir.zip" pyseir/* -i '*.pdf'
     popd
   fi
-}
-
-execute_api() {
-  # Go to repo root (where run.sh lives).
-  cd "$(dirname "$0")"
-
-  echo ">>> Generating ${API_OUTPUT_DIR}/version.json"
-  generate_version_json "${API_OUTPUT_DIR}"
-
-  echo ">>> Generating API for states to ${API_OUTPUT_STATES}/{STATE_ABBREV}.{INTERVENTION}.json"
-  mkdir -p "${API_OUTPUT_STATES}"
-  ./run.py api generate-api  -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_STATES}" --summary-output "${API_OUTPUT_US}" -l state
-
-  echo ">>> Generating API for counties to ${API_OUTPUT_COUNTIES}/{FIPS}.{INTERVENTION}.json"
-  ./run.py api generate-api  -i "${API_OUTPUT_DIR}" -o "${API_OUTPUT_COUNTIES}" --summary-output "${API_OUTPUT_US}" -l county
-
-  # echo ">>> Generate an QA doc for states to ${API_OUTPUT_DIR}/qa"
-  # ./run.py compare-snapshots -i "${API_OUTPUT_STATES}" -o "${API_OUTPUT_DIR}/qa"
-
-  echo ">>> Copying source data (and summary, provenance, etc. reports) to ${API_OUTPUT_QA}"
-  cp -r "${SOURCE_DATA_DIR}"/* "${API_OUTPUT_QA}"
-
-  echo ">>> All API Artifacts written to ${API_OUTPUT_DIR}"
 }
 
 
@@ -138,17 +107,14 @@ execute_zip_folder() {
   cd "$(dirname "$0")"
 
   echo ">>> Generating all.zip with all API artifacts."
-  #pushd "${API_OUTPUT_DIR}/.."
   API_RESULTS_ZIP="${API_OUTPUT_DIR}/api-results.zip"
   zip -r ${API_RESULTS_ZIP} "${API_OUTPUT_DIR}/"
-  #popd
 }
 
 
 execute() {
   execute_model
   execute_api_v2
-  execute_api
   execute_zip_folder
 }
 
@@ -223,16 +189,12 @@ case $EXECUTE_FUNC in
     echo "Executing Model Results"
     execute_model
     ;;
-  execute_api)
-    echo "Executing Api"
-    execute_api
-    ;;
   execute_api_v2)
     echo "Executing Api V2"
     execute_api_v2
     ;;
   execute_zip_folder)
-    echo "Executing Api"
+    echo "Executing zip folder"
     execute_zip_folder
     ;;
   execute)
