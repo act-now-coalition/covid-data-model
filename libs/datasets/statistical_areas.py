@@ -100,9 +100,9 @@ class CountyToCBSAAggregator:
 class CountyToHSAAggregator:
     county_map: Mapping[str, str]
 
-    # Mapping of county location_ids -> hsa location_ids
+    # Mapping of county regions -> hsa regions
     @property
-    def county_to_hsa_region_map(self) -> Mapping[str, str]:
+    def county_to_hsa_region_map(self) -> Mapping[Region, Region]:
         return {
             Region.from_fips(fips): Region.from_hsa_code(hsa_code)
             for fips, hsa_code in self.county_map.items()
@@ -155,7 +155,7 @@ class CountyToHSAAggregator:
         # not we have actually collected data for that county.
         aggregated_ts = hsa_ts.explode(CommonFields.LOCATION_ID)
 
-        # Here we are dropping the index level "location_id", which is HSAs,
+        # Here we are dropping the index level "location_id", which are the HSAs,
         # and replacing them with the newly added "location_id" column, which are the counties.
         aggregated_ts = aggregated_ts.droplevel(CommonFields.LOCATION_ID)
         aggregated_ts = aggregated_ts.set_index(CommonFields.LOCATION_ID, append=True).sort_index()
