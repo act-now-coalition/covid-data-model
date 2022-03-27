@@ -11,7 +11,7 @@ from libs.datasets.sources.fips_population import FIPSPopulation
 
 def get_location_level(location_id):
     location = Region.from_location_id(location_id)
-    # TODO(sean): Agg. levels for and iso2:us#iso2:us-dc#fips:11999, iso2:us#iso2:us-fl#fips:12999
+    # TODO(sean): Agg. levels for iso2:us#iso2:us-dc#fips:11999 and iso2:us#iso2:us-fl#fips:12999
     # can't be determined. Find out why these counties are in the population files.
     try:
         return location.level
