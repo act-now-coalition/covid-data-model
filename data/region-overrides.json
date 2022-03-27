@@ -782,15 +782,6 @@
       "end_date": "2022-03-23",
       "region": "48201",
       "context": "Suspicious large spike "
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2022-03-12",
-      "end_date": "2022-03-23",
-      "region": "FL",
-      "context": "Biweekly reporting is causing counties to drop to zero. https://trello.com/c/UldMhG3k/471-data-quality-counties-drop-to-0-dnc-before-15-days-of-no-cases-reported"
     }
   ]
 }
