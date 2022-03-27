@@ -12,6 +12,7 @@ from libs.datasets import region_aggregation
 from libs.pipeline import Region
 
 CBSA_LIST_PATH = "data/misc/list1_2020.xls"
+HSA_LIST_PATH = "data/misc/cdc_hsa_mapping.csv"
 
 
 CBSA_COLUMN = "CBSA"
@@ -80,3 +81,26 @@ class CountyToCBSAAggregator:
         )
 
         return CountyToCBSAAggregator(county_map=county_map, cbsa_title_map=cbsa_title_map)
+
+
+@dataclass
+class CountyToHSAAggregator:
+    county_map: Mapping[str, str]
+
+    # Mapping of county location_ids -> hsa codes
+    @property
+    def county_to_hsa_region_map(self) -> Mapping[str, str]:
+        return {
+            Region.from_fips(fips).location_id: Region.from_hsa_code(hsa_code).location_id
+            for fips, hsa_code in self.county_map.items()
+        }
+
+    @staticmethod
+    def from_local_data() -> "CountyToHSAAggregator":
+        """Creates a new object using the HSA data stored in data/."""
+        hsa_df = pd.read_csv(HSA_LIST_PATH, dtype={"HSA": str, "FIPS": str})
+        hsa_df["HSA"] = hsa_df["HSA"].str.zfill(3)
+        hsa_raw_map = dict(hsa_df.values)
+        return CountyToHSAAggregator(county_map=hsa_raw_map)
+
+    # TODO(sean): Add an aggregate() function here when aggregating hospital data to HSAs

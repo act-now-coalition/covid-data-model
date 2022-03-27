@@ -18,7 +18,7 @@ GEO_DATA_COLUMNS = [
     CommonFields.COUNTY,
 ]
 
-NON_NUMERIC_COLUMNS = GEO_DATA_COLUMNS + [CommonFields.CAN_LOCATION_PAGE_URL]
+NON_NUMERIC_COLUMNS = GEO_DATA_COLUMNS + [CommonFields.CAN_LOCATION_PAGE_URL, CommonFields.HSA]
 
 STATIC_INDEX_FIELDS = [
     CommonFields.AGGREGATE_LEVEL,
@@ -65,6 +65,9 @@ class AggregationLevel(enum.Enum):
     CBSA = "cbsa"
 
     PLACE = "place"
+
+    # Health Service Area
+    HSA = "hsa"
 
 
 class DatasetType(enum.Enum):

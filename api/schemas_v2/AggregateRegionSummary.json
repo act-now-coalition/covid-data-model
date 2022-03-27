@@ -87,8 +87,8 @@
           ]
         },
         "weeklyNewCasesPer100k": {
-          "title": "weeklyNewCasesPer100k",
-          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+          "title": "Weeklynewcasesper100K",
+          "description": "The number of new cases per 100k population over the last week.",
           "anyOf": [
             {
               "type": "number"
@@ -867,7 +867,7 @@
           ]
         },
         "weeklyNewCasesPer100k": {
-          "title": "weeklyNewCasesPer100k",
+          "title": "Weeklynewcasesper100K",
           "description": "Annotations for weeklyNewCasesPer100k",
           "allOf": [
             {
@@ -979,6 +979,18 @@
             }
           ]
         },
+        "hsa": {
+          "title": "Hsa",
+          "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "level": {
           "description": "Level of region.",
           "allOf": [
@@ -1021,6 +1033,19 @@
           "description": "Total Population in geographic region.",
           "exclusiveMinimum": 0,
           "type": "integer"
+        },
+        "hsaPopulation": {
+          "title": "Hsapopulation",
+          "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+          "exclusiveMinimum": 0,
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "metrics": {
           "$ref": "#/definitions/Metrics"
@@ -1072,11 +1097,13 @@
         "country",
         "state",
         "county",
+        "hsa",
         "level",
         "lat",
         "locationId",
         "long",
         "population",
+        "hsaPopulation",
         "metrics",
         "riskLevels",
         "cdcTransmissionLevel",

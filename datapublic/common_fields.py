@@ -90,6 +90,8 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
 
     COUNTY = "county", None
 
+    HSA = "hsa", None
+
     AGGREGATE_LEVEL = "aggregate_level", None
 
     # Full state name, i.e. Massachusetts
@@ -130,6 +132,7 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     CURRENT_VENTILATED = "current_ventilated", FieldGroup.HEALTHCARE_CAPACITY
 
     POPULATION = "population", None
+    HSA_POPULATION = "hsa_population", None
 
     STAFFED_BEDS = "staffed_beds", FieldGroup.HEALTHCARE_CAPACITY
     LICENSED_BEDS = "licensed_beds", FieldGroup.HEALTHCARE_CAPACITY

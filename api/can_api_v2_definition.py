@@ -496,6 +496,10 @@ class RegionSummary(base_model.APIBaseModel):
     )
     county: Optional[str] = pydantic.Field(..., description="County name")
 
+    hsa: Optional[str] = pydantic.Field(
+        ...,
+        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+    )
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")
     lat: Optional[float] = pydantic.Field(
         ..., description="Latitude of point within the state or county. Currently a placeholder."
@@ -510,6 +514,13 @@ class RegionSummary(base_model.APIBaseModel):
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
     )
+
+    hsaPopulation: Optional[int] = pydantic.Field(
+        ...,
+        description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        gt=0,
+    )
+
     metrics: Metrics = pydantic.Field(...)
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
 
@@ -592,6 +603,17 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     )
     cdcTransmissionLevel: Optional[CDCTransmissionLevel] = pydantic.Field(
         ..., description=CDC_TRANSMISSION_LEVEL_DESCRIPTION
+    )
+
+    hsa: Optional[str] = pydantic.Field(
+        ...,
+        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+    )
+
+    hsaPopulation: Optional[int] = pydantic.Field(
+        ...,
+        description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        gt=0,
     )
 
 

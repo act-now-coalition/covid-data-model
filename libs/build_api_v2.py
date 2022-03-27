@@ -122,6 +122,10 @@ def build_region_summary(
     region = one_region.region
     distributions = one_region.demographic_distributions_by_field
     actuals = _build_actuals(latest_values, distributions_by_field=distributions)
+    # HACK: HSA codes are converted to numerics somewhere in the pipeline, this
+    # transforms them back into 3 character strings.
+    hsa = latest_values.get(CommonFields.HSA)
+    hsa = str(int(hsa)).zfill(3) if hsa is not None else None
     return RegionSummary(
         fips=region.fips_for_api,
         country=region.country,
@@ -131,6 +135,8 @@ def build_region_summary(
         lat=latest_values.get(CommonFields.LATITUDE),
         long=latest_values.get(CommonFields.LONGITUDE),
         population=latest_values[CommonFields.POPULATION],
+        hsa=hsa,
+        hsaPopulation=latest_values.get(CommonFields.HSA_POPULATION),
         actuals=actuals,
         metrics=latest_metrics,
         riskLevels=risk_levels,
@@ -328,6 +334,8 @@ def build_bulk_flattened_timeseries(
             "long": region_timeseries.long,
             "locationId": region_timeseries.locationId,
             "lastUpdatedDate": datetime.utcnow(),
+            "hsa": region_timeseries.hsa,
+            "hsaPopulation": region_timeseries.hsaPopulation,
         }
         actuals_by_date = {row.date: row for row in region_timeseries.actualsTimeseries}
         metrics_by_date = {row.date: row for row in region_timeseries.metricsTimeseries}

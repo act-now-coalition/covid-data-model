@@ -385,8 +385,8 @@
           ]
         },
         "weeklyNewCasesPer100k": {
-          "title": "weeklyNewCasesPer100k",
-          "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+          "title": "Weeklynewcasesper100K",
+          "description": "The number of new cases per 100k population over the last week.",
           "anyOf": [
             {
               "type": "number"

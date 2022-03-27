@@ -1481,7 +1481,7 @@
             "description": "The number of cases per 100k population calculated using a 7-day rolling average."
           },
           "weeklyNewCasesPer100k": {
-            "title": "weeklyNewCasesPer100k",
+            "title": "Weeklynewcasesper100K",
             "anyOf": [
               {
                 "type": "number"
@@ -1490,7 +1490,7 @@
                 "type": "null"
               }
             ],
-            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
+            "description": "The number of new cases per 100k population over the last week."
           },
           "contactTracerCapacityRatio": {
             "title": "Contacttracercapacityratio",
@@ -2114,7 +2114,7 @@
             "description": "Annotations for caseDensity"
           },
           "weeklyNewCasesPer100k": {
-            "title": "weeklyNewCasesPer100k",
+            "title": "Weeklynewcasesper100K",
             "allOf": [
               {
                 "$ref": "#/components/schemas/FieldAnnotations"
@@ -2195,11 +2195,13 @@
           "country",
           "state",
           "county",
+          "hsa",
           "level",
           "lat",
           "locationId",
           "long",
           "population",
+          "hsaPopulation",
           "metrics",
           "riskLevels",
           "cdcTransmissionLevel",
@@ -2244,6 +2246,18 @@
             ],
             "description": "County name"
           },
+          "hsa": {
+            "title": "Hsa",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
           "level": {
             "allOf": [
               {
@@ -2286,6 +2300,19 @@
             "exclusiveMinimum": false,
             "type": "integer",
             "description": "Total Population in geographic region."
+          },
+          "hsaPopulation": {
+            "title": "Hsapopulation",
+            "exclusiveMinimum": false,
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
           },
           "metrics": {
             "$ref": "#/components/schemas/Metrics"
@@ -2391,7 +2418,7 @@
             "description": "The number of cases per 100k population calculated using a 7-day rolling average."
           },
           "weeklyNewCasesPer100k": {
-            "title": "weeklyNewCasesPer100k",
+            "title": "Weeklynewcasesper100K",
             "anyOf": [
               {
                 "type": "number"
@@ -2400,7 +2427,7 @@
                 "type": "null"
               }
             ],
-            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
+            "description": "The number of new cases per 100k population over the last week."
           },
           "contactTracerCapacityRatio": {
             "title": "Contacttracercapacityratio",
@@ -2766,11 +2793,13 @@
           "country",
           "state",
           "county",
+          "hsa",
           "level",
           "lat",
           "locationId",
           "long",
           "population",
+          "hsaPopulation",
           "metrics",
           "riskLevels",
           "cdcTransmissionLevel",
@@ -2819,6 +2848,18 @@
             ],
             "description": "County name"
           },
+          "hsa": {
+            "title": "Hsa",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
           "level": {
             "allOf": [
               {
@@ -2861,6 +2902,19 @@
             "exclusiveMinimum": false,
             "type": "integer",
             "description": "Total Population in geographic region."
+          },
+          "hsaPopulation": {
+            "title": "Hsapopulation",
+            "exclusiveMinimum": false,
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
           },
           "metrics": {
             "$ref": "#/components/schemas/Metrics"
