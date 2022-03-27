@@ -21,6 +21,15 @@ HSA_LIST_PATH = "data/misc/cdc_hsa_mapping.csv"
 
 CBSA_COLUMN = "CBSA"
 
+HSA_FIELDS_MAPPING = {
+    CommonFields.STAFFED_BEDS: CommonFields.STAFFED_BEDS_HSA,
+    CommonFields.HOSPITAL_BEDS_IN_USE_ANY: CommonFields.HOSPITAL_BEDS_IN_USE_ANY_HSA,
+    CommonFields.CURRENT_HOSPITALIZED: CommonFields.CURRENT_HOSPITALIZED_HSA,
+    CommonFields.ICU_BEDS: CommonFields.ICU_BEDS_HSA,
+    CommonFields.CURRENT_ICU: CommonFields.CURRENT_ICU_HSA,
+    CommonFields.CURRENT_ICU_TOTAL: CommonFields.CURRENT_ICU_TOTAL_HSA,
+}
+
 
 @dataclass
 class CountyToCBSAAggregator:
@@ -117,9 +126,7 @@ class CountyToHSAAggregator:
     def aggregate(
         self,
         dataset_in: MultiRegionDataset,
-        fields_to_aggregate: Dict[CommonFields, CommonFields] = {
-            CommonFields.STAFFED_BEDS: CommonFields.STAFFED_BEDS_HSA
-        },
+        fields_to_aggregate: Dict[CommonFields, CommonFields] = HSA_FIELDS_MAPPING,
     ) -> MultiRegionDataset:
 
         # Only aggregate county-level data for specified fields
@@ -129,7 +136,7 @@ class CountyToHSAAggregator:
             counties, timeseries=counties_ts, timeseries_bucketed=None
         )
 
-        # TODO: Make sure to add any special aggregations to currently empty list.
+        # No special aggregations are needed because all fields track beds or people.
         hsa_ts: pd.DataFrame = region_aggregation.aggregate_regions(
             counties_selected_ds, self.county_to_hsa_region_map, [],
         ).timeseries

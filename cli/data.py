@@ -209,6 +209,11 @@ def update(
     if print_stats:
         multiregion_dataset.print_stats("CountyToCBSAAggregator")
 
+    hsa_aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
+    multiregion_dataset = hsa_aggregator.aggregate(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("CountyToHSAAggregator")
+
     # TODO(tom): Add a clean way to store intermediate values instead of commenting out code like
     #  this:
     # multiregion_dataset.write_to_wide_dates_csv(
