@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "315dc09961398cdb824a36a1e2128c895a797c84",
-    "branch": "smcclure17-extend-backfill",
-    "is_dirty": true
+    "sha": "61a004268ae14186a46f28148c1d5c54995e06b9",
+    "branch": "main",
+    "is_dirty": false
   },
-  "updated_at": "2022-03-27T04:33:18.343571"
+  "updated_at": "2022-03-27T16:39:32.281010"
 }
