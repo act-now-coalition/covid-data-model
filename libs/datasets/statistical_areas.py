@@ -5,8 +5,6 @@ from typing import Mapping
 import pandas as pd
 import dataclasses
 
-# from libs.datasets import taglib
-
 from libs import pipeline
 from libs.datasets.timeseries import MultiRegionDataset
 from datapublic.common_fields import CommonFields
@@ -148,20 +146,21 @@ class CountyToHSAAggregator:
 
         # No special aggregations are needed because all fields track beds or people.
         hsa_ts: pd.DataFrame = region_aggregation.aggregate_regions(
-            counties_selected_ds, self.county_to_hsa_region_map, [],
+            counties_selected_ds, self.county_to_hsa_region_map, aggregations=[],
         ).timeseries
 
         # Map counties back onto HSAs.
-        location_id_map = {
+        hsa_to_counties_location_id_map = {
             hsa.location_id: [county.location_id for county in counties]
             for hsa, counties in self.hsa_to_counties_region_map.items()
         }
         hsa_ts[CommonFields.LOCATION_ID] = hsa_ts.index.get_level_values(
             CommonFields.LOCATION_ID
-        ).map(location_id_map)
+        ).map(hsa_to_counties_location_id_map)
 
-        # Create an row for each county in each HSA using HSA data.
-        # NOTE: Every county in an HSA will have data attributed to it, regardless of whether or
+        # Create a row for each county in each HSA using HSA data.
+        # NOTE: Every county in an HSA will have data for these HSA fields as long as
+        # any other county in the same HSA has data, regardless of whether or
         # not we have actually collected data for that county.
         aggregated_ts = hsa_ts.explode(CommonFields.LOCATION_ID)
 
