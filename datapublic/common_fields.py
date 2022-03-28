@@ -152,6 +152,18 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
         FieldGroup.HEALTHCARE_CAPACITY,
     )
 
+    # HSA level Healthcare Fields
+    STAFFED_BEDS_HSA = "staffed_beds_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    HOSPITAL_BEDS_IN_USE_ANY_HSA = "hospital_beds_in_use_any_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    CURRENT_HOSPITALIZED_HSA = "current_hospitalized_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    ICU_BEDS_HSA = "icu_beds_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    CURRENT_ICU_HSA = "current_icu_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    CURRENT_ICU_TOTAL_HSA = "current_icu_total_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA = (
+        "weekly_new_hospital_admissions_covid_hsa",
+        FieldGroup.HEALTHCARE_CAPACITY,
+    )
+
     CONTACT_TRACERS_COUNT = "contact_tracers_count", FieldGroup.HEALTHCARE_CAPACITY
     LATITUDE = "latitude", None
     LONGITUDE = "longitude", None
