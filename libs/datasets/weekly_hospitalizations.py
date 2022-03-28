@@ -17,9 +17,9 @@ def _rolling_avg_7day(daily: pd.Series):
 def add_weekly_rolling_average_column(
     dataset_in: MultiRegionDataset, field_in: CommonFields, field_out: CommonFields
 ) -> MultiRegionDataset:
-    assert field_out not in dataset_in.timeseries_bucketed_wide_dates.index.unique(
-        PdFields.VARIABLE
-    )
+    # assert field_out not in dataset_in.timeseries_bucketed_wide_dates.index.unique(
+    #    PdFields.VARIABLE
+    # )
 
     # Get timeseries data from timeseries_wide_dates because it creates a date range that includes
     # every date, even those with NA values. This keeps the output identical when empty rows are

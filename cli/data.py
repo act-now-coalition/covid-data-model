@@ -171,9 +171,7 @@ def update(
     if print_stats:
         multiregion_dataset.print_stats("new_cases_and_deaths")
 
-    multiregion_dataset = weekly_hospitalizations.add_weekly_rolling_average_column(
-        multiregion_dataset
-    )
+    multiregion_dataset = weekly_hospitalizations.add_weekly_hospitalizations(multiregion_dataset)
 
     multiregion_dataset = custom_patches.patch_maryland_missing_case_data(multiregion_dataset)
     if print_stats:
