@@ -120,7 +120,7 @@ def update(
     else:
         multiregion_dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
             dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH
-        )
+        ).get_subset(state=state, fips=fips)
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
     # need to remove CBSAs because they don't exist yet.
