@@ -130,9 +130,9 @@ Fields:
     hsaHospitalBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
         ...,
         description="""
-Information about acute bed utilization details aggregated for the corresponding
-Health Service Area (HSA). For more on HSAs see: 
-https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+Information about acute bed utilization details aggregated for the county's corresponding
+Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted. 
+For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
  * capacity - Current staffed acute bed capacity.
@@ -154,9 +154,9 @@ Fields:
     hsaIcuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
         ...,
         description="""
-Information about ICU bed utilization details aggregated for the corresponding
-Health Service Area (HSA). For more on HSAs see: 
-https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+Information about ICU bed utilization details aggregated for the county's corresponding
+Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted. 
+For For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
  * capacity - Current staffed ICU bed capacity.
