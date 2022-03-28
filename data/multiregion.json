@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "e9a2871727543b7c973b4aba7bb2107ac65121a9",
-    "branch": "smcclure17/hsa-actuals",
+    "sha": "cddaa7f05d7380ce22a35ca31908aa3592c959a5",
+    "branch": "main",
     "is_dirty": false
   },
-  "updated_at": "2022-03-28T20:36:49.562649"
+  "updated_at": "2022-03-28T11:31:29.419753"
 }
