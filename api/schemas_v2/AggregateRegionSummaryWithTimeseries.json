@@ -14,7 +14,8 @@
         "state",
         "county",
         "cbsa",
-        "place"
+        "place",
+        "hsa"
       ]
     },
     "TestPositivityRatioMethod": {
@@ -464,9 +465,27 @@
             }
           ]
         },
+        "hsaHospitalBeds": {
+          "title": "Hsahospitalbeds",
+          "description": "\nInformation about acute bed utilization details aggregated for the corresponding\nHealth Service Area (HSA). For more on HSAs see: \nhttps://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HospitalResourceUtilization"
+            }
+          ]
+        },
         "icuBeds": {
           "title": "Icubeds",
           "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HospitalResourceUtilization"
+            }
+          ]
+        },
+        "hsaIcuBeds": {
+          "title": "Hsaicubeds",
+          "description": "\nInformation about ICU bed utilization details aggregated for the corresponding\nHealth Service Area (HSA). For more on HSAs see: \nhttps://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n",
           "allOf": [
             {
               "$ref": "#/definitions/HospitalResourceUtilization"
@@ -583,7 +602,9 @@
         "negativeTests",
         "contactTracers",
         "hospitalBeds",
+        "hsaHospitalBeds",
         "icuBeds",
+        "hsaIcuBeds",
         "newCases",
         "newDeaths"
       ]
@@ -776,9 +797,27 @@
             }
           ]
         },
+        "hsaHospitalBeds": {
+          "title": "Hsahospitalbeds",
+          "description": "Annotations for hsaHospitalBeds",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
         "icuBeds": {
           "title": "Icubeds",
           "description": "Annotations for icuBeds",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "hsaIcuBeds": {
+          "title": "Hsaicubeds",
+          "description": "Annotations for hsaIcuBeds",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"
@@ -1167,9 +1206,27 @@
             }
           ]
         },
+        "hsaHospitalBeds": {
+          "title": "Hsahospitalbeds",
+          "description": "\nInformation about acute bed utilization details aggregated for the corresponding\nHealth Service Area (HSA). For more on HSAs see: \nhttps://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HospitalResourceUtilization"
+            }
+          ]
+        },
         "icuBeds": {
           "title": "Icubeds",
           "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HospitalResourceUtilization"
+            }
+          ]
+        },
+        "hsaIcuBeds": {
+          "title": "Hsaicubeds",
+          "description": "\nInformation about ICU bed utilization details aggregated for the corresponding\nHealth Service Area (HSA). For more on HSAs see: \nhttps://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n",
           "allOf": [
             {
               "$ref": "#/definitions/HospitalResourceUtilization"
@@ -1292,7 +1349,9 @@
         "negativeTests",
         "contactTracers",
         "hospitalBeds",
+        "hsaHospitalBeds",
         "icuBeds",
+        "hsaIcuBeds",
         "newCases",
         "newDeaths",
         "date"
