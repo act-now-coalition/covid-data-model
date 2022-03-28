@@ -96,7 +96,7 @@ execute_api_v2() {
   generate_version_json "${API_OUTPUT_V2}"
 
   echo ">>> Generating API Output"
-  ./run.py api generate-api-v2 "${API_OUTPUT_DIR}" -o "${API_OUTPUT_V2}"
+  ./run.py api generate-api-v2 --state CT "${API_OUTPUT_DIR}" -o "${API_OUTPUT_V2}"
 
   echo ">>> All API Artifacts written to ${API_OUTPUT_V2}"
 }

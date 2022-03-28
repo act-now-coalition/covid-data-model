@@ -93,10 +93,20 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED),
             "currentUsageTotal": actual_data.get(CommonFields.HOSPITAL_BEDS_IN_USE_ANY),
         },
+        hsaHospitalBeds={
+            "capacity": actual_data.get(CommonFields.STAFFED_BEDS_HSA),
+            "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED_HSA),
+            "currentUsageTotal": actual_data.get(CommonFields.HOSPITAL_BEDS_IN_USE_ANY_HSA),
+        },
         icuBeds={
             "capacity": actual_data.get(CommonFields.ICU_BEDS),
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_ICU),
             "currentUsageTotal": actual_data.get(CommonFields.CURRENT_ICU_TOTAL),
+        },
+        hsaIcuBeds={
+            "capacity": actual_data.get(CommonFields.ICU_BEDS_HSA),
+            "currentUsageCovid": actual_data.get(CommonFields.CURRENT_ICU_HSA),
+            "currentUsageTotal": actual_data.get(CommonFields.CURRENT_ICU_TOTAL_HSA),
         },
         newCases=actual_data.get(CommonFields.NEW_CASES),
         newDeaths=actual_data.get(CommonFields.NEW_DEATHS),
