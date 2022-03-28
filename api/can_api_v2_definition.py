@@ -131,7 +131,8 @@ Fields:
         ...,
         description="""
 Information about acute bed utilization details aggregated for the corresponding
-Health Service Area.
+Health Service Area (HSA). For more on HSAs see: 
+https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
  * capacity - Current staffed acute bed capacity.
@@ -154,7 +155,8 @@ Fields:
         ...,
         description="""
 Information about ICU bed utilization details aggregated for the corresponding
-Health Service Area.
+Health Service Area (HSA). For more on HSAs see: 
+https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
  * capacity - Current staffed ICU bed capacity.
