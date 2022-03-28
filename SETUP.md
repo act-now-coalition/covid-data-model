@@ -13,7 +13,7 @@ git-lfs must be installed to checkout a copy of `covid-data-model`.
     ```
 If you clone the repo before installing git-lfs run `git lfs pull`[*](https://github.com/git-lfs/git-lfs/issues/325#issuecomment-149713215) to fetch the large data files.
 
-## Install Python 3.7.7 in a Virtualenv
+## Install Python 3.7 in a Virtualenv
 
 You can use conda or pyenv.  Note that if you're using Apple Silicon (an M1 Mac), you may have better luck using anaconda. Either way you need to set up a python `3.7.7` environment.
 

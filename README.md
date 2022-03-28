@@ -8,12 +8,12 @@ It ingests data scraped via https://github.com/covid-projections/can-scrapers, c
 
 ## Setup
 
-Detailed setup instructions can be found [here](./SETUP.md)
+Detailed setup instructions can be found [here](./SETUP.md).
 
 ## Local development.
 Normally the pipeline is run via github actions on a beefy cloud VM and still takes 2+ hours. When developing locally it is often useful to run the pipeline on a subset of locations ond/or to skip pipeline steps.
 
-To run the pipeline end-to-end but only generate data for Connecticut state / metros / counties, you can run:
+To run the pipeline end-to-end but only generate data for Connecticut state / counties, you can run:
 
 ```
 # Fetches latest scraped data from can-scrapers and combines all data sources
@@ -32,7 +32,7 @@ python ./pyseir/cli.py build-all --states=CT
 
 ### Downloading Model Run Data
 
-If you just want to run the API generation you can skip the first two steps by downloading the pyseir model results from a previous snapshot. You can download the pyseir model output from a recent github action run with:
+If you just want to run the API generation you can skip the first two steps above by downloading the pyseir model results from a previous snapshot. You can download the pyseir model output from a recent github action run with:
 ```
 export GITHUB_TOKEN=<YOUR PERSONAL GITHUB TOKEN>
 ./run.py utils download-model-artifact
