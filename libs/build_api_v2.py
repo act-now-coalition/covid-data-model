@@ -177,6 +177,7 @@ METRICS_NAME_TO_COMMON_FIELD = {
     "vaccinationsCompletedRatio": CommonFields.VACCINATIONS_COMPLETED_PCT,
     "vaccinationsAdditionalDoseRatio": CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT,
     "icuCapacityRatio": CommonFields.CURRENT_ICU,
+    "bedsWithCovidPatientsRatio": CommonFields.CURRENT_HOSPITALIZED,
 }
 
 

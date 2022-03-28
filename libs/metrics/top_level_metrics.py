@@ -12,9 +12,11 @@ from datapublic import common_fields
 from api import can_api_v2_definition
 from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
 from libs import series_utils
+from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.new_cases_and_deaths import spread_first_reported_value_after_stall
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.metrics import icu_capacity
+from libs.pipeline import Region
 
 Metrics = can_api_v2_definition.Metrics
 # We will assume roughly 5 tracers are needed to trace a case within 48h.
@@ -43,6 +45,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     INFECTION_RATE = "infectionRate"
     INFECTION_RATE_CI90 = "infectionRateCI90"
     ICU_CAPACITY_RATIO = "icuCapacityRatio"
+    BEDS_WITH_COVID_PATIENTS_RATIO = "bedsWithCovidPatientsRatio"
     VACCINATIONS_INITIATED_RATIO = "vaccinationsInitiatedRatio"
     VACCINATIONS_COMPLETED_RATIO = "vaccinationsCompletedRatio"
     VACCINATIONS_ADDITIONAL_DOSE_RATIO = "vaccinationsAdditionalDoseRatio"
@@ -62,6 +65,7 @@ METRIC_ROUNDING_PRECISION = {
     MetricsFields.INFECTION_RATE: 2,
     MetricsFields.INFECTION_RATE_CI90: 2,
     MetricsFields.ICU_CAPACITY_RATIO: 2,
+    MetricsFields.BEDS_WITH_COVID_PATIENTS_RATIO: 2,
     MetricsFields.VACCINATIONS_INITIATED_RATIO: 3,
     MetricsFields.VACCINATIONS_COMPLETED_RATIO: 3,
     MetricsFields.VACCINATIONS_ADDITIONAL_DOSE_RATIO: 3,
@@ -101,6 +105,7 @@ def calculate_metrics_for_timeseries(
     )
 
     icu_capacity_ratio = icu_capacity.calculate_icu_capacity(data)
+    beds_with_covid_patients_ratio = calculate_covid_patient_ratio(data, timeseries.region)
 
     vaccines_initiated_ratio = (
         common_df.get_timeseries(
@@ -131,6 +136,7 @@ def calculate_metrics_for_timeseries(
         MetricsFields.INFECTION_RATE: infection_rate,
         MetricsFields.INFECTION_RATE_CI90: infection_rate_ci90,
         MetricsFields.ICU_CAPACITY_RATIO: icu_capacity_ratio,
+        MetricsFields.BEDS_WITH_COVID_PATIENTS_RATIO: beds_with_covid_patients_ratio,
         MetricsFields.VACCINATIONS_INITIATED_RATIO: vaccines_initiated_ratio,
         MetricsFields.VACCINATIONS_COMPLETED_RATIO: vaccines_completed_ratio,
         MetricsFields.VACCINATIONS_ADDITIONAL_DOSE_RATIO: vaccines_additional_dose_ratio,
@@ -274,6 +280,22 @@ def calculate_contact_tracers(
     contact_tracers_ratio = contact_tracers / (smoothed_daily_cases * contact_tracers_per_case)
     contact_tracers_ratio = contact_tracers_ratio.replace([-np.inf, np.inf], np.nan)
     return contact_tracers_ratio
+
+
+def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
+    # Use HSA-level data for counties only.
+    if region.level == AggregationLevel.COUNTY:
+        staffed_beds: pd.Series = data[CommonFields.STAFFED_BEDS_HSA]
+        covid_hospitalizations: pd.Series = data[CommonFields.CURRENT_HOSPITALIZED_HSA]
+    else:
+        staffed_beds = data[CommonFields.STAFFED_BEDS]
+        covid_hospitalizations = data[CommonFields.CURRENT_HOSPITALIZED]
+
+    # Returns NaN for any dates missing either beds or patients.
+    covid_patient_ratio = covid_hospitalizations.div(staffed_beds, fill_value=None)
+
+    smoothed = series_utils.smooth_with_rolling_average(covid_patient_ratio, window=7)
+    return smoothed
 
 
 def calculate_latest_metrics(

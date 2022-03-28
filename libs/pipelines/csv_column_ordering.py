@@ -72,6 +72,7 @@ SUMMARY_ORDER = [
     "metrics.weeklyNewCasesPer100k",
     "hsa",
     "hsaPopulation",
+    "metrics.bedsWithCovidPatientsRatio",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -141,6 +142,7 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "metrics.weeklyNewCasesPer100k",
     "hsa",
     "hsaPopulation",
+    "metrics.bedsWithCovidPatientsRatio",
 ]
 
 
@@ -197,4 +199,5 @@ TIMESERIES_ORDER = [
     "metrics.weeklyNewCasesPer100k",
     "hsa",
     "hsaPopulation",
+    "metrics.bedsWithCovidPatientsRatio",
 ]
