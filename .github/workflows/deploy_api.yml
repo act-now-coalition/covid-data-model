@@ -104,7 +104,7 @@ jobs:
         path: /data/api-results-${{env.SNAPSHOT_ID}}/api-results.zip
 
 
-    - name: Build API (run.sh .. .. execute_api)
+    - name: Build API (run.sh .. .. execute_api_v2)
       run: |
         ./covid-data-model/run.sh /data/api-results-${{env.SNAPSHOT_ID}} execute_api_v2
 
