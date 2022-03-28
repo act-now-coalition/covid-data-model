@@ -13,7 +13,6 @@ jobs:
       uses: psf/black@stable
       with:
         version: 19.10b0
-      additional_dependencies: ['click==8.0.4']
 
   build:
     env:
