@@ -57,9 +57,27 @@
         }
       ]
     },
+    "hsaHospitalBeds": {
+      "title": "Hsahospitalbeds",
+      "description": "Annotations for hsaHospitalBeds",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
     "icuBeds": {
       "title": "Icubeds",
       "description": "Annotations for icuBeds",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "hsaIcuBeds": {
+      "title": "Hsaicubeds",
+      "description": "Annotations for hsaIcuBeds",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"

@@ -127,10 +127,36 @@ Fields:
  * currentUsageCovid - Number of acute beds currently in use by COVID patients.
 """,
     )
+    hsaHospitalBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
+        ...,
+        description="""
+Information about acute bed utilization details aggregated for the county's corresponding
+Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted. 
+For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+
+Fields:
+ * capacity - Current staffed acute bed capacity.
+ * currentUsageTotal - Total number of acute beds currently in use
+ * currentUsageCovid - Number of acute beds currently in use by COVID patients.
+""",
+    )
     icuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
         ...,
         description="""
 Information about ICU bed utilization details.
+
+Fields:
+ * capacity - Current staffed ICU bed capacity.
+ * currentUsageTotal - Total number of ICU beds currently in use
+ * currentUsageCovid - Number of ICU beds currently in use by COVID patients.
+""",
+    )
+    hsaIcuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
+        ...,
+        description="""
+Information about ICU bed utilization details aggregated for the county's corresponding
+Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted. 
+For For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
  * capacity - Current staffed ICU bed capacity.
@@ -261,8 +287,14 @@ class Annotations(base_model.APIBaseModel):
     hospitalBeds: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for hospitalBeds"
     )
+    hsaHospitalBeds: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for hsaHospitalBeds"
+    )
     icuBeds: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for icuBeds"
+    )
+    hsaIcuBeds: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for hsaIcuBeds"
     )
     newCases: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for newCases"
