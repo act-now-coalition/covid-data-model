@@ -782,6 +782,16 @@
       "end_date": "2022-03-23",
       "region": "48201",
       "context": "Suspicious large spike "
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-07",
+      "end_date": "",
+      "region": "37191",
+      "context": "Blocking recent data due to suspected backlog of cases (not visible on https://covid19.ncdhhs.gov/dashboard/cases-and-deaths#covid-19-cases-and-deaths)",
+      "disclaimer": "We are unable to show data for Wayne County, NC at this time due to a recent increase in reported cases that are suspected to be backdated cases.  See https://covid19.ncdhhs.gov/dashboard/cases-and-deaths for latest data."
     }
   ]
 }
