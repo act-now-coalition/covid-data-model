@@ -128,10 +128,19 @@ class CountyToHSAAggregator:
         dataset_in: MultiRegionDataset,
         fields_to_aggregate: Dict[CommonFields, CommonFields] = HSA_FIELDS_MAPPING,
     ) -> MultiRegionDataset:
+        """Create new fields by aggregating county-level data into HSA level data. 
+        
+        Args:
+            dataset_in: MultiRegionDataset with fields to aggregate.
+            fields_to_aggregate: Mapping of names of columns to aggregate to names of resulting columns.
+        """
 
         # Only aggregate county-level data for specified fields
         counties = dataset_in.get_subset(aggregation_level=AggregationLevel.COUNTY)
-        counties_ts: pd.DataFrame = counties.timeseries.loc[:, list(fields_to_aggregate.keys())]
+        columns_to_aggregate = [
+            col for col in counties.timeseries.columns if col in fields_to_aggregate.keys()
+        ]
+        counties_ts: pd.DataFrame = counties.timeseries.loc[:, columns_to_aggregate]
         counties_selected_ds = dataclasses.replace(
             counties, timeseries=counties_ts, timeseries_bucketed=None
         )
