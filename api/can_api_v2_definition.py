@@ -141,7 +141,7 @@ Fields:
         ...,
         description="""
 Information about acute bed utilization details aggregated for the county's corresponding
-Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted. 
+Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted.
 For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
@@ -166,7 +166,7 @@ Fields:
         ...,
         description="""
 Information about ICU bed utilization details aggregated for the county's corresponding
-Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted. 
+Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted.
 For For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
@@ -489,6 +489,17 @@ class CDCTransmissionLevel(enum.Enum):
     UNKNOWN = 4
 
 
+@enum.unique
+class CommunityLevel(enum.Enum):
+    """Community level."""
+
+    LOW = 0
+
+    MEDIUM = 1
+
+    HIGH = 2
+
+
 class RiskLevels(base_model.APIBaseModel):
     """COVID risk levels for a region."""
 
@@ -518,7 +529,7 @@ class RiskLevels(base_model.APIBaseModel):
 # Additional class used for bulk timeseries where we are not including all risk levels
 # right now, only the overall risk level.
 class RiskLevelsRow(base_model.APIBaseModel):
-    overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region.")
+    overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region .")
     caseDensity: RiskLevel = pydantic.Field(..., description="Case density risk level for region.")
 
 
@@ -539,6 +550,69 @@ class CdcTransmissionLevelTimeseriesRow(base_model.APIBaseModel):
     cdcTransmissionLevel: CDCTransmissionLevel = pydantic.Field(
         ..., description=CDC_TRANSMISSION_LEVEL_DESCRIPTION
     )
+
+
+class CommunityLevels(base_model.APIBaseModel):
+    """Community levels for a region."""
+
+    cdcCommunityLevel: Optional[CommunityLevel] = pydantic.Field(
+        ...,
+        description=textwrap.dedent(
+            """
+    CDC Community level for county, as provided by the CDC.
+
+    Possible values:
+        - 0: Low
+        - 1: Medium
+        - 2: High
+
+    See https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html
+    for details about how the Community Level is calculated and should be
+    interpretted.
+
+    Note that we provide two versions of the Community Level. One is called
+    canCommunityLevel which is calculated on a daily basis using CAN's data
+    sources and is available for states, counties, and metros.  The other is
+    called cdcCommunityLevel and is the raw Community Level published by the
+    CDC. It is only available for counties, and updates on a weekly basis.
+    """
+        ),
+    )
+
+    canCommunityLevel: Optional[CommunityLevel] = pydantic.Field(
+        ...,
+        description=textwrap.dedent(
+            """
+    Community level for region, calculated using the CDC definition but with CAN
+    data sources.
+
+    Possible values:
+        - 0: Low
+        - 1: Medium
+        - 2: High
+
+    See https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html
+    for details about how the Community Level is calculated and should be
+    interpretted.
+
+    Note that we provide two versions of the Community Level. One is called
+    canCommunityLevel which is calculated on a daily basis using CAN's data
+    sources and is available for states, counties, and metros.  The other is
+    called cdcCommunityLevel and is the raw Community Level published by the
+    CDC. It is only available for counties, and updates on a weekly basis.
+    """
+        ),
+    )
+
+    @classmethod
+    def empty(cls) -> "RiskLevels":
+        return CommunityLevels(cdcCommunityLevel=None, canCommunityLevel=None,)
+
+
+class CommunityLevelsTimeseriesRow(CommunityLevels):
+    """Timeseries data for community levels."""
+
+    date: datetime.date = pydantic.Field(..., description="Date of timeseries data point")
 
 
 class RegionSummary(base_model.APIBaseModel):
@@ -593,6 +667,8 @@ class RegionSummary(base_model.APIBaseModel):
         ..., description=CDC_TRANSMISSION_LEVEL_DESCRIPTION
     )
 
+    communityLevels: CommunityLevels = pydantic.Field(...)
+
     actuals: Actuals = pydantic.Field(...)
     annotations: Annotations = pydantic.Field(...)
 
@@ -610,6 +686,7 @@ class RegionSummaryWithTimeseries(RegionSummary):
     actualsTimeseries: List[ActualsTimeseriesRow] = pydantic.Field(...)
     riskLevelsTimeseries: List[RiskLevelTimeseriesRow] = pydantic.Field(...)
     cdcTransmissionLevelTimeseries: List[CdcTransmissionLevelTimeseriesRow] = pydantic.Field(...)
+    communityLevelsTimeseries: List[CommunityLevelsTimeseriesRow] = pydantic.Field(...)
 
     @property
     def region_summary(self) -> RegionSummary:
@@ -685,6 +762,8 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
         description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
         gt=0,
     )
+
+    communityLevels: Optional[CommunityLevelsTimeseriesRow]
 
 
 class AggregateFlattenedTimeseries(base_model.APIBaseModel):

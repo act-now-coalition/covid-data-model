@@ -6,7 +6,7 @@ import pydantic
 import structlog
 
 import pyseir.run
-from libs.metrics import test_positivity
+from libs.metrics import community_levels, test_positivity
 from libs.pipelines.api_v2_paths import APIOutputPathBuilder
 from libs.pipelines.api_v2_paths import FileType
 from libs.pipelines import csv_column_ordering
@@ -149,8 +149,24 @@ def build_timeseries_for_region(
             metrics_latest
         )
 
+        (
+            community_levels_timeseries,
+            latest_community_levels,
+        ) = community_levels.calculate_community_level_timeseries_and_latest(
+            fips_timeseries, metrics_results
+        )
+
+        cdc_transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
+            metrics_latest
+        )
+
         region_summary = build_api_v2.build_region_summary(
-            regional_input.timeseries, metrics_latest, risk_levels, cdc_transmission_level, log
+            regional_input.timeseries,
+            metrics_latest,
+            risk_levels,
+            cdc_transmission_level,
+            latest_community_levels,
+            log,
         )
         region_timeseries = build_api_v2.build_region_timeseries(
             region_summary,
@@ -158,6 +174,7 @@ def build_timeseries_for_region(
             metrics_results,
             risk_timeseries,
             cdc_transmission_level_timeseries,
+            community_levels_timeseries,
         )
     except Exception:
         log.exception(f"Failed to build timeseries for fips.")
