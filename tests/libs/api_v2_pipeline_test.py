@@ -161,6 +161,8 @@ def test_annotation(rt_dataset):
             CommonFields.DEATHS: TimeseriesLiteral(
                 [2, 3, 2], annotation=[tag], source_url=death_url
             ),
+            CommonFields.STAFFED_BEDS: [10, 10, 10],
+            CommonFields.CURRENT_HOSPITALIZED: [1, 1, 1],
         },
         region=region,
         static={
@@ -242,6 +244,8 @@ def test_source(rt_dataset):
             CommonFields.DEATHS: TimeseriesLiteral(
                 [2, 3, 2], annotation=[tag], source=deaths_source
             ),
+            CommonFields.STAFFED_BEDS: [10, 10, 10],
+            CommonFields.CURRENT_HOSPITALIZED: [1, 1, 1],
         },
         region=region,
         static={
