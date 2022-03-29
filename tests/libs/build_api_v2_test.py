@@ -92,11 +92,20 @@ def test_build_summary_for_fips(
                 "currentUsageCovid": nyc_latest["current_hospitalized"],
                 "currentUsageTotal": nyc_latest["hospital_beds_in_use_any"],
             },
+            hsaHospitalBeds={
+                "capacity": nyc_latest.get("staffed_beds_hsa"),
+                "currentUsageCovid": nyc_latest.get("current_hospitalized_hsa"),
+                "currentUsageTotal": nyc_latest.get("hospital_beds_in_use_any_hsa"),
+            },
             icuBeds={
                 "capacity": nyc_latest["icu_beds"],
-                "totalCapacity": nyc_latest["icu_beds"],
                 "currentUsageCovid": nyc_latest["current_icu"],
                 "currentUsageTotal": nyc_latest["current_icu_total"],
+            },
+            hsaIcuBeds={
+                "capacity": nyc_latest.get("icu_beds_hsa"),
+                "currentUsageCovid": nyc_latest.get("current_icu_hsa"),
+                "currentUsageTotal": nyc_latest.get("current_icu_total_hsa"),
             },
             contactTracers=nyc_latest["contact_tracers_count"],
             newCases=nyc_latest["new_cases"],

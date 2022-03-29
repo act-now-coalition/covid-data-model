@@ -72,6 +72,12 @@ SUMMARY_ORDER = [
     "metrics.weeklyNewCasesPer100k",
     "hsa",
     "hsaPopulation",
+    "actuals.hsaHospitalBeds.capacity",
+    "actuals.hsaHospitalBeds.currentUsageTotal",
+    "actuals.hsaHospitalBeds.currentUsageCovid",
+    "actuals.hsaIcuBeds.capacity",
+    "actuals.hsaIcuBeds.currentUsageTotal",
+    "actuals.hsaIcuBeds.currentUsageCovid",
     "metrics.bedsWithCovidPatientsRatio",
 ]
 
@@ -142,6 +148,12 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "metrics.weeklyNewCasesPer100k",
     "hsa",
     "hsaPopulation",
+    "actuals.hsaHospitalBeds.capacity",
+    "actuals.hsaHospitalBeds.currentUsageTotal",
+    "actuals.hsaHospitalBeds.currentUsageCovid",
+    "actuals.hsaIcuBeds.capacity",
+    "actuals.hsaIcuBeds.currentUsageTotal",
+    "actuals.hsaIcuBeds.currentUsageCovid",
     "metrics.bedsWithCovidPatientsRatio",
 ]
 
@@ -199,5 +211,11 @@ TIMESERIES_ORDER = [
     "metrics.weeklyNewCasesPer100k",
     "hsa",
     "hsaPopulation",
+    "actuals.hsaHospitalBeds.capacity",
+    "actuals.hsaHospitalBeds.currentUsageTotal",
+    "actuals.hsaHospitalBeds.currentUsageCovid",
+    "actuals.hsaIcuBeds.capacity",
+    "actuals.hsaIcuBeds.currentUsageTotal",
+    "actuals.hsaIcuBeds.currentUsageCovid",
     "metrics.bedsWithCovidPatientsRatio",
 ]
