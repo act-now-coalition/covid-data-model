@@ -28,6 +28,8 @@ def test_generate_from_loaded_data_country(tmpdir):
             CommonFields.VACCINATIONS_COMPLETED: [300, 350, 400],
             CommonFields.VACCINATIONS_INITIATED: [400, 450, 500],
             CommonFields.VACCINES_DISTRIBUTED: [400, 450, 500],
+            CommonFields.STAFFED_BEDS: [100, 200, 300],
+            CommonFields.CURRENT_HOSPITALIZED: [50, 100, 150],
         },
         static={
             CommonFields.POPULATION: 1000,

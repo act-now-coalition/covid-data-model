@@ -171,6 +171,8 @@ def test_top_level_metrics_basic():
         CommonFields.VACCINATIONS_INITIATED_PCT: [1, 2, None, 3],
         CommonFields.VACCINATIONS_COMPLETED_PCT: [0.1, 0.2, None, 0.3],
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [0.1, 0.2, None, 0.3],
+        CommonFields.STAFFED_BEDS_HSA: [10, 20, 60, 80],
+        CommonFields.CURRENT_HOSPITALIZED_HSA: [1, 2, 3, 4],
     }
     latest = {
         CommonFields.POPULATION: 100_000,
@@ -194,6 +196,7 @@ def test_top_level_metrics_basic():
         vaccinationsInitiatedRatio=[0.01, 0.02, None, 0.03],
         vaccinationsCompletedRatio=[0.001, 0.002, None, 0.003],
         vaccinationsAdditionalDoseRatio=[0.001, 0.002, None, 0.003],
+        bedsWithCovidPatientsRatio=[0.1, 0.1, 0.05, 0.05],
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -207,6 +210,8 @@ def test_top_level_metrics_rounding():
         CommonFields.CURRENT_ICU: [10, 20, 30],
         CommonFields.CURRENT_ICU_TOTAL: [10, 20, 30],
         CommonFields.ICU_BEDS: [None, None, None],
+        CommonFields.STAFFED_BEDS_HSA: [10, 20, 35],
+        CommonFields.CURRENT_HOSPITALIZED_HSA: [1, 2, 3],
         CommonFields.VACCINATIONS_INITIATED_PCT: [33.3333, 66.666, 100],
         CommonFields.VACCINATIONS_COMPLETED_PCT: [33.3333, 66.6666, 100],
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [33.3333, 66.6666, 100],
@@ -233,6 +238,7 @@ def test_top_level_metrics_rounding():
         vaccinationsInitiatedRatio=[0.333, 0.667, 1],
         vaccinationsCompletedRatio=[0.333, 0.667, 1],
         vaccinationsAdditionalDoseRatio=[0.333, 0.667, 1],
+        bedsWithCovidPatientsRatio=[0.1, 0.1, 0.09],
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -248,6 +254,8 @@ def test_top_level_metrics_incomplete_latest():
         CommonFields.CURRENT_ICU: [10, 10, 10, 10],
         CommonFields.CURRENT_ICU_TOTAL: [20, 20, 20, 20],
         CommonFields.ICU_BEDS: [None, None, None, None],
+        CommonFields.STAFFED_BEDS: [None, 20, 10, None],
+        CommonFields.CURRENT_HOSPITALIZED: [1, 2, None, None],
     }
     latest = {
         CommonFields.POPULATION: 100_000,
@@ -272,6 +280,7 @@ def test_top_level_metrics_incomplete_latest():
         weeklyNewCasesPer100k=[70, 70, 70, 70],
         testPositivityRatio=[None, 0.1, 0.1, 0.1],
         contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08],
+        bedsWithCovidPatientsRatio=[None, 0.1, None, None],
     )
     pd.testing.assert_frame_equal(expected, results, check_dtype=False)
 
@@ -284,6 +293,8 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
         CommonFields.CASES: [10, 20, 30, 40],
         CommonFields.NEW_CASES: [10, 10, 10, 10],
         CommonFields.CONTACT_TRACERS_COUNT: [1, 2, 3, 4],
+        CommonFields.STAFFED_BEDS: [10, 20, 30, 40],
+        CommonFields.CURRENT_HOSPITALIZED: [1, 2, 3, 4],
     }
     latest = {
         CommonFields.POPULATION: 100_000,
@@ -308,6 +319,7 @@ def test_top_level_metrics_no_pos_neg_tests_no_positivity_ratio():
         caseDensity=[10.0, 10.0, 10.0, 10.0],
         weeklyNewCasesPer100k=[70.0, 70.0, 70.0, 70.0],
         contactTracerCapacityRatio=[0.02, 0.04, 0.06, 0.08],
+        bedsWithCovidPatientsRatio=[0.1, 0.1, 0.1, 0.1],
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -318,6 +330,8 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
         CommonFields.CASES: [10, 20, 30, 40],
         CommonFields.NEW_CASES: [10, 10, 10, 10],
         CommonFields.TEST_POSITIVITY: [0.02, 0.03, 0.04, 0.05],
+        CommonFields.STAFFED_BEDS: [10, 20, 30, 40],
+        CommonFields.CURRENT_HOSPITALIZED: [1, 2, 3, 4],
     }
     latest = {
         CommonFields.POPULATION: 100_000,
@@ -346,6 +360,7 @@ def test_top_level_metrics_no_pos_neg_tests_has_positivity_ratio():
         caseDensity=[10, 10, 10, 10],
         weeklyNewCasesPer100k=[70, 70, 70, 70],
         testPositivityRatio=[0.02, 0.03, 0.04, 0.05],
+        bedsWithCovidPatientsRatio=[0.1, 0.1, 0.1, 0.1],
     )
     pd.testing.assert_frame_equal(expected, results, check_dtype=False)
 
@@ -363,6 +378,8 @@ def test_top_level_metrics_with_rt():
         CommonFields.NEW_CASES: [None, 10, None, None],
         CommonFields.TEST_POSITIVITY: [None, 0.1, 0.1, 0.1],
         CommonFields.CONTACT_TRACERS_COUNT: [1, 2, 3, 4],
+        CommonFields.STAFFED_BEDS: [10, 20, 30, 40],
+        CommonFields.CURRENT_HOSPITALIZED: [1, 2, 3, 4],
     }
 
     one_region = build_one_region_dataset(
@@ -393,6 +410,7 @@ def test_top_level_metrics_with_rt():
         contactTracerCapacityRatio=[None, 0.08, None, None],
         infectionRate=[1.1, 1.2, 1.1, 1.1],
         infectionRateCI90=[0.1, 0.1, 0.2, 0.1],
+        bedsWithCovidPatientsRatio=[0.1, 0.1, 0.1, 0.1],
     )
     pd.testing.assert_frame_equal(expected, results)
 
@@ -495,6 +513,7 @@ def test_calculate_latest_different_latest_days():
         infectionRate=[prev_rt, 2.01],
         infectionRateCI90=[prev_rt_ci90, 0.2],
         icuCapacityRatio=0.75,
+        bedsWithCovidPatientsRatio=0.75,
     )
     expected_metrics = can_api_v2_definition.Metrics(
         testPositivityRatio=0.2,
@@ -504,6 +523,7 @@ def test_calculate_latest_different_latest_days():
         infectionRate=prev_rt,
         infectionRateCI90=prev_rt_ci90,
         icuCapacityRatio=0.75,
+        bedsWithCovidPatientsRatio=0.75,
     )
     metrics = top_level_metrics.calculate_latest_metrics(data, None, max_lookback_days=8)
     assert metrics == expected_metrics
@@ -517,7 +537,12 @@ def test_calculate_icu_capacity():
         CommonFields.STATE: "NY",
     }
     one_region = build_one_region_dataset(
-        {CommonFields.ICU_BEDS: [10, 20], CommonFields.CURRENT_ICU_TOTAL: [10, 15]},
+        {
+            CommonFields.ICU_BEDS: [10, 20],
+            CommonFields.CURRENT_ICU_TOTAL: [10, 15],
+            CommonFields.STAFFED_BEDS: [20, 40],
+            CommonFields.CURRENT_HOSPITALIZED: [2, 4],
+        },
         region=region,
         start_date="2020-12-18",
         timeseries_columns=INPUT_COLUMNS,
@@ -527,7 +552,12 @@ def test_calculate_icu_capacity():
     results, metrics = top_level_metrics.calculate_metrics_for_timeseries(
         one_region, None, structlog.get_logger()
     )
-    expected = build_metrics_df("36", start_date="2020-12-18", icuCapacityRatio=[1.0, 0.75],)
+    expected = build_metrics_df(
+        "36",
+        start_date="2020-12-18",
+        icuCapacityRatio=[1.0, 0.75],
+        bedsWithCovidPatientsRatio=[0.1, 0.1],
+    )
     positivity_method = can_api_v2_definition.TestPositivityRatioDetails(
         source=can_api_v2_definition.TestPositivityRatioMethod.OTHER
     )

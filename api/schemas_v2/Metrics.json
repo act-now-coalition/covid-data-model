@@ -97,6 +97,18 @@
         }
       ]
     },
+    "bedsWithCovidPatientsRatio": {
+      "title": "Bedswithcovidpatientsratio",
+      "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "vaccinationsInitiatedRatio": {
       "title": "Vaccinationsinitiatedratio",
       "description": "Ratio of population that has initiated vaccination.",
@@ -141,7 +153,8 @@
     "contactTracerCapacityRatio",
     "infectionRate",
     "infectionRateCI90",
-    "icuCapacityRatio"
+    "icuCapacityRatio",
+    "bedsWithCovidPatientsRatio"
   ],
   "definitions": {
     "TestPositivityRatioMethod": {
