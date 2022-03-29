@@ -2,3 +2,6 @@
 # The black default of 88 feels a bit cramped.
 # Sorry ambv, I'm not joking (https://github.com/psf/black/issues/290).
 line-length = 100
+
+[tool.black.dependencies]
+click = "8.0.4" # to fix https://github.com/psf/black/issues/2964
