@@ -1571,7 +1571,7 @@
                 "type": "null"
               }
             ],
-            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients."
+            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
@@ -2576,7 +2576,7 @@
                 "type": "null"
               }
             ],
-            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients."
+            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
