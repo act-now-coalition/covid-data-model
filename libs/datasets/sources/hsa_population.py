@@ -1,4 +1,5 @@
 from functools import lru_cache
+import pandas as pd
 
 from datapublic.common_fields import CommonFields
 from libs.datasets import data_source
@@ -7,6 +8,7 @@ from libs.pipeline import Region
 from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.statistical_areas import CountyToHSAAggregator
 from libs.datasets.sources.fips_population import FIPSPopulation
+from libs.datasets.dataset_utils import HSA_LIST_PATH
 
 
 def get_location_level(location_id):
@@ -40,6 +42,12 @@ class HSAPopulation(data_source.DataSource):
         populations = FIPSPopulation.make_dataset().static
         county_index = populations.index.map(get_location_level) == AggregationLevel.COUNTY
         counties = populations[county_index].copy()  # copy to remove SettingWithCopy error
+        hsa_names: pd.DataFrame = (
+            pd.read_csv(HSA_LIST_PATH, dtype={CommonFields.HSA: str})
+            .loc[:, [CommonFields.HSA, CommonFields.HSA_NAME]]
+            .drop_duplicates()
+            .assign(hsa_name=lambda row: row[CommonFields.HSA_NAME].fillna("Unknown"))
+        )
 
         # Map HSAs to counties
         counties[CommonFields.HSA] = counties.index.map(location_map)
@@ -61,6 +69,16 @@ class HSAPopulation(data_source.DataSource):
         counties[CommonFields.HSA] = counties[CommonFields.HSA].map(
             lambda loc: Region.from_location_id(loc).fips
         )
+        # Add HSA names to data
+        counties = counties.merge(hsa_names, how="left", on=CommonFields.HSA).reset_index()
 
-        data = counties.loc[:, [CommonFields.HSA_POPULATION, CommonFields.FIPS, CommonFields.HSA]]
+        data = counties.loc[
+            :,
+            [
+                CommonFields.HSA_POPULATION,
+                CommonFields.FIPS,
+                CommonFields.HSA,
+                CommonFields.HSA_NAME,
+            ],
+        ]
         return timeseries.MultiRegionDataset.new_without_timeseries().add_fips_static_df(data)

@@ -91,6 +91,7 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     COUNTY = "county", None
 
     HSA = "hsa", None
+    HSA_NAME = "hsa_name", None
 
     AGGREGATE_LEVEL = "aggregate_level", None
 

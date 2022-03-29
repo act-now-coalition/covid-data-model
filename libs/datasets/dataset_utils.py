@@ -18,7 +18,11 @@ GEO_DATA_COLUMNS = [
     CommonFields.COUNTY,
 ]
 
-NON_NUMERIC_COLUMNS = GEO_DATA_COLUMNS + [CommonFields.CAN_LOCATION_PAGE_URL, CommonFields.HSA]
+NON_NUMERIC_COLUMNS = GEO_DATA_COLUMNS + [
+    CommonFields.CAN_LOCATION_PAGE_URL,
+    CommonFields.HSA,
+    CommonFields.HSA_NAME,
+]
 
 STATIC_INDEX_FIELDS = [
     CommonFields.AGGREGATE_LEVEL,
@@ -42,6 +46,8 @@ _logger = logging.getLogger(__name__)
 REPO_ROOT = pathlib.Path(__file__).parent.parent.parent
 
 DATA_DIRECTORY = REPO_ROOT / "data"
+
+HSA_LIST_PATH = "data/misc/cdc_hsa_mapping.csv"
 
 # TODO(tom): Clean up how the wide-dates and static csv paths are passed around when removing
 #  DatasetPointer. See also enum `DashboardFile` in dashboard.py.

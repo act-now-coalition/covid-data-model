@@ -1678,6 +1678,7 @@
           "riskLevels",
           "cdcTransmissionLevel",
           "hsa",
+          "hsaName",
           "hsaPopulation"
         ],
         "type": "object",
@@ -1797,6 +1798,18 @@
               }
             ],
             "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
+          "hsaName": {
+            "title": "Hsaname",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
           },
           "hsaPopulation": {
             "title": "Hsapopulation",
@@ -2284,6 +2297,7 @@
           "state",
           "county",
           "hsa",
+          "hsaName",
           "level",
           "lat",
           "locationId",
@@ -2345,6 +2359,18 @@
               }
             ],
             "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
+          "hsaName": {
+            "title": "Hsaname",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
           },
           "level": {
             "allOf": [
@@ -2915,6 +2941,7 @@
           "state",
           "county",
           "hsa",
+          "hsaName",
           "level",
           "lat",
           "locationId",
@@ -2980,6 +3007,18 @@
               }
             ],
             "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
+          "hsaName": {
+            "title": "Hsaname",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
           },
           "level": {
             "allOf": [

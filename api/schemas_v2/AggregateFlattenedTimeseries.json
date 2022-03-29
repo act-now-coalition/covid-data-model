@@ -695,6 +695,18 @@
             }
           ]
         },
+        "hsaName": {
+          "title": "Hsaname",
+          "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "hsaPopulation": {
           "title": "Hsapopulation",
           "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
@@ -723,6 +735,7 @@
         "riskLevels",
         "cdcTransmissionLevel",
         "hsa",
+        "hsaName",
         "hsaPopulation"
       ]
     }

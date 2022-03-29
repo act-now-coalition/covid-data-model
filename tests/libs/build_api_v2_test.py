@@ -69,7 +69,8 @@ def test_build_summary_for_fips(
     )
     expected = RegionSummary(
         population=nyc_latest["population"],
-        hsa=nyc_latest.get("hsa"),
+        hsa=str(int(nyc_latest.get("hsa"))).zfill(3),
+        hsaName=nyc_latest.get("hsa_name"),
         hsaPopulation=nyc_latest.get("hsa_population"),
         state="NY",
         country="US",
@@ -161,13 +162,15 @@ def test_build_summary_for_fips(
             caseDensity=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             weeklyNewCasesPer100k=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             icuCapacityRatio=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
+            bedsWithCovidPatientsRatio=FieldAnnotations(
+                sources=[field_source_hhshospital], anomalies=[]
+            ),
             infectionRate=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             infectionRateCI90=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
         ),
         lastUpdatedDate=datetime.datetime.utcnow(),
         url="https://covidactnow.org/us/new_york-ny/county/bronx_county",
     )
-    return summary.dict()
     assert expected.dict() == summary.dict()
 
 
