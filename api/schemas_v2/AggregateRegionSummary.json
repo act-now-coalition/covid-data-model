@@ -1030,6 +1030,18 @@
             }
           ]
         },
+        "hsaName": {
+          "title": "Hsaname",
+          "description": "Name of Health Service Area. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "level": {
           "description": "Level of region.",
           "allOf": [
@@ -1137,6 +1149,7 @@
         "state",
         "county",
         "hsa",
+        "hsaName",
         "level",
         "lat",
         "locationId",
