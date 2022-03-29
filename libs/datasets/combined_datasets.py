@@ -338,6 +338,7 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.POPULATION: [FIPSPopulation],
     CommonFields.HSA_POPULATION: [HSAPopulation],
     CommonFields.HSA: [HSAPopulation],
+    CommonFields.HSA_NAME: [HSAPopulation],
     CommonFields.CAN_LOCATION_PAGE_URL: [CANLocationPageURLS],
 }
 
