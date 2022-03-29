@@ -115,9 +115,11 @@ class CountyToHSAAggregator:
     @staticmethod
     def from_local_data() -> "CountyToHSAAggregator":
         """Creates a new object using the HSA data stored in data/."""
-        hsa_df = pd.read_csv(dataset_utils.HSA_LIST_PATH, dtype={"HSA": str, "FIPS": str})
-        hsa_df["HSA"] = hsa_df["HSA"].str.zfill(3)
-        hsa_df = hsa_df[["HSA", "FIPS"]]
+        hsa_df = pd.read_csv(
+            dataset_utils.HSA_LIST_PATH, dtype={CommonFields.HSA: str, CommonFields.FIPS: str}
+        )
+        hsa_df[CommonFields.HSA] = hsa_df[CommonFields.HSA].str.zfill(3)
+        hsa_df = hsa_df[[CommonFields.FIPS, CommonFields.HSA]]
         hsa_raw_map = dict(hsa_df.values)
         return CountyToHSAAggregator(county_map=hsa_raw_map)
 

@@ -146,6 +146,7 @@ def build_region_summary(
         long=latest_values.get(CommonFields.LONGITUDE),
         population=latest_values[CommonFields.POPULATION],
         hsa=hsa,
+        hsaName=latest_values.get(CommonFields.HSA_NAME),
         hsaPopulation=latest_values.get(CommonFields.HSA_POPULATION),
         actuals=actuals,
         metrics=latest_metrics,
@@ -347,6 +348,7 @@ def build_bulk_flattened_timeseries(
             "locationId": region_timeseries.locationId,
             "lastUpdatedDate": datetime.utcnow(),
             "hsa": region_timeseries.hsa,
+            "hsaName": region_timeseries.hsaName,
             "hsaPopulation": region_timeseries.hsaPopulation,
         }
         actuals_by_date = {row.date: row for row in region_timeseries.actualsTimeseries}

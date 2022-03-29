@@ -42,17 +42,16 @@ class HSAPopulation(data_source.DataSource):
         populations = FIPSPopulation.make_dataset().static
         county_index = populations.index.map(get_location_level) == AggregationLevel.COUNTY
         counties = populations[county_index].copy()  # copy to remove SettingWithCopy error
-        # hsa_names: pd.DataFrame = (
-        #     pd.read_csv(HSA_LIST_PATH, dtype={CommonFields.HSA: str})
-        #     .loc[:, [CommonFields.HSA, CommonFields.HSA_NAME]]
-        #     .drop_duplicates()
-        #     .assign(hsa_name=lambda row: row[CommonFields.HSA_NAME].fillna("Unknown HSA Name"))
-        # )
+        hsa_names: pd.DataFrame = (
+            pd.read_csv(HSA_LIST_PATH, dtype={CommonFields.HSA: str})
+            .loc[:, [CommonFields.HSA, CommonFields.HSA_NAME]]
+            .drop_duplicates()
+            .assign(hsa_name=lambda row: row[CommonFields.HSA_NAME].fillna("Unknown HSA Name"))
+        )
 
         # Map HSAs to counties
         counties[CommonFields.HSA] = counties.index.map(location_map)
         counties = counties.reset_index()
-        return counties
 
         # Calculate HSA populations and join back onto counties
         hsas = (
@@ -70,8 +69,8 @@ class HSAPopulation(data_source.DataSource):
         counties[CommonFields.HSA] = counties[CommonFields.HSA].map(
             lambda loc: Region.from_location_id(loc).fips
         )
-        # Add HSA names to dataframe
-        counties.merge(hsa_names, how="left", on=CommonFields.HSA).reset_index()
+        # Add HSA names to data
+        counties = counties.merge(hsa_names, how="left", on=CommonFields.HSA).reset_index()
 
         data = counties.loc[
             :,
