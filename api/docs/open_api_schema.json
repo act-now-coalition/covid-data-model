@@ -1462,7 +1462,8 @@
           "contactTracerCapacityRatio",
           "infectionRate",
           "infectionRateCI90",
-          "icuCapacityRatio"
+          "icuCapacityRatio",
+          "bedsWithCovidPatientsRatio"
         ],
         "type": "object",
         "properties": {
@@ -1559,6 +1560,18 @@
               }
             ],
             "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use."
+          },
+          "bedsWithCovidPatientsRatio": {
+            "title": "Bedswithcovidpatientsratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
@@ -2224,6 +2237,15 @@
             ],
             "description": "Annotations for icuCapacityRatio"
           },
+          "bedsWithCovidPatientsRatio": {
+            "title": "Bedswithcovidpatientsratio",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for bedsWithCovidPatientsRatio"
+          },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
             "allOf": [
@@ -2445,6 +2467,7 @@
           "infectionRate",
           "infectionRateCI90",
           "icuCapacityRatio",
+          "bedsWithCovidPatientsRatio",
           "date"
         ],
         "type": "object",
@@ -2542,6 +2565,18 @@
               }
             ],
             "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use."
+          },
+          "bedsWithCovidPatientsRatio": {
+            "title": "Bedswithcovidpatientsratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",

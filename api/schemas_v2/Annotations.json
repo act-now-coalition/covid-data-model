@@ -210,6 +210,15 @@
         }
       ]
     },
+    "bedsWithCovidPatientsRatio": {
+      "title": "Bedswithcovidpatientsratio",
+      "description": "Annotations for bedsWithCovidPatientsRatio",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
     "vaccinationsInitiatedRatio": {
       "title": "Vaccinationsinitiatedratio",
       "description": "Annotations for vaccinationsInitiatedRatio",

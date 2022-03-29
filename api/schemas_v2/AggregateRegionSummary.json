@@ -147,6 +147,18 @@
             }
           ]
         },
+        "bedsWithCovidPatientsRatio": {
+          "title": "Bedswithcovidpatientsratio",
+          "description": "Ratio of staffed hospital beds that are currently in use by COVID patients.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "vaccinationsInitiatedRatio": {
           "title": "Vaccinationsinitiatedratio",
           "description": "Ratio of population that has initiated vaccination.",
@@ -191,7 +203,8 @@
         "contactTracerCapacityRatio",
         "infectionRate",
         "infectionRateCI90",
-        "icuCapacityRatio"
+        "icuCapacityRatio",
+        "bedsWithCovidPatientsRatio"
       ]
     },
     "RiskLevel": {
@@ -944,6 +957,15 @@
         "icuCapacityRatio": {
           "title": "Icucapacityratio",
           "description": "Annotations for icuCapacityRatio",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "bedsWithCovidPatientsRatio": {
+          "title": "Bedswithcovidpatientsratio",
+          "description": "Annotations for bedsWithCovidPatientsRatio",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"
