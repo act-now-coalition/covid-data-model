@@ -46,7 +46,7 @@ class HSAPopulation(data_source.DataSource):
             pd.read_csv(HSA_LIST_PATH, dtype={CommonFields.HSA: str})
             .loc[:, [CommonFields.HSA, CommonFields.HSA_NAME]]
             .drop_duplicates()
-            .assign(hsa_name=lambda row: row[CommonFields.HSA_NAME].fillna("Unknown HSA Name"))
+            .assign(hsa_name=lambda row: row[CommonFields.HSA_NAME].fillna("Unknown"))
         )
 
         # Map HSAs to counties
