@@ -365,7 +365,7 @@ class Metrics(base_model.APIBaseModel):
 
     bedsWithCovidPatientsRatio: Optional[float] = pydantic.Field(
         ...,
-        description="Ratio of staffed hospital beds that are currently in use by COVID patients calculated using a 7-day rolling average.",
+        description="Ratio of staffed hospital beds that are currently in use by COVID patients.",
     )
 
     vaccinationsInitiatedRatio: Optional[float] = pydantic.Field(

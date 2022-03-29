@@ -288,14 +288,12 @@ def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
         staffed_beds: pd.Series = data[CommonFields.STAFFED_BEDS_HSA]
         covid_hospitalizations: pd.Series = data[CommonFields.CURRENT_HOSPITALIZED_HSA]
     else:
-        staffed_beds = data[CommonFields.STAFFED_BEDS]
-        covid_hospitalizations = data[CommonFields.CURRENT_HOSPITALIZED]
+        staffed_beds: pd.Series = data[CommonFields.STAFFED_BEDS]
+        covid_hospitalizations: pd.Series = data[CommonFields.CURRENT_HOSPITALIZED]
 
-    # Returns NaN for any dates missing either beds or patients.
+    # Returns NaN for any dates missing beds or patients.
     covid_patient_ratio = covid_hospitalizations.div(staffed_beds, fill_value=None)
-
-    smoothed = series_utils.smooth_with_rolling_average(covid_patient_ratio, window=7)
-    return smoothed
+    return covid_patient_ratio
 
 
 def calculate_latest_metrics(
