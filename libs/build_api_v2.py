@@ -178,6 +178,7 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
 }
 
 
+# Mapping used to connect each metric to a data source, in order to build the Annotations.
 METRICS_NAME_TO_COMMON_FIELD = {
     "contactTracerCapacityRatio": CommonFields.CONTACT_TRACERS_COUNT,
     "caseDensity": CommonFields.CASES,
@@ -189,6 +190,7 @@ METRICS_NAME_TO_COMMON_FIELD = {
     "vaccinationsCompletedRatio": CommonFields.VACCINATIONS_COMPLETED_PCT,
     "vaccinationsAdditionalDoseRatio": CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT,
     "icuCapacityRatio": CommonFields.CURRENT_ICU,
+    "bedsWithCovidPatientsRatio": CommonFields.CURRENT_HOSPITALIZED,
 }
 
 

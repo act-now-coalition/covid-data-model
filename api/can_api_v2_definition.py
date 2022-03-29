@@ -339,6 +339,9 @@ class Annotations(base_model.APIBaseModel):
     icuCapacityRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for icuCapacityRatio"
     )
+    bedsWithCovidPatientsRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for bedsWithCovidPatientsRatio"
+    )
     vaccinationsInitiatedRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinationsInitiatedRatio"
     )
@@ -392,6 +395,11 @@ class Metrics(base_model.APIBaseModel):
         description="Ratio of staffed intensive care unit (ICU) beds that are currently in use.",
     )
 
+    bedsWithCovidPatientsRatio: Optional[float] = pydantic.Field(
+        ...,
+        description="Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.",
+    )
+
     vaccinationsInitiatedRatio: Optional[float] = pydantic.Field(
         None, description=("Ratio of population that has initiated vaccination.")
     )
@@ -416,6 +424,7 @@ class Metrics(base_model.APIBaseModel):
             infectionRate=None,
             infectionRateCI90=None,
             icuCapacityRatio=None,
+            bedsWithCovidPatientsRatio=None,
         )
 
 

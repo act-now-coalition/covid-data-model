@@ -78,6 +78,7 @@ SUMMARY_ORDER = [
     "actuals.hsaIcuBeds.capacity",
     "actuals.hsaIcuBeds.currentUsageTotal",
     "actuals.hsaIcuBeds.currentUsageCovid",
+    "metrics.bedsWithCovidPatientsRatio",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -153,6 +154,7 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "actuals.hsaIcuBeds.capacity",
     "actuals.hsaIcuBeds.currentUsageTotal",
     "actuals.hsaIcuBeds.currentUsageCovid",
+    "metrics.bedsWithCovidPatientsRatio",
 ]
 
 
@@ -215,4 +217,5 @@ TIMESERIES_ORDER = [
     "actuals.hsaIcuBeds.capacity",
     "actuals.hsaIcuBeds.currentUsageTotal",
     "actuals.hsaIcuBeds.currentUsageCovid",
+    "metrics.bedsWithCovidPatientsRatio",
 ]
