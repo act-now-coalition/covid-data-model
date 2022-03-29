@@ -69,7 +69,7 @@ def test_build_summary_for_fips(
     )
     expected = RegionSummary(
         population=nyc_latest["population"],
-        hsa=nyc_latest.get("hsa"),
+        hsa=str(int(nyc_latest.get("hsa"))).zfill(3),
         hsaName=nyc_latest.get("hsa_name"),
         hsaPopulation=nyc_latest.get("hsa_population"),
         state="NY",
