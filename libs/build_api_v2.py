@@ -90,10 +90,20 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED),
             "currentUsageTotal": actual_data.get(CommonFields.HOSPITAL_BEDS_IN_USE_ANY),
         },
+        hsaHospitalBeds={
+            "capacity": actual_data.get(CommonFields.STAFFED_BEDS_HSA),
+            "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED_HSA),
+            "currentUsageTotal": actual_data.get(CommonFields.HOSPITAL_BEDS_IN_USE_ANY_HSA),
+        },
         icuBeds={
             "capacity": actual_data.get(CommonFields.ICU_BEDS),
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_ICU),
             "currentUsageTotal": actual_data.get(CommonFields.CURRENT_ICU_TOTAL),
+        },
+        hsaIcuBeds={
+            "capacity": actual_data.get(CommonFields.ICU_BEDS_HSA),
+            "currentUsageCovid": actual_data.get(CommonFields.CURRENT_ICU_HSA),
+            "currentUsageTotal": actual_data.get(CommonFields.CURRENT_ICU_TOTAL_HSA),
         },
         newCases=actual_data.get(CommonFields.NEW_CASES),
         newDeaths=actual_data.get(CommonFields.NEW_DEATHS),
@@ -120,6 +130,10 @@ def build_region_summary(
     region = one_region.region
     distributions = one_region.demographic_distributions_by_field
     actuals = _build_actuals(latest_values, distributions_by_field=distributions)
+    # HACK: HSA codes are converted to numerics somewhere in the pipeline, this
+    # transforms them back into 3 character strings.
+    hsa = latest_values.get(CommonFields.HSA)
+    hsa = str(int(hsa)).zfill(3) if hsa is not None else None
     return RegionSummary(
         fips=region.fips_for_api,
         country=region.country,
@@ -129,6 +143,9 @@ def build_region_summary(
         lat=latest_values.get(CommonFields.LATITUDE),
         long=latest_values.get(CommonFields.LONGITUDE),
         population=latest_values[CommonFields.POPULATION],
+        hsa=hsa,
+        hsaName=latest_values.get(CommonFields.HSA_NAME),
+        hsaPopulation=latest_values.get(CommonFields.HSA_POPULATION),
         actuals=actuals,
         metrics=latest_metrics,
         riskLevels=risk_levels,
@@ -147,7 +164,9 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
     "negativeTests": CommonFields.NEGATIVE_TESTS,
     "contactTracers": CommonFields.CONTACT_TRACERS_COUNT,
     "hospitalBeds": CommonFields.HOSPITAL_BEDS_IN_USE_ANY,
+    "hsaHospitalBeds": CommonFields.HOSPITAL_BEDS_IN_USE_ANY_HSA,
     "icuBeds": CommonFields.ICU_BEDS,
+    "hsaIcuBeds": CommonFields.ICU_BEDS_HSA,
     "newCases": CommonFields.NEW_CASES,
     "newDeaths": CommonFields.NEW_DEATHS,
     "vaccinesAdministered": CommonFields.VACCINES_ADMINISTERED,
@@ -158,6 +177,7 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
 }
 
 
+# Mapping used to connect each metric to a data source, in order to build the Annotations.
 METRICS_NAME_TO_COMMON_FIELD = {
     "contactTracerCapacityRatio": CommonFields.CONTACT_TRACERS_COUNT,
     "caseDensity": CommonFields.CASES,
@@ -169,6 +189,7 @@ METRICS_NAME_TO_COMMON_FIELD = {
     "vaccinationsCompletedRatio": CommonFields.VACCINATIONS_COMPLETED_PCT,
     "vaccinationsAdditionalDoseRatio": CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT,
     "icuCapacityRatio": CommonFields.CURRENT_ICU,
+    "bedsWithCovidPatientsRatio": CommonFields.CURRENT_HOSPITALIZED,
 }
 
 
@@ -326,6 +347,9 @@ def build_bulk_flattened_timeseries(
             "long": region_timeseries.long,
             "locationId": region_timeseries.locationId,
             "lastUpdatedDate": datetime.utcnow(),
+            "hsa": region_timeseries.hsa,
+            "hsaName": region_timeseries.hsaName,
+            "hsaPopulation": region_timeseries.hsaPopulation,
         }
         actuals_by_date = {row.date: row for row in region_timeseries.actualsTimeseries}
         metrics_by_date = {row.date: row for row in region_timeseries.metricsTimeseries}

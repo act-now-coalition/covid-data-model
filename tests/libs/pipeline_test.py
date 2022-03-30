@@ -10,6 +10,7 @@ def test_location_id_to_level():
         "iso1:us": AggregationLevel.COUNTRY,
         "iso1:us#cbsa:10100": AggregationLevel.CBSA,
         "iso1:us#iso2:us-ny#fips:3651000": AggregationLevel.PLACE,
+        "iso1:us#hsa:171": AggregationLevel.HSA,
     }
     assert set(param_result_map.values()) == set(AggregationLevel)
 

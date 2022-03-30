@@ -57,9 +57,27 @@
         }
       ]
     },
+    "hsaHospitalBeds": {
+      "title": "Hsahospitalbeds",
+      "description": "Annotations for hsaHospitalBeds",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
     "icuBeds": {
       "title": "Icubeds",
       "description": "Annotations for icuBeds",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "hsaIcuBeds": {
+      "title": "Hsaicubeds",
+      "description": "Annotations for hsaIcuBeds",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"
@@ -148,7 +166,7 @@
       ]
     },
     "weeklyNewCasesPer100k": {
-      "title": "weeklyNewCasesPer100k",
+      "title": "Weeklynewcasesper100K",
       "description": "Annotations for weeklyNewCasesPer100k",
       "allOf": [
         {
@@ -186,6 +204,15 @@
     "icuCapacityRatio": {
       "title": "Icucapacityratio",
       "description": "Annotations for icuCapacityRatio",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "bedsWithCovidPatientsRatio": {
+      "title": "Bedswithcovidpatientsratio",
+      "description": "Annotations for bedsWithCovidPatientsRatio",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"

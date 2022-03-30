@@ -70,6 +70,16 @@ SUMMARY_ORDER = [
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
     "metrics.weeklyNewCasesPer100k",
+    "hsa",
+    "hsaPopulation",
+    "actuals.hsaHospitalBeds.capacity",
+    "actuals.hsaHospitalBeds.currentUsageTotal",
+    "actuals.hsaHospitalBeds.currentUsageCovid",
+    "actuals.hsaIcuBeds.capacity",
+    "actuals.hsaIcuBeds.currentUsageTotal",
+    "actuals.hsaIcuBeds.currentUsageCovid",
+    "metrics.bedsWithCovidPatientsRatio",
+    "hsaName",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -137,6 +147,16 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
     "metrics.weeklyNewCasesPer100k",
+    "hsa",
+    "hsaPopulation",
+    "actuals.hsaHospitalBeds.capacity",
+    "actuals.hsaHospitalBeds.currentUsageTotal",
+    "actuals.hsaHospitalBeds.currentUsageCovid",
+    "actuals.hsaIcuBeds.capacity",
+    "actuals.hsaIcuBeds.currentUsageTotal",
+    "actuals.hsaIcuBeds.currentUsageCovid",
+    "metrics.bedsWithCovidPatientsRatio",
+    "hsaName",
 ]
 
 
@@ -191,4 +211,14 @@ TIMESERIES_ORDER = [
     "actuals.vaccinationsAdditionalDose",
     "metrics.vaccinationsAdditionalDoseRatio",
     "metrics.weeklyNewCasesPer100k",
+    "hsa",
+    "hsaPopulation",
+    "actuals.hsaHospitalBeds.capacity",
+    "actuals.hsaHospitalBeds.currentUsageTotal",
+    "actuals.hsaHospitalBeds.currentUsageCovid",
+    "actuals.hsaIcuBeds.capacity",
+    "actuals.hsaIcuBeds.currentUsageTotal",
+    "actuals.hsaIcuBeds.currentUsageCovid",
+    "metrics.bedsWithCovidPatientsRatio",
+    "hsaName",
 ]

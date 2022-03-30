@@ -55,6 +55,8 @@ def location_id_to_level(location_id: str) -> Optional[AggregationLevel]:
             return AggregationLevel.COUNTY
         elif len(fips) == 7:
             return AggregationLevel.PLACE
+        elif len(fips) == 3:
+            return AggregationLevel.HSA
 
     match = re.fullmatch(r"iso1:us#iso2:us-(..)", location_id)
     if match:
@@ -67,6 +69,10 @@ def location_id_to_level(location_id: str) -> Optional[AggregationLevel]:
     match = re.fullmatch(r"iso1:\w\w", location_id)
     if match:
         return AggregationLevel.COUNTRY
+
+    match = re.fullmatch(r"iso1:us#hsa:(\d+)", location_id)
+    if match:
+        return AggregationLevel.HSA
 
     return None
 

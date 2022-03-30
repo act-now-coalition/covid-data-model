@@ -161,10 +161,15 @@ def test_annotation(rt_dataset):
             CommonFields.DEATHS: TimeseriesLiteral(
                 [2, 3, 2], annotation=[tag], source_url=death_url
             ),
+            CommonFields.STAFFED_BEDS: [10, 10, 10],
+            CommonFields.CURRENT_HOSPITALIZED: [1, 1, 1],
         },
         region=region,
         static={
             CommonFields.POPULATION: 100_000,
+            CommonFields.HSA: 202,
+            CommonFields.HSA_NAME: "Clarke (Athens), GA - Barrow, GA",
+            CommonFields.HSA_POPULATION: 100_000,
             CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
         },
     )
@@ -240,10 +245,15 @@ def test_source(rt_dataset):
             CommonFields.DEATHS: TimeseriesLiteral(
                 [2, 3, 2], annotation=[tag], source=deaths_source
             ),
+            CommonFields.STAFFED_BEDS: [10, 10, 10],
+            CommonFields.CURRENT_HOSPITALIZED: [1, 1, 1],
         },
         region=region,
         static={
             CommonFields.POPULATION: 100_000,
+            CommonFields.HSA: 202,
+            CommonFields.HSA_NAME: "Clarke (Athens), GA - Barrow, GA",
+            CommonFields.HSA_POPULATION: 200_000,
             CommonFields.CAN_LOCATION_PAGE_URL: "http://covidactnow.org/foo/bar",
         },
     )

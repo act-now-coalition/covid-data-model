@@ -1214,7 +1214,9 @@
           "negativeTests",
           "contactTracers",
           "hospitalBeds",
+          "hsaHospitalBeds",
           "icuBeds",
+          "hsaIcuBeds",
           "newCases",
           "newDeaths"
         ],
@@ -1289,6 +1291,15 @@
             ],
             "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n"
           },
+          "hsaHospitalBeds": {
+            "title": "Hsahospitalbeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HospitalResourceUtilization"
+              }
+            ],
+            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n"
+          },
           "icuBeds": {
             "title": "Icubeds",
             "allOf": [
@@ -1297,6 +1308,15 @@
               }
             ],
             "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
+          },
+          "hsaIcuBeds": {
+            "title": "Hsaicubeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HospitalResourceUtilization"
+              }
+            ],
+            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
           },
           "newCases": {
             "title": "Newcases",
@@ -1442,7 +1462,8 @@
           "contactTracerCapacityRatio",
           "infectionRate",
           "infectionRateCI90",
-          "icuCapacityRatio"
+          "icuCapacityRatio",
+          "bedsWithCovidPatientsRatio"
         ],
         "type": "object",
         "properties": {
@@ -1481,7 +1502,7 @@
             "description": "The number of cases per 100k population calculated using a 7-day rolling average."
           },
           "weeklyNewCasesPer100k": {
-            "title": "weeklyNewCasesPer100k",
+            "title": "Weeklynewcasesper100K",
             "anyOf": [
               {
                 "type": "number"
@@ -1490,7 +1511,7 @@
                 "type": "null"
               }
             ],
-            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
+            "description": "The number of new cases per 100k population over the last week."
           },
           "contactTracerCapacityRatio": {
             "title": "Contacttracercapacityratio",
@@ -1539,6 +1560,18 @@
               }
             ],
             "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use."
+          },
+          "bedsWithCovidPatientsRatio": {
+            "title": "Bedswithcovidpatientsratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
@@ -1643,7 +1676,10 @@
           "actuals",
           "metrics",
           "riskLevels",
-          "cdcTransmissionLevel"
+          "cdcTransmissionLevel",
+          "hsa",
+          "hsaName",
+          "hsaPopulation"
         ],
         "type": "object",
         "properties": {
@@ -1750,6 +1786,43 @@
               }
             ],
             "description": "\nCommunity transmission level for region, calculated using the CDC definition.\n\nPossible values:\n    - 0: Low\n    - 1: Moderate\n    - 2: Substantial\n    - 3: High\n    - 4: Unknown\n\nSee [definitions of CDC community transmission levels](\nhttps://covid.cdc.gov/covid-data-tracker/#cases_community) for more\ndetails.\n\nNote that the value may differ from what the CDC website reports\ngiven we have different data sources. We have also introduced an\n\"Unknown\" level for when both case data and test positivity data are\nmissing for at least 15 days. The CDC does not have an \"Unknown\"\nlevel and instead will designate a location as \"Low\" when case and\ntest positivity data are missing.\n"
+          },
+          "hsa": {
+            "title": "Hsa",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
+          "hsaName": {
+            "title": "Hsaname",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
+          "hsaPopulation": {
+            "title": "Hsapopulation",
+            "exclusiveMinimum": false,
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
           }
         },
         "description": "Prediction timeseries row with location information."
@@ -1769,7 +1842,8 @@
           "state",
           "county",
           "cbsa",
-          "place"
+          "place",
+          "hsa"
         ],
         "description": "An enumeration."
       },
@@ -2023,6 +2097,15 @@
             ],
             "description": "Annotations for hospitalBeds"
           },
+          "hsaHospitalBeds": {
+            "title": "Hsahospitalbeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for hsaHospitalBeds"
+          },
           "icuBeds": {
             "title": "Icubeds",
             "allOf": [
@@ -2031,6 +2114,15 @@
               }
             ],
             "description": "Annotations for icuBeds"
+          },
+          "hsaIcuBeds": {
+            "title": "Hsaicubeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for hsaIcuBeds"
           },
           "newCases": {
             "title": "Newcases",
@@ -2114,7 +2206,7 @@
             "description": "Annotations for caseDensity"
           },
           "weeklyNewCasesPer100k": {
-            "title": "weeklyNewCasesPer100k",
+            "title": "Weeklynewcasesper100K",
             "allOf": [
               {
                 "$ref": "#/components/schemas/FieldAnnotations"
@@ -2158,6 +2250,15 @@
             ],
             "description": "Annotations for icuCapacityRatio"
           },
+          "bedsWithCovidPatientsRatio": {
+            "title": "Bedswithcovidpatientsratio",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for bedsWithCovidPatientsRatio"
+          },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
             "allOf": [
@@ -2195,11 +2296,14 @@
           "country",
           "state",
           "county",
+          "hsa",
+          "hsaName",
           "level",
           "lat",
           "locationId",
           "long",
           "population",
+          "hsaPopulation",
           "metrics",
           "riskLevels",
           "cdcTransmissionLevel",
@@ -2244,6 +2348,30 @@
             ],
             "description": "County name"
           },
+          "hsa": {
+            "title": "Hsa",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
+          "hsaName": {
+            "title": "Hsaname",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
           "level": {
             "allOf": [
               {
@@ -2286,6 +2414,19 @@
             "exclusiveMinimum": false,
             "type": "integer",
             "description": "Total Population in geographic region."
+          },
+          "hsaPopulation": {
+            "title": "Hsapopulation",
+            "exclusiveMinimum": false,
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
           },
           "metrics": {
             "$ref": "#/components/schemas/Metrics"
@@ -2352,6 +2493,7 @@
           "infectionRate",
           "infectionRateCI90",
           "icuCapacityRatio",
+          "bedsWithCovidPatientsRatio",
           "date"
         ],
         "type": "object",
@@ -2391,7 +2533,7 @@
             "description": "The number of cases per 100k population calculated using a 7-day rolling average."
           },
           "weeklyNewCasesPer100k": {
-            "title": "weeklyNewCasesPer100k",
+            "title": "Weeklynewcasesper100K",
             "anyOf": [
               {
                 "type": "number"
@@ -2400,7 +2542,7 @@
                 "type": "null"
               }
             ],
-            "description": "The number of cases per 100k population calculated using a 7-day rolling average."
+            "description": "The number of new cases per 100k population over the last week."
           },
           "contactTracerCapacityRatio": {
             "title": "Contacttracercapacityratio",
@@ -2449,6 +2591,18 @@
               }
             ],
             "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use."
+          },
+          "bedsWithCovidPatientsRatio": {
+            "title": "Bedswithcovidpatientsratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
@@ -2504,7 +2658,9 @@
           "negativeTests",
           "contactTracers",
           "hospitalBeds",
+          "hsaHospitalBeds",
           "icuBeds",
+          "hsaIcuBeds",
           "newCases",
           "newDeaths",
           "date"
@@ -2580,6 +2736,15 @@
             ],
             "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n"
           },
+          "hsaHospitalBeds": {
+            "title": "Hsahospitalbeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HospitalResourceUtilization"
+              }
+            ],
+            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n"
+          },
           "icuBeds": {
             "title": "Icubeds",
             "allOf": [
@@ -2588,6 +2753,15 @@
               }
             ],
             "description": "\nInformation about ICU bed utilization details.\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
+          },
+          "hsaIcuBeds": {
+            "title": "Hsaicubeds",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HospitalResourceUtilization"
+              }
+            ],
+            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
           },
           "newCases": {
             "title": "Newcases",
@@ -2766,11 +2940,14 @@
           "country",
           "state",
           "county",
+          "hsa",
+          "hsaName",
           "level",
           "lat",
           "locationId",
           "long",
           "population",
+          "hsaPopulation",
           "metrics",
           "riskLevels",
           "cdcTransmissionLevel",
@@ -2819,6 +2996,30 @@
             ],
             "description": "County name"
           },
+          "hsa": {
+            "title": "Hsa",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
+          "hsaName": {
+            "title": "Hsaname",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
           "level": {
             "allOf": [
               {
@@ -2861,6 +3062,19 @@
             "exclusiveMinimum": false,
             "type": "integer",
             "description": "Total Population in geographic region."
+          },
+          "hsaPopulation": {
+            "title": "Hsapopulation",
+            "exclusiveMinimum": false,
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
           },
           "metrics": {
             "$ref": "#/components/schemas/Metrics"

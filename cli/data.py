@@ -120,7 +120,7 @@ def update(
     else:
         multiregion_dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
             dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH
-        )
+        ).get_subset(state=state, fips=fips)
 
     # Apply manual overrides (currently only removing timeseries) before aggregation so we don't
     # need to remove CBSAs because they don't exist yet.
@@ -210,6 +210,11 @@ def update(
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
     if print_stats:
         multiregion_dataset.print_stats("CountyToCBSAAggregator")
+
+    hsa_aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
+    multiregion_dataset = hsa_aggregator.aggregate(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("CountyToHSAAggregator")
 
     # TODO(tom): Add a clean way to store intermediate values instead of commenting out code like
     #  this:

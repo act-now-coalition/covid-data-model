@@ -69,6 +69,9 @@ def test_build_summary_for_fips(
     )
     expected = RegionSummary(
         population=nyc_latest["population"],
+        hsa=str(int(nyc_latest.get("hsa"))).zfill(3),
+        hsaName=nyc_latest.get("hsa_name"),
+        hsaPopulation=nyc_latest.get("hsa_population"),
         state="NY",
         country="US",
         level="county",
@@ -90,11 +93,20 @@ def test_build_summary_for_fips(
                 "currentUsageCovid": nyc_latest["current_hospitalized"],
                 "currentUsageTotal": nyc_latest["hospital_beds_in_use_any"],
             },
+            hsaHospitalBeds={
+                "capacity": nyc_latest.get("staffed_beds_hsa"),
+                "currentUsageCovid": nyc_latest.get("current_hospitalized_hsa"),
+                "currentUsageTotal": nyc_latest.get("hospital_beds_in_use_any_hsa"),
+            },
             icuBeds={
                 "capacity": nyc_latest["icu_beds"],
-                "totalCapacity": nyc_latest["icu_beds"],
                 "currentUsageCovid": nyc_latest["current_icu"],
                 "currentUsageTotal": nyc_latest["current_icu_total"],
+            },
+            hsaIcuBeds={
+                "capacity": nyc_latest.get("icu_beds_hsa"),
+                "currentUsageCovid": nyc_latest.get("current_icu_hsa"),
+                "currentUsageTotal": nyc_latest.get("current_icu_total_hsa"),
             },
             contactTracers=nyc_latest["contact_tracers_count"],
             newCases=nyc_latest["new_cases"],
@@ -151,6 +163,9 @@ def test_build_summary_for_fips(
             caseDensity=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             weeklyNewCasesPer100k=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             icuCapacityRatio=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
+            bedsWithCovidPatientsRatio=FieldAnnotations(
+                sources=[field_source_hhshospital], anomalies=[]
+            ),
             infectionRate=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             infectionRateCI90=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
         ),
@@ -236,7 +251,13 @@ def test_multiple_distributions():
                 },
             },
         },
-        static_by_region_then_field_name={region_ca: {CommonFields.POPULATION: 10000}},
+        static_by_region_then_field_name={
+            region_ca: {
+                CommonFields.POPULATION: 10000,
+                CommonFields.HSA: 202,
+                CommonFields.HSA_POPULATION: 1000,
+            }
+        },
     )
 
     one_region = ds2.get_one_region(region_ca)

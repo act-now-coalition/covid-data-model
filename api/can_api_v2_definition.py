@@ -131,10 +131,36 @@ Fields:
         ..., description="Number of COVID patients admitted in the past week"
     )
 
+    hsaHospitalBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
+        ...,
+        description="""
+Information about acute bed utilization details aggregated for the county's corresponding
+Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted. 
+For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+
+Fields:
+ * capacity - Current staffed acute bed capacity.
+ * currentUsageTotal - Total number of acute beds currently in use
+ * currentUsageCovid - Number of acute beds currently in use by COVID patients.
+""",
+    )
     icuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
         ...,
         description="""
 Information about ICU bed utilization details.
+
+Fields:
+ * capacity - Current staffed ICU bed capacity.
+ * currentUsageTotal - Total number of ICU beds currently in use
+ * currentUsageCovid - Number of ICU beds currently in use by COVID patients.
+""",
+    )
+    hsaIcuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
+        ...,
+        description="""
+Information about ICU bed utilization details aggregated for the county's corresponding
+Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted. 
+For For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
  * capacity - Current staffed ICU bed capacity.
@@ -268,8 +294,14 @@ class Annotations(base_model.APIBaseModel):
     weeklyHospitalAdmissions: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for weeklyHospitalAdmissions"
     )
+    hsaHospitalBeds: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for hsaHospitalBeds"
+    )
     icuBeds: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for icuBeds"
+    )
+    hsaIcuBeds: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for hsaIcuBeds"
     )
     newCases: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for newCases"
@@ -313,6 +345,9 @@ class Annotations(base_model.APIBaseModel):
     )
     icuCapacityRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for icuCapacityRatio"
+    )
+    bedsWithCovidPatientsRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for bedsWithCovidPatientsRatio"
     )
     vaccinationsInitiatedRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinationsInitiatedRatio"
@@ -367,6 +402,11 @@ class Metrics(base_model.APIBaseModel):
         description="Ratio of staffed intensive care unit (ICU) beds that are currently in use.",
     )
 
+    bedsWithCovidPatientsRatio: Optional[float] = pydantic.Field(
+        ...,
+        description="Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.",
+    )
+
     vaccinationsInitiatedRatio: Optional[float] = pydantic.Field(
         None, description=("Ratio of population that has initiated vaccination.")
     )
@@ -391,6 +431,7 @@ class Metrics(base_model.APIBaseModel):
             infectionRate=None,
             infectionRateCI90=None,
             icuCapacityRatio=None,
+            bedsWithCovidPatientsRatio=None,
         )
 
 
@@ -503,6 +544,14 @@ class RegionSummary(base_model.APIBaseModel):
     )
     county: Optional[str] = pydantic.Field(..., description="County name")
 
+    hsa: Optional[str] = pydantic.Field(
+        ...,
+        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+    )
+    hsaName: Optional[str] = pydantic.Field(
+        ...,
+        description="Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+    )
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")
     lat: Optional[float] = pydantic.Field(
         ..., description="Latitude of point within the state or county. Currently a placeholder."
@@ -517,6 +566,13 @@ class RegionSummary(base_model.APIBaseModel):
     population: int = pydantic.Field(
         ..., description="Total Population in geographic region.", gt=0
     )
+
+    hsaPopulation: Optional[int] = pydantic.Field(
+        ...,
+        description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        gt=0,
+    )
+
     metrics: Metrics = pydantic.Field(...)
     riskLevels: RiskLevels = pydantic.Field(..., description="Risk levels for region.")
 
@@ -599,6 +655,22 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
     )
     cdcTransmissionLevel: Optional[CDCTransmissionLevel] = pydantic.Field(
         ..., description=CDC_TRANSMISSION_LEVEL_DESCRIPTION
+    )
+
+    hsa: Optional[str] = pydantic.Field(
+        ...,
+        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+    )
+
+    hsaName: Optional[str] = pydantic.Field(
+        ...,
+        description="Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+    )
+
+    hsaPopulation: Optional[int] = pydantic.Field(
+        ...,
+        description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        gt=0,
     )
 
 

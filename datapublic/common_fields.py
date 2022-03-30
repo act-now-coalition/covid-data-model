@@ -90,6 +90,9 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
 
     COUNTY = "county", None
 
+    HSA = "hsa", None
+    HSA_NAME = "hsa_name", None
+
     AGGREGATE_LEVEL = "aggregate_level", None
 
     # Full state name, i.e. Massachusetts
@@ -130,6 +133,7 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     CURRENT_VENTILATED = "current_ventilated", FieldGroup.HEALTHCARE_CAPACITY
 
     POPULATION = "population", None
+    HSA_POPULATION = "hsa_population", None
 
     STAFFED_BEDS = "staffed_beds", FieldGroup.HEALTHCARE_CAPACITY
     LICENSED_BEDS = "licensed_beds", FieldGroup.HEALTHCARE_CAPACITY
@@ -146,6 +150,18 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     NEW_HOSPITAL_ADMISSIONS_COVID = "new_hospital_admissions_covid", FieldGroup.HEALTHCARE_CAPACITY
     WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID = (
         "weekly_new_hospital_admissions_covid",
+        FieldGroup.HEALTHCARE_CAPACITY,
+    )
+
+    # HSA level Healthcare Fields
+    STAFFED_BEDS_HSA = "staffed_beds_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    HOSPITAL_BEDS_IN_USE_ANY_HSA = "hospital_beds_in_use_any_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    CURRENT_HOSPITALIZED_HSA = "current_hospitalized_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    ICU_BEDS_HSA = "icu_beds_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    CURRENT_ICU_HSA = "current_icu_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    CURRENT_ICU_TOTAL_HSA = "current_icu_total_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA = (
+        "weekly_new_hospital_admissions_covid_hsa",
         FieldGroup.HEALTHCARE_CAPACITY,
     )
 

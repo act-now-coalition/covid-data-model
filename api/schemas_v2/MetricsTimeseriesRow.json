@@ -38,8 +38,8 @@
       ]
     },
     "weeklyNewCasesPer100k": {
-      "title": "weeklyNewCasesPer100k",
-      "description": "The number of cases per 100k population calculated using a 7-day rolling average.",
+      "title": "Weeklynewcasesper100K",
+      "description": "The number of new cases per 100k population over the last week.",
       "anyOf": [
         {
           "type": "number"
@@ -88,6 +88,18 @@
     "icuCapacityRatio": {
       "title": "Icucapacityratio",
       "description": "Ratio of staffed intensive care unit (ICU) beds that are currently in use.",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bedsWithCovidPatientsRatio": {
+      "title": "Bedswithcovidpatientsratio",
+      "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.",
       "anyOf": [
         {
           "type": "number"
@@ -148,6 +160,7 @@
     "infectionRate",
     "infectionRateCI90",
     "icuCapacityRatio",
+    "bedsWithCovidPatientsRatio",
     "date"
   ],
   "definitions": {

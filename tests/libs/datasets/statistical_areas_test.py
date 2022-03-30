@@ -87,3 +87,42 @@ def test_aggregate_reporting_ratio(reporting_ratio, expected_na):
         assert not len(cases)
     else:
         assert len(cases)
+
+
+def test_hsa_aggregation():
+    county_data = {CommonFields.NEW_CASES: [1, 2, 3], CommonFields.STAFFED_BEDS: [5, 10, 20]}
+    data = {
+        Region.from_fips("34001"): county_data,
+        Region.from_fips("34009"): county_data,
+        Region.from_fips("36035"): county_data,
+        Region.from_cbsa_code("11100"): {
+            CommonFields.NEW_CASES: [2, 3, 4],
+            CommonFields.STAFFED_BEDS: [30, 40, 50],
+        },
+        Region.from_state("MA"): {
+            CommonFields.NEW_CASES: [10, 20, 30],
+            CommonFields.STAFFED_BEDS: [50, 100, 200],
+        },
+    }
+
+    dataset_in = test_helpers.build_dataset(data)
+    aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
+    ds_out = aggregator.aggregate(
+        dataset_in=dataset_in,
+        fields_to_aggregate={CommonFields.STAFFED_BEDS: CommonFields.STAFFED_BEDS_HSA},
+    )
+
+    county_data[CommonFields.STAFFED_BEDS_HSA] = [10, 20, 40]
+    expected = test_helpers.build_dataset(
+        {
+            **data,
+            Region.from_fips("36035"): {
+                CommonFields.NEW_CASES: [1, 2, 3],
+                CommonFields.STAFFED_BEDS: [5, 10, 20],
+                CommonFields.STAFFED_BEDS_HSA: [5, 10, 20],
+            },
+            # New county is added b/c it's in the same HSA as 36035, so the HSA data is carried over
+            Region.from_fips("36057"): {CommonFields.STAFFED_BEDS_HSA: [5, 10, 20]},
+        }
+    )
+    test_helpers.assert_dataset_like(ds_out, expected)
