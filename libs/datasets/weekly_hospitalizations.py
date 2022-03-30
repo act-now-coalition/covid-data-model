@@ -1,12 +1,8 @@
 import dataclasses
 import pandas as pd
 
-from datapublic.common_fields import CommonFields
 from libs.datasets import timeseries
-from libs.pipeline import Region
-
-from tests import test_helpers
-
+from datapublic.common_fields import CommonFields
 from libs.datasets.dataset_utils import AggregationLevel
 
 MultiRegionDataset = timeseries.MultiRegionDataset
@@ -49,64 +45,7 @@ def calculate_weekly_column_from_daily(
 
 
 def add_weekly_hospitalizations(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
-    """Updates weekly new hospitalizations for state-level locations using a rolling 7-day sum."""
-
-    # Remove/move to test after done local testing.
-    if not dataset_in:
-        county_data = {
-            CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [
-                2,
-                3,
-                4,
-                2,
-                3,
-                4,
-                2,
-                3,
-                4,
-                2,
-                3,
-                4,
-                2,
-            ]
-        }
-        data = {
-            Region.from_fips("34001"): county_data,
-            Region.from_cbsa_code("11100"): {
-                CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [
-                    2,
-                    3,
-                    4,
-                    2,
-                    3,
-                    4,
-                    2,
-                    3,
-                    4,
-                    2,
-                    3,
-                    4,
-                    2,
-                ],
-            },
-            Region.from_state("MA"): {
-                CommonFields.NEW_HOSPITAL_ADMISSIONS_COVID: [
-                    40,
-                    50,
-                    60,
-                    50,
-                    60,
-                    40,
-                    30,
-                    40,
-                    50,
-                    70,
-                    50,
-                    40,
-                ],
-            },
-        }
-        dataset_in = test_helpers.build_dataset(data)
+    """Calculates weekly new hospitalizations for state-level locations using a rolling 7-day sum."""
 
     return calculate_weekly_column_from_daily(
         dataset_in,
