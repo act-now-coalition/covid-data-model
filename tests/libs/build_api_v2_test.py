@@ -92,11 +92,13 @@ def test_build_summary_for_fips(
                 "capacity": nyc_latest["staffed_beds"],
                 "currentUsageCovid": nyc_latest["current_hospitalized"],
                 "currentUsageTotal": nyc_latest["hospital_beds_in_use_any"],
+                "weeklyCovidAdmissions": nyc_latest.get("weekly_new_hospital_admissions_covid"),
             },
             hsaHospitalBeds={
                 "capacity": nyc_latest.get("staffed_beds_hsa"),
                 "currentUsageCovid": nyc_latest.get("current_hospitalized_hsa"),
                 "currentUsageTotal": nyc_latest.get("hospital_beds_in_use_any_hsa"),
+                "weeklyCovidAdmissions": nyc_latest.get("weekly_new_hospital_admissions_covid_hsa"),
             },
             icuBeds={
                 "capacity": nyc_latest["icu_beds"],
@@ -111,7 +113,6 @@ def test_build_summary_for_fips(
             contactTracers=nyc_latest["contact_tracers_count"],
             newCases=nyc_latest["new_cases"],
             newDeaths=nyc_latest["new_deaths"],
-            weeklyHospitalAdmissions=nyc_latest["weekly_new_hospital_admissions_covid"],
             vaccinesDistributed=nyc_latest["vaccines_distributed"],
             vaccinesAdministered=nyc_latest["vaccines_administered"],
             vaccinationsInitiated=nyc_latest["vaccinations_initiated"],

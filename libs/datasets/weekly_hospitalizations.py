@@ -1,55 +1,116 @@
-from datapublic.common_fields import CommonFields
-from datapublic.common_fields import PdFields
-from libs.datasets import timeseries
-
+import dataclasses
 import pandas as pd
 
+from datapublic.common_fields import CommonFields
+from libs.datasets import timeseries
+from libs.pipeline import Region
+
+from tests import test_helpers
+
+from libs.datasets.dataset_utils import AggregationLevel
 
 MultiRegionDataset = timeseries.MultiRegionDataset
 
 
-def _rolling_avg_7day(daily: pd.Series):
-    # cases is a pd.Series (a 1-D vector) with DATE index
-    assert daily.index.names == [CommonFields.DATE]
-    return daily.rolling(7)
+def _rolling_sum_7day(daily: pd.Series):
+    assert CommonFields.DATE in daily.index.names
+    return daily.rolling(7).sum()
 
 
-def add_weekly_rolling_average_column(
-    dataset_in: MultiRegionDataset, field_in: CommonFields, field_out: CommonFields
+def calculate_weekly_column_from_daily(
+    dataset_in: MultiRegionDataset,
+    level_to_replace: AggregationLevel,
+    field_in: CommonFields,
+    field_out: CommonFields,
 ) -> MultiRegionDataset:
-    # assert field_out not in dataset_in.timeseries_bucketed_wide_dates.index.unique(
-    #    PdFields.VARIABLE
-    # )
+    """Calculate weekly occurrences from daily data using a rolling 7-day sum.
 
-    # Get timeseries data from timeseries_wide_dates because it creates a date range that includes
-    # every date, even those with NA values. This keeps the output identical when empty rows are
-    # dropped or added.
-    wide_dates_var = dataset_in.timeseries_bucketed_wide_dates.xs(
-        field_in, level=PdFields.VARIABLE, drop_level=False
-    )
-    # We want as_index=True so that the DataFrame returned by each _diff_preserving_first_value call
-    # has the location_id added as an index before being concat-ed.
-    weekly_admissions = wide_dates_var.apply(
-        _rolling_avg_7day, axis=1, result_type="reduce"
-    ).rename({field_in: field_out}, axis="index", level=PdFields.VARIABLE)
+    Args:
+        dataset_in: The dataset to update.
+        level_to_replace: Aggregation level to update data for.
+        field_in: Column to sum into weekly data, should have units of new daily occurrences (e.g. new daily hospital admissions).
+        field_out: Column to sum data into. Result will have units of new weekly occurrences (e.g. new weekly hospital admissions).  
+    """
 
-    # TODO: Add annotation
-    # Drop time-series (rows) that don't have any real values.
-    weekly_admissions = weekly_admissions.dropna(axis="index", how="all")
+    state_ds = dataset_in.get_subset(aggregation_level=level_to_replace)
+    state_ts = state_ds.timeseries_bucketed.copy()  # copy to avoid SettingWithCopy warning.
 
-    weekly_admissions_dataset = MultiRegionDataset.from_timeseries_wide_dates_df(
-        weekly_admissions, bucketed=True
-    )
+    # If there's no data for field_in then just return the original dataset.
+    if not state_ts[field_in].first_valid_index():
+        return dataset_in
 
-    dataset_out = dataset_in.join_columns(weekly_admissions_dataset)
+    # Make sure we do not have any pre-existing weekly data before overwriting the field_out column.
+    assert not state_ts[field_out].any()
+    state_ts[field_out] = _rolling_sum_7day(state_ts[field_in])
+
+    new_ts = state_ts.combine_first(dataset_in.timeseries_bucketed)
+    dataset_out = dataclasses.replace(dataset_in, timeseries_bucketed=new_ts, timeseries=None)
     return dataset_out
 
 
 def add_weekly_hospitalizations(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
-    """Adds a weekly_hospitalizations column to this dataset by calculating the rolling average of ."""
+    """Updates weekly new hospitalizations for state-level locations using a rolling 7-day sum."""
 
-    return add_weekly_rolling_average_column(
+    # Remove/move to test after done local testing.
+    if not dataset_in:
+        county_data = {
+            CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [
+                2,
+                3,
+                4,
+                2,
+                3,
+                4,
+                2,
+                3,
+                4,
+                2,
+                3,
+                4,
+                2,
+            ]
+        }
+        data = {
+            Region.from_fips("34001"): county_data,
+            Region.from_cbsa_code("11100"): {
+                CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [
+                    2,
+                    3,
+                    4,
+                    2,
+                    3,
+                    4,
+                    2,
+                    3,
+                    4,
+                    2,
+                    3,
+                    4,
+                    2,
+                ],
+            },
+            Region.from_state("MA"): {
+                CommonFields.NEW_HOSPITAL_ADMISSIONS_COVID: [
+                    40,
+                    50,
+                    60,
+                    50,
+                    60,
+                    40,
+                    30,
+                    40,
+                    50,
+                    70,
+                    50,
+                    40,
+                ],
+            },
+        }
+        dataset_in = test_helpers.build_dataset(data)
+
+    return calculate_weekly_column_from_daily(
         dataset_in,
-        CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID,
-        CommonFields.NEW_HOSPITAL_ADMISSIONS_COVID,
+        level_to_replace=AggregationLevel.STATE,
+        field_in=CommonFields.NEW_HOSPITAL_ADMISSIONS_COVID,
+        field_out=CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID,
     )

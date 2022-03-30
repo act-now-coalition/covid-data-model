@@ -97,6 +97,12 @@ class HospitalResourceUtilization(base_model.APIBaseModel):
     )
 
 
+class HospitalResourceUtilizationWithAdmissions(HospitalResourceUtilization):
+    weeklyCovidAdmissions: Optional[int] = pydantic.Field(
+        ..., description="Number of COVID patients admitted in the past week."
+    )
+
+
 class Actuals(base_model.APIBaseModel):
     """Known actuals data."""
 
@@ -116,7 +122,7 @@ class Actuals(base_model.APIBaseModel):
         ..., description="Cumulative negative test results to date"
     )
     contactTracers: Optional[int] = pydantic.Field(..., description="Number of Contact Tracers")
-    hospitalBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
+    hospitalBeds: Optional[HospitalResourceUtilizationWithAdmissions] = pydantic.Field(
         ...,
         description="""
 Information about acute bed utilization details.
@@ -125,13 +131,11 @@ Fields:
  * capacity - Current staffed acute bed capacity.
  * currentUsageTotal - Total number of acute beds currently in use
  * currentUsageCovid - Number of acute beds currently in use by COVID patients.
+ * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.
 """,
     )
-    weeklyHospitalAdmissions: Optional[int] = pydantic.Field(
-        ..., description="Number of COVID patients admitted in the past week"
-    )
 
-    hsaHospitalBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
+    hsaHospitalBeds: Optional[HospitalResourceUtilizationWithAdmissions] = pydantic.Field(
         ...,
         description="""
 Information about acute bed utilization details aggregated for the county's corresponding
@@ -142,6 +146,7 @@ Fields:
  * capacity - Current staffed acute bed capacity.
  * currentUsageTotal - Total number of acute beds currently in use
  * currentUsageCovid - Number of acute beds currently in use by COVID patients.
+ * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.
 """,
     )
     icuBeds: Optional[HospitalResourceUtilization] = pydantic.Field(
@@ -290,9 +295,6 @@ class Annotations(base_model.APIBaseModel):
     )
     hospitalBeds: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for hospitalBeds"
-    )
-    weeklyHospitalAdmissions: Optional[FieldAnnotations] = pydantic.Field(
-        None, description="Annotations for weeklyHospitalAdmissions"
     )
     hsaHospitalBeds: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for hsaHospitalBeds"
