@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "68c0f6cbe02ccacedef5f3468d15514e397ce92f",
-    "branch": "main",
+    "sha": "be124e4daf22acf81187de04f112cf3b7b5791ae",
+    "branch": "weekly-hospital-admissions",
     "is_dirty": false
   },
-  "updated_at": "2022-03-30T11:04:05.004201"
+  "updated_at": "2022-03-30T22:30:47.581181"
 }
