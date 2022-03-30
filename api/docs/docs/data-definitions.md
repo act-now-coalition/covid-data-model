@@ -122,6 +122,7 @@ Fields:
  * capacity - Current staffed acute bed capacity.
  * currentUsageTotal - Total number of acute beds currently in use
  * currentUsageCovid - Number of acute beds currently in use by COVID patients.
+ * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.
 
 **Where to access**  
 * CSV column names: ``actuals.hospitalBeds``
