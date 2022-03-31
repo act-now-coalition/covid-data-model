@@ -97,6 +97,8 @@ class HospitalResourceUtilization(base_model.APIBaseModel):
     )
 
 
+# We need a HospitalResourceUtilization subclass to include
+# admissions since hospitalBeds includes admissions but icuBeds doesn't.
 class HospitalResourceUtilizationWithAdmissions(HospitalResourceUtilization):
     weeklyCovidAdmissions: Optional[int] = pydantic.Field(
         ..., description="Number of COVID patients admitted in the past week."

@@ -28,18 +28,18 @@ def calculate_weekly_column_from_daily(
         field_out: Column to sum data into. Result will have units of new weekly occurrences (e.g. new weekly hospital admissions).  
     """
 
-    state_ds = dataset_in.get_subset(aggregation_level=level_to_replace)
-    state_ts = state_ds.timeseries_bucketed.copy()  # copy to avoid SettingWithCopy warning.
+    subset_ds = dataset_in.get_subset(aggregation_level=level_to_replace)
+    subset_ts = subset_ds.timeseries_bucketed.copy()  # copy to avoid SettingWithCopy warning.
 
     # If there's no data for field_in then just return the original dataset.
-    if not state_ts[field_in].first_valid_index():
+    if not subset_ts[field_in].any():
         return dataset_in
 
     # Make sure we do not have any pre-existing weekly data before overwriting the field_out column.
-    assert not state_ts[field_out].any()
-    state_ts[field_out] = _rolling_sum_7day(state_ts[field_in])
+    assert not subset_ts[field_out].any()
+    subset_ts[field_out] = _rolling_sum_7day(subset_ts[field_in])
 
-    new_ts = state_ts.combine_first(dataset_in.timeseries_bucketed)
+    new_ts = subset_ts.combine_first(dataset_in.timeseries_bucketed)
     dataset_out = dataclasses.replace(dataset_in, timeseries_bucketed=new_ts, timeseries=None)
     return dataset_out
 
