@@ -176,6 +176,7 @@ def test_top_level_metrics_basic():
         CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA: [1, 1, 2, 2],
     }
     latest = {
+        CommonFields.HSA_POPULATION: 100_000,
         CommonFields.POPULATION: 100_000,
         CommonFields.STATE: "NY",
         CommonFields.ICU_BEDS: 30,
@@ -221,6 +222,7 @@ def test_top_level_metrics_rounding():
     }
     latest = {
         CommonFields.POPULATION: 100_000,
+        CommonFields.HSA_POPULATION: 100_000,
         CommonFields.STATE: "NY",
         CommonFields.ICU_BEDS: 30,
     }
