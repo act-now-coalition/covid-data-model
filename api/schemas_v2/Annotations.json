@@ -219,6 +219,15 @@
         }
       ]
     },
+    "weeklyCovidAdmissionsPer100k": {
+      "title": "Weeklycovidadmissionsper100K",
+      "description": "Annotations for weeklyCovidAdmissionsPer100k",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
     "vaccinationsInitiatedRatio": {
       "title": "Vaccinationsinitiatedratio",
       "description": "Annotations for vaccinationsInitiatedRatio",

@@ -163,6 +163,7 @@ def test_annotation(rt_dataset):
             ),
             CommonFields.STAFFED_BEDS: [10, 10, 10],
             CommonFields.CURRENT_HOSPITALIZED: [1, 1, 1],
+            CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [2, 2, 2],
         },
         region=region,
         static={
@@ -247,6 +248,7 @@ def test_source(rt_dataset):
             ),
             CommonFields.STAFFED_BEDS: [10, 10, 10],
             CommonFields.CURRENT_HOSPITALIZED: [1, 1, 1],
+            CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [2, 2, 2],
         },
         region=region,
         static={

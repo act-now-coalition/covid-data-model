@@ -1524,7 +1524,8 @@
           "infectionRate",
           "infectionRateCI90",
           "icuCapacityRatio",
-          "bedsWithCovidPatientsRatio"
+          "bedsWithCovidPatientsRatio",
+          "weeklyCovidAdmissionsPer100k"
         ],
         "type": "object",
         "properties": {
@@ -1633,6 +1634,18 @@
               }
             ],
             "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area."
+          },
+          "weeklyCovidAdmissionsPer100k": {
+            "title": "Weeklycovidadmissionsper100K",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
@@ -2320,6 +2333,15 @@
             ],
             "description": "Annotations for bedsWithCovidPatientsRatio"
           },
+          "weeklyCovidAdmissionsPer100k": {
+            "title": "Weeklycovidadmissionsper100K",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for weeklyCovidAdmissionsPer100k"
+          },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
             "allOf": [
@@ -2555,6 +2577,7 @@
           "infectionRateCI90",
           "icuCapacityRatio",
           "bedsWithCovidPatientsRatio",
+          "weeklyCovidAdmissionsPer100k",
           "date"
         ],
         "type": "object",
@@ -2664,6 +2687,18 @@
               }
             ],
             "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area."
+          },
+          "weeklyCovidAdmissionsPer100k": {
+            "title": "Weeklycovidadmissionsper100K",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area."
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
