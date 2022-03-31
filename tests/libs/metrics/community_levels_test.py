@@ -33,7 +33,7 @@ def test_calc_community_levels(
     assert expected_level == output
 
 
-def test_community_level_stale():
+def test_stale_community_levels():
     fips = "36"
     # Valid cdcCommunityLevel 16 days back, followed by nans.
     dataset = build_one_region_dataset({CommonFields.CDC_COMMUNITY_LEVEL: [2] + [np.nan] * 16})

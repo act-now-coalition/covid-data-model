@@ -156,10 +156,6 @@ def build_timeseries_for_region(
             fips_timeseries, metrics_results
         )
 
-        cdc_transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
-            metrics_latest
-        )
-
         region_summary = build_api_v2.build_region_summary(
             regional_input.timeseries,
             metrics_latest,

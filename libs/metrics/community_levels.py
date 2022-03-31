@@ -57,7 +57,6 @@ def calculate_community_level_from_metrics(
 
 
 def calculate_community_level_from_row(row: pd.Series):
-    # TODO(michael): Plumb in weekly admissions.
     weekly_cases_per_100k = row[MetricsFields.WEEKLY_CASE_DENSITY_RATIO]
     beds_with_covid_ratio = row[MetricsFields.BEDS_WITH_COVID_PATIENTS_RATIO]
     weekly_covid_admissions_per_100k = row[MetricsFields.WEEKLY_COVID_ADMISSIONS_PER_100K]
@@ -69,9 +68,12 @@ def calculate_community_level_from_row(row: pd.Series):
 def calculate_community_level_timeseries_and_latest(
     timeseries: OneRegionTimeseriesDataset, metrics_df: pd.DataFrame
 ) -> Tuple[pd.DataFrame, CommunityLevels]:
+
+    # Calculate CAN Community Levels from metrics.
     metrics_df = metrics_df.set_index([CommonFields.DATE])
     can_community_level_series = metrics_df.apply(calculate_community_level_from_row, axis=1)
 
+    # Extract CDC Community Levels from raw timeseries.
     timeseries_df = timeseries.data.set_index([CommonFields.DATE])
     cdc_community_level_series = timeseries_df[CommonFields.CDC_COMMUNITY_LEVEL].apply(
         lambda level: CommunityLevel(level)
@@ -84,9 +86,9 @@ def calculate_community_level_timeseries_and_latest(
         }
     ).reset_index()
 
+    # Calculate latest CommunityLevels.
     # I suspect CDC will use the latest value no matter how stale it is. For
-    # can_community_level we only want to look back
-    # top_level_metrics.MAX_METRIC_LOOKBACK_DAYS.
+    # can_community_level we only want to look back MAX_METRIC_LOOKBACK_DAYS.
     latest_cdc_community_level = cdc_community_level_series.ffill().iloc[-1]
     latest_can_community_level = can_community_level_series.ffill(
         limit=MAX_METRIC_LOOKBACK_DAYS - 1
