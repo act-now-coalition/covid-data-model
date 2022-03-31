@@ -810,7 +810,7 @@
       "end_date": "2022-03-30",
       "region": "AZ",
       "context": "Arizona added a backlog of several thousand cases, dating primarily from October 2021. ",
-      "disclaimer": "Arizona has added a backlog of several thousand cases dating primarily from October 2021. As a result, we have removed data for March 30th from the timeseries."
+      "disclaimer": "Arizona has added a backlog of several thousand cases dating primarily from October 2021. As a result, we have removed data for March 30th from the site."
     }
   ]
 }
