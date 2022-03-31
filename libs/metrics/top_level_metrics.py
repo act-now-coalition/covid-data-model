@@ -109,7 +109,10 @@ def calculate_metrics_for_timeseries(
     icu_capacity_ratio = icu_capacity.calculate_icu_capacity(data)
     beds_with_covid_patients_ratio = calculate_covid_patient_ratio(data, timeseries.region)
     weekly_admissions_density = calculate_weekly_admissions_density(
-        data, timeseries.region, population
+        data=data,
+        region=timeseries.region,
+        population=population,
+        hsa_population=latest.get(CommonFields.HSA_POPULATION),
     )
 
     vaccines_initiated_ratio = (
@@ -303,14 +306,18 @@ def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
 
 
 def calculate_weekly_admissions_density(
-    data: pd.DataFrame, region: Region, population: int, normalize_by: int = 100_000,
+    data: pd.DataFrame,
+    region: Region,
+    population: int,
+    hsa_population: int,
+    normalize_by: int = 100_000,
 ) -> pd.Series:
     # Use HSA-level data for counties only.
     if region.level == AggregationLevel.COUNTY:
         weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA]
-    else:
-        weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID]
+        return weekly_admissions / (hsa_population / normalize_by)
 
+    weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID]
     return weekly_admissions / (population / normalize_by)
 
 
