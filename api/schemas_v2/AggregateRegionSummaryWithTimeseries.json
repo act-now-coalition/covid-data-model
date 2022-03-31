@@ -159,6 +159,18 @@
             }
           ]
         },
+        "weeklyCovidAdmissionsPer100k": {
+          "title": "Weeklycovidadmissionsper100K",
+          "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "vaccinationsInitiatedRatio": {
           "title": "Vaccinationsinitiatedratio",
           "description": "Ratio of population that has initiated vaccination.",
@@ -204,7 +216,8 @@
         "infectionRate",
         "infectionRateCI90",
         "icuCapacityRatio",
-        "bedsWithCovidPatientsRatio"
+        "bedsWithCovidPatientsRatio",
+        "weeklyCovidAdmissionsPer100k"
       ]
     },
     "RiskLevel": {
@@ -1033,6 +1046,15 @@
             }
           ]
         },
+        "weeklyCovidAdmissionsPer100k": {
+          "title": "Weeklycovidadmissionsper100K",
+          "description": "Annotations for weeklyCovidAdmissionsPer100k",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
         "vaccinationsInitiatedRatio": {
           "title": "Vaccinationsinitiatedratio",
           "description": "Annotations for vaccinationsInitiatedRatio",
@@ -1173,6 +1195,18 @@
             }
           ]
         },
+        "weeklyCovidAdmissionsPer100k": {
+          "title": "Weeklycovidadmissionsper100K",
+          "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "vaccinationsInitiatedRatio": {
           "title": "Vaccinationsinitiatedratio",
           "description": "Ratio of population that has initiated vaccination.",
@@ -1225,6 +1259,7 @@
         "infectionRateCI90",
         "icuCapacityRatio",
         "bedsWithCovidPatientsRatio",
+        "weeklyCovidAdmissionsPer100k",
         "date"
       ]
     },
