@@ -35,13 +35,15 @@ def test_calc_community_levels(
 
 def test_community_level_stale():
     fips = "36"
+    # Valid cdcCommunityLevel 16 days back, followed by nans.
     dataset = build_one_region_dataset({CommonFields.CDC_COMMUNITY_LEVEL: [2] + [np.nan] * 16})
+
+    # No valid case data for 15 days.
     metrics_df = top_level_metrics_test.build_metrics_df(
         fips,
         start_date="2020-12-01",
         weeklyNewCasesPer100k=[200] + [np.nan] * 15,
-        # TODO(michael): Plumb in
-        # weeklyAdmissionsPer100k=[0] * 16,
+        weeklyAdmissionsPer100k=[0] * 16,
         bedsWithCovidPatientsRatio=[0] * 16,
     )
 
@@ -49,6 +51,7 @@ def test_community_level_stale():
         dataset, metrics_df
     )
 
-    # We allow cdc_community_level to be arbitrarily stale, so it should still be HIGH.
+    # We allow cdcCommunityLevel to be arbitrarily stale, so it should still be HIGH.
     assert latest.cdcCommunityLevel == CommunityLevel.HIGH
+    # canCommunityLevel is missing case data for 15 days so it will be None.
     assert latest.canCommunityLevel == None

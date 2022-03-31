@@ -49,9 +49,10 @@ def calculate_community_level(
 def calculate_community_level_from_metrics(
     metrics: can_api_v2_definition.Metrics,
 ) -> CommunityLevel:
-    # TODO(michael): Plumb in weekly admissions.
     return calculate_community_level(
-        metrics.weeklyNewCasesPer100k, metrics.bedsWithCovidPatientsRatio, None
+        metrics.weeklyNewCasesPer100k,
+        metrics.bedsWithCovidPatientsRatio,
+        metrics.weeklyCovidAdmissionsPer100k,
     )
 
 
@@ -59,8 +60,10 @@ def calculate_community_level_from_row(row: pd.Series):
     # TODO(michael): Plumb in weekly admissions.
     weekly_cases_per_100k = row[MetricsFields.WEEKLY_CASE_DENSITY_RATIO]
     beds_with_covid_ratio = row[MetricsFields.BEDS_WITH_COVID_PATIENTS_RATIO]
-
-    return calculate_community_level(weekly_cases_per_100k, beds_with_covid_ratio, None)
+    weekly_covid_admissions_per_100k = row[MetricsFields.WEEKLY_COVID_ADMISSIONS_PER_100K]
+    return calculate_community_level(
+        weekly_cases_per_100k, beds_with_covid_ratio, weekly_covid_admissions_per_100k
+    )
 
 
 def calculate_community_level_timeseries_and_latest(
