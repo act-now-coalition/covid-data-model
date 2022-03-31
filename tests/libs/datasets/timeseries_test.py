@@ -2103,7 +2103,7 @@ def test_pickle_test_dataset_size(tmp_path: pathlib.Path):
     test_dataset = test_helpers.load_test_dataset()
     test_dataset.get_timeseries_not_bucketed_wide_dates(CommonFields.CASES)
     test_dataset.to_compressed_pickle(pkl_path)
-    assert pkl_path.stat().st_size < 800_000
+    assert pkl_path.stat().st_size < 900_000
 
     loaded_dataset = timeseries.MultiRegionDataset.from_compressed_pickle(pkl_path)
 
