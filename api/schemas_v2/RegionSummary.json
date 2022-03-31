@@ -471,6 +471,67 @@
         4
       ]
     },
+    "HospitalResourceUtilizationWithAdmissions": {
+      "title": "HospitalResourceUtilizationWithAdmissions",
+      "description": "Base model for API output.",
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "title": "Capacity",
+          "description": "Total capacity for resource.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentUsageTotal": {
+          "title": "Currentusagetotal",
+          "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentUsageCovid": {
+          "title": "Currentusagecovid",
+          "description": "Currently used capacity for resource by COVID ",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "weeklyCovidAdmissions": {
+          "title": "Weeklycovidadmissions",
+          "description": "Number of COVID patients admitted in the past week.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "capacity",
+        "currentUsageTotal",
+        "currentUsageCovid",
+        "weeklyCovidAdmissions"
+      ]
+    },
     "HospitalResourceUtilization": {
       "title": "HospitalResourceUtilization",
       "description": "Base model for API output.",
@@ -649,19 +710,19 @@
         },
         "hospitalBeds": {
           "title": "Hospitalbeds",
-          "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n",
+          "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n",
           "allOf": [
             {
-              "$ref": "#/definitions/HospitalResourceUtilization"
+              "$ref": "#/definitions/HospitalResourceUtilizationWithAdmissions"
             }
           ]
         },
         "hsaHospitalBeds": {
           "title": "Hsahospitalbeds",
-          "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n",
+          "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n",
           "allOf": [
             {
-              "$ref": "#/definitions/HospitalResourceUtilization"
+              "$ref": "#/definitions/HospitalResourceUtilizationWithAdmissions"
             }
           ]
         },

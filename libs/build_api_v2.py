@@ -30,7 +30,6 @@ from api.can_api_v2_definition import FieldSourceType
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-import structlog
 
 
 METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in FieldSourceType enum"
@@ -38,9 +37,6 @@ METRIC_MULTIPLE_SOURCE_URLS_MESSAGE = "More than one source_url for a field"
 METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE = "More than one provenance for a field"
 
 USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
-
-
-_logger = structlog.get_logger()
 
 
 def _build_distributions(
@@ -92,11 +88,17 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
             "capacity": actual_data.get(CommonFields.STAFFED_BEDS),
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED),
             "currentUsageTotal": actual_data.get(CommonFields.HOSPITAL_BEDS_IN_USE_ANY),
+            "weeklyCovidAdmissions": actual_data.get(
+                CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID
+            ),
         },
         hsaHospitalBeds={
             "capacity": actual_data.get(CommonFields.STAFFED_BEDS_HSA),
             "currentUsageCovid": actual_data.get(CommonFields.CURRENT_HOSPITALIZED_HSA),
             "currentUsageTotal": actual_data.get(CommonFields.HOSPITAL_BEDS_IN_USE_ANY_HSA),
+            "weeklyCovidAdmissions": actual_data.get(
+                CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA
+            ),
         },
         icuBeds={
             "capacity": actual_data.get(CommonFields.ICU_BEDS),

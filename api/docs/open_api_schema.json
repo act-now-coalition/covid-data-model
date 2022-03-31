@@ -1094,6 +1094,67 @@
   },
   "components": {
     "schemas": {
+      "HospitalResourceUtilizationWithAdmissions": {
+        "title": "HospitalResourceUtilizationWithAdmissions",
+        "required": [
+          "capacity",
+          "currentUsageTotal",
+          "currentUsageCovid",
+          "weeklyCovidAdmissions"
+        ],
+        "type": "object",
+        "properties": {
+          "capacity": {
+            "title": "Capacity",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total capacity for resource."
+          },
+          "currentUsageTotal": {
+            "title": "Currentusagetotal",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)"
+          },
+          "currentUsageCovid": {
+            "title": "Currentusagecovid",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Currently used capacity for resource by COVID "
+          },
+          "weeklyCovidAdmissions": {
+            "title": "Weeklycovidadmissions",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of COVID patients admitted in the past week."
+          }
+        },
+        "description": "Base model for API output."
+      },
       "HospitalResourceUtilization": {
         "title": "HospitalResourceUtilization",
         "required": [
@@ -1286,19 +1347,19 @@
             "title": "Hospitalbeds",
             "allOf": [
               {
-                "$ref": "#/components/schemas/HospitalResourceUtilization"
+                "$ref": "#/components/schemas/HospitalResourceUtilizationWithAdmissions"
               }
             ],
-            "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n"
+            "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
           },
           "hsaHospitalBeds": {
             "title": "Hsahospitalbeds",
             "allOf": [
               {
-                "$ref": "#/components/schemas/HospitalResourceUtilization"
+                "$ref": "#/components/schemas/HospitalResourceUtilizationWithAdmissions"
               }
             ],
-            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n"
+            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
           },
           "icuBeds": {
             "title": "Icubeds",
@@ -2731,19 +2792,19 @@
             "title": "Hospitalbeds",
             "allOf": [
               {
-                "$ref": "#/components/schemas/HospitalResourceUtilization"
+                "$ref": "#/components/schemas/HospitalResourceUtilizationWithAdmissions"
               }
             ],
-            "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n"
+            "description": "\nInformation about acute bed utilization details.\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
           },
           "hsaHospitalBeds": {
             "title": "Hsahospitalbeds",
             "allOf": [
               {
-                "$ref": "#/components/schemas/HospitalResourceUtilization"
+                "$ref": "#/components/schemas/HospitalResourceUtilizationWithAdmissions"
               }
             ],
-            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n"
+            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
           },
           "icuBeds": {
             "title": "Icubeds",

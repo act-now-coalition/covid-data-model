@@ -1,0 +1,61 @@
+{
+  "title": "HospitalResourceUtilizationWithAdmissions",
+  "description": "Base model for API output.",
+  "type": "object",
+  "properties": {
+    "capacity": {
+      "title": "Capacity",
+      "description": "Total capacity for resource.",
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "currentUsageTotal": {
+      "title": "Currentusagetotal",
+      "description": "Currently used capacity for resource by all patients (COVID + Non-COVID)",
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "currentUsageCovid": {
+      "title": "Currentusagecovid",
+      "description": "Currently used capacity for resource by COVID ",
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "weeklyCovidAdmissions": {
+      "title": "Weeklycovidadmissions",
+      "description": "Number of COVID patients admitted in the past week.",
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "capacity",
+    "currentUsageTotal",
+    "currentUsageCovid",
+    "weeklyCovidAdmissions"
+  ]
+}
