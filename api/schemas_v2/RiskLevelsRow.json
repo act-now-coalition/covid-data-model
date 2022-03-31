@@ -4,7 +4,7 @@
   "type": "object",
   "properties": {
     "overall": {
-      "description": "Overall risk level for region.",
+      "description": "Overall risk level for region .",
       "allOf": [
         {
           "$ref": "#/definitions/RiskLevel"
