@@ -46,6 +46,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     INFECTION_RATE_CI90 = "infectionRateCI90"
     ICU_CAPACITY_RATIO = "icuCapacityRatio"
     BEDS_WITH_COVID_PATIENTS_RATIO = "bedsWithCovidPatientsRatio"
+    WEEKLY_COVID_ADMISSIONS_DENSITY_RATIO = "weeklyCovidAdmissionsPer100k"
     VACCINATIONS_INITIATED_RATIO = "vaccinationsInitiatedRatio"
     VACCINATIONS_COMPLETED_RATIO = "vaccinationsCompletedRatio"
     VACCINATIONS_ADDITIONAL_DOSE_RATIO = "vaccinationsAdditionalDoseRatio"
@@ -65,6 +66,7 @@ METRIC_ROUNDING_PRECISION = {
     MetricsFields.INFECTION_RATE: 2,
     MetricsFields.INFECTION_RATE_CI90: 2,
     MetricsFields.ICU_CAPACITY_RATIO: 2,
+    MetricsFields.WEEKLY_COVID_ADMISSIONS_DENSITY_RATIO: 2,
     MetricsFields.BEDS_WITH_COVID_PATIENTS_RATIO: 2,
     MetricsFields.VACCINATIONS_INITIATED_RATIO: 3,
     MetricsFields.VACCINATIONS_COMPLETED_RATIO: 3,
@@ -106,6 +108,9 @@ def calculate_metrics_for_timeseries(
 
     icu_capacity_ratio = icu_capacity.calculate_icu_capacity(data)
     beds_with_covid_patients_ratio = calculate_covid_patient_ratio(data, timeseries.region)
+    weekly_admissions_density = calculate_weekly_admissions_density(
+        data, timeseries.region, population
+    )
 
     vaccines_initiated_ratio = (
         common_df.get_timeseries(
@@ -137,6 +142,7 @@ def calculate_metrics_for_timeseries(
         MetricsFields.INFECTION_RATE_CI90: infection_rate_ci90,
         MetricsFields.ICU_CAPACITY_RATIO: icu_capacity_ratio,
         MetricsFields.BEDS_WITH_COVID_PATIENTS_RATIO: beds_with_covid_patients_ratio,
+        MetricsFields.WEEKLY_COVID_ADMISSIONS_DENSITY_RATIO: weekly_admissions_density,
         MetricsFields.VACCINATIONS_INITIATED_RATIO: vaccines_initiated_ratio,
         MetricsFields.VACCINATIONS_COMPLETED_RATIO: vaccines_completed_ratio,
         MetricsFields.VACCINATIONS_ADDITIONAL_DOSE_RATIO: vaccines_additional_dose_ratio,
@@ -294,6 +300,18 @@ def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
     # Returns NaN for any dates missing beds or patients.
     covid_patient_ratio = covid_hospitalizations.div(staffed_beds, fill_value=None)
     return covid_patient_ratio
+
+
+def calculate_weekly_admissions_density(
+    data: pd.DataFrame, region: Region, population: int, normalize_by: int = 100_000,
+) -> pd.Series:
+    # Use HSA-level data for counties only.
+    if region.level == AggregationLevel.COUNTY:
+        weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA]
+    else:
+        weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID]
+
+    return weekly_admissions / (population / normalize_by)
 
 
 def calculate_latest_metrics(

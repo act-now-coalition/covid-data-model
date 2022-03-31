@@ -353,6 +353,9 @@ class Annotations(base_model.APIBaseModel):
     bedsWithCovidPatientsRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for bedsWithCovidPatientsRatio"
     )
+    weeklyCovidAdmissionsPer100k: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for weeklyCovidAdmissionsPer100k"
+    )
     vaccinationsInitiatedRatio: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinationsInitiatedRatio"
     )
@@ -411,6 +414,10 @@ class Metrics(base_model.APIBaseModel):
         description="Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.",
     )
 
+    weeklyCovidAdmissionsPer100k: Optional[float] = pydantic.Field(
+        ..., description="Number of COVID patients per 100k population admitted in the past week.",
+    )
+
     vaccinationsInitiatedRatio: Optional[float] = pydantic.Field(
         None, description=("Ratio of population that has initiated vaccination.")
     )
@@ -436,6 +443,7 @@ class Metrics(base_model.APIBaseModel):
             infectionRateCI90=None,
             icuCapacityRatio=None,
             bedsWithCovidPatientsRatio=None,
+            weeklyCovidAdmissionsPer100k=None,
         )
 
 
