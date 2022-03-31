@@ -163,6 +163,9 @@ def test_build_summary_for_fips(
             ),
             caseDensity=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
             weeklyNewCasesPer100k=FieldAnnotations(sources=[field_source_usafacts], anomalies=[],),
+            weeklyCovidAdmissionsPer100k=FieldAnnotations(
+                sources=[field_source_hhshospital], anomalies=[]
+            ),
             icuCapacityRatio=FieldAnnotations(sources=[field_source_hhshospital], anomalies=[]),
             bedsWithCovidPatientsRatio=FieldAnnotations(
                 sources=[field_source_hhshospital], anomalies=[]

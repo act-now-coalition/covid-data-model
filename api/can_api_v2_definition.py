@@ -415,7 +415,8 @@ class Metrics(base_model.APIBaseModel):
     )
 
     weeklyCovidAdmissionsPer100k: Optional[float] = pydantic.Field(
-        ..., description="Number of COVID patients per 100k population admitted in the past week.",
+        ...,
+        description="Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area.",
     )
 
     vaccinationsInitiatedRatio: Optional[float] = pydantic.Field(
