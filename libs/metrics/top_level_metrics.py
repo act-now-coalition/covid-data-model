@@ -314,8 +314,9 @@ def calculate_weekly_admissions_per_100k(
 ) -> pd.Series:
     # Use HSA-level data for counties only.
     if region.level == AggregationLevel.COUNTY:
-        # Counties in the Northern Mariana Islands are not mapped to an HSA, so they have
-        # no hsaPopulations. For these instances do not try and calculate a metric.
+        # Counties in the Northern Mariana Islands (and DC with a TODO to fix it)
+        # are not mapped to an HSA, so they have no hsaPopulations. For these
+        # instances do not try and calculate a metric.
         if hsa_population is None:
             return None
         weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA]
