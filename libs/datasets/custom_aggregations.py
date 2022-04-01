@@ -72,6 +72,11 @@ def replace_dc_county_with_state_data(
         static_excluding_numbers.reset_index()
     )
 
+    # The aggregation will have replaced hsa_population with nan.  We need to fix it.
+    dc_county_dataset.static.loc[
+        :, CommonFields.HSA_POPULATION
+    ] = dataset_with_dc_county.static.loc[:, CommonFields.HSA_POPULATION]
+
     return dataset_without_dc_county.append_regions(dc_county_dataset)
 
 
