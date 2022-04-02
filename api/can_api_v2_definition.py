@@ -529,7 +529,7 @@ class RiskLevels(base_model.APIBaseModel):
 # Additional class used for bulk timeseries where we are not including all risk levels
 # right now, only the overall risk level.
 class RiskLevelsRow(base_model.APIBaseModel):
-    overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region .")
+    overall: RiskLevel = pydantic.Field(..., description="Overall risk level for region.")
     caseDensity: RiskLevel = pydantic.Field(..., description="Case density risk level for region.")
 
 
@@ -571,10 +571,11 @@ class CommunityLevels(base_model.APIBaseModel):
     interpretted.
 
     Note that we provide two versions of the Community Level. One is called
-    canCommunityLevel which is calculated on a daily basis using CAN's data
-    sources and is available for states, counties, and metros.  The other is
-    called cdcCommunityLevel and is the raw Community Level published by the
-    CDC. It is only available for counties, and updates on a weekly basis.
+    canCommunityLevel which is calculated using CAN's data sources and is
+    available for states, counties, and metros. It is updated daily for states
+    and weekly for counties and metros. The other is called cdcCommunityLevel
+    and is the raw Community Level published by the CDC. It is only available
+    for counties and is updated on a weekly basis.
     """
         ),
     )
@@ -596,10 +597,11 @@ class CommunityLevels(base_model.APIBaseModel):
     interpretted.
 
     Note that we provide two versions of the Community Level. One is called
-    canCommunityLevel which is calculated on a daily basis using CAN's data
-    sources and is available for states, counties, and metros.  The other is
-    called cdcCommunityLevel and is the raw Community Level published by the
-    CDC. It is only available for counties, and updates on a weekly basis.
+    canCommunityLevel which is calculated using CAN's data sources and is
+    available for states, counties, and metros. It is updated daily for states
+    and weekly for counties and metros. The other is called cdcCommunityLevel
+    and is the raw Community Level published by the CDC. It is only available
+    for counties and is updated on a weekly basis.
     """
         ),
     )
