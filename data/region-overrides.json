@@ -811,6 +811,24 @@
       "region": "AZ",
       "context": "Arizona added a backlog of several thousand cases, dating primarily from October 2021. ",
       "disclaimer": "Arizona has added a backlog of several thousand cases dating primarily from October 2021. As a result, we have removed data for March 30th from the site."
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-30",
+      "end_date": "2022-04-30",
+      "region": "GA",
+      "context": "Georgia added a backlog of several thousand cases, dating primarily from January 2022. "
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-04-01",
+      "end_date": "2022-04-01",
+      "region": "26161, 06085",
+      "context": "suspected backlogs in Santa Bara and Washtenaw counties."
     }
   ]
 }
