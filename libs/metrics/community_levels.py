@@ -75,9 +75,15 @@ def calculate_community_level_timeseries_and_latest(
 
     # Extract CDC Community Levels from raw timeseries.
     timeseries_df = timeseries.data.set_index([CommonFields.DATE])
-    cdc_community_level_series = timeseries_df[CommonFields.CDC_COMMUNITY_LEVEL].apply(
-        lambda level: None if math.isnan(level) else CommunityLevel(level)
-    )
+    if CommonFields.CDC_COMMUNITY_LEVEL in timeseries_df.columns:
+        cdc_community_level_series = timeseries_df[CommonFields.CDC_COMMUNITY_LEVEL].apply(
+            lambda level: None if math.isnan(level) else CommunityLevel(level)
+        )
+    else:
+        # CDC doesn't include data for all counties (e.g. DC county, some territories), so
+        # create empty timeseries.
+        index = timeseries_df.index
+        cdc_community_level_series = pd.Series(data=[None] * index.size, index=index)
 
     community_levels_df = pd.DataFrame(
         {
