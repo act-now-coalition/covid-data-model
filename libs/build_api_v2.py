@@ -376,6 +376,9 @@ def build_bulk_flattened_timeseries(
         cdc_transmission_levels_by_date = {
             row.date: row for row in region_timeseries.cdcTransmissionLevelTimeseries
         }
+        community_levels_by_date = {
+            row.date: row for row in region_timeseries.communityLevelsTimeseries
+        }
         dates = sorted({*metrics_by_date.keys(), *actuals_by_date.keys()})
         for date in dates:
             data = {
@@ -386,6 +389,7 @@ def build_bulk_flattened_timeseries(
                 "cdcTransmissionLevel": cdc_transmission_levels_by_date.get(
                     date
                 ).cdcTransmissionLevel,
+                "communityLevels": community_levels_by_date.get(date),
             }
             data.update(summary_data)
             row = RegionTimeseriesRowWithHeader(**data)

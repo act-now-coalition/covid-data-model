@@ -765,7 +765,9 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
         gt=0,
     )
 
-    communityLevels: Optional[CommunityLevelsTimeseriesRow]
+    communityLevels: Optional[CommunityLevelsTimeseriesRow] = pydantic.Field(
+        ..., description="Community levels for any given day"
+    )
 
 
 class AggregateFlattenedTimeseries(base_model.APIBaseModel):
