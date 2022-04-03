@@ -829,6 +829,15 @@
       "end_date": "2022-04-01",
       "region": "26161, 06085",
       "context": "suspected backlogs in Santa Bara and Washtenaw counties."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "AZ",
+      "context": "AZ conties dropping to 0 DNC"
     }
   ]
 }
