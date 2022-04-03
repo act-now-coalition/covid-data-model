@@ -831,7 +831,7 @@
       "context": "suspected backlogs in Santa Bara and Washtenaw counties."
     },
     {
-      "include": "region",
+      "include": "subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "",
