@@ -69,8 +69,9 @@ def calculate_community_level_timeseries_and_latest(
     timeseries: OneRegionTimeseriesDataset, metrics_df: pd.DataFrame
 ) -> Tuple[pd.DataFrame, CommunityLevels]:
 
-    # Calculate CAN Community Levels from metrics.
-    metrics_df = metrics_df.set_index([CommonFields.DATE])
+    # Calculate CAN Community Levels from metrics. We allow canCommunityLevel to be based on
+    # metrics that are up to MAX_METRIC_LOOKBACK_DAYS days old so ffill() them.
+    metrics_df = metrics_df.set_index([CommonFields.DATE]).ffill(limit=MAX_METRIC_LOOKBACK_DAYS - 1)
     can_community_level_series = metrics_df.apply(calculate_community_level_from_row, axis=1)
 
     # Extract CDC Community Levels from raw timeseries.
@@ -94,11 +95,10 @@ def calculate_community_level_timeseries_and_latest(
 
     # Calculate latest CommunityLevels.
     # I suspect CDC will use the latest value no matter how stale it is. For
-    # can_community_level we only want to look back MAX_METRIC_LOOKBACK_DAYS.
+    # can_community_level we can just use the latest value since we did an
+    # ffill() on the underlying metrics above.
     latest_cdc_community_level = cdc_community_level_series.ffill().iloc[-1]
-    latest_can_community_level = can_community_level_series.ffill(
-        limit=MAX_METRIC_LOOKBACK_DAYS - 1
-    ).iloc[-1]
+    latest_can_community_level = can_community_level_series.iloc[-1]
 
     latest_community_levels = CommunityLevels(
         cdcCommunityLevel=latest_cdc_community_level, canCommunityLevel=latest_can_community_level
