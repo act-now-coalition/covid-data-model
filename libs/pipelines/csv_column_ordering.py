@@ -83,6 +83,8 @@ SUMMARY_ORDER = [
     "actuals.hospitalBeds.weeklyCovidAdmissions",
     "actuals.hsaHospitalBeds.weeklyCovidAdmissions",
     "metrics.weeklyCovidAdmissionsPer100k",
+    "communityLevels.cdcCommunityLevel",
+    "communityLevels.canCommunityLevel",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -163,6 +165,8 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "actuals.hospitalBeds.weeklyCovidAdmissions",
     "actuals.hsaHospitalBeds.weeklyCovidAdmissions",
     "metrics.weeklyCovidAdmissionsPer100k",
+    "communityLevels.cdcCommunityLevel",
+    "communityLevels.canCommunityLevel",
 ]
 
 
@@ -230,4 +234,6 @@ TIMESERIES_ORDER = [
     "actuals.hospitalBeds.weeklyCovidAdmissions",
     "actuals.hsaHospitalBeds.weeklyCovidAdmissions",
     "metrics.weeklyCovidAdmissionsPer100k",
+    "communityLevels.cdcCommunityLevel",
+    "communityLevels.canCommunityLevel",
 ]

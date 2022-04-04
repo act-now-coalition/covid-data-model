@@ -1359,7 +1359,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilizationWithAdmissions"
               }
             ],
-            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
+            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
           },
           "icuBeds": {
             "title": "Icubeds",
@@ -1377,7 +1377,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
-            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
+            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
           },
           "newCases": {
             "title": "Newcases",
@@ -1712,7 +1712,7 @@
                 "$ref": "#/components/schemas/RiskLevel"
               }
             ],
-            "description": "Overall risk level for region."
+            "description": "Overall risk level for region ."
           },
           "caseDensity": {
             "allOf": [
@@ -1735,6 +1735,49 @@
           4
         ],
         "description": "CDC community transmission level."
+      },
+      "CommunityLevel": {
+        "title": "CommunityLevel",
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "description": "Community level."
+      },
+      "CommunityLevelsTimeseriesRow": {
+        "title": "CommunityLevelsTimeseriesRow",
+        "required": [
+          "cdcCommunityLevel",
+          "canCommunityLevel",
+          "date"
+        ],
+        "type": "object",
+        "properties": {
+          "cdcCommunityLevel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommunityLevel"
+              }
+            ],
+            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+          },
+          "canCommunityLevel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommunityLevel"
+              }
+            ],
+            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string",
+            "description": "Date of timeseries data point",
+            "format": "date"
+          }
+        },
+        "description": "Timeseries data for community levels."
       },
       "RegionTimeseriesRowWithHeader": {
         "title": "RegionTimeseriesRowWithHeader",
@@ -1897,6 +1940,16 @@
               }
             ],
             "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+          },
+          "communityLevels": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommunityLevelsTimeseriesRow"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "description": "Prediction timeseries row with location information."
@@ -1983,6 +2036,33 @@
           }
         },
         "description": "COVID risk levels for a region."
+      },
+      "CommunityLevels": {
+        "title": "CommunityLevels",
+        "required": [
+          "cdcCommunityLevel",
+          "canCommunityLevel"
+        ],
+        "type": "object",
+        "properties": {
+          "cdcCommunityLevel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommunityLevel"
+              }
+            ],
+            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+          },
+          "canCommunityLevel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommunityLevel"
+              }
+            ],
+            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+          }
+        },
+        "description": "Community levels for a region."
       },
       "FieldSourceType": {
         "title": "FieldSourceType",
@@ -2390,6 +2470,7 @@
           "metrics",
           "riskLevels",
           "cdcTransmissionLevel",
+          "communityLevels",
           "actuals",
           "annotations",
           "lastUpdatedDate",
@@ -2530,6 +2611,9 @@
               }
             ],
             "description": "\nCommunity transmission level for region, calculated using the CDC definition.\n\nPossible values:\n    - 0: Low\n    - 1: Moderate\n    - 2: Substantial\n    - 3: High\n    - 4: Unknown\n\nSee [definitions of CDC community transmission levels](\nhttps://covid.cdc.gov/covid-data-tracker/#cases_community) for more\ndetails.\n\nNote that the value may differ from what the CDC website reports\ngiven we have different data sources. We have also introduced an\n\"Unknown\" level for when both case data and test positivity data are\nmissing for at least 15 days. The CDC does not have an \"Unknown\"\nlevel and instead will designate a location as \"Low\" when case and\ntest positivity data are missing.\n"
+          },
+          "communityLevels": {
+            "$ref": "#/components/schemas/CommunityLevels"
           },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
@@ -2839,7 +2923,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilizationWithAdmissions"
               }
             ],
-            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
+            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
           },
           "icuBeds": {
             "title": "Icubeds",
@@ -2857,7 +2941,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
-            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted. \nFor For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
+            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
           },
           "newCases": {
             "title": "Newcases",
@@ -2985,7 +3069,7 @@
                 "$ref": "#/components/schemas/RiskLevel"
               }
             ],
-            "description": "Overall risk level for region."
+            "description": "Overall risk level for region ."
           },
           "caseDensity": {
             "allOf": [
@@ -3047,6 +3131,7 @@
           "metrics",
           "riskLevels",
           "cdcTransmissionLevel",
+          "communityLevels",
           "actuals",
           "annotations",
           "lastUpdatedDate",
@@ -3054,7 +3139,8 @@
           "metricsTimeseries",
           "actualsTimeseries",
           "riskLevelsTimeseries",
-          "cdcTransmissionLevelTimeseries"
+          "cdcTransmissionLevelTimeseries",
+          "communityLevelsTimeseries"
         ],
         "type": "object",
         "properties": {
@@ -3192,6 +3278,9 @@
             ],
             "description": "\nCommunity transmission level for region, calculated using the CDC definition.\n\nPossible values:\n    - 0: Low\n    - 1: Moderate\n    - 2: Substantial\n    - 3: High\n    - 4: Unknown\n\nSee [definitions of CDC community transmission levels](\nhttps://covid.cdc.gov/covid-data-tracker/#cases_community) for more\ndetails.\n\nNote that the value may differ from what the CDC website reports\ngiven we have different data sources. We have also introduced an\n\"Unknown\" level for when both case data and test positivity data are\nmissing for at least 15 days. The CDC does not have an \"Unknown\"\nlevel and instead will designate a location as \"Low\" when case and\ntest positivity data are missing.\n"
           },
+          "communityLevels": {
+            "$ref": "#/components/schemas/CommunityLevels"
+          },
           "actuals": {
             "$ref": "#/components/schemas/Actuals"
           },
@@ -3242,6 +3331,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CdcTransmissionLevelTimeseriesRow"
+            }
+          },
+          "communityLevelsTimeseries": {
+            "title": "Communitylevelstimeseries",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommunityLevelsTimeseriesRow"
             }
           }
         },
