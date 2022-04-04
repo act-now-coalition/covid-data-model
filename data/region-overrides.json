@@ -838,6 +838,24 @@
       "end_date": "",
       "region": "AZ",
       "context": "AZ conties dropping to 0 DNC"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-04-01",
+      "end_date": "",
+      "region": "VT",
+      "context": "VT at 100% ICU Capactiy Used"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-04-02",
+      "end_date": "",
+      "region": "53071",
+      "context": "Susupected backlog in Walla Walla County, WA"
     }
   ]
 }
