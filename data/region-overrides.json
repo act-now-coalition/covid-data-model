@@ -301,15 +301,6 @@
       "region": "44009"
     },
     {
-      "include": "region",
-      "metric": "metrics.icuCapacityRatio",
-      "blocked": true,
-      "start_date": "2021-10-19",
-      "end_date": "",
-      "region": "UT",
-      "context": "https://trello.com/c/TMXRMiWy/1508-ut-icu-capacity-used-spike-10-22-21"
-    },
-    {
       "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
@@ -764,15 +755,6 @@
       "end_date": "2022-03-18",
       "region": "06037",
       "context": "NYT reported a backlog of 2051 cases for LA."
-    },
-    {
-      "include": "region",
-      "metric": "metrics.icuCapacityRatio",
-      "blocked": true,
-      "start_date": "2022-03-17",
-      "end_date": "",
-      "region": "OK",
-      "context": "OK ICU % dropoff"
     },
     {
       "include": "region",
