@@ -831,15 +831,6 @@
       "context": "suspected backlogs in Santa Bara and Washtenaw counties."
     },
     {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "",
-      "end_date": "",
-      "region": "AZ",
-      "context": "AZ conties dropping to 0 DNC"
-    },
-    {
       "include": "region",
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
