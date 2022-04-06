@@ -55,6 +55,12 @@ WEIGHTED_AGGREGATIONS = (
     StaticWeightedAverageAggregation(
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT, CommonFields.POPULATION
     ),
+    StaticWeightedAverageAggregation(
+        CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA, CommonFields.POPULATION
+    ),
+    StaticWeightedAverageAggregation(
+        CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA, CommonFields.POPULATION
+    ),
 )
 
 

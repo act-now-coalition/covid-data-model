@@ -292,6 +292,13 @@ def calculate_contact_tracers(
 
 
 def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
+    # If we have precomputed data, use it.
+    if (
+        CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA in data.columns
+        and data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA].any()
+    ):
+        return data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA]
+
     # Use HSA-level data for counties only.
     if region.level == AggregationLevel.COUNTY:
         staffed_beds: pd.Series = data[CommonFields.STAFFED_BEDS_HSA]
@@ -312,11 +319,18 @@ def calculate_weekly_admissions_per_100k(
     hsa_population: int,
     normalize_by: int = 100_000,
 ) -> pd.Series:
+    # If we have precomputed data, use it.
+    if (
+        CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA in data.columns
+        and data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA].any()
+    ):
+        return data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA]
+
     # Use HSA-level data for counties only.
     if region.level == AggregationLevel.COUNTY:
-        # Counties in the Northern Mariana Islands (and DC with a TODO to fix it)
-        # are not mapped to an HSA, so they have no hsaPopulations. For these
-        # instances do not try and calculate a metric.
+        # Counties in the Northern Mariana Islands are not mapped to an HSA, so
+        # they have no hsaPopulations. For these instances do not try and
+        # calculate a metric.
         if hsa_population is None:
             return None
         weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA]
