@@ -741,6 +741,7 @@ class MultiRegionDataset:
                 textwrap.indent(by_level.to_string(), "  "),
             ]
         )
+        print(datetime.datetime.now())
         print(f"Observations in dataset {name}:\n" + textwrap.indent(stats_in_text, "  "))
 
     @cached_property
