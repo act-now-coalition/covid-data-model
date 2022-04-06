@@ -293,7 +293,10 @@ def calculate_contact_tracers(
 
 def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
     # If we have precomputed data, use it.
-    if data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA].any():
+    if (
+        CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA in data.columns
+        and data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA].any()
+    ):
         return data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA]
 
     # Use HSA-level data for counties only.
@@ -316,8 +319,11 @@ def calculate_weekly_admissions_per_100k(
     hsa_population: int,
     normalize_by: int = 100_000,
 ) -> pd.Series:
-    # If we have pre-computed data, use it.
-    if data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA].any():
+    # If we have precomputed data, use it.
+    if (
+        CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA in data.columns
+        and data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA].any()
+    ):
         return data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA]
 
     # Use HSA-level data for counties only.
