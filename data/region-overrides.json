@@ -819,6 +819,15 @@
       "end_date": "",
       "region": "53071",
       "context": "Susupected backlog in Walla Walla County, WA"
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-04-06",
+      "end_date": "2022-04-06",
+      "region": "WA",
+      "context": "WA suspected backlog on 4/6/22"
     }
   ]
 }
