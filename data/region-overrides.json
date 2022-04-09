@@ -651,15 +651,6 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2022-03-18",
-      "end_date": "",
-      "context": "no data reported since 2/18",
-      "region": "12085"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "",
       "end_date": "",
       "region": "40220",
