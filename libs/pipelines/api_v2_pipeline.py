@@ -179,6 +179,29 @@ def build_timeseries_for_region(
     return region_timeseries
 
 
+def deploy_summary(args):
+    path_builder, summary = args
+    output_path = path_builder.single_summary(summary, FileType.JSON)
+    deploy_json_api_output(summary, output_path)
+
+
+def deploy_timeseries(args):
+    level, path_builder, timeseries = args
+    output_path = path_builder.single_timeseries(timeseries, FileType.JSON)
+    deploy_json_api_output(timeseries, output_path)
+    # TODO(chris): Remove this state specific block and produce timeseries csvs for all
+    # individual regions.
+    # Currently this is slow and adds a decent amount of time to the pipeline (~10 minutes
+    # I think) if ran on all regions.
+    if level in [AggregationLevel.STATE, AggregationLevel.COUNTRY]:
+        output_path = path_builder.single_timeseries(timeseries, FileType.CSV)
+        bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=[timeseries])
+        flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
+        deploy_csv_api_output(
+            flattened_timeseries, output_path, csv_column_ordering.TIMESERIES_ORDER
+        )
+
+
 def deploy_single_level(
     all_timeseries: List[RegionSummaryWithTimeseries],
     level: AggregationLevel,
@@ -205,24 +228,13 @@ def deploy_single_level(
 
     logger.info(f"Deploying {level.value} output to {output_root}")
 
-    for summary in all_summaries:
-        output_path = path_builder.single_summary(summary, FileType.JSON)
-        deploy_json_api_output(summary, output_path)
+    parallel_utils.parallel_map(
+        deploy_summary, [[path_builder, summary] for summary in all_summaries]
+    )
 
-    for timeseries in all_timeseries:
-        output_path = path_builder.single_timeseries(timeseries, FileType.JSON)
-        deploy_json_api_output(timeseries, output_path)
-        # TODO(chris): Remove this state specific block and produce timeseries csvs for all
-        # individual regions.
-        # Currently this is slow and adds a decent amount of time to the pipeline (~10 minutes
-        # I think) if ran on all regions.
-        if level in [AggregationLevel.STATE, AggregationLevel.COUNTRY]:
-            output_path = path_builder.single_timeseries(timeseries, FileType.CSV)
-            bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=[timeseries])
-            flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
-            deploy_csv_api_output(
-                flattened_timeseries, output_path, csv_column_ordering.TIMESERIES_ORDER
-            )
+    parallel_utils.parallel_map(
+        deploy_timeseries, [[level, path_builder, timeseries] for timeseries in all_timeseries]
+    )
 
     deploy_bulk_files(path_builder, all_timeseries, all_summaries)
 
@@ -247,23 +259,38 @@ def deploy_bulk_files(
 
     flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
 
-    output_path = path_builder.bulk_flattened_timeseries_data(FileType.CSV, state=state)
-    deploy_csv_api_output(flattened_timeseries, output_path, csv_column_ordering.TIMESERIES_ORDER)
+    def deploy_bulk_flattened_timeseries():
+        output_path = path_builder.bulk_flattened_timeseries_data(FileType.CSV, state=state)
+        deploy_csv_api_output(
+            flattened_timeseries, output_path, csv_column_ordering.TIMESERIES_ORDER
+        )
 
-    output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON, state=state)
-    deploy_json_api_output(bulk_timeseries, output_path)
+    def deploy_bulk_timeseries():
+        output_path = path_builder.bulk_timeseries(bulk_timeseries, FileType.JSON, state=state)
+        deploy_json_api_output(bulk_timeseries, output_path)
 
-    output_path = path_builder.bulk_summary(bulk_summaries, FileType.JSON, state=state)
-    deploy_json_api_output(bulk_summaries, output_path)
+    def deploy_bulk_summaries():
+        output_path = path_builder.bulk_summary(bulk_summaries, FileType.JSON, state=state)
+        deploy_json_api_output(bulk_summaries, output_path)
 
-    output_path = path_builder.bulk_summary(bulk_summaries, FileType.CSV, state=state)
+    def deploy_bulk_csv_summaries():
+        output_path = path_builder.bulk_summary(bulk_summaries, FileType.CSV, state=state)
 
-    # States were the only summary file to contain all icu headroom details
-    summary_order = csv_column_ordering.SUMMARY_ORDER_NO_HEADROOM_DETAILS
-    if path_builder.level is AggregationLevel.STATE:
-        summary_order = csv_column_ordering.SUMMARY_ORDER
+        # States were the only summary file to contain all icu headroom details
+        summary_order = csv_column_ordering.SUMMARY_ORDER_NO_HEADROOM_DETAILS
+        if path_builder.level is AggregationLevel.STATE:
+            summary_order = csv_column_ordering.SUMMARY_ORDER
 
-    deploy_csv_api_output(bulk_summaries, output_path, summary_order)
+        deploy_csv_api_output(bulk_summaries, output_path, summary_order)
+
+    parallel_utils.parallel_run(
+        [
+            deploy_bulk_flattened_timeseries,
+            deploy_bulk_timeseries,
+            deploy_bulk_summaries,
+            deploy_bulk_csv_summaries,
+        ]
+    )
 
 
 def deploy_json_api_output(region_result: pydantic.BaseModel, output_path: pathlib.Path) -> None:
@@ -329,9 +356,13 @@ def generate_from_loaded_data(
     # Build all region timeseries API Output objects.
     log.info("Generating all API Timeseries")
     all_timeseries = run_on_regions(regional_inputs)
-    deploy_single_level(all_timeseries, AggregationLevel.COUNTY, output)
-    deploy_single_level(all_timeseries, AggregationLevel.STATE, output)
-    deploy_single_level(all_timeseries, AggregationLevel.CBSA, output)
-    deploy_single_level(all_timeseries, AggregationLevel.PLACE, output)
-    deploy_single_level(all_timeseries, AggregationLevel.COUNTRY, output)
+    parallel_utils.parallel_run(
+        [
+            lambda: deploy_single_level(all_timeseries, AggregationLevel.COUNTY, output),
+            lambda: deploy_single_level(all_timeseries, AggregationLevel.STATE, output),
+            lambda: deploy_single_level(all_timeseries, AggregationLevel.CBSA, output),
+            lambda: deploy_single_level(all_timeseries, AggregationLevel.PLACE, output),
+            lambda: deploy_single_level(all_timeseries, AggregationLevel.COUNTRY, output),
+        ]
+    )
     log.info("Finished API generation.")

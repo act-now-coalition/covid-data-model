@@ -3,6 +3,7 @@ import shutil
 import click
 import tempfile
 import io
+import shutil
 
 import zipfile
 import pathlib
@@ -107,4 +108,4 @@ def download_model_artifact(
                     shutil.rmtree(output_path)
 
             _logger.info(f"Extracted {path.name} to  {str(output_dir)}")
-            path.rename(output_dir / path.name)
+            shutil.move(path, output_dir / path.name)

@@ -43,6 +43,20 @@ def parallel_map(func: Callable[[T], R], iterable: Iterable[T]) -> Iterable[R]:
         return map(func, iterable)
 
 
+def parallel_run(funcs: Iterable[Callable]):
+    if USE_MULTIPROCESSING:
+        procs = []
+        for func in funcs:
+            p = multiprocessing.Process(target=func)
+            p.start()
+            procs.append(p)
+        for p in procs:
+            p.join()
+    else:
+        for func in funcs:
+            func()
+
+
 def pandas_parallel_apply(
     func: Callable[[T], R], series_or_dataframe: SeriesOrDataFrame
 ) -> SeriesOrDataFrame:
