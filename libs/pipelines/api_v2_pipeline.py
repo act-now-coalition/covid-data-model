@@ -317,6 +317,7 @@ def generate_from_loaded_data(
     log.info("Running test positivity.")
     regions_data = test_positivity.run_and_maybe_join_columns(selected_dataset, log)
 
+    log.info("Running vaccine backfills.")
     regions_data = vaccine_backfills.derive_vaccine_pct(regions_data)
 
     log.info(f"Joining inputs by region.")
