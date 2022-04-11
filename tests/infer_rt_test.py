@@ -118,6 +118,7 @@ def test_constant_cases_high_count(tmp_path):
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="OOM")
 def test_med_scale_strong_growth_and_decay(tmp_path):
     """Track cases growing strongly and then decaying strongly"""
     (rt1, rt2, t_switch, rt) = run_individual(
@@ -137,6 +138,7 @@ def test_med_scale_strong_growth_and_decay(tmp_path):
 
 @pytest.mark.skip(reason="From Alex: Test is failing rt = .84 instead of rt1")
 @pytest.mark.slow
+@pytest.mark.skip(reason="OOM")
 def test_low_cases_weak_growth(tmp_path):
     """Track with low scale (count = 5) and slow growth"""
     (rt1, rt2, t_switch, rt) = run_individual(
@@ -155,6 +157,7 @@ def test_low_cases_weak_growth(tmp_path):
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="OOM")
 def test_high_scale_late_growth(tmp_path):
     """Track decaying from high initial count to low number then strong growth"""
     (rt1, rt2, t_switch, rt) = run_individual(
@@ -173,6 +176,7 @@ def test_high_scale_late_growth(tmp_path):
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="OOM")
 def test_low_scale_two_decays(tmp_path):
     """Track low scale decay at two different rates"""
     (rt1, rt2, t_switch, rt) = run_individual(
@@ -191,6 +195,7 @@ def test_low_scale_two_decays(tmp_path):
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="OOM")
 def test_smoothing_and_causality(tmp_path):
     run_individual(
         "56",  # Wyoming
@@ -207,6 +212,7 @@ def test_smoothing_and_causality(tmp_path):
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="OOM")
 def test_generate_infection_rate_metric_one_empty():
     fips = [
         "51091",  # Highland County VA Almost No Cases. Will be filtered out under any thresholds.
