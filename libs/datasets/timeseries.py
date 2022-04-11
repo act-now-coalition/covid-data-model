@@ -960,7 +960,7 @@ class MultiRegionDataset:
 
     @staticmethod
     def from_wide_dates_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
-        wide_dates_df = pd.read_csv(path_or_buf, low_memory=True)
+        wide_dates_df = pd.read_csv(path_or_buf, low_memory=False)
         bucketed = PdFields.DEMOGRAPHIC_BUCKET in wide_dates_df.columns
         if bucketed:
             wide_dates_df = wide_dates_df.set_index(
