@@ -24,7 +24,7 @@ def test_pyseir_end_to_end_california(tmp_path):
         region = Region.from_fips(fips)
 
         # prepare data
-        one_region_input = combined_datasets.load_us_timeseries_dataset(region=(region,))
+        one_region_input = combined_datasets.load_us_timeseries_dataset(regions=(region,))
         region_pipelines = [OneRegionPipeline.run(one_region_input)]
         region_pipelines = _patch_nola_infection_rate_in_pipelines(region_pipelines)
 
