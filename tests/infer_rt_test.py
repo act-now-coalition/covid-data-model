@@ -101,6 +101,7 @@ def check_standard_assertions(rt1, rt2, t_switch, rt):
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="OOM")
 def test_constant_cases_high_count(tmp_path):
     """Track constant cases (R=1) at low count"""
     data_spec = load_data.DataSpec(
