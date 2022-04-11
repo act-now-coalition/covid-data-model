@@ -19,25 +19,12 @@ from tests import test_helpers
 from tests.dataset_utils_test import read_csv_and_index_fips_date
 import pytest
 
-# Tests to make sure that combined datasets are building data with unique indexes
-# If this test is failing, it means that there is one of the data sources that
-# is returning multiple values for a single row.
-@pytest.mark.slow
-@pytest.mark.skip(reason="Github action runner runs OOM when loading full dataset")
-def test_unique_index_values_us_timeseries():
-    us_dataset = combined_datasets.load_us_timeseries_dataset()
-    us_df = us_dataset.timeseries.reset_index()
-    duplicates = us_df.duplicated([CommonFields.LOCATION_ID, CommonFields.DATE], keep=False)
-    assert not duplicates.any(), us_df.loc[duplicates, :]
-
 
 # Check some counties picked arbitrarily: San Francisco/06075 and Houston (Harris County, TX)/48201
 @pytest.mark.slow
 @pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_combined_county_has_some_data(fips):
-    region_data = combined_datasets.load_us_timeseries_dataset().get_one_region(
-        Region.from_fips(fips)
-    )
+    region_data = combined_datasets.load_us_timeseries_dataset((Region.from_fips(fips),))
     assert region_data.data[CommonFields.POSITIVE_TESTS].all()
     assert region_data.data[CommonFields.NEGATIVE_TESTS].all()
     assert region_data.latest[CommonFields.DEATHS] > 1

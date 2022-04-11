@@ -9,7 +9,7 @@ import json
 import structlog
 
 import click
-from datapublic.common_fields import CommonFields
+from datapublic.common_fields import CommonFields, PdFields
 from datapublic.common_fields import FieldName
 
 from libs import google_sheet_helpers
@@ -228,6 +228,15 @@ def update(
         )
         if print_stats:
             multiregion_dataset.print_stats("aggregate_to_country")
+
+    # Tests to make sure that the combined dataset is building data with unique indexes.
+    # If this assertion is failing, it means that there is one of the data sources that
+    # is returning multiple values for a single row.
+    us_df = multiregion_dataset.timeseries_bucketed.reset_index()
+    duplicates = us_df.duplicated(
+        [CommonFields.LOCATION_ID, CommonFields.DATE, PdFields.DEMOGRAPHIC_BUCKET], keep=False
+    )
+    assert not duplicates.any(), us_df.loc[duplicates, :]
 
     combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
     if print_stats:
