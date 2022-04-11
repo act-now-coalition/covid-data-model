@@ -9,6 +9,7 @@ from api.can_api_v2_definition import (
     AggregateRegionSummaryWithTimeseries,
     Annotations,
     CdcTransmissionLevelTimeseriesRow,
+    CommunityLevelsTimeseriesRow,
     FieldAnnotations,
     AggregateFlattenedTimeseries,
     DemographicDistributions,
@@ -30,6 +31,8 @@ from api.can_api_v2_definition import FieldSourceType
 from libs.datasets import timeseries
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
+
+from libs.metrics.community_levels import CommunityLevel
 
 
 METRIC_SOURCES_NOT_FOUND_MESSAGE = "Unable to find provenance in FieldSourceType enum"
@@ -127,6 +130,7 @@ def build_region_summary(
     latest_metrics: Optional[Metrics],
     risk_levels: RiskLevels,
     cdc_transmission_level: CDCTransmissionLevel,
+    community_levels: CommunityLevel,
     log,
 ) -> RegionSummary:
     latest_values = one_region.latest
@@ -154,6 +158,7 @@ def build_region_summary(
         metrics=latest_metrics,
         riskLevels=risk_levels,
         cdcTransmissionLevel=cdc_transmission_level,
+        communityLevels=community_levels,
         lastUpdatedDate=datetime.utcnow(),
         locationId=region.location_id,
         url=latest_values.get(CommonFields.CAN_LOCATION_PAGE_URL),
@@ -289,6 +294,7 @@ def build_region_timeseries(
     metrics_timeseries: pd.DataFrame,
     risk_level_timeseries: pd.DataFrame,
     cdc_transmission_level_timeseries: pd.DataFrame,
+    community_levels_timeseries: pd.DataFrame,
 ) -> RegionSummaryWithTimeseries:
     actuals_timeseries = []
 
@@ -326,13 +332,21 @@ def build_region_timeseries(
         CdcTransmissionLevelTimeseriesRow(**row)
         for row in cdc_transmission_level_timeseries.to_dict(orient="records")
     ]
+    community_levels_timeseries = community_levels_timeseries.where(
+        pd.notna(community_levels_timeseries), None
+    )
+    community_levels_rows = [
+        CommunityLevelsTimeseriesRow(**row)
+        for row in community_levels_timeseries.to_dict(orient="records")
+    ]
     region_summary_data = {key: getattr(region_summary, key) for (key, _) in region_summary}
     return RegionSummaryWithTimeseries(
         **region_summary_data,
         actualsTimeseries=actuals_timeseries,
         metricsTimeseries=metrics_rows,
         riskLevelsTimeseries=risk_level_rows,
-        cdcTransmissionLevelTimeseries=cdc_transmission_level_rows
+        cdcTransmissionLevelTimeseries=cdc_transmission_level_rows,
+        communityLevelsTimeseries=community_levels_rows
     )
 
 
@@ -362,6 +376,9 @@ def build_bulk_flattened_timeseries(
         cdc_transmission_levels_by_date = {
             row.date: row for row in region_timeseries.cdcTransmissionLevelTimeseries
         }
+        community_levels_by_date = {
+            row.date: row for row in region_timeseries.communityLevelsTimeseries
+        }
         dates = sorted({*metrics_by_date.keys(), *actuals_by_date.keys()})
         for date in dates:
             data = {
@@ -372,6 +389,7 @@ def build_bulk_flattened_timeseries(
                 "cdcTransmissionLevel": cdc_transmission_levels_by_date.get(
                     date
                 ).cdcTransmissionLevel,
+                "communityLevels": community_levels_by_date.get(date),
             }
             data.update(summary_data)
             row = RegionTimeseriesRowWithHeader(**data)

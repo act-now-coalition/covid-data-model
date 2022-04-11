@@ -31,6 +31,7 @@ def test_generate_from_loaded_data_country(tmpdir):
             CommonFields.STAFFED_BEDS: [100, 200, 300],
             CommonFields.CURRENT_HOSPITALIZED: [50, 100, 150],
             CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [10, 20, 30],
+            CommonFields.CDC_COMMUNITY_LEVEL: [0, 1, 2],
         },
         static={
             CommonFields.POPULATION: 1000,

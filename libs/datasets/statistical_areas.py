@@ -138,17 +138,15 @@ class CountyToHSAAggregator:
         # Only aggregate county-level data for specified fields
         counties = dataset_in.get_subset(aggregation_level=AggregationLevel.COUNTY)
         columns_to_aggregate = [
-            col for col in counties.timeseries.columns if col in fields_to_aggregate.keys()
+            col for col in counties.timeseries_bucketed.columns if col in fields_to_aggregate.keys()
         ]
-        counties_ts: pd.DataFrame = counties.timeseries.loc[:, columns_to_aggregate]
-        counties_selected_ds = dataclasses.replace(
-            counties, timeseries=counties_ts, timeseries_bucketed=None
-        )
+        counties_ts: pd.DataFrame = counties.timeseries_bucketed.loc[:, columns_to_aggregate]
+        counties_selected_ds = dataclasses.replace(counties, timeseries_bucketed=counties_ts)
 
         # No special aggregations are needed because all fields track beds or people.
         hsa_ts: pd.DataFrame = region_aggregation.aggregate_regions(
             counties_selected_ds, self.county_to_hsa_region_map, aggregations=[],
-        ).timeseries
+        ).timeseries_bucketed
 
         # Map counties back onto HSAs.
         hsa_to_counties_location_id_map = {
@@ -171,7 +169,7 @@ class CountyToHSAAggregator:
         aggregated_ts = aggregated_ts.set_index(CommonFields.LOCATION_ID, append=True).sort_index()
         aggregated_ts = aggregated_ts.rename(columns=fields_to_aggregate)
 
-        assert not set(aggregated_ts.columns) & set(dataset_in.timeseries.columns)
-        out_ts = dataset_in.timeseries.combine_first(aggregated_ts)
-        out_ds = dataclasses.replace(dataset_in, timeseries=out_ts, timeseries_bucketed=None)
+        assert not set(aggregated_ts.columns) & set(dataset_in.timeseries_bucketed.columns)
+        out_ts = dataset_in.timeseries_bucketed.combine_first(aggregated_ts)
+        out_ds = dataclasses.replace(dataset_in, timeseries_bucketed=out_ts)
         return out_ds

@@ -5,7 +5,7 @@ import structlog
 from datapublic.common_fields import DemographicBucket
 from datapublic.common_fields import CommonFields
 
-from api.can_api_v2_definition import Actuals
+from api.can_api_v2_definition import Actuals, CommunityLevels
 from api.can_api_v2_definition import FieldAnnotations
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
@@ -14,7 +14,7 @@ from api.can_api_v2_definition import RiskLevels
 from api.can_api_v2_definition import CDCTransmissionLevel
 from api.can_api_v2_definition import DemographicDistributions
 from api.can_api_v2_definition import Metrics
-from libs.metrics import top_level_metric_risk_levels
+from libs.metrics import community_levels, top_level_metric_risk_levels
 from libs.metrics import cdc_transmission_levels
 from libs import build_api_v2
 from libs.pipelines import api_v2_pipeline
@@ -53,9 +53,20 @@ def test_build_summary_for_fips(
     transmission_level = cdc_transmission_levels.calculate_transmission_level_from_metrics(
         latest_metric
     )
+    (
+        community_levels_timeseries,
+        community_levels_latest,
+    ) = community_levels.calculate_community_level_timeseries_and_latest(
+        fips_timeseries, metrics_series
+    )
     assert latest_metric
     summary = build_api_v2.build_region_summary(
-        fips_timeseries, latest_metric, risk_levels, transmission_level, log
+        fips_timeseries,
+        latest_metric,
+        risk_levels,
+        transmission_level,
+        community_levels_latest,
+        log,
     )
     field_source_hhshospital = FieldSource(
         name="Department of Health and Human Services",
@@ -83,6 +94,7 @@ def test_build_summary_for_fips(
         metrics=latest_metric,
         riskLevels=risk_levels,
         cdcTransmissionLevel=transmission_level,
+        communityLevels=community_levels_latest,
         actuals=Actuals(
             cases=nyc_latest["cases"],
             deaths=nyc_latest["deaths"],
@@ -196,9 +208,15 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset):
     transmission_level_timeseries = cdc_transmission_levels.calculate_transmission_level_timeseries(
         metrics_series
     )
+    (
+        community_levels_timeseries,
+        community_levels_latest,
+    ) = community_levels.calculate_community_level_timeseries_and_latest(
+        nyc_timeseries, metrics_series
+    )
 
     region_summary = build_api_v2.build_region_summary(
-        nyc_timeseries, latest_metric, risk_levels, transmission_level, log
+        nyc_timeseries, latest_metric, risk_levels, transmission_level, community_levels_latest, log
     )
     region_timeseries = build_api_v2.build_region_timeseries(
         region_summary,
@@ -206,6 +224,7 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset):
         metrics_series,
         risk_timeseries,
         transmission_level_timeseries,
+        community_levels_timeseries,
     )
 
     # Test vaccination fields aren't in before start date
@@ -225,7 +244,7 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset):
             assert "vaccinationsInitiatedRatio" in row_data
 
     summary = build_api_v2.build_region_summary(
-        nyc_timeseries, latest_metric, risk_levels, transmission_level, log
+        nyc_timeseries, latest_metric, risk_levels, transmission_level, community_levels_latest, log
     )
 
     assert summary.dict() == region_timeseries.region_summary.dict()
@@ -265,8 +284,14 @@ def test_multiple_distributions():
     )
 
     one_region = ds2.get_one_region(region_ca)
+    community_levels = CommunityLevels(cdcCommunityLevel=None, canCommunityLevel=None)
     summary = build_api_v2.build_region_summary(
-        one_region, Metrics.empty(), RiskLevels.empty(), CDCTransmissionLevel.UNKNOWN, log
+        one_region,
+        Metrics.empty(),
+        RiskLevels.empty(),
+        CDCTransmissionLevel.UNKNOWN,
+        community_levels,
+        log,
     )
     expected_demographics = DemographicDistributions(age={"30-39": 4})
     assert summary.actuals.vaccinesAdministeredDemographics == expected_demographics

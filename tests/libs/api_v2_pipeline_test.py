@@ -164,6 +164,7 @@ def test_annotation(rt_dataset):
             CommonFields.STAFFED_BEDS: [10, 10, 10],
             CommonFields.CURRENT_HOSPITALIZED: [1, 1, 1],
             CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [2, 2, 2],
+            CommonFields.CDC_COMMUNITY_LEVEL: [0, 1, 2],
         },
         region=region,
         static={
@@ -249,6 +250,7 @@ def test_source(rt_dataset):
             CommonFields.STAFFED_BEDS: [10, 10, 10],
             CommonFields.CURRENT_HOSPITALIZED: [1, 1, 1],
             CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID: [2, 2, 2],
+            CommonFields.CDC_COMMUNITY_LEVEL: [0, 1, 2],
         },
         region=region,
         static={
@@ -304,7 +306,7 @@ def test_annotation_all_fields_copied(rt_dataset):
     fields_excluded = {*TIMESERIES_INDEX_FIELDS, *GEO_DATA_COLUMNS, CommonFields.LOCATION_ID}
     ds = test_helpers.build_default_region_dataset(
         {
-            field: TimeseriesLiteral([100, 200, 300], provenance="NYTimes")
+            field: TimeseriesLiteral([0, 1, 2], provenance="NYTimes")
             for field in CommonFields
             if field not in fields_excluded
         },

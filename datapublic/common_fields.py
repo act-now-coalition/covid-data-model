@@ -160,8 +160,16 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     ICU_BEDS_HSA = "icu_beds_hsa", FieldGroup.HEALTHCARE_CAPACITY
     CURRENT_ICU_HSA = "current_icu_hsa", FieldGroup.HEALTHCARE_CAPACITY
     CURRENT_ICU_TOTAL_HSA = "current_icu_total_hsa", FieldGroup.HEALTHCARE_CAPACITY
+    BEDS_WITH_COVID_PATIENTS_RATIO_HSA = (
+        "beds_with_covid_patients_ratio_hsa",
+        FieldGroup.HEALTHCARE_CAPACITY,
+    )
     WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA = (
         "weekly_new_hospital_admissions_covid_hsa",
+        FieldGroup.HEALTHCARE_CAPACITY,
+    )
+    WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA = (
+        "weekly_new_hospital_admissions_covid_per_100k_hsa",
         FieldGroup.HEALTHCARE_CAPACITY,
     )
 

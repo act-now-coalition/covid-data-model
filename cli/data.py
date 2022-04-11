@@ -109,6 +109,7 @@ def update(
         static_field_datasets = load_datasets_by_field(
             ALL_FIELDS_FEATURE_DEFINITION, state=state, fips=fips
         )
+        _logger.info("Read datasets")
 
         multiregion_dataset = timeseries.combined_datasets(
             timeseries_field_datasets, static_field_datasets
@@ -388,9 +389,15 @@ def update_test_combined_data(truncate_dates: bool, state: List[str]):
     if truncate_dates:
         dates = test_subset.timeseries_bucketed.index.get_level_values(CommonFields.DATE)
         date_range_mask = (dates >= "2021-01-01") & (dates < "2021-04-01")
-        test_subset = dataclasses.replace(
-            test_subset, timeseries_bucketed=test_subset.timeseries_bucketed.loc[date_range_mask]
-        )
+        new_timeseries_bucketed = test_subset.timeseries_bucketed.loc[date_range_mask]
+
+        # HACK: CDC_COMMUNITY_LEVEL data was added much after 2021-04-01, so the column will be all NaNs. Instead set to
+        # 0 (LOW) so that the column doesn't end up getting dropped.
+        buckets = new_timeseries_bucketed.index.get_level_values("demographic_bucket")
+        new_timeseries_bucketed.loc[buckets == "all", CommonFields.CDC_COMMUNITY_LEVEL] = 0
+
+        test_subset = dataclasses.replace(test_subset, timeseries_bucketed=new_timeseries_bucketed)
+
     test_subset.write_to_wide_dates_csv(
         dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH, dataset_utils.TEST_COMBINED_STATIC_CSV_PATH
     )

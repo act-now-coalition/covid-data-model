@@ -35,7 +35,7 @@ def patch_maryland_missing_case_data(
     # Need to convert timestamp to strings to match the index dtype.
     dates_to_replace = [str(date.date()) for date in dates_to_replace]
 
-    modified_ts = location_ds.timeseries
+    modified_ts = location_ds.timeseries_bucketed
     missing_dates_index = modified_ts.index.get_level_values("date").isin(dates_to_replace)
 
     # backfill the data within the date range and paste this data into the series.
@@ -46,5 +46,5 @@ def patch_maryland_missing_case_data(
     )
     modified_ts.loc[missing_dates_index, CommonFields.NEW_CASES] = backfilled_data
 
-    subset_ds = dataclasses.replace(location_ds, timeseries=modified_ts, timeseries_bucketed=None)
+    subset_ds = dataclasses.replace(location_ds, timeseries_bucketed=modified_ts)
     return other.append_regions(subset_ds)
