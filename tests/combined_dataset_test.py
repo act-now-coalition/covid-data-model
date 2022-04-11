@@ -25,7 +25,7 @@ import pytest
 @pytest.mark.slow
 # @pytest.mark.skip(reason="Github action runner runs OOM when loading full dataset")
 def test_unique_index_values_us_timeseries():
-    us_dataset = combined_datasets.load_us_timeseries_dataset()
+    us_dataset = combined_datasets.load_us_timeseries_dataset(low_memory=True)
     us_df = us_dataset.timeseries.reset_index()
     duplicates = us_df.duplicated([CommonFields.LOCATION_ID, CommonFields.DATE], keep=False)
     assert not duplicates.any(), us_df.loc[duplicates, :]
@@ -49,7 +49,7 @@ def test_combined_county_has_some_data(fips):
 # @pytest.mark.skip(reason="Github action runner runs OOM when loading full dataset")
 def test_combined_county_has_some_timeseries_data(fips):
     region = Region.from_fips(fips)
-    latest = combined_datasets.load_us_timeseries_dataset().get_one_region(region)
+    latest = combined_datasets.load_us_timeseries_dataset(low_memory=True).get_one_region(region)
     date = "2020-09-04"  # Arbitrary date when both regions have data
     df = latest.data.set_index(CommonFields.DATE)
     one_date = df.loc[date]

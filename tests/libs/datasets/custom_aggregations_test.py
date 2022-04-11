@@ -15,7 +15,7 @@ from tests import test_helpers
 @pytest.mark.slow
 # @pytest.mark.skip(reason="Github action runner runs OOM when loading full dataset")
 def test_aggregate_to_new_york_city(nyc_region):
-    dataset_in = combined_datasets.load_us_timeseries_dataset().get_regions_subset(
+    dataset_in = combined_datasets.load_us_timeseries_dataset(low_memory=True).get_regions_subset(
         custom_aggregations.ALL_NYC_REGIONS
     )
     dataset_out = custom_aggregations.aggregate_to_new_york_city(dataset_in)
@@ -28,7 +28,7 @@ def test_replace_dc_county(nyc_region):
     dc_state_region = pipeline.Region.from_fips("11")
     dc_county_region = pipeline.Region.from_fips("11001")
 
-    dataset = combined_datasets.load_us_timeseries_dataset().get_regions_subset(
+    dataset = combined_datasets.load_us_timeseries_dataset(low_memory=True).get_regions_subset(
         [nyc_region, dc_state_region, dc_county_region]
     )
     # TODO(tom): Find some way to have this test read data that hasn't already gone

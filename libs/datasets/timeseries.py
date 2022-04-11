@@ -959,8 +959,10 @@ class MultiRegionDataset:
         return dataset
 
     @staticmethod
-    def from_wide_dates_csv(path_or_buf: Union[pathlib.Path, TextIO]) -> "MultiRegionDataset":
-        wide_dates_df = pd.read_csv(path_or_buf, low_memory=False)
+    def from_wide_dates_csv(
+        path_or_buf: Union[pathlib.Path, TextIO], low_memory=False
+    ) -> "MultiRegionDataset":
+        wide_dates_df = pd.read_csv(path_or_buf, low_memory=low_memory)
         bucketed = PdFields.DEMOGRAPHIC_BUCKET in wide_dates_df.columns
         if bucketed:
             wide_dates_df = wide_dates_df.set_index(
@@ -1004,10 +1006,12 @@ class MultiRegionDataset:
         return self.add_static_values(static_df)
 
     @staticmethod
-    def read_from_pointer(pointer: dataset_pointer.DatasetPointer) -> "MultiRegionDataset":
+    def read_from_pointer(
+        pointer: dataset_pointer.DatasetPointer, low_memory=False
+    ) -> "MultiRegionDataset":
         # TODO(tom): Deprecate use of DatasetPointer and remove this method
         return MultiRegionDataset.from_wide_dates_csv(
-            pointer.path_wide_dates()
+            pointer.path_wide_dates(), low_memory=low_memory
         ).add_static_csv_file(pointer.path_static())
 
     @staticmethod
