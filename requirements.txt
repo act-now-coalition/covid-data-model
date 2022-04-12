@@ -40,7 +40,7 @@ dictdiffer==0.8.1
 structlog==20.1.0
 structlog-sentry==1.2.2
 more_itertools==8.3.0
-typing-extensions==3.7.4.3
+typing-extensions==4.1.1
 xlrd==1.2.0  # For panda's read_excel method
 compress_pickle==2.0.1
 
