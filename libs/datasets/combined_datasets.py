@@ -347,13 +347,13 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 
 @functools.lru_cache(None)
 def load_us_timeseries_dataset(
-    pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY,
+    pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY, load_demographics: bool = True
 ) -> MultiRegionDataset:
     """Returns all combined data. `load_test_dataset` is more suitable for tests."""
     filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    return MultiRegionDataset.read_from_pointer(pointer)
+    return MultiRegionDataset.read_from_pointer(pointer, load_demographics=load_demographics)
 
 
 def get_county_name(region: Region) -> Optional[str]:
@@ -402,8 +402,8 @@ class RegionalData:
 
     @staticmethod
     @functools.lru_cache(maxsize=None)
-    def from_region(region: Region) -> "RegionalData":
-        us_timeseries = load_us_timeseries_dataset()
+    def from_region(region: Region, load_demographics: bool = True) -> "RegionalData":
+        us_timeseries = load_us_timeseries_dataset(load_demographics=load_demographics)
         region_timeseries = us_timeseries.get_one_region(region)
         return RegionalData(region=region, timeseries=region_timeseries)
 

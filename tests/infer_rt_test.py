@@ -50,7 +50,7 @@ def run_individual(
     # TODO fails below if deaths not present even if not using
     data_generator = load_data.DataGenerator(spec)
     cases = load_data.create_synthetic_cases(data_generator)
-    regional_input = infer_rt.RegionalInput.from_fips(fips)
+    regional_input = infer_rt.RegionalInput.from_fips(fips, load_demographics=False)
 
     # Now apply smoothing and filtering
     collector = {}
@@ -212,7 +212,9 @@ def test_generate_infection_rate_metric_one_empty():
         "51153",  # Prince William VA Lots of Cases
     ]
     regions = [pipeline.Region.from_fips(f) for f in fips]
-    inputs = [infer_rt.RegionalInput.from_region(region) for region in regions]
+    inputs = [
+        infer_rt.RegionalInput.from_region(region, load_demographics=False) for region in regions
+    ]
 
     df = pd.concat(infer_rt.run_rt(input) for input in inputs)
     returned_location_ids = df[CommonFields.LOCATION_ID].unique()
@@ -224,7 +226,9 @@ def test_generate_infection_rate_metric_one_empty():
 def test_generate_infection_rate_metric_two_aggregate_levels():
     fips = ["06", "06075"]  # CA  # San Francisco, CA
     regions = [pipeline.Region.from_fips(f) for f in fips]
-    inputs = [infer_rt.RegionalInput.from_region(region) for region in regions]
+    inputs = [
+        infer_rt.RegionalInput.from_region(region, load_demographics=False) for region in regions
+    ]
 
     df = pd.concat(infer_rt.run_rt(input) for input in inputs)
     returned_location_ids = df[CommonFields.LOCATION_ID].unique()
@@ -236,7 +240,9 @@ def test_generate_infection_rate_metric_two_aggregate_levels():
 def test_generate_infection_rate_new_orleans_patch():
     fips = ["22", "22051", "22071"]  # LA, Jefferson and Orleans
     regions = [pipeline.Region.from_fips(f) for f in fips]
-    inputs = [infer_rt.RegionalInput.from_region(region) for region in regions]
+    inputs = [
+        infer_rt.RegionalInput.from_region(region, load_demographics=False) for region in regions
+    ]
 
     df = pd.concat(infer_rt.run_rt(input) for input in inputs)
     assert not df[CommonFields.DATE].isna().any()
@@ -250,14 +256,14 @@ def test_generate_infection_rate_new_orleans_patch():
 def test_generate_infection_rate_metric_fake_fips(fips):
     with pytest.raises(timeseries.RegionLatestNotFound):
         # timeseries and latest not found in combined data causes an exception to be raised.
-        infer_rt.RegionalInput.from_fips(fips)
+        infer_rt.RegionalInput.from_fips(fips, load_demographics=False)
 
 
 @pytest.mark.slow
 def test_generate_infection_rate_with_nans():
     # Check that MA counties are still working
     region = pipeline.Region.from_fips("25001")
-    input = infer_rt.RegionalInput.from_region(region)
+    input = infer_rt.RegionalInput.from_region(region, load_demographics=False)
     df = infer_rt.run_rt(input)
     returned_location_ids = df[CommonFields.LOCATION_ID].unique()
     assert {region.location_id} == set(returned_location_ids)
@@ -273,7 +279,9 @@ def test_patch_substatepipeline_nola_infection_rate():
     pipelines = []
     for fips in nola_fips:
         region = pipeline.Region.from_fips(fips)
-        infection_rate_df = infer_rt.run_rt(infer_rt.RegionalInput.from_region(region))
+        infection_rate_df = infer_rt.run_rt(
+            infer_rt.RegionalInput.from_region(region, load_demographics=False)
+        )
         pipelines.append(
             pyseir.run.OneRegionPipeline(
                 region=region,
