@@ -1,7 +1,7 @@
 boto3==1.15.6
 scipy==1.8.0
 numba==0.55.1
-astroid==2.4.1
+astroid==2.11.2
 chardet==3.0.4
 cycler==0.10.0
 idna==2.9
