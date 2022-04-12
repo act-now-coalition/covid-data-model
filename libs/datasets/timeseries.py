@@ -964,10 +964,13 @@ class MultiRegionDataset:
         path_or_buf: Union[pathlib.Path, TextIO], load_demographics=True
     ) -> "MultiRegionDataset":
         if not load_demographics:
-            chunks = []
-            for chunk in pd.read_csv(path_or_buf, chunksize=1000):
-                chunks.append(chunk.loc[chunk[PdFields.DEMOGRAPHIC_BUCKET] == "all"])
-            wide_dates_df = pd.concat(chunks)
+            wide_dates_iterable = pd.read_csv(path_or_buf, iterator=True, chunksize=1000)
+            wide_dates_df = pd.concat(
+                [
+                    chunk.loc[chunk[PdFields.DEMOGRAPHIC_BUCKET] == "all"]
+                    for chunk in wide_dates_iterable
+                ]
+            )
         else:
             wide_dates_df = pd.read_csv(path_or_buf, low_memory=False)
         bucketed = PdFields.DEMOGRAPHIC_BUCKET in wide_dates_df.columns
