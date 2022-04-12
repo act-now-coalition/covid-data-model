@@ -37,7 +37,7 @@ def test_pyseir_end_to_end_california(tmp_path):
 
 @pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
 @pytest.mark.slow
-# @pytest.mark.skip(reason="Github action runner runs OOM when loading full dataset")
+@pytest.mark.skip(reason="Github action runner runs OOM when loading full dataset")
 def test_pyseir_end_to_end_dc(tmp_path):
     # Runs over a single state which tests state filtering + running over more than
     # a single fips.
