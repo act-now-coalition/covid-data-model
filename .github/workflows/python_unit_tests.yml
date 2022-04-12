@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7]
+        python-version: [3.9]
     steps:
     - name: Checkout covid-data-model
       uses: actions/checkout@v2
@@ -36,4 +36,4 @@ jobs:
       env:
         PYSEIR_FAST_AND_DIRTY: 'True'
       run: |
-        make test
+        make test-fast
