@@ -38,14 +38,14 @@ def test_combined_county_has_some_data(fips):
     region_data = combined_datasets.load_us_timeseries_dataset(
         load_demographics=False
     ).get_one_region(region)
-    # assert region_data.data[CommonFields.POSITIVE_TESTS].all()
-    # assert region_data.data[CommonFields.NEGATIVE_TESTS].all()
+    assert region_data.data[CommonFields.POSITIVE_TESTS].all()
+    assert region_data.data[CommonFields.NEGATIVE_TESTS].all()
     assert region_data.latest[CommonFields.DEATHS] > 1
 
 
 # Check some counties picked arbitrarily: (Orange County, CA)/06059 and (Harris County, TX)/48201
 @pytest.mark.slow
-@pytest.mark.parametrize("fips", ("06059", "48201"))
+@pytest.mark.parametrize("fips", ["06059", "48201"])
 def test_combined_county_has_some_timeseries_data(fips):
     region = Region.from_fips(fips)
     latest = combined_datasets.load_us_timeseries_dataset(load_demographics=False).get_one_region(
