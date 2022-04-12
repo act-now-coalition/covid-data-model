@@ -13,7 +13,6 @@ from tests import test_helpers
 
 
 @pytest.mark.slow
-# @pytest.mark.skip(reason="Github action runner runs OOM when loading full dataset")
 def test_aggregate_to_new_york_city(nyc_region):
     dataset_in = combined_datasets.load_us_timeseries_dataset(
         load_demographics=False
@@ -23,7 +22,6 @@ def test_aggregate_to_new_york_city(nyc_region):
 
 
 @pytest.mark.slow
-# @pytest.mark.skip(reason="Github action runner runs OOM when loading full dataset")
 def test_replace_dc_county(nyc_region):
     dc_state_region = pipeline.Region.from_fips("11")
     dc_county_region = pipeline.Region.from_fips("11001")
