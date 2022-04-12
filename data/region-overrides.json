@@ -828,6 +828,15 @@
       "end_date": "2022-04-07",
       "context": "Hidalgo TX suspected abcklog",
       "region": "48215"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-04-11",
+      "end_date": "2022-04-11",
+      "region": "KY",
+      "context": "Suspected backlog in KS state case data"
     }
   ]
 }
