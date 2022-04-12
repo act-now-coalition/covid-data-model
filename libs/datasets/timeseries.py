@@ -965,7 +965,7 @@ class MultiRegionDataset:
     ) -> "MultiRegionDataset":
         if not load_demographics:
             chunks = []
-            for chunk in pd.read_csv(path_or_buf, iterator=True, chunksize=1000):
+            for chunk in pd.read_csv(path_or_buf, chunksize=1000):
                 chunks.append(chunk.loc[chunk[PdFields.DEMOGRAPHIC_BUCKET] == "all"])
             wide_dates_df = pd.concat(chunks)
         else:
