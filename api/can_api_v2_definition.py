@@ -568,7 +568,7 @@ class CommunityLevels(base_model.APIBaseModel):
 
     See https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html
     for details about how the Community Level is calculated and should be
-    interpretted.
+    interpreted.
 
     Note that we provide two versions of the Community Level. One is called
     canCommunityLevel which is calculated using CAN's data sources and is
@@ -595,7 +595,7 @@ class CommunityLevels(base_model.APIBaseModel):
 
     See https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html
     for details about how the Community Level is calculated and should be
-    interpretted.
+    interpreted.
 
     Note that we provide two versions of the Community Level. One is called
     canCommunityLevel which is calculated using CAN's data sources and is

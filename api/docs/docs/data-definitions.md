@@ -45,6 +45,14 @@ Processing steps:
 * CSV column names: ``metrics.caseDensity``
 * JSON file fields: ``metrics.caseDensity``, ``metricsTimeseries.*.caseDensity``
 
+### Weekly New Cases Per 100k Population
+
+  The number of new cases per 100k population over the last week.
+
+**Where to access**  
+* CSV column names: ``metrics.weeklyNewCasesPer100k``
+* JSON file fields: ``metrics.weeklyNewCasesPer100k``, ``metricsTimeseries.*.weeklyNewCasesPer100k``
+
 ### Infection Rate
 
   R_t, or the estimated number of infections arising from a typical case.
@@ -136,6 +144,21 @@ Fields:
 * CSV column names: ``metrics.icuCapacityRatio``
 * JSON file fields: ``metrics.icuCapacityRatio``, ``metricsTimeseries.*.icuCapacityRatio``
 
+### Beds With Covid Patients Ratio
+
+Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using health service area data for the corresponding area.
+
+**Where to access**  
+* CSV column names: ``metrics.bedsWithCovidPatientsRatio``
+* JSON file fields: ``metrics.bedsWithCovidPatientsRatio``, ``metricsTimeseries.*.bedsWithCovidPatientsRatio``
+
+### Weekly Covid Admissions Per 100k Population
+
+Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using health service area data for the corresponding area.
+
+**Where to access**  
+* CSV column names: ``metrics.weeklyCovidAdmissionsPer100k``
+* JSON file fields: ``metrics.weeklyCovidAdmissionsPer100k``, ``metricsTimeseries.*.weeklyCovidAdmissionsPer100k``
 
 
 ## Vaccinations
@@ -237,4 +260,42 @@ number of people vaccinated with both the first and second dose.
 * JSON file fields: ``actuals.deaths``, ``actualsTimeseries.*.deaths``
 
 
+## Community Levels
 
+  Community level for region.
+
+  See https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html
+  for details about how the Community Level is calculated and should be
+  interpreted.
+
+  The values correspond to the following levels:
+
+  | API value  | Community Level |
+  | ---------- | --------------- |
+  | 0 | Low |
+  | 1 | Medium |
+  | 2 | High |
+
+  Note that we provide two versions of the Community Level. One is called
+  `canCommunityLevel` which is calculated using CAN's data sources and is
+  available for states, counties, and metros. It is updated daily though
+  depends on hospital data which may only update weekly for counties. The
+  other is called `cdcCommunityLevel` and is the raw Community Level published
+  by the CDC. It is only available for counties and is updated on a weekly
+  basis.
+
+  **Where to access**  
+* CSV column names: ``communityLevels.canCommunityLevel``
+* JSON file fields: ``communityLevels.canCommunityLevel``, ``communityLevelsTimeseries.*.canCommunityLevel``
+
+  and 
+
+* CSV column names: ``communityLevels.cdcCommunityLevel``
+* JSON file fields: ``communityLevels.cdcCommunityLevel``, ``communityLevelsTimeseries.*.cdcCommunityLevel``
+
+
+## Health Service Areas (HSAs)
+
+An HSA is a collection of one or more contiguous counties which are relatively self-contained with respect to hospital care. HSAs are used when calculating county-level hospital metrics in order to correct for instances where an individual county does not have any, or has few healthcare facilities within its own borders. For more information see https://seer.cancer.gov/seerstat/variables/countyattribs/hsa.html.
+
+The source for our county to HSA mappings is [`data/misc/cdc_hsa_mapping.csv`](https://github.com/covid-projections/covid-data-model/blob/main/data/misc/cdc_hsa_mapping.csv) which follows the HSA definitions used by the CDC in their [COVID-19 Community Levels](https://www.cdc.gov/coronavirus/2019-ncov/your-health/covid-by-county.html). HSA populations are calculated as the sum of the component county populations.
