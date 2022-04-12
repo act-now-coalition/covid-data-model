@@ -220,7 +220,7 @@ def test_generate_infection_rate_metric_one_empty():
     ]
     regions = [pipeline.Region.from_fips(f) for f in fips]
     inputs = [
-        infer_rt.RegionalInput.from_region(region, load_demographics=True) for region in regions
+        infer_rt.RegionalInput.from_region(region, load_demographics=False) for region in regions
     ]
 
     df = pd.concat(infer_rt.run_rt(input) for input in inputs)
@@ -234,7 +234,7 @@ def test_generate_infection_rate_metric_two_aggregate_levels():
     fips = ["06", "06075"]  # CA  # San Francisco, CA
     regions = [pipeline.Region.from_fips(f) for f in fips]
     inputs = [
-        infer_rt.RegionalInput.from_region(region, load_demographics=True) for region in regions
+        infer_rt.RegionalInput.from_region(region, load_demographics=False) for region in regions
     ]
 
     df = pd.concat(infer_rt.run_rt(input) for input in inputs)
@@ -248,7 +248,7 @@ def test_generate_infection_rate_new_orleans_patch():
     fips = ["22", "22051", "22071"]  # LA, Jefferson and Orleans
     regions = [pipeline.Region.from_fips(f) for f in fips]
     inputs = [
-        infer_rt.RegionalInput.from_region(region, load_demographics=True) for region in regions
+        infer_rt.RegionalInput.from_region(region, load_demographics=False) for region in regions
     ]
 
     df = pd.concat(infer_rt.run_rt(input) for input in inputs)
@@ -270,7 +270,7 @@ def test_generate_infection_rate_metric_fake_fips(fips):
 def test_generate_infection_rate_with_nans():
     # Check that MA counties are still working
     region = pipeline.Region.from_fips("25001")
-    input = infer_rt.RegionalInput.from_region(region, load_demographics=True)
+    input = infer_rt.RegionalInput.from_region(region, load_demographics=False)
     df = infer_rt.run_rt(input)
     returned_location_ids = df[CommonFields.LOCATION_ID].unique()
     assert {region.location_id} == set(returned_location_ids)
@@ -287,7 +287,7 @@ def test_patch_substatepipeline_nola_infection_rate():
     for fips in nola_fips:
         region = pipeline.Region.from_fips(fips)
         infection_rate_df = infer_rt.run_rt(
-            infer_rt.RegionalInput.from_region(region, load_demographics=True)
+            infer_rt.RegionalInput.from_region(region, load_demographics=False)
         )
         pipelines.append(
             pyseir.run.OneRegionPipeline(
