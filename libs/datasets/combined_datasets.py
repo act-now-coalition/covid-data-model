@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Tuple
+from typing import Any
 from typing import Dict, Type, List, NewType
 import functools
 import pathlib
@@ -347,14 +347,13 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
 
 @functools.lru_cache(None)
 def load_us_timeseries_dataset(
-    pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY, regions: Tuple[Region] = None
+    pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY, load_demographics: bool = True
 ) -> MultiRegionDataset:
     """Returns all combined data. `load_test_dataset` is more suitable for tests."""
     filename = dataset_pointer.form_filename(DatasetType.MULTI_REGION)
     pointer_path = pointer_directory / filename
     pointer = DatasetPointer.parse_raw(pointer_path.read_text())
-    regions = list(regions) if regions is not None else None
-    return MultiRegionDataset.read_from_pointer(pointer, regions=regions)
+    return MultiRegionDataset.read_from_pointer(pointer, load_demographics=load_demographics)
 
 
 def get_county_name(region: Region) -> Optional[str]:

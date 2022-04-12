@@ -961,14 +961,13 @@ class MultiRegionDataset:
 
     @staticmethod
     def from_wide_dates_csv(
-        path_or_buf: Union[pathlib.Path, TextIO], regions: List[Region] = None
+        path_or_buf: Union[pathlib.Path, TextIO], load_demographics=True
     ) -> "MultiRegionDataset":
-        if regions is not None:
-            regions = [region.location_id for region in regions]
+        if not load_demographics:
             wide_dates_iter = pd.read_csv(path_or_buf, iterator=True, chunksize=1000)
             wide_dates_df = pd.concat(
                 [
-                    chunk.loc[chunk[CommonFields.LOCATION_ID].isin(regions)]
+                    chunk.loc[chunk[PdFields.DEMOGRAPHIC_BUCKET] == "all"]
                     for chunk in wide_dates_iter
                 ]
             )
@@ -1018,11 +1017,11 @@ class MultiRegionDataset:
 
     @staticmethod
     def read_from_pointer(
-        pointer: dataset_pointer.DatasetPointer, regions: List[Region] = None
+        pointer: dataset_pointer.DatasetPointer, load_demographics: bool = True
     ) -> "MultiRegionDataset":
         # TODO(tom): Deprecate use of DatasetPointer and remove this method
         return MultiRegionDataset.from_wide_dates_csv(
-            pointer.path_wide_dates(), regions=regions
+            pointer.path_wide_dates(), load_demographics=load_demographics
         ).add_static_csv_file(pointer.path_static())
 
     @staticmethod

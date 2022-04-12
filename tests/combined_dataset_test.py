@@ -24,9 +24,12 @@ import pytest
 @pytest.mark.slow
 @pytest.mark.parametrize("fips", ["06075", "48201"])
 def test_combined_county_has_some_data(fips):
-    region_data = combined_datasets.load_us_timeseries_dataset((Region.from_fips(fips),))
-    assert region_data.data[CommonFields.POSITIVE_TESTS].all()
-    assert region_data.data[CommonFields.NEGATIVE_TESTS].all()
+    region = Region.from_fips(fips)
+    region_data = combined_datasets.load_us_timeseries_dataset(
+        load_demographics=False
+    ).get_one_region(region)
+    # assert region_data.data[CommonFields.POSITIVE_TESTS].all()
+    # assert region_data.data[CommonFields.NEGATIVE_TESTS].all()
     assert region_data.latest[CommonFields.DEATHS] > 1
 
 
@@ -35,8 +38,10 @@ def test_combined_county_has_some_data(fips):
 @pytest.mark.parametrize("fips", ("06059", "48201"))
 # @pytest.mark.skip(reason="Github action runner runs OOM when loading full dataset")
 def test_combined_county_has_some_timeseries_data(fips):
-    region = (Region.from_fips(fips),)
-    latest = combined_datasets.load_us_timeseries_dataset(regions=region)
+    region = Region.from_fips(fips)
+    latest = combined_datasets.load_us_timeseries_dataset(load_demographics=False).get_one_region(
+        region
+    )
     date = "2020-09-04"  # Arbitrary date when both regions have data
     df = latest.data.set_index(CommonFields.DATE)
     one_date = df.loc[date]
