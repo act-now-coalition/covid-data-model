@@ -9,7 +9,7 @@ import json
 import structlog
 
 import click
-from datapublic.common_fields import CommonFields, PdFields
+from datapublic.common_fields import CommonFields
 from datapublic.common_fields import FieldName
 
 from libs import google_sheet_helpers
