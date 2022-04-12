@@ -50,7 +50,7 @@ def run_individual(
     # TODO fails below if deaths not present even if not using
     data_generator = load_data.DataGenerator(spec)
     cases = load_data.create_synthetic_cases(data_generator)
-    regional_input = infer_rt.RegionalInput.from_fips(fips)
+    regional_input = infer_rt.RegionalInput.from_fips(fips, load_demographics=False)
 
     # Now apply smoothing and filtering
     collector = {}
@@ -263,7 +263,7 @@ def test_generate_infection_rate_new_orleans_patch():
 def test_generate_infection_rate_metric_fake_fips(fips):
     with pytest.raises(timeseries.RegionLatestNotFound):
         # timeseries and latest not found in combined data causes an exception to be raised.
-        infer_rt.RegionalInput.from_fips(fips)
+        infer_rt.RegionalInput.from_fips(fips, load_demographics=False)
 
 
 @pytest.mark.slow

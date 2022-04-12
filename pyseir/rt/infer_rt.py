@@ -82,8 +82,10 @@ class RegionalInput:
         )
 
     @staticmethod
-    def from_fips(fips: str) -> "RegionalInput":
-        return RegionalInput.from_region(pipeline.Region.from_fips(fips))
+    def from_fips(fips: str, load_demographics: bool = True) -> "RegionalInput":
+        return RegionalInput.from_region(
+            pipeline.Region.from_fips(fips), load_demographics=load_demographics
+        )
 
 
 def run_rt(
