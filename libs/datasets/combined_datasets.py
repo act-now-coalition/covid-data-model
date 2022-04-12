@@ -403,7 +403,7 @@ class RegionalData:
     @staticmethod
     @functools.lru_cache(maxsize=None)
     def from_region(region: Region) -> "RegionalData":
-        us_timeseries = load_us_timeseries_dataset()
+        us_timeseries = load_us_timeseries_dataset(load_demographics=False)
         region_timeseries = us_timeseries.get_one_region(region)
         return RegionalData(region=region, timeseries=region_timeseries)
 
