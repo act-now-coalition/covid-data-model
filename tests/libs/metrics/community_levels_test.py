@@ -19,9 +19,11 @@ from tests.test_helpers import build_one_region_dataset
         (200, 0.0999, 9.99, CommunityLevel.MEDIUM),
         (200, 0.10, 9.99, CommunityLevel.HIGH),
         (200, 0.0999, 10, CommunityLevel.HIGH),
-        (0.0, 0.0, None, None),
-        (0.0, None, 0.0, None),
+        (0.0, 0.0, None, CommunityLevel.LOW),
+        (0.0, None, 0.0, CommunityLevel.LOW),
+        # If missing cases or both hospital metrics, we don't calculate a level.
         (None, 0.0, 0.0, None),
+        (0.0, None, None, None),
     ],
 )
 def test_calc_community_levels(

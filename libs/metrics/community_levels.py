@@ -22,15 +22,23 @@ def calculate_community_level(
 ) -> Optional[CommunityLevel]:
     """Calculate the overall community level for a region based on metric levels."""
 
-    if (
-        is_invalid_value(weekly_cases_per_100k)
-        or is_invalid_value(beds_with_covid_ratio)
-        or is_invalid_value(weekly_admissions_per_100k)
+    # TODO(michael): The CDC footnotes say:
+    #     If the number of cases in 7 days for a jurisdiction is missing, the
+    #     7-day case rate is assigned to the “low” category. If both 7-day
+    #     admissions and 7-day percentage inpatient beds indicators are N/A, the
+    #     community burden category is assigned N/A.
+    #
+    # For now I'm allowing 1 hospital metric to be missing, but not allowing
+    # cases to be missing since that is rare and usually indicates we're
+    # blocking data or something. In that case, I'd rather have no community
+    # level calculated. But we can revisit if it ends up being a problem.
+    if is_invalid_value(weekly_cases_per_100k) or (
+        is_invalid_value(beds_with_covid_ratio) and is_invalid_value(weekly_admissions_per_100k)
     ):
-        # TODO(michael): For now, return None if we are missing any of the
-        # underlying metrics. Once we see how bad this is we can compare against
-        # CDC and decide how to handle.
         return None
+
+    beds_with_covid_ratio = beds_with_covid_ratio or 0
+    weekly_admissions_per_100k = weekly_admissions_per_100k or 0
 
     if weekly_cases_per_100k < 200:
         if weekly_admissions_per_100k < 10 and beds_with_covid_ratio < 0.1:
