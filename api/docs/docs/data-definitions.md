@@ -160,6 +160,7 @@ Fields:
 * CSV column names: ``metrics.weeklyCovidAdmissionsPer100k``
 * JSON file fields: ``metrics.weeklyCovidAdmissionsPer100k``, ``metricsTimeseries.*.weeklyCovidAdmissionsPer100k``
 
+County- and metro-level hospitalization and ICU actuals are calculated from facility-level data which, suppresses near-zero values due to privacy concerns. As a result, this data may undercount real values, particularly at low levels.
 
 ## Vaccinations
 
