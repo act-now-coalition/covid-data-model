@@ -340,13 +340,14 @@ def calculate_weekly_admissions_per_100k(
         # they have no hsaPopulations. For these instances do not try and
         # calculate a metric.
         if hsa_population is None:
-            weekly_admissions = pd.Series(dtype=float)
+            can_admissions_per_100k = pd.Series(dtype=float)
         else:
             weekly_admissions = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA]
+            can_admissions_per_100k = weekly_admissions / (hsa_population / normalize_by)
     else:
         weekly_admissions = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID]
+        can_admissions_per_100k = weekly_admissions / (population / normalize_by)
 
-    can_admissions_per_100k = weekly_admissions / (population / normalize_by)
     # keep only CAN computed points from before the start of the CDC Community Level data
     # If first_cdc_admissions_index is None, we keep all the CAN computed data.
     can_admissions_per_100k = can_admissions_per_100k[:first_cdc_admissions_index]
