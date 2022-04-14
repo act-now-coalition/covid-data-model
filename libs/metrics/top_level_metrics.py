@@ -319,12 +319,16 @@ def calculate_weekly_admissions_per_100k(
     hsa_population: int,
     normalize_by: int = 100_000,
 ) -> pd.Series:
-    # If we have precomputed data, use it.
-    if (
-        CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA in data.columns
-        and data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA].any()
-    ):
-        return data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA]
+
+    # Use CDC metric data where it exists, else use CAN computed data.
+    if CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA in data.columns:
+        cdc_admissions_per_100k = data[
+            CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA
+        ]
+        first_cdc_admissions_index = cdc_admissions_per_100k.first_valid_index()
+    else:
+        cdc_admissions_per_100k = pd.Series()
+        first_cdc_admissions_index = None
 
     # Use HSA-level data for counties only.
     if region.level == AggregationLevel.COUNTY:
@@ -332,12 +336,18 @@ def calculate_weekly_admissions_per_100k(
         # they have no hsaPopulations. For these instances do not try and
         # calculate a metric.
         if hsa_population is None:
-            return None
-        weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA]
-        return weekly_admissions / (hsa_population / normalize_by)
+            weekly_admissions = pd.Series()
+        else:
+            weekly_admissions: pd.Series = data[
+                CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA
+            ]
+    else:
+        weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID]
 
-    weekly_admissions: pd.Series = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID]
-    return weekly_admissions / (population / normalize_by)
+    can_admissions_per_100k = weekly_admissions / (population / normalize_by)
+    # keep only CAN computed points from before the start of CDC Community Level data
+    can_admissions_per_100k = can_admissions_per_100k[:first_cdc_admissions_index]
+    return cdc_admissions_per_100k.combine_first(can_admissions_per_100k)
 
 
 def calculate_latest_metrics(
