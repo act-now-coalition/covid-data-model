@@ -16,16 +16,16 @@ The CDC Community Level metric as well as the subcomponents of the CDC Community
 
 Fields added:
 * `communityLevels.cdcCommunityLevel`: The raw CDC Community Level metric. It serves as an exact mirror of the CDC’s published data, which is available for counties only and typically updates once a week.
-* `communityLevels.canCommunityLevel`: The Covid Act Now team’s version of CDC Community Level metric. Unlike the raw CDC community level, it is available for states and metros in addition to counties. It also uses different data sources in some cases (New York Times for cases, HHS for state hospitalization data). It updates daily, though county hospitalization data only updates once a week.
-* `metrics.weeklyNewCasesPer100k`: The number of new COVID cases per week per per 100K population.
-* `metrics.weeklyCovidAdmissionsPer100k`: The number of new COVID hospital admissions per week per 100K population. For counties this is calculated at the [Health Service Area level (HSA)](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
-* `metrics.bedsWithCovidPatientsRatio`: The percent of staffed inpatient beds occupied by COVID patients. For counties this is calculated at the [Health Service Area level (HSA)](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
+* `communityLevels.canCommunityLevel`: The Covid Act Now team’s version of CDC Community Level metric. It uses the same methodology as the CDC community level, but it is available for states and metros in addition to counties. It also uses different data sources in some cases (New York Times for cases, HHS for state hospitalization data). It updates daily, though county hospitalization data only updates once a week.
+* `metrics.weeklyNewCasesPer100k`: The number of new COVID cases per week per 100K population.
+* `metrics.weeklyCovidAdmissionsPer100k`: The number of new COVID hospital admissions per week per 100K population. For counties this is calculated at the [Health Service Area level](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
+* `metrics.bedsWithCovidPatientsRatio`: The ratio of staffed inpatient beds that are occupied by COVID patients. For counties this is calculated at the [Health Service Area level](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
 * `actuals.hospitalBeds.weeklyCovidAdmissions`: The number of new COVID hospital admissions per week.
-* `actuals.hsaHospitalBeds.weeklyCovidAdmissions`: The number of new COVID hospital admissions per week measured at the [Health Service Area level (HSA)](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
-* `hsaName`: The name of the Health Service Area (HSA).
-* `hsaPopulation`: The population of the Health Service Area (HSA).
-* `hsaHospitalBeds`: This is a mirror of the existing hospitalBeds field, but measured at the [Health Service Area level (HSA)](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
-* `hsaIcuBeds`: This is a mirror of the existing icuBeds field, but measured at the [Health Service Area level (HSA)](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
+* `actuals.hsaHospitalBeds.weeklyCovidAdmissions`: The number of new COVID hospital admissions per week measured at the [Health Service Area level](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
+* `hsaName`: The name of the Health Service Area.
+* `hsaPopulation`: The population of the Health Service Area.
+* `hsaHospitalBeds`: This is a mirror of the existing hospitalBeds field, but measured at the [Health Service Area level](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
+* `hsaIcuBeds`: This is a mirror of the existing icuBeds field, but measured at the [Health Service Area level](https://apidocs.covidactnow.org/data-definitions#health-service-areas).
 
 
 ### Vaccine Booster data now available
