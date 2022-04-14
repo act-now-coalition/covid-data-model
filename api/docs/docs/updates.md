@@ -12,7 +12,7 @@ _Added on 2022-04-05_
 
 The CDC Community Level metric as well as the subcomponents of the CDC Community Level metric are now available within the Covid Act Now API. 
 
-[Learn more about how the CDC Community Level is measured](https://covidactnow.org/covid-risk-levels-metrics). 
+[Learn more about how the CDC Community Level is measured](https://covidactnow.org/covid-risk-levels-metrics#how-covid-risk-is-determined). 
 
 Fields added:
 * `communityLevels.cdcCommunityLevel`: The raw CDC Community Level metric. It serves as an exact mirror of the CDC’s published data, which is available for counties only and typically updates once a week.
