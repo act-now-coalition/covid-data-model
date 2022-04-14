@@ -293,11 +293,12 @@ def calculate_contact_tracers(
 
 def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
     # If we have precomputed data, use it.
-    if (
-        CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA in data.columns
-        and data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA].any()
-    ):
-        return data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA]
+    if CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA in data.columns:
+        cdc_covid_patient_ratio = data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA]
+        first_cdc_ratio_index = cdc_covid_patient_ratio.first_valid_index()
+    else:
+        cdc_covid_patient_ratio = pd.Series(dtype=float)
+        first_cdc_ratio_index = None
 
     # Use HSA-level data for counties only.
     if region.level == AggregationLevel.COUNTY:
@@ -308,8 +309,11 @@ def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
         covid_hospitalizations: pd.Series = data[CommonFields.CURRENT_HOSPITALIZED]
 
     # Returns NaN for any dates missing beds or patients.
-    covid_patient_ratio = covid_hospitalizations.div(staffed_beds, fill_value=None)
-    return covid_patient_ratio
+    can_covid_patient_ratio = covid_hospitalizations.div(staffed_beds, fill_value=None)
+    # keep only CAN computed points from before the start of the CDC Community Level data.
+    # If first_cdc_admissions_index is None, we keep all the CAN computed data.
+    can_covid_patient_ratio = can_covid_patient_ratio[:first_cdc_ratio_index]
+    return cdc_covid_patient_ratio.combine_first(can_covid_patient_ratio)
 
 
 def calculate_weekly_admissions_per_100k(
