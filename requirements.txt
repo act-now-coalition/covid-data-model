@@ -45,7 +45,7 @@ xlrd==1.2.0  # For panda's read_excel method
 compress_pickle==2.0.1
 
 # Dependencies recommended by pandas for better performance
-numexpr==2.7.1
+numexpr==2.8.1
 
 backports.cached-property==1.0.0.post2
 
