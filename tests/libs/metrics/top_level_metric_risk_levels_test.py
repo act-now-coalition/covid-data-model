@@ -75,7 +75,7 @@ def test_risk_level_timeseries():
     expected_case_density = [RiskLevel.MEDIUM] * 16
     expected_case_density = pd.Series(expected_case_density, name="caseDensity")
 
-    pd.testing.assert_series_equal(results["caseDensity"], expected_case_density)
-    pd.testing.assert_series_equal(results["overall"], expected_overall)
+    pd.testing.assert_series_equal(results.loc[:, "caseDensity"], expected_case_density)
+    pd.testing.assert_series_equal(results.loc[:, "overall"], expected_overall)
 
     assert expected_latest_risk_level.overall == expected_overall.iloc[-1]

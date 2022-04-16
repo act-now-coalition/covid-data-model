@@ -64,4 +64,6 @@ def test_transmission_level_timeseries():
         expected_cdc_transmission_level, name="cdcTransmissionLevel"
     )
 
-    pd.testing.assert_series_equal(results["cdcTransmissionLevel"], expected_cdc_transmission_level)
+    pd.testing.assert_series_equal(
+        results.loc[:, "cdcTransmissionLevel"], expected_cdc_transmission_level
+    )
