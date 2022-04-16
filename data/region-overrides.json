@@ -851,7 +851,7 @@
       "include": "subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "",
+      "start_date": "2022-04-01",
       "end_date": "",
       "region": "MO",
       "context": "According to NYT, Missouri stopped reporting cumulative cases. anddeaths by county.",
