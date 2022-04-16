@@ -21,7 +21,7 @@ requests==2.23.0
 jupyter==1.0.0
 jupyterlab==2.1.4
 simplejson==3.17.0
-ujson==2.0.3
+ujson==5.2.0
 seaborn==0.10.0
 click==7.1.1
 sentry-sdk==0.14.3
