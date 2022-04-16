@@ -6,7 +6,7 @@ chardet==3.0.4
 cycler==0.10.0
 idna==2.9
 isort==4.3.21
-kiwisolver==1.1.0
+kiwisolver==1.4.2
 lazy-object-proxy==1.4.1
 gspread==3.6.0
 gspread-formatting==0.2.5
