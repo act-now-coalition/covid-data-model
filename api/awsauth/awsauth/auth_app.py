@@ -48,6 +48,8 @@ def init():
     Config.init()
     registry.initialize()
 
+    # https://github.com/getsentry/sentry-python/issues/1081
+    # pylint: disable=abstract-class-instantiated
     sentry_sdk.init(
         dsn=Config.Constants.SENTRY_DSN,
         environment=Config.Constants.SENTRY_ENVIRONMENT,

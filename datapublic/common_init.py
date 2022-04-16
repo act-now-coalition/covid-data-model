@@ -78,6 +78,8 @@ def configure_logging(command: Optional[str] = None):
         sentry_environment = Environment(os.getenv(SENTRY_ENVIRONMENT_ENV))
 
     if sentry_dsn:
+        # https://github.com/getsentry/sentry-python/issues/1081
+        # pylint: disable=abstract-class-instantiated
         sentry_sdk.init(sentry_dsn, environment=sentry_environment)
 
         if command:
