@@ -795,15 +795,6 @@
     },
     {
       "include": "region",
-      "metric": "metrics.icuCapacityRatio",
-      "blocked": true,
-      "start_date": "2022-04-01",
-      "end_date": "",
-      "region": "VT",
-      "context": "VT at 100% ICU Capactiy Used"
-    },
-    {
-      "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2022-04-02",
