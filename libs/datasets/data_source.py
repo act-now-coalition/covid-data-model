@@ -137,7 +137,7 @@ class CanScraperBase(DataSource, abc.ABC, metaclass=_CanScraperBaseMeta):
     @staticmethod
     @lru_cache(None)
     def _get_covid_county_dataset() -> ccd_helpers.CanScraperLoader:
-        return ccd_helpers.CanScraperLoader.load_from_local()
+        return ccd_helpers.CanScraperLoader.load_from_gcs()
 
     @classmethod
     @lru_cache(None)
