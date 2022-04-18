@@ -292,7 +292,7 @@ def calculate_contact_tracers(
 
 
 def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
-    # If we have precomputed data, use it.
+    # Extract any CDC sourced data if it exists and track the start date.
     if CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA in data.columns:
         cdc_covid_patient_ratio = data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA]
         first_cdc_ratio_index = cdc_covid_patient_ratio.first_valid_index()
@@ -310,8 +310,10 @@ def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
 
     # Returns NaN for any dates missing beds or patients.
     can_covid_patient_ratio = covid_hospitalizations.div(staffed_beds, fill_value=None)
-    # keep only CAN computed points from before the start of the CDC Community Level data.
-    # If first_cdc_admissions_index is None, we keep all the CAN computed data.
+
+    # Combine CDC and computed data while keeping only computed points from before
+    # the start of the CDC Community Level data.
+    # If first_cdc_admissions_index is None we keep all the computed data.
     can_covid_patient_ratio = can_covid_patient_ratio[:first_cdc_ratio_index]
     return cdc_covid_patient_ratio.combine_first(can_covid_patient_ratio)
 
@@ -323,8 +325,7 @@ def calculate_weekly_admissions_per_100k(
     hsa_population: int,
     normalize_by: int = 100_000,
 ) -> pd.Series:
-
-    # Use CDC metric data where it exists, else use CAN computed data.
+    # Extract any CDC sourced data if it exists and track the start date.
     if CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA in data.columns:
         cdc_admissions_per_100k = data[
             CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA
@@ -348,8 +349,9 @@ def calculate_weekly_admissions_per_100k(
         weekly_admissions = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID]
         can_admissions_per_100k = weekly_admissions / (population / normalize_by)
 
-    # keep only CAN computed points from before the start of the CDC Community Level data
-    # If first_cdc_admissions_index is None, we keep all the CAN computed data.
+    # Combine CDC and computed data while keeping only computed points from before
+    # the start of the CDC Community Level data.
+    # If first_cdc_admissions_index is None we keep all the computed data.
     can_admissions_per_100k = can_admissions_per_100k[:first_cdc_admissions_index]
     return cdc_admissions_per_100k.combine_first(can_admissions_per_100k)
 
