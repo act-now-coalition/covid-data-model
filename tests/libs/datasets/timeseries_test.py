@@ -3,8 +3,10 @@ import datetime
 import io
 import pathlib
 import pickle
+from tkinter.ttk import Separator
 
 import pytest
+import gzip
 import pandas as pd
 import numpy as np
 import structlog
@@ -584,7 +586,9 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
 
     # Compare written file with a string literal so a test fails if something changes in how the
     # file is written. The literal contains spaces to align the columns in the source.
-    assert pointer.path_wide_dates().read_text() == (
+    with gzip.open(pointer.path_wide_dates(), "rt") as file:
+        wide_dates_data = file.read()
+    assert wide_dates_data == (
         "     location_id,variable,demographic_bucket,provenance,2020-04-03,2020-04-02,2020-04-01\n"
         "iso1:us#iso2:us-as, cases,               all,          ,       300,       200,       100\n"
         "iso1:us#iso2:us-as,icu_beds,             all,   pt_src1,         4,         2,         0\n"
@@ -597,15 +601,18 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
 
     # Check that a file without the demographic_bucket column (as written before
     # https://github.com/covid-projections/covid-data-model/pull/1021) can be read.
-    pointer.path_wide_dates().write_text(
-        "                  location_id,variable,provenance,2020-04-03,2020-04-02,2020-04-01\n"
-        "           iso1:us#iso2:us-as,   cases,          ,       300,       200,       100\n"
-        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         4,         2,         0\n"
-        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,       310,       210,\n"
-        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,          ,         2,         1\n".replace(
-            " ", ""
+    data = pd.read_csv(
+        io.StringIO(
+            "                  location_id,variable,provenance,2020-04-03,2020-04-02,2020-04-01\n"
+            "           iso1:us#iso2:us-as,   cases,          ,       300,       200,       100\n"
+            "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         4,         2,         0\n"
+            "iso1:us#iso2:us-ca#fips:06075,   cases,          ,       310,       210,\n"
+            "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,          ,         2,         1\n".replace(
+                " ", ""
+            )
         )
     )
+    data.to_csv(pointer.path_wide_dates(), index=False, compression="gzip")
     dataset_without_bucket_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
     test_helpers.assert_dataset_like(dataset_without_bucket_read, dataset_in)
 
