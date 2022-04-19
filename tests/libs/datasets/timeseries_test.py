@@ -3,10 +3,8 @@ import datetime
 import io
 import pathlib
 import pickle
-from tkinter.ttk import Separator
 
 import pytest
-import gzip
 import pandas as pd
 import numpy as np
 import structlog
