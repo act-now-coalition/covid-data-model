@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "c08d84d86d13e133d751fee1dc8b02308d43fa76",
-    "branch": "smcclure17/compress-multiregion",
+    "sha": "56b7bba3400b906dcd04595325264d0d790ec6ec",
+    "branch": "main",
     "is_dirty": true
   },
-  "updated_at": "2022-04-18T16:52:40.352527"
+  "updated_at": "2022-04-19T21:43:25.926128"
 }

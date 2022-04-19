@@ -5,7 +5,6 @@ import enum
 import dataclasses
 from typing import Optional
 from typing import Tuple
-import requests
 import more_itertools
 import structlog
 import pandas as pd
@@ -25,9 +24,6 @@ from libs.datasets.demographics import DistributionBucket
 GCS_PARQUET_PATH = (
     "https://storage.googleapis.com/can-scrape-outputs/final/can_scrape_api_covid_us.parquet"
 )
-
-LOCAL_PARQUET_PATH = dataset_utils.DATA_DIRECTORY / "can_scrape_api_covid_us.parquet"
-
 
 _logger = structlog.getLogger()
 
@@ -277,16 +273,7 @@ class CanScraperLoader:
                 )
 
     @staticmethod
-    def persist_parquet():
-        """Fetches the up-to-date Parquet file from GCS and stores it in data/"""
-        payload = requests.get(GCS_PARQUET_PATH).content
-        with (LOCAL_PARQUET_PATH) as file:
-            file.write_bytes(payload)
-
-    @staticmethod
-    def load_from_local() -> "CanScraperLoader":
+    def load_from_gcs() -> "CanScraperLoader":
         """Returns a CanScraperLoader which holds data loaded from the CAN Scraper."""
-
-        all_df = pd.read_parquet(LOCAL_PARQUET_PATH)
-
+        all_df = pd.read_parquet(GCS_PARQUET_PATH)
         return CanScraperLoader(all_df)
