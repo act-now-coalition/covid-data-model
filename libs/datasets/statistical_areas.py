@@ -137,11 +137,6 @@ class CountyToHSAAggregator:
 
         # Only aggregate county-level data for specified fields
         counties = dataset_in.get_subset(aggregation_level=AggregationLevel.COUNTY)
-        # We treat DC as a county, but the HHS treats it as a state and provides daily
-        # hospitalization data. We want to use this data directly, and do not want to mix
-        # this with the weekly data provided for the other counties in DC's HSA.
-        # counties = counties.remove_locations(location_ids=[Region.from_fips("11")])
-
         columns_to_aggregate = [
             col for col in counties.timeseries_bucketed.columns if col in fields_to_aggregate.keys()
         ]
