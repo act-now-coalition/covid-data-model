@@ -586,8 +586,7 @@ def test_write_read_wide_dates_csv_compare_literal(tmpdir):
 
     # Compare written file with a string literal so a test fails if something changes in how the
     # file is written. The literal contains spaces to align the columns in the source.
-    with gzip.open(pointer.path_wide_dates(), "rt") as file:
-        wide_dates_data = file.read()
+    wide_dates_data = pd.read_csv(pointer.path_wide_dates(), dtype=object).to_csv(index=False)
     assert wide_dates_data == (
         "     location_id,variable,demographic_bucket,provenance,2020-04-03,2020-04-02,2020-04-01\n"
         "iso1:us#iso2:us-as, cases,               all,          ,       300,       200,       100\n"
