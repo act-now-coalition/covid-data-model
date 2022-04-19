@@ -847,6 +847,15 @@
       "region": "MO",
       "context": "According to NYT, Missouri stopped reporting cumulative cases. anddeaths by county.",
       "disclaimer": "As of April 2022, Missouri has stopped reporting cumulative cases by county."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "DC, 24033, 24031, 24017, 24037",
+      "context": "Highly fluctuating historial Weekly Covid Admissions data"
     }
   ]
 }
