@@ -300,8 +300,8 @@ def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
         cdc_covid_patient_ratio = pd.Series(dtype=float)
         first_cdc_ratio_index = None
 
-    # Use HSA-level data for counties only.
-    if region.level == AggregationLevel.COUNTY:
+    # Use HSA-level data for counties only. DC has state-level data, so we treat it as a state.
+    if region.is_county() and region.fips != "11001":
         staffed_beds: pd.Series = data[CommonFields.STAFFED_BEDS_HSA]
         covid_hospitalizations: pd.Series = data[CommonFields.CURRENT_HOSPITALIZED_HSA]
     else:
@@ -336,11 +336,12 @@ def calculate_weekly_admissions_per_100k(
         first_cdc_admissions_index = None
 
     # Use HSA-level data for counties only.
-    if region.level == AggregationLevel.COUNTY:
+    if region.is_county():
         # Counties in the Northern Mariana Islands are not mapped to an HSA, so
         # they have no hsaPopulations. For these instances do not try and
-        # calculate a metric.
-        if hsa_population is None:
+        # calculate a metric. DC has state-level data, not county-level, so the HSA columns
+        # don't exist for it.
+        if hsa_population is None or region.fips == "11001":
             can_admissions_per_100k = pd.Series(dtype=float)
         else:
             weekly_admissions = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA]
