@@ -565,51 +565,6 @@ def test_timeseries_wide_dates_empty():
     assert ds.get_timeseries_bucketed_wide_dates(CommonFields.CASES).empty
 
 
-def test_write_read_wide_dates_csv_compare_literal(tmpdir):
-    pointer = _make_dataset_pointer(tmpdir)
-
-    region_as = Region.from_state("AS")
-    region_sf = Region.from_fips("06075")
-    metrics_as = {
-        CommonFields.ICU_BEDS: TimeseriesLiteral([0, 2, 4], provenance="pt_src1"),
-        CommonFields.CASES: [100, 200, 300],
-    }
-    metrics_sf = {
-        CommonFields.DEATHS: TimeseriesLiteral([1, 2, None], provenance="pt_src2"),
-        CommonFields.CASES: [None, 210, 310],
-    }
-    dataset_in = test_helpers.build_dataset({region_as: metrics_as, region_sf: metrics_sf})
-
-    dataset_in.write_to_dataset_pointer(pointer)
-
-    # Compare written file with a string literal so a test fails if something changes in how the
-    # file is written. The literal contains spaces to align the columns in the source.
-    assert pointer.path_wide_dates().read_text() == (
-        "     location_id,variable,demographic_bucket,provenance,2020-04-03,2020-04-02,2020-04-01\n"
-        "iso1:us#iso2:us-as, cases,               all,          ,       300,       200,       100\n"
-        "iso1:us#iso2:us-as,icu_beds,             all,   pt_src1,         4,         2,         0\n"
-        "iso1:us#iso2:us-ca#fips:06075,cases,     all,          ,       310,       210,\n"
-        "iso1:us#iso2:us-ca#fips:06075,deaths,    all,   pt_src2,          ,         2,         1\n"
-    ).replace(" ", "")
-
-    dataset_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
-    test_helpers.assert_dataset_like(dataset_read, dataset_in)
-
-    # Check that a file without the demographic_bucket column (as written before
-    # https://github.com/covid-projections/covid-data-model/pull/1021) can be read.
-    pointer.path_wide_dates().write_text(
-        "                  location_id,variable,provenance,2020-04-03,2020-04-02,2020-04-01\n"
-        "           iso1:us#iso2:us-as,   cases,          ,       300,       200,       100\n"
-        "           iso1:us#iso2:us-as,icu_beds,   pt_src1,         4,         2,         0\n"
-        "iso1:us#iso2:us-ca#fips:06075,   cases,          ,       310,       210,\n"
-        "iso1:us#iso2:us-ca#fips:06075,  deaths,   pt_src2,          ,         2,         1\n".replace(
-            " ", ""
-        )
-    )
-    dataset_without_bucket_read = timeseries.MultiRegionDataset.read_from_pointer(pointer)
-    test_helpers.assert_dataset_like(dataset_without_bucket_read, dataset_in)
-
-
 def test_write_read_wide_dates_csv_with_annotation(tmpdir):
     pointer = _make_dataset_pointer(tmpdir)
 

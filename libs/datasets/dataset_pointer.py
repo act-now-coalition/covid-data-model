@@ -37,7 +37,8 @@ class DatasetPointer(pydantic.BaseModel):
         return str(self.path)
 
     def path_wide_dates(self) -> pathlib.Path:
-        return pathlib.Path(self.path_absolute.replace(".csv", "-wide-dates.csv"))
+        # Use gzip compression for wide-dates csvs to save space.
+        return pathlib.Path(self.path_absolute.replace(".csv", "-wide-dates.csv.gz"))
 
     def path_annotation(self) -> pathlib.Path:
         return pathlib.Path(self.path_absolute.replace(".csv", "-annotations.csv"))

@@ -1374,9 +1374,8 @@ class MultiRegionDataset:
         # that are now over 100M. Unfortunately this also writes unnecessarily high precision for
         # floats but I don't see an easy solution with to_csv float_format.
         # https://trello.com/c/aDGn57Df/1192-change-combined-data-from-csv-to-parquet will remove
-        # the need to format values as strings.
-        csv_buf = wide_df.to_csv(index=True, float_format="%.9g")
-        path_wide_dates.write_text(csv_buf)
+        # the need to format values as strings
+        wide_df.to_csv(path_wide_dates, index=True, float_format="%.9g", compression="gzip")
 
         static_sorted = common_df.index_and_sort(
             self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
