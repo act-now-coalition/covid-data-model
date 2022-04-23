@@ -2,45 +2,6 @@
   "overrides": [
     {
       "include": "region",
-      "metric": "metrics.testPositivityRatio",
-      "region": "CT",
-      "context": "[michael] Ongoing issue with CT dashboard including antigen tests.",
-      "disclaimer": "There is a known discrepancy between our data and the Connecticut state dashboard. The state dashboard includes antigen tests in the calculation while we exclude antigen tests.",
-      "blocked": false,
-      "start_date": "",
-      "end_date": ""
-    },
-    {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "region": "TX",
-      "context": "https://twitter.com/TexasDSHS/status/1407806450135666699",
-      "disclaimer": "Texas DSHS: This week's increase in new cases is due to some catch-up in case reporting by counties",
-      "blocked": false,
-      "start_date": "",
-      "end_date": ""
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.testPositivityRatio",
-      "region": "NY",
-      "context": "[michael] NY dashboard uses \"testing encounters\" instead of \"PCR test specimens\"",
-      "disclaimer": "There is a known discrepancy between our data and the New York state dashboard. We calculate test positivity rate based on positive PCR test specimens, while the state dashboard rate is based on individuals testing positive via PCR or antigen testing.",
-      "blocked": false,
-      "start_date": "",
-      "end_date": ""
-    },
-    {
-      "include": "region",
-      "metric": "metrics.icuCapacityRatio",
-      "blocked": true,
-      "region": "15009",
-      "context": "https://trello.com/c/O7Cqn1p7/1181-pegged-100-icu-capacity-in-maui",
-      "start_date": "",
-      "end_date": ""
-    },
-    {
-      "include": "region",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": true,
       "region": "25001, 25007, 25019",
