@@ -38,8 +38,3 @@ dictdiffer==0.8.1
 structlog==20.1.0
 structlog-sentry==1.2.2
 more_itertools==8.3.0
--e git://github.com/covid-projections/covid-data-public.git#egg=covidactnow
-# By default, installs from the latest main of covid-data-public.
-# If you make changes in covid-data-public locally that you want to use,
-# comment the line above and uncomment the line below.
-# -e ../covid-data-public
