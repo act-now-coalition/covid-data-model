@@ -67,7 +67,7 @@ class CountyToCBSAAggregator:
 
     @staticmethod
     def from_local_public_data() -> "CountyToCBSAAggregator":
-        """Creates a new object using data in the covid-data-public repo."""
+        """Creates a new object using data in the data/ dir."""
         df = pd.read_excel(
             dataset_utils.REPO_ROOT / CBSA_LIST_PATH,
             header=2,

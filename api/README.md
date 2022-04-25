@@ -195,11 +195,6 @@ see the [JSON Schema](schema/CANPredictionAPIRow.json)
 * **/**
   * **version.json** - Metadata about how the API artifacts were generated.
     * *timestamp* (string) - an ISO 8601-formatted UTC timestamp.
-    * *covid-data-public*
-      * *branch* (string) - Branch name (usually "main").
-      * *hash* (string) - Commit hash that branch was synced to.
-      * *dirty* (boolean) - Whether there were any uncommitted / untracked files
-        in the repo (usually false).
     * *covid-data-model*
       * *branch* (string) - Branch name (usually "main").
       * *hash* (string) - Commit hash that branch was synced to.

@@ -78,8 +78,6 @@ def _fips_from_int(param: pd.Series):
     """Transform FIPS from an int64 to a string of 2 or 5 chars.
 
     See https://github.com/valorumdata/covid_county_data.py/issues/3
-
-    Copied from covid-data-public/scripts/helpers.py
     """
     return param.apply(lambda v: f"{v:0>{1 if v == 0 else 2 if v < 100 else 5}}")
 

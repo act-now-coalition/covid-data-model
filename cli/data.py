@@ -85,7 +85,7 @@ def main():
 @click.option(
     "--refresh-datasets/--no-refresh-datasets",
     is_flag=True,
-    help="Disable to skip loading datasets from covid-data-public and instead re-use data from combined-raw.pkl.gz (much faster)",
+    help="Disable to skip loading datasets and instead re-use data from combined-raw.pkl.gz (much faster)",
     default=True,
 )
 @click.option("--state", type=str, help="For testing, a two letter state abbr")

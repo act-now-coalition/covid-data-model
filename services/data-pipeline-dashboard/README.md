@@ -7,7 +7,6 @@ Much of this is copied from the [can-scrapers prefect README](https://github.com
 - SSH into it
 - `sudo apt-get install --yes git git-lfs nginx`
 - `git clone https://github.com/covid-projections/covid-data-model`
-- `git clone https://github.com/covid-projections/covid-data-public`
 
 Fix for 'ModuleNotFoundError: No module named '_ctypes'' during pip install: https://stackoverflow.com/a/62373223
 - `sudo apt-get install libffi-dev`
