@@ -48,14 +48,6 @@ jobs:
         ref: '${{env.COVID_DATA_MODEL_REF}}'
         lfs: true
 
-    - name: Checkout covid-data-public
-      uses: actions/checkout@v2
-      with:
-        repository: covid-projections/covid-data-public
-        path: covid-data-public
-        lfs: true
-        ref: '${{env.COVID_DATA_PUBLIC_REF}}'
-
     - name: Setup Python
       uses: actions/setup-python@v1
       with:
