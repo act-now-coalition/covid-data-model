@@ -335,12 +335,12 @@ def calculate_weekly_admissions_per_100k(
         first_cdc_admissions_index = None
 
     # Use HSA-level data for counties only.
-    if region.is_county() and region.fips != "11001":
+    if region.is_county():
         # Counties in the Northern Mariana Islands are not mapped to an HSA, so
         # they have no hsaPopulations. For these instances do not try and
         # calculate a metric. DC has state-level data, not county-level, so the HSA columns
         # don't exist for it.
-        if hsa_population is None:
+        if hsa_population is None or region.fips != "11001":
             can_admissions_per_100k = EMPTY_TS
         else:
             weekly_admissions = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA]
