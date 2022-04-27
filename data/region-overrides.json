@@ -205,16 +205,6 @@
       "context": "https://trello.com/c/9yFJDbZo/1486-7-29-21-backlogged-antigen-probable-cases-added-to-ca-cases-on-july-8th"
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": false,
-      "start_date": "2021-08-18",
-      "end_date": "2021-10-31",
-      "region": "WA",
-      "context": "WA stopped reporting negative tests from 09/01 - 10/31",
-      "disclaimer": "Test that WA positive test data has returned \\[DO NOT SHIP TO PROD]"
-    },
-    {
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
