@@ -207,11 +207,12 @@
     {
       "include": "region-and-subregions",
       "metric": "metrics.testPositivityRatio",
-      "blocked": true,
+      "blocked": false,
       "start_date": "2021-08-18",
       "end_date": "2021-10-31",
       "region": "WA",
-      "context": "WA stopped reporting negative tests from 09/01 - 10/31"
+      "context": "WA stopped reporting negative tests from 09/01 - 10/31",
+      "disclaimer": "Test that WA positive test data has returned \\[DO NOT SHIP TO PROD]"
     },
     {
       "include": "region",
