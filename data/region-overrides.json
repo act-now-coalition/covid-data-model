@@ -812,7 +812,7 @@
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2021-12-10",
-      "end_date": "2022-02-07",
+      "end_date": "2022-02-28",
       "context": "WA temporarily not reporting cumulative tests",
       "region": "WA"
     }
