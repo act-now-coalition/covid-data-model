@@ -199,6 +199,12 @@ def update(
     multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
     if print_stats:
         multiregion_dataset.print_stats("aggregate_to_new_york_city")
+
+    hsa_aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
+    multiregion_dataset = hsa_aggregator.aggregate(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("CountyToHSAAggregator")
+
     multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(multiregion_dataset)
     if print_stats:
         multiregion_dataset.print_stats("replace_dc_county_with_state_data")
@@ -209,11 +215,6 @@ def update(
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
     if print_stats:
         multiregion_dataset.print_stats("CountyToCBSAAggregator")
-
-    hsa_aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
-    multiregion_dataset = hsa_aggregator.aggregate(multiregion_dataset)
-    if print_stats:
-        multiregion_dataset.print_stats("CountyToHSAAggregator")
 
     # TODO(tom): Add a clean way to store intermediate values instead of commenting out code like
     #  this:
