@@ -815,6 +815,15 @@
       "end_date": "2022-02-28",
       "context": "WA temporarily not reporting cumulative tests",
       "region": "WA"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-05-01",
+      "end_date": "2022-05-01",
+      "region": "WA",
+      "context": " Suspected County-level case backlog on 5/2/2022"
     }
   ]
 }
