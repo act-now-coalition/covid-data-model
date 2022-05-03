@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "f51ab53288afee80890ed20df91f5a47e227279f",
-    "branch": "main",
+    "sha": "728c98034eaa61d8d666907867495d8f976a12e0",
+    "branch": "smcclure17/remove-dc-from-hsa",
     "is_dirty": true
   },
-  "updated_at": "2022-05-02T11:25:17.494401"
+  "updated_at": "2022-05-03T22:02:54.078290"
 }
