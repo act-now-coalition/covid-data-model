@@ -243,7 +243,7 @@ def test_top_level_metrics_rounding():
         vaccinationsInitiatedRatio=[0.333, 0.667, 1],
         vaccinationsCompletedRatio=[0.333, 0.667, 1],
         vaccinationsAdditionalDoseRatio=[0.333, 0.667, 1],
-        bedsWithCovidPatientsRatio=[0.1, 0.1, 0.09],
+        bedsWithCovidPatientsRatio=[0.1, 0.1, 0.086],
         weeklyCovidAdmissionsPer100k=[2.0, 3.0, 4.0],
     )
     pd.testing.assert_frame_equal(expected, results)
