@@ -12,7 +12,6 @@ from datapublic import common_fields
 from api import can_api_v2_definition
 from api.can_api_v2_definition import TestPositivityRatioMethod, TestPositivityRatioDetails
 from libs import series_utils
-from libs.datasets.dataset_utils import AggregationLevel
 from libs.datasets.new_cases_and_deaths import spread_first_reported_value_after_stall
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.metrics import icu_capacity
@@ -297,11 +296,11 @@ def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
         cdc_covid_patient_ratio = data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA]
         first_cdc_ratio_index = cdc_covid_patient_ratio.first_valid_index()
     else:
-        cdc_covid_patient_ratio = pd.Series(dtype=float)
+        cdc_covid_patient_ratio = EMPTY_TS
         first_cdc_ratio_index = None
 
-    # Use HSA-level data for counties only.
-    if region.level == AggregationLevel.COUNTY:
+    # Use HSA-level data for counties only. DC has state-level data, so we treat it as a state.
+    if region.is_county() and region.fips != "11001":
         staffed_beds: pd.Series = data[CommonFields.STAFFED_BEDS_HSA]
         covid_hospitalizations: pd.Series = data[CommonFields.CURRENT_HOSPITALIZED_HSA]
     else:
@@ -332,16 +331,16 @@ def calculate_weekly_admissions_per_100k(
         ]
         first_cdc_admissions_index = cdc_admissions_per_100k.first_valid_index()
     else:
-        cdc_admissions_per_100k = pd.Series(dtype=float)
+        cdc_admissions_per_100k = EMPTY_TS
         first_cdc_admissions_index = None
 
-    # Use HSA-level data for counties only.
-    if region.level == AggregationLevel.COUNTY:
+    # Use HSA-level data for counties only. DC has state-level data, so we treat it as a state.
+    if region.is_county() and region.fips != "11001":
         # Counties in the Northern Mariana Islands are not mapped to an HSA, so
         # they have no hsaPopulations. For these instances do not try and
         # calculate a metric.
         if hsa_population is None:
-            can_admissions_per_100k = pd.Series(dtype=float)
+            can_admissions_per_100k = EMPTY_TS
         else:
             weekly_admissions = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA]
             can_admissions_per_100k = weekly_admissions / (hsa_population / normalize_by)

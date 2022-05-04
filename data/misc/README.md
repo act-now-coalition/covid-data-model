@@ -23,5 +23,5 @@ An HSA is a collection of one or more contiguous counties which are relatively s
 For more information see https://seer.cancer.gov/seerstat/variables/countyattribs/hsa.html.
 
 The source for our county to HSA mappings is `data/misc/cdc_hsa_mapping.csv` which follows the HSA definitions used by the CDC in
-their [COVID-19 Community Levels](https://www.cdc.gov/coronavirus/2019-ncov/your-health/covid-by-county.html). 
+their [COVID-19 Community Levels](https://www.cdc.gov/coronavirus/2019-ncov/your-health/covid-by-county.html). We treat District of Columbia as a state, so we have removed it from the `Montgomery, MD - Prince Georges, MD` HSA. 
 
