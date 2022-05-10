@@ -9,8 +9,12 @@ from datapublic.common_fields import PdFields
 from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.datasets import new_cases_and_deaths
+from libs.pipeline import Region
 
 MultiRegionDataset = timeseries.MultiRegionDataset
+
+# Florida biweekly case reporting causes outlier detection to trigger inadvertently.
+STATES_TO_EXCLUDE_CASES_DEATHS = [Region.from_state("FL")]
 
 
 def _calculate_modified_zscore(
@@ -61,8 +65,13 @@ def drop_new_case_outliers(timeseries: MultiRegionDataset) -> MultiRegionDataset
 
     Returns: timeseries with outliers removed from new_cases.
     """
-    return drop_series_outliers(
-        timeseries,
+
+    states_to_exclude, dataset_in = timeseries.partition_by_region(STATES_TO_EXCLUDE_CASES_DEATHS)
+    if dataset_in.timeseries_bucketed.empty:
+        return timeseries  # if dataset only includes locations to ignore, just return the dataset.
+
+    dataset_out = drop_series_outliers(
+        dataset_in,
         CommonFields.NEW_CASES,
         zscore_threshold=8.0,
         # As delta ramped up, cases increased at a much quicker rate than before.
@@ -72,6 +81,7 @@ def drop_new_case_outliers(timeseries: MultiRegionDataset) -> MultiRegionDataset
         secondary_zscore_threshold_after_date=(pd.Timestamp("2021-06-01"), 15.0),
         threshold=30,
     )
+    return dataset_out.append_regions(states_to_exclude)
 
 
 def drop_new_deaths_outliers(timeseries: MultiRegionDataset) -> MultiRegionDataset:
@@ -82,9 +92,15 @@ def drop_new_deaths_outliers(timeseries: MultiRegionDataset) -> MultiRegionDatas
 
     Returns: timeseries with outliers removed from new_cases.
     """
-    return drop_series_outliers(
-        timeseries, CommonFields.NEW_DEATHS, zscore_threshold=8.0, threshold=30,
+
+    states_to_exclude, dataset_in = timeseries.partition_by_region(STATES_TO_EXCLUDE_CASES_DEATHS)
+    if dataset_in.timeseries_bucketed.empty:
+        return timeseries  # if dataset only includes locations to ignore, just return the dataset.
+
+    dataset_out = drop_series_outliers(
+        dataset_in, CommonFields.NEW_DEATHS, zscore_threshold=8.0, threshold=30,
     )
+    return dataset_out.append_regions(states_to_exclude)
 
 
 def drop_series_outliers(
