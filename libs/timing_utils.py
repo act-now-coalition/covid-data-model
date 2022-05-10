@@ -25,7 +25,7 @@ def timing(f):
         ts = std_time()
         result = f(*args, **kw)
         te = std_time()
-        print(f"function: {f.__name__} executed in {te-ts} seconds.")
+        _logger.info(f"function: {f.__name__} executed in {te-ts} seconds.")
         return result
 
     return wrap
