@@ -150,10 +150,13 @@ def generate_api_v2(model_output_dir, output, level, state, fips):
     """The entry function for invocation"""
 
     # Load all API Regions
+    _logger.info(f"Loading all API Regions.")
     selected_dataset = combined_datasets.load_us_timeseries_dataset().get_subset(
         aggregation_level=level, exclude_county_999=True, state=state, fips=fips,
     )
-    _logger.info(f"Loading all regional inputs.")
 
+    _logger.info(f"Loading pyseir results.")
     model_output = pyseir.run.PyseirOutputDatasets.read(model_output_dir)
+
+    _logger.info(f"Running generate_from_loaded_data")
     api_v2_pipeline.generate_from_loaded_data(model_output, output, selected_dataset, _logger)

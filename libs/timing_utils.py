@@ -13,3 +13,19 @@ def time(description: Optional[str] = None, **logging_args):
     yield
     elapsed = time_stdlib.time() - start
     _logger.info(f"Elapsed: {elapsed:.1f}s", description=description, **logging_args)
+
+
+from functools import wraps
+from time import time as std_time
+
+
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = std_time()
+        result = f(*args, **kw)
+        te = std_time()
+        print(f"function: {f.__name__} executed in {te-ts} seconds.")
+        return result
+
+    return wrap

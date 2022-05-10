@@ -344,7 +344,10 @@ ALL_FIELDS_FEATURE_DEFINITION: FeatureDataSourceMap = {
     CommonFields.CAN_LOCATION_PAGE_URL: [CANLocationPageURLS],
 }
 
+from libs.timing_utils import timing
 
+
+@timing
 @functools.lru_cache(None)
 def load_us_timeseries_dataset(
     pointer_directory: pathlib.Path = dataset_utils.DATA_DIRECTORY, load_demographics: bool = True

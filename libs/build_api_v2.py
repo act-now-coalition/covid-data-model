@@ -282,9 +282,9 @@ def _lookup_source_type(source_str, field_name, log) -> FieldSourceType:
     source_enum = FieldSourceType.get(source_str)
     if source_enum is None:
         source_enum = FieldSourceType.OTHER
-        log.info(
-            METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
-        )
+        # log.info(
+        #     METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
+        # )
     return source_enum
 
 

@@ -59,7 +59,10 @@ class PyseirOutputDatasets:
         self.infection_rate.to_csv(output_path)
         log.info(f"Saving Rt results to {output_path}")
 
+    from libs.timing_utils import timing
+
     @staticmethod
+    @timing
     def read(output_dir: pathlib.Path) -> "PyseirOutputDatasets":
         rt_data_path = output_dir / SummaryArtifact.RT_METRIC_COMBINED.value
         rt_data = MultiRegionDataset.from_csv(rt_data_path)

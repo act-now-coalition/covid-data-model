@@ -28,6 +28,8 @@ from libs.datasets import vaccine_backfills
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets import AggregationLevel
+from libs.timing_utils import timing
+
 
 logger = structlog.getLogger()
 PROD_BUCKET = "data.covidactnow.org"
@@ -179,6 +181,7 @@ def build_timeseries_for_region(
     return region_timeseries
 
 
+@timing
 def deploy_single_level(
     all_timeseries: List[RegionSummaryWithTimeseries],
     level: AggregationLevel,
