@@ -816,6 +816,15 @@
       "end_date": "2022-05-01",
       "region": "WA",
       "context": " Suspected County-level case backlog on 5/2/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-04-28",
+      "end_date": "",
+      "region": "12009",
+      "context": "Brevard county temp block "
     }
   ]
 }
