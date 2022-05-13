@@ -843,6 +843,15 @@
       "end_date": "2022-05-10",
       "region": "PA",
       "context": "PA staet-level cases spike on 5/11/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-03-25",
+      "end_date": "",
+      "region": "06099",
+      "context": "NYT hasn't updated cases since March 25 for some reason. https://github.com/nytimes/covid-19-data/issues/675"
     }
   ]
 }
