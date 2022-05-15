@@ -9,12 +9,13 @@ from datapublic.common_fields import PdFields
 from libs.datasets import taglib
 from libs.datasets import timeseries
 from libs.datasets import new_cases_and_deaths
-from libs.pipeline import Region
+from libs.datasets.dataset_utils import AggregationLevel
+from libs.pipeline import RegionMask
 
 MultiRegionDataset = timeseries.MultiRegionDataset
 
 # Florida biweekly case reporting causes outlier detection to trigger inadvertently.
-STATES_TO_EXCLUDE_CASES_DEATHS = [Region.from_state("FL")]
+STATES_TO_EXCLUDE_CASES_DEATHS = [RegionMask(AggregationLevel.COUNTY, states=["FL"])]
 
 
 def _calculate_modified_zscore(
