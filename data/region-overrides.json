@@ -851,6 +851,16 @@
       "end_date": "",
       "region": "37127",
       "context": "Nash county showing 0 new cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "context": "MO counties missing case data",
+      "region": "29007,29001,29037,29047,29095,29097,29129,29145,29149,29165,29179,29199,29203,29223,29155",
+      "disclaimer": "Some Missouri counties are no longer reporting cases at a county level."
     }
   ]
 }
