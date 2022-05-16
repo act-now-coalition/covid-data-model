@@ -29,6 +29,7 @@ from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 
 from libs.datasets import timeseries
+from libs.datasets.taglib import KnownIssue, KnownIssueNoDate
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
@@ -232,17 +233,25 @@ def _build_metric_annotations(
         sources = _sources_from_provenance_and_source_url(field_name, tag_series, log)
 
     anomalies = tag_series.annotations_all_bucket(field_name)
-    anomalies = [
-        AnomalyAnnotation(
-            date=tag.date, original_observation=tag.original_observation, type=tag.tag_type
-        )
-        for tag in anomalies
-    ]
 
-    if not sources and not anomalies:
+    anomaly_tags = []
+    for tag in anomalies:
+        if isinstance(tag, KnownIssue):
+            anomaly = AnomalyAnnotation(
+                date=tag.date, type=tag.tag_type, public_note=tag.public_note
+            )
+        elif isinstance(tag, KnownIssueNoDate):
+            anomaly = AnomalyAnnotation(type=tag.tag_type, public_note=tag.public_note)
+        else:
+            anomaly = AnomalyAnnotation(
+                date=tag.date, original_observation=tag.original_observation, type=tag.tag_type
+            )
+        anomaly_tags.append(anomaly)
+
+    if not sources and not anomaly_tags:
         return None
 
-    return FieldAnnotations(sources=sources, anomalies=anomalies)
+    return FieldAnnotations(sources=sources, anomalies=anomaly_tags)
 
 
 def _sources_from_provenance_and_source_url(

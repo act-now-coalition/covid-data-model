@@ -256,10 +256,13 @@ class ActualsTimeseriesRow(Actuals):
 
 
 class AnomalyAnnotation(base_model.APIBaseModel):
-    date: datetime.date = pydantic.Field(..., description="Date of anomaly")
+    date: Optional[datetime.date] = pydantic.Field(None, description="Date of anomaly")
     type: timeseries.TagType = pydantic.Field(..., description="Type of annotation")
-    original_observation: float = pydantic.Field(
-        ..., description="Original value on this date detected as anomalous."
+    original_observation: Optional[float] = pydantic.Field(
+        None, description="Original value on this date detected as anomalous."
+    )
+    public_note: Optional[str] = pydantic.Field(
+        None, description="Description of anomaly if applicable."
     )
 
 
