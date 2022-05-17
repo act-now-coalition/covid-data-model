@@ -14,8 +14,12 @@ from libs.pipeline import RegionMask
 
 MultiRegionDataset = timeseries.MultiRegionDataset
 
-# Florida biweekly case reporting causes outlier detection to trigger inadvertently.
-STATES_TO_EXCLUDE_CASES_DEATHS = [RegionMask(AggregationLevel.COUNTY, states=["FL"])]
+STATES_TO_EXCLUDE_CASES_DEATHS = [
+    # FL: Biweekly case reporting causes outlier detection to trigger inadvertently.
+    # PA: Switching to weekly case reporting caused outlier detection to trigger inadvertently.
+    RegionMask(AggregationLevel.COUNTY, states=["FL", "PA"]),
+    RegionMask(AggregationLevel.STATE, states=["PA"]),
+]
 
 
 def _calculate_modified_zscore(

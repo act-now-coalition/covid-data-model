@@ -811,15 +811,6 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2022-05-10",
-      "end_date": "2022-05-10",
-      "region": "PA",
-      "context": "PA staet-level cases spike on 5/11/2022"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "",
       "end_date": "",
       "region": "37127",
@@ -834,15 +825,6 @@
       "context": "MO counties missing case data",
       "region": "29007,29001,29037,29047,29095,29097,29129,29145,29149,29165,29179,29199,29203,29223,29155",
       "disclaimer": "Some Missouri counties are no longer reporting cases at a county level."
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2022-05-05",
-      "end_date": "2022-05-11",
-      "region": "PA",
-      "context": "Recent PA reporting has been spotty and there was a large outlier on 5/11 that got removed but then left the resulting 7-day average very low."
     }
   ]
 }
