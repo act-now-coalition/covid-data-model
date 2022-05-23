@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 import enum
 import textwrap
 
@@ -256,14 +256,24 @@ class ActualsTimeseriesRow(Actuals):
 
 
 class AnomalyAnnotation(base_model.APIBaseModel):
-    date: Optional[datetime.date] = pydantic.Field(None, description="Date of anomaly")
+    date: datetime.date = pydantic.Field(..., description="Date of anomaly")
     type: timeseries.TagType = pydantic.Field(..., description="Type of annotation")
-    original_observation: Optional[float] = pydantic.Field(
-        None, description="Original value on this date detected as anomalous."
+    original_observation: float = pydantic.Field(
+        ..., description="Original value on this date detected as anomalous."
     )
-    public_note: Optional[str] = pydantic.Field(
-        None, description="Description of anomaly if applicable."
-    )
+
+
+class BlockedDataAnnotation(base_model.APIBaseModel):
+    date: Optional[datetime.date] = pydantic.Field(None, description="Date of data issue")
+    public_note: str = pydantic.Field(..., description="Description of data issue")
+    type: timeseries.TagType = pydantic.Field(..., description="Type of annotation")
+
+
+class BlockedDataRangeAnnotation(base_model.APIBaseModel):
+    start_date: datetime.date = pydantic.Field(..., description="Date of data issue")
+    end_date: datetime.date = pydantic.Field(..., description="End date of data issue")
+    public_note: str = pydantic.Field(..., description="Description of data issue")
+    type: timeseries.TagType = pydantic.Field(..., description="Type of annotation")
 
 
 class FieldSource(base_model.APIBaseModel):
@@ -280,7 +290,10 @@ class FieldAnnotations(base_model.APIBaseModel):
     """Annotations associated with one field."""
 
     sources: List[FieldSource]
-    anomalies: List[AnomalyAnnotation]
+    # The ordering of these types seems to make a difference. Putting BlockedDataAnnotation in front
+    # of BlockedDataRangeAnnotation seems to cause BlockedDataRangeAnnotations to be converted to
+    # BlockedDataAnnotation (losing the start_ and end_ dates).
+    anomalies: List[Union[BlockedDataRangeAnnotation, AnomalyAnnotation, BlockedDataAnnotation]]
 
 
 class Annotations(base_model.APIBaseModel):
