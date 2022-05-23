@@ -1,6 +1,6 @@
 from libs.datasets import taglib
-from libs.datasets import timeseries
 from tests import test_helpers
+from libs.datasets.timeseries import TagType
 
 
 def _get_subclass_tag_types(cls):
@@ -17,7 +17,13 @@ def test_all_tag_subclasses_accounted_for():
 
 def test_annotation_tag_types():
     annotation_tag_types = _get_subclass_tag_types(taglib.AnnotationWithDate)
-    assert sorted(annotation_tag_types) == sorted(timeseries.ANNOTATION_TAG_TYPES)
+    assert sorted(annotation_tag_types) == sorted(
+        [
+            TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
+            TagType.CUMULATIVE_TAIL_TRUNCATED,
+            TagType.ZSCORE_OUTLIER,
+        ]
+    )
 
 
 def test_tag_type_to_class():

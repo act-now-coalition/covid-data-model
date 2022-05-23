@@ -101,7 +101,11 @@ def make_tag_df(
 def make_tag(
     tag_type: TagType = TagType.CUMULATIVE_TAIL_TRUNCATED, **kwargs
 ) -> taglib.TagInTimeseries:
-    if tag_type in timeseries.ANNOTATION_TAG_TYPES:
+    if tag_type in [
+        TagType.CUMULATIVE_LONG_TAIL_TRUNCATED,
+        TagType.CUMULATIVE_TAIL_TRUNCATED,
+        TagType.ZSCORE_OUTLIER,
+    ]:
         # Force to the expected types and add defaults if not in kwargs
         kwargs["original_observation"] = float(kwargs.get("original_observation", 10))
         kwargs["date"] = pd.to_datetime(kwargs.get("date", "2020-04-02"))
