@@ -1,4 +1,5 @@
 import datetime
+import logging
 from typing import Optional
 from typing import Tuple
 import re
@@ -24,7 +25,11 @@ _logger = structlog.getLogger()
 
 
 # Tag types expected to be produced by this module and only this module.
-_EXPECTED_TYPES = [taglib.TagType.KNOWN_ISSUE, taglib.TagType.KNOWN_ISSUE_NO_DATE]
+_EXPECTED_TYPES = [
+    taglib.TagType.KNOWN_ISSUE,
+    taglib.TagType.KNOWN_ISSUE_NO_DATE,
+    taglib.TagType.KNOWN_ISSUE_DATE_RANGE,
+]
 
 
 # The manual filter config is defined with pydantic instead of standard dataclasses to get support
@@ -43,6 +48,10 @@ class Filter(pydantic.BaseModel):
 
     @property
     def tag(self) -> taglib.TagInTimeseries:
+        if self.start_date and self.end_date:
+            return taglib.KnownIssueDateRange(
+                start_date=self.start_date, end_date=self.end_date, public_note=self.public_note
+            )
         if self.start_date:
             return taglib.KnownIssue(date=self.start_date, public_note=self.public_note)
         elif self.end_date:

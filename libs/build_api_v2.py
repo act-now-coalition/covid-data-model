@@ -24,12 +24,16 @@ from api.can_api_v2_definition import (
 )
 from datapublic.common_fields import CommonFields
 
-from api.can_api_v2_definition import AnomalyAnnotation
+from api.can_api_v2_definition import (
+    AnomalyAnnotation,
+    BlockedDataAnnotation,
+    BlockedDataRangeAnnotation,
+)
 from api.can_api_v2_definition import FieldSource
 from api.can_api_v2_definition import FieldSourceType
 
 from libs.datasets import timeseries
-from libs.datasets.taglib import KnownIssue, KnownIssueNoDate
+from libs.datasets.taglib import KnownIssue, KnownIssueDateRange, KnownIssueNoDate
 from libs.datasets.tail_filter import TagField
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 
@@ -236,12 +240,19 @@ def _build_metric_annotations(
 
     anomaly_tags = []
     for tag in anomalies:
-        if isinstance(tag, KnownIssue):
-            anomaly = AnomalyAnnotation(
+        if isinstance(tag, KnownIssueDateRange):
+            anomaly = BlockedDataRangeAnnotation(
+                start_date=tag.start_date,
+                end_date=tag.end_date,
+                type=tag.tag_type,
+                public_note=tag.public_note,
+            )
+        elif isinstance(tag, KnownIssue):
+            anomaly = BlockedDataAnnotation(
                 date=tag.date, type=tag.tag_type, public_note=tag.public_note
             )
         elif isinstance(tag, KnownIssueNoDate):
-            anomaly = AnomalyAnnotation(type=tag.tag_type, public_note=tag.public_note)
+            anomaly = BlockedDataAnnotation(type=tag.tag_type, public_note=tag.public_note)
         else:
             anomaly = AnomalyAnnotation(
                 date=tag.date, original_observation=tag.original_observation, type=tag.tag_type

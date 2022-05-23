@@ -58,6 +58,7 @@ class TagType(GetByValueMixin, ValueAsStrMixin, str, enum.Enum):
     ZSCORE_OUTLIER = "zscore_outlier"
     KNOWN_ISSUE = "known_issue"
     KNOWN_ISSUE_NO_DATE = "known_issue_no_date"
+    KNOWN_ISSUE_DATE_RANGE = "known_issue_date_range"
     DERIVED = "derived"
     DROP_FUTURE_OBSERVATION = "drop_future_observation"
     # When adding a TagType remember to update timeseries_stats.StatName so it is displayed in
@@ -277,14 +278,20 @@ class ZScoreOutlier(AnnotationWithDate):
 
 
 @dataclass(frozen=True)
-class KnownIssue(TagInTimeseries):
+class ManualOverrideAnnotation(TagInTimeseries):
+    """Annotation class for manually blocked data."""
+
     public_note: str
+
+
+@dataclass(frozen=True)
+class KnownIssue(ManualOverrideAnnotation):
     date: datetime.date
 
     TAG_TYPE = TagType.KNOWN_ISSUE
 
     @classmethod
-    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+    def make_instance(cls, *, content: str) -> "KnownIssue":
         content_parsed = json.loads(content)
         # Support loading old "disclaimer" and new "public_note".
         public_note = content_parsed.get("disclaimer", content_parsed.get("public_note", ""))
@@ -299,19 +306,45 @@ class KnownIssue(TagInTimeseries):
 
 
 @dataclass(frozen=True)
-class KnownIssueNoDate(TagInTimeseries):
-    public_note: str
-
+class KnownIssueNoDate(ManualOverrideAnnotation):
     TAG_TYPE = TagType.KNOWN_ISSUE_NO_DATE
 
     @classmethod
-    def make_instance(cls, *, content: str) -> "TagInTimeseries":
+    def make_instance(cls, *, content: str) -> "KnownIssueNoDate":
         content_parsed = json.loads(content)
         return cls(public_note=content_parsed["public_note"])
 
     @property
     def content(self) -> str:
         d = {"public_note": self.public_note}
+        return json.dumps(d, separators=(",", ":"))
+
+
+@dataclass(frozen=True)
+class KnownIssueDateRange(ManualOverrideAnnotation):
+    start_date: datetime.date
+    end_date: datetime.date
+
+    TAG_TYPE = TagType.KNOWN_ISSUE_DATE_RANGE
+
+    @classmethod
+    def make_instance(cls, *, content: str) -> "KnownIssueDateRange":
+        content_parsed = json.loads(content)
+        # Support loading old "disclaimer" and new "public_note".
+        public_note = content_parsed.get("disclaimer", content_parsed.get("public_note", ""))
+        return cls(
+            public_note=public_note,
+            start_date=datetime.date.fromisoformat(content_parsed["start_date"]),
+            end_date=datetime.date.fromisoformat(content_parsed["end_date"]),
+        )
+
+    @property
+    def content(self) -> str:
+        d = {
+            "public_note": self.public_note,
+            "start_date": self.start_date.isoformat(),
+            "end_date": self.end_date.isoformat(),
+        }
         return json.dumps(d, separators=(",", ":"))
 
 
@@ -357,6 +390,7 @@ TAG_TYPE_TO_CLASS = {
     TagType.SOURCE: Source,
     TagType.KNOWN_ISSUE: KnownIssue,
     TagType.KNOWN_ISSUE_NO_DATE: KnownIssueNoDate,
+    TagType.KNOWN_ISSUE_DATE_RANGE: KnownIssueDateRange,
     TagType.DERIVED: Derived,
     TagType.DROP_FUTURE_OBSERVATION: DropFutureObservation,
 }
