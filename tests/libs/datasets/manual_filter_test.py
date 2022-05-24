@@ -322,20 +322,24 @@ def test_region_overrides_transform_and_filter_infection_rate():
 
 
 @pytest.mark.parametrize(
-    "start_date, end_date, result",
+    "start_date, end_date, result, tag_date, tag_second_date",
     [
-        # ("2020-04-03", None, [1, 2, None, None]),
-        # (None, "2020-04-02", [None, None, 3, 4]),
-        # ("2020-04-02", "2020-04-03", [1, None, None, 4]),
-        # ("2020-04-02", "2020-04-02", [1, None, 3, 4]),
-        # ("2020-04-05", None, [1, 2, 3, 4]),
-        (None, "2020-03-28", [1, 2, 3, 4]),
-        # (None, "2020-04-05", [None, None, None, None]),
-        # ("2020-03-28", None, [None, None, None, None]),
+        ("2020-04-03", None, [1, 2, None, None], "2020-04-03", None),
+        (None, "2020-04-02", [None, None, 3, 4], "2020-04-02", None),
+        ("2020-04-02", "2020-04-03", [1, None, None, 4], "2020-04-02", "2020-04-03"),
+        ("2020-04-02", "2020-04-02", [1, None, 3, 4], "2020-04-02", "2020-04-02"),
+        ("2020-04-05", None, [1, 2, 3, 4], None, None),
+        (None, "2020-03-28", [1, 2, 3, 4], None, None),
+        (None, "2020-04-05", [None, None, None, None], "2020-04-05", None),
+        ("2020-03-28", None, [None, None, None, None], "2020-03-28", None),
     ],
 )
 def test_region_overrides_transform_and_filter_start_end_dates(
-    start_date: Optional[str], end_date: Optional[str], result: List
+    start_date: Optional[str],
+    end_date: Optional[str],
+    result: List,
+    tag_date: Optional[str],
+    tag_second_date: Optional[str],
 ):
     region_overrides = {
         "overrides": [
@@ -361,30 +365,24 @@ def test_region_overrides_transform_and_filter_start_end_dates(
         ds_in, manual_filter.transform_region_overrides(region_overrides, {})
     )
 
-    if start_date and end_date:
+    if tag_date and tag_second_date:
         tags = [
             test_helpers.make_tag(
                 taglib.TagType.KNOWN_ISSUE_DATE_RANGE,
                 public_note="Blah",
-                start_date=start_date,
-                end_date=end_date,
+                start_date=tag_date,
+                end_date=tag_second_date,
             )
         ]
-    elif start_date:
+    elif tag_date:
         tags = [
-            test_helpers.make_tag(taglib.TagType.KNOWN_ISSUE, public_note="Blah", date=start_date)
-        ]
-    elif end_date:
-        tags = [
-            test_helpers.make_tag(taglib.TagType.KNOWN_ISSUE, public_note="Blah", date=end_date)
+            test_helpers.make_tag(taglib.TagType.KNOWN_ISSUE, public_note="Blah", date=tag_date)
         ]
     else:
         tags = []
     ds_expected = test_helpers.build_default_region_dataset(
         {CommonFields.CASES: TimeseriesLiteral(result, annotation=tags)}, region=region_tx,
     )
-    print(ds_expected)
-    print(ds_out)
     test_helpers.assert_dataset_like(ds_out, ds_expected, drop_na_timeseries=True)
 
 
