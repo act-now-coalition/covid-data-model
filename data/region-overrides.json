@@ -834,6 +834,15 @@
       "end_date": "2022-06-07",
       "region": "13003",
       "context": "spike in cases after no reporting"
+    },
+    {
+      "include": "subregions",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2022-06-10",
+      "end_date": "",
+      "region": "CA",
+      "context": "CA test positivity jumped for a bunch of counties."
     }
   ]
 }
