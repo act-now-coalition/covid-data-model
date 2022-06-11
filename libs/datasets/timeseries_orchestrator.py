@@ -102,109 +102,101 @@ class MultiRegionOrchestrator:
         combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
 
     def build_and_combine_regions(self):
-        processed_regions = parallel_map(self._build_region_timeseries, self.regions)
+        processed_regions = parallel_map(_build_region_timeseries, self.regions)
         return combine_regions(list(processed_regions))
 
-    def _build_region_timeseries(
-        self, region_dataset: MultiRegionDataset, print_stats=True,
-    ):
 
-        # aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-        # region_overrides_config = manual_filter.transform_region_overrides(
-        #     json.load(open(REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
-        # )
-        # before_manual_filter = region_dataset
-        # multiregion_dataset = manual_filter.run(region_dataset, region_overrides_config)
-        # manual_filter_touched = manual_filter.touched_subset(before_manual_filter, multiregion_dataset)
-        # manual_filter_touched.write_to_wide_dates_csv(
-        #     dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH,
-        #     dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH,
-        # )
-        # if print_stats:
-        #     multiregion_dataset.print_stats("manual filter")
-        multiregion_dataset = timeseries.drop_observations(
-            region_dataset, after=datetime.datetime.utcnow().date()
-        )
+def _build_region_timeseries(region_dataset: MultiRegionDataset, print_stats=True):
+    # aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    # region_overrides_config = manual_filter.transform_region_overrides(
+    #     json.load(open(REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
+    # )
+    # before_manual_filter = region_dataset
+    # multiregion_dataset = manual_filter.run(region_dataset, region_overrides_config)
+    # manual_filter_touched = manual_filter.touched_subset(before_manual_filter, multiregion_dataset)
+    # manual_filter_touched.write_to_wide_dates_csv(
+    #     dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH,
+    #     dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH,
+    # )
+    # if print_stats:
+    #     multiregion_dataset.print_stats("manual filter")
+    multiregion_dataset = timeseries.drop_observations(
+        region_dataset, after=datetime.datetime.utcnow().date()
+    )
 
-        multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
-        if print_stats:
-            multiregion_dataset.print_stats(f"drop_tail {region_dataset.location_ids}")
+    multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats(f"drop_tail {region_dataset.location_ids}")
 
-        # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
-        _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
-        if print_stats:
-            multiregion_dataset.print_stats("TailFilter")
-        multiregion_dataset = zeros_filter.drop_all_zero_timeseries(
-            multiregion_dataset,
-            [
-                CommonFields.VACCINES_DISTRIBUTED,
-                CommonFields.VACCINES_ADMINISTERED,
-                CommonFields.VACCINATIONS_COMPLETED,
-                CommonFields.VACCINATIONS_INITIATED,
-                CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
-            ],
-        )
-        if print_stats:
-            multiregion_dataset.print_stats("zeros_filter")
+    # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
+    _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
+    if print_stats:
+        multiregion_dataset.print_stats("TailFilter")
+    multiregion_dataset = zeros_filter.drop_all_zero_timeseries(
+        multiregion_dataset,
+        [
+            CommonFields.VACCINES_DISTRIBUTED,
+            CommonFields.VACCINES_ADMINISTERED,
+            CommonFields.VACCINATIONS_COMPLETED,
+            CommonFields.VACCINATIONS_INITIATED,
+            CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
+        ],
+    )
+    if print_stats:
+        multiregion_dataset.print_stats("zeros_filter")
 
-        multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(
-            multiregion_dataset
-        )
-        if print_stats:
-            multiregion_dataset.print_stats("estimate_initiated_from_state_ratio")
+    multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("estimate_initiated_from_state_ratio")
 
-        multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
-        multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
-        if print_stats:
-            multiregion_dataset.print_stats("new_cases_and_deaths")
+    multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
+    multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("new_cases_and_deaths")
 
-        multiregion_dataset = weekly_hospitalizations.add_weekly_hospitalizations(
-            multiregion_dataset
-        )
+    multiregion_dataset = weekly_hospitalizations.add_weekly_hospitalizations(multiregion_dataset)
 
-        multiregion_dataset = custom_patches.patch_maryland_missing_case_data(multiregion_dataset)
-        if print_stats:
-            multiregion_dataset.print_stats("patch_maryland_missing_case_data")
+    multiregion_dataset = custom_patches.patch_maryland_missing_case_data(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("patch_maryland_missing_case_data")
 
-        multiregion_dataset = nytimes_anomalies.filter_by_nyt_anomalies(multiregion_dataset)
-        if print_stats:
-            multiregion_dataset.print_stats("nytimes_anomalies")
+    multiregion_dataset = nytimes_anomalies.filter_by_nyt_anomalies(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("nytimes_anomalies")
 
-        multiregion_dataset = outlier_detection.drop_new_case_outliers(multiregion_dataset)
-        multiregion_dataset = outlier_detection.drop_new_deaths_outliers(multiregion_dataset)
-        if print_stats:
-            multiregion_dataset.print_stats("outlier_detection")
+    multiregion_dataset = outlier_detection.drop_new_case_outliers(multiregion_dataset)
+    multiregion_dataset = outlier_detection.drop_new_deaths_outliers(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("outlier_detection")
 
-        multiregion_dataset = timeseries.drop_regions_without_population(
-            multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
-        )
-        if print_stats:
-            multiregion_dataset.print_stats("drop_regions_without_population")
+    multiregion_dataset = timeseries.drop_regions_without_population(
+        multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, structlog.get_logger()
+    )
+    if print_stats:
+        multiregion_dataset.print_stats("drop_regions_without_population")
 
-        multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
-            multiregion_dataset
-        )
-        if print_stats:
-            multiregion_dataset.print_stats("aggregate_puerto_rico_from_counties")
-        multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
-        if print_stats:
-            multiregion_dataset.print_stats("aggregate_to_new_york_city")
+    multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
+        multiregion_dataset
+    )
+    if print_stats:
+        multiregion_dataset.print_stats("aggregate_puerto_rico_from_counties")
+    multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("aggregate_to_new_york_city")
 
-        # TODO: restrict HSA aggregation to create only rows for counties within state lines.
-        # Or remove duplicates after the fact.
-        hsa_aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
-        multiregion_dataset = hsa_aggregator.aggregate(
-            multiregion_dataset, restrict_to_current_state=True
-        )
-        if print_stats:
-            multiregion_dataset.print_stats("CountyToHSAAggregator")
+    # TODO: restrict HSA aggregation to create only rows for counties within state lines.
+    # Or remove duplicates after the fact.
+    hsa_aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
+    multiregion_dataset = hsa_aggregator.aggregate(
+        multiregion_dataset, restrict_to_current_state=True
+    )
+    if print_stats:
+        multiregion_dataset.print_stats("CountyToHSAAggregator")
 
-        multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(
-            multiregion_dataset
-        )
-        if print_stats:
-            multiregion_dataset.print_stats("replace_dc_county_with_state_data")
-        return multiregion_dataset
+    multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(multiregion_dataset)
+    if print_stats:
+        multiregion_dataset.print_stats("replace_dc_county_with_state_data")
+    return multiregion_dataset
 
 
 def combine_regions(datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
@@ -233,7 +225,10 @@ def combine_regions(datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
     cbsa_dataset = aggregator.aggregate(
         multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
     )
-    return multiregion_dataset.append_regions(cbsa_dataset)
+    multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+    return custom_aggregations.aggregate_to_country(
+        multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+    )
 
 
 def load_bulk_dataset(refresh_datasets: Optional[bool] = True) -> MultiRegionDataset:
