@@ -47,6 +47,7 @@ from libs import pipeline
 from libs.datasets.dataset_utils import DATA_DIRECTORY
 
 # import json
+import logging
 
 TailFilter = tail_filter.TailFilter
 
@@ -98,8 +99,11 @@ class MultiRegionOrchestrator:
             states = US_STATE_ABBREV.values()
         regions = [bulk_dataset.get_subset(state=region) for region in states]
         multiregion_dataset = MultiRegionOrchestrator(regions=regions).build_and_combine_regions()
+
+        logging.info("Writing multiregion_dataset...")
         path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
         combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
+        logging.info("Finished multiregion_dataset")
 
     def build_and_combine_regions(self):
         processed_regions = parallel_map(_build_region_timeseries, self.regions)
@@ -226,9 +230,12 @@ def combine_regions(datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
         multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
     )
     multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
-    return custom_aggregations.aggregate_to_country(
+    multiregion_dataset.print_stats("CBSA dataset")
+    multiregion_dataset = custom_aggregations.aggregate_to_country(
         multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
     )
+    multiregion_dataset.print_stats("Aggregate to country")
+    return multiregion_dataset
 
 
 def load_bulk_dataset(refresh_datasets: Optional[bool] = True) -> MultiRegionDataset:
