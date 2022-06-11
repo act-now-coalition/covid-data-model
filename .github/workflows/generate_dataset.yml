@@ -1,0 +1,128 @@
+name: Generate datasets
+
+on:
+  schedule:
+    # Run job everyday at 5:00 am EST
+    - cron: '0 10 * * *'
+  push:
+  workflow_dispatch:
+    inputs:
+      trigger_api_build:
+        description: 'If "true" API snapshot build will be triggered after dataset update.'
+        default: 'true'
+      refresh_datasets:
+        description: 'Set to "false" to skip downloading / re-combining the latest datasets.'
+        default: 'true'
+  repository_dispatch:
+
+env:
+
+  # Used by python code that reports errors to sentry.
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+  SENTRY_ENVIRONMENT: 'production'
+
+  # use a webhook to write to slack channel dev-alerts for QA
+  SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
+
+  DATA_AVAILABILITY_SHEET_NAME: "Data Availability"
+
+  GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_DATA }}
+
+  # Use trigger_api_build if specified, else use true. This automatically triggers
+  # the API build on scheduled runs where trigger_api_build is not defined.
+  # https://github.community/t/how-can-you-use-expressions-as-the-workflow-dispatch-input-default/141454/4
+  TRIGGER_API_BUILD: ${{ github.event.inputs.trigger_api_build || 'true' }}
+
+  REFRESH_DATASETS_ARG: ${{ (github.event.inputs.refresh_datasets == 'true') && '--refresh-datasets' || '--no-refresh-datasets' }}
+
+jobs:
+  update-and-promote-datasets:
+    runs-on: gce-runner
+    steps:
+    - name: Parse covid data model branch name and set env variable
+      run: |
+        echo "COVID_DATA_MODEL_REF=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+    - name: Checkout covid-data-model
+      uses: actions/checkout@v2
+      with:
+        repository: covid-projections/covid-data-model
+        path: covid-data-model
+        ref: '${{env.COVID_DATA_MODEL_REF}}'
+        lfs: true
+
+    - name: Update NYTimes anomalies file
+      working-directory: ./covid-data-model
+      run: |
+        curl https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/anomalies.csv --output data/nyt_anomalies.csv
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.7'
+
+    - name: Cache Pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
+
+    - name: Install Dependencies
+      working-directory: ./covid-data-model
+      run: pip install -r requirements.txt
+
+    - name: prune covid-data-model
+      working-directory: ./covid-data-model
+      run: git lfs prune
+
+    - name: Update and Promote dataset.
+      working-directory: ./covid-data-model
+      run: |
+        ./run.py data generate ${{env.REFRESH_DATASETS_ARG}}
+
+    - name: Create Update Commit
+      working-directory: ./covid-data-model
+      run: ./tools/push-data-update.sh
+
+    - name: Maybe Trigger API build
+      if: env.TRIGGER_API_BUILD == 'true'
+      working-directory: ./covid-data-model
+      env:
+        GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
+      run: |
+        ./tools/build-snapshot.sh main
+    - name: Slack notification
+      if: env.TRIGGER_API_BUILD == 'true'
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+      uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
+      with:
+        args: 'Started new API build from dataset updater action.'
+
+    # TODO(https://trello.com/c/4dFFtQiH/1239-fix-data-availability-report-or-officially-replace-it-with-toms-dashboard)
+    # - name: Update Data Availability Sheet
+    #   working-directory: ./covid-data-model
+    #   run: |
+    #     ./run.py data update-availability-report
+
+    - name: Slack notification
+      if: failure()
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+        STATUS: ${{job.status}}
+      uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
+      with:
+        args: 'update-dataset-snapshot failed'
+    - name: Slack notification
+      if: success()
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_DEV_ALERTS }}
+        STATUS: ${{job.status}}
+        DATA_AVAILABILITY_URL: http://tiny.cc/can-data
+      uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
+      with:
+        args: 'update-dataset-snapshot succeeded. View Data Availability Report at {{DATA_AVAILABILITY_URL}}'
