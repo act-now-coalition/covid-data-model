@@ -127,6 +127,7 @@ class CountyToHSAAggregator:
         self,
         dataset_in: MultiRegionDataset,
         fields_to_aggregate: Dict[CommonFields, CommonFields] = HSA_FIELDS_MAPPING,
+        restrict_to_current_state: bool = False,
     ) -> MultiRegionDataset:
         """Create new fields by aggregating county-level data into HSA level data. 
         
@@ -134,6 +135,13 @@ class CountyToHSAAggregator:
             dataset_in: MultiRegionDataset with fields to aggregate.
             fields_to_aggregate: Mapping of names of columns to aggregate to names of resulting columns.
         """
+
+        # TODO PARALLEL: make a multiregion_dataset class explicitly for 1 state/place.
+        # check that restriction is only used when one state is present
+        # if restrict_to_current_state and len(dataset_in.location_ids) != 1:
+        # raise ValueError(
+        # f"restrict_to_current_state flag can only be used on single-location datasets. {}"
+        # )
 
         # Only aggregate county-level data for specified fields
         counties = dataset_in.get_subset(aggregation_level=AggregationLevel.COUNTY)
@@ -162,6 +170,12 @@ class CountyToHSAAggregator:
         # any other county in the same HSA has data, regardless of whether or
         # not we have actually collected data for that county.
         aggregated_ts = hsa_ts.explode(CommonFields.LOCATION_ID)
+        if restrict_to_current_state:
+            # Clean this up (don't assume 0th index exists)
+            state = Region.from_state(Region.from_location_id(dataset_in.location_ids[0]).state)
+            aggregated_ts = aggregated_ts.loc[
+                aggregated_ts.index.get_level_values(CommonFields.LOCATION_ID) == state.location_id
+            ]
 
         # Here we are dropping the index level "location_id", which are the HSAs,
         # and replacing them with the newly added "location_id" column, which are the counties.

@@ -32,11 +32,12 @@ def calculate_weekly_column_from_daily(
     subset_ts = subset_ds.timeseries_bucketed.copy()  # copy to avoid SettingWithCopy warning.
 
     # If there's no data for field_in then just return the original dataset.
-    if not subset_ts[field_in].any():
+    if field_in not in subset_ts.columns or not subset_ts[field_in].any():
         return dataset_in
 
     # Make sure we do not have any pre-existing weekly data before overwriting the field_out column.
-    assert not subset_ts[field_out].any()
+    # TODO PARALLEL: rework assert to handle if col doesnt exist
+    # assert not subset_ts[field_out].any()
     subset_ts[field_out] = _rolling_sum_7day(subset_ts[field_in])
 
     new_ts = subset_ts.combine_first(dataset_in.timeseries_bucketed)
@@ -46,7 +47,6 @@ def calculate_weekly_column_from_daily(
 
 def add_weekly_hospitalizations(dataset_in: MultiRegionDataset) -> MultiRegionDataset:
     """Calculates weekly new hospitalizations for state-level locations using a rolling 7-day sum."""
-
     return calculate_weekly_column_from_daily(
         dataset_in,
         level_to_replace=AggregationLevel.STATE,

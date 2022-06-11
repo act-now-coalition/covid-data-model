@@ -154,9 +154,13 @@ def drop_tail_positivity_outliers(
     """
     # TODO(https://trello.com/c/7J2SmDnr): Be more consistent about accessing this data
     # through wide dates rather than duplicating timeseries.
-    ts_to_filter = dataset.timeseries_bucketed_wide_dates.xs(
-        CommonFields.TEST_POSITIVITY_7D, level=PdFields.VARIABLE, drop_level=False
-    )
+    # TODO PARALLEL: If col doesn't exist, just return the dataset
+    try:
+        ts_to_filter = dataset.timeseries_bucketed_wide_dates.xs(
+            CommonFields.TEST_POSITIVITY_7D, level=PdFields.VARIABLE, drop_level=False
+        )
+    except KeyError:
+        return dataset
 
     def process_series(series):
         recent_series = series.tail(10)

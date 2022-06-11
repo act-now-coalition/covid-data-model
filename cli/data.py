@@ -63,10 +63,28 @@ _logger = logging.getLogger(__name__)
 
 REGION_OVERRIDES_JSON = DATA_DIRECTORY / "region-overrides.json"
 
+from libs.datasets.timeseries_orchestrator import MultiRegionOrchestrator
+
 
 @click.group("data")
 def main():
     pass
+
+
+@main.command()
+@click.option(
+    "--refresh-datasets/--no-refresh-datasets",
+    is_flag=True,
+    help="Disable to skip loading datasets and instead re-use data from combined-raw.pkl.gz (much faster)",
+    default=True,
+)
+@click.option(
+    "--states", "-s", type=str, multiple=True, help="For testing, a two letter state abbr"
+)
+def generate(states: Optional[List[str]], refresh_datasets: bool):
+    MultiRegionOrchestrator.compute_and_persist_from_bulk_multiregion(
+        states=states, refresh_datasets=refresh_datasets
+    )
 
 
 @main.command()
