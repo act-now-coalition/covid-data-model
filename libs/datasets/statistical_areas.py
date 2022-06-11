@@ -170,8 +170,8 @@ class CountyToHSAAggregator:
         # any other county in the same HSA has data, regardless of whether or
         # not we have actually collected data for that county.
         aggregated_ts = hsa_ts.explode(CommonFields.LOCATION_ID)
-        if restrict_to_current_state:
-            # Clean this up (don't assume 0th index exists)
+        # TODO PARALLEL: Clean this up. assert that there's only one state, etc...
+        if restrict_to_current_state and len(dataset_in.location_ids) != 0:
             state = Region.from_state(Region.from_location_id(dataset_in.location_ids[0]).state)
             aggregated_ts = aggregated_ts.loc[
                 aggregated_ts.index.get_level_values(CommonFields.LOCATION_ID) == state.location_id

@@ -20,7 +20,7 @@ env:
   # Used by python code that reports errors to sentry.
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-  SENTRY_ENVIRONMENT: 'production'
+  SENTRY_ENVIRONMENT: 'staging'
 
   # use a webhook to write to slack channel dev-alerts for QA
   SLACK_DEV_ALERTS_WEBHOOK: ${{ secrets.SLACK_DEV_ALERTS_WEBHOOK }}
