@@ -1,6 +1,7 @@
 import multiprocessing
 import os
 import platform
+from multiprocessing import get_context
 from typing import Callable, TypeVar, Iterable
 
 from pandarallel import pandarallel
@@ -36,7 +37,7 @@ def parallel_map(func: Callable[[T], R], iterable: Iterable[T]) -> Iterable[R]:
         # But that might not be enough. Also make sure we don't spawn more than 32 processes (the
         # build machine is 96-core)
         processes = min(os.cpu_count(), 32)
-        with multiprocessing.Pool(maxtasksperchild=1, processes=processes) as pool:
+        with get_context("spawn").Pool(maxtasksperchild=1, processes=processes) as pool:
             # Always return an iterator to make sure the return type is consistent.
             return iter(pool.map(func, iterable))
     else:

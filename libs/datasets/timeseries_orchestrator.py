@@ -96,7 +96,7 @@ class MultiRegionOrchestrator:
         """Create an """
         bulk_dataset = load_bulk_dataset(refresh_datasets=refresh_datasets)
         if not states:
-            states = US_STATE_ABBREV.values()
+            states = list(US_STATE_ABBREV.values())[:-6]
         regions = [bulk_dataset.get_subset(state=region) for region in states]
         multiregion_dataset = MultiRegionOrchestrator(regions=regions).build_and_combine_regions()
 
@@ -107,7 +107,84 @@ class MultiRegionOrchestrator:
 
     def build_and_combine_regions(self):
         processed_regions = parallel_map(_build_region_timeseries, self.regions)
+        logging.info("Finished processing individual regions...")
         return combine_regions(list(processed_regions))
+
+
+def combine_regions(datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
+    # common_location_id = location_ids.intersection(other.location_ids)
+    # if not common_location_id.empty:
+    # raise ValueError("Do not use append_regions with duplicate location_id")
+    # TODO(tom): Once we have
+    #  https://pandas.pydata.org/docs/whatsnew/v1.2.0.html#ind   -column-name-preservation-when-aggregating
+    #  consider removing each call to rename_axis.
+    logging.info("starting region combination...")
+    timeseries_df = (
+        pd.concat([dataset.timeseries_bucketed for dataset in datasets])
+        .sort_index()
+        .rename_axis(columns=PdFields.VARIABLE)
+    )
+    static_df = (
+        pd.concat(dataset.static for dataset in datasets)
+        .sort_index()
+        .rename_axis(columns=PdFields.VARIABLE)
+    )
+    tag = pd.concat([dataset.tag for dataset in datasets]).sort_index()
+    multiregion_dataset = MultiRegionDataset(
+        timeseries_bucketed=timeseries_df, static=static_df, tag=tag
+    )
+    # logging.info("starting CBSA aggregation...")
+    # aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    # cbsa_dataset = aggregator.aggregate(
+    # multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+    # )
+    # multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+    # multiregion_dataset.print_stats("CBSA dataset")
+    # logging.info("starting country aggregation...")
+    # multiregion_dataset = custom_aggregations.aggregate_to_country(
+    # multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+    # )
+    # multiregion_dataset.print_stats("Aggregate to country")
+    logging.info("exiting region...")
+    return multiregion_dataset
+
+
+def load_bulk_dataset(refresh_datasets: Optional[bool] = True) -> MultiRegionDataset:
+    if refresh_datasets:
+        timeseries_field_datasets = load_datasets_by_field(ALL_TIMESERIES_FEATURE_DEFINITION)
+        static_field_datasets = load_datasets_by_field(ALL_FIELDS_FEATURE_DEFINITION)
+
+        multiregion_dataset = timeseries.combined_datasets(
+            timeseries_field_datasets, static_field_datasets
+        )
+        multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
+    else:
+        multiregion_dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
+            dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH
+        )
+    return multiregion_dataset
+
+
+def load_datasets_by_field(
+    feature_definition_config: combined_datasets.FeatureDataSourceMap, *, state=False, fips=False
+) -> Mapping[FieldName, List[timeseries.MultiRegionDataset]]:
+    def _load_dataset(data_source_cls) -> timeseries.MultiRegionDataset:
+        try:
+            dataset = data_source_cls.make_dataset()
+            if state or fips:
+                dataset = dataset.get_subset(state=state, fips=fips)
+            return dataset
+        except Exception:
+            raise ValueError(f"Problem with {data_source_cls}")
+
+    feature_definition = {
+        # Put the highest priority first, as expected by timeseries.combined_datasets.
+        # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
+        field_name: list(reversed(list(_load_dataset(cls) for cls in classes)))
+        for field_name, classes in feature_definition_config.items()
+        if classes
+    }
+    return feature_definition
 
 
 def _build_region_timeseries(region_dataset: MultiRegionDataset, print_stats=True):
@@ -201,76 +278,3 @@ def _build_region_timeseries(region_dataset: MultiRegionDataset, print_stats=Tru
     if print_stats:
         multiregion_dataset.print_stats("replace_dc_county_with_state_data")
     return multiregion_dataset
-
-
-def combine_regions(datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
-    # common_location_id = location_ids.intersection(other.location_ids)
-    # if not common_location_id.empty:
-    # raise ValueError("Do not use append_regions with duplicate location_id")
-    # TODO(tom): Once we have
-    #  https://pandas.pydata.org/docs/whatsnew/v1.2.0.html#index-column-name-preservation-when-aggregating
-    #  consider removing each call to rename_axis.
-    timeseries_df = (
-        pd.concat([dataset.timeseries_bucketed for dataset in datasets])
-        .sort_index()
-        .rename_axis(columns=PdFields.VARIABLE)
-    )
-    static_df = (
-        pd.concat(dataset.static for dataset in datasets)
-        .sort_index()
-        .rename_axis(columns=PdFields.VARIABLE)
-    )
-    tag = pd.concat([dataset.tag for dataset in datasets]).sort_index()
-    multiregion_dataset = MultiRegionDataset(
-        timeseries_bucketed=timeseries_df, static=static_df, tag=tag
-    )
-
-    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-    cbsa_dataset = aggregator.aggregate(
-        multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-    )
-    multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
-    multiregion_dataset.print_stats("CBSA dataset")
-    multiregion_dataset = custom_aggregations.aggregate_to_country(
-        multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-    )
-    multiregion_dataset.print_stats("Aggregate to country")
-    return multiregion_dataset
-
-
-def load_bulk_dataset(refresh_datasets: Optional[bool] = True) -> MultiRegionDataset:
-    if refresh_datasets:
-        timeseries_field_datasets = load_datasets_by_field(ALL_TIMESERIES_FEATURE_DEFINITION)
-        static_field_datasets = load_datasets_by_field(ALL_FIELDS_FEATURE_DEFINITION)
-
-        multiregion_dataset = timeseries.combined_datasets(
-            timeseries_field_datasets, static_field_datasets
-        )
-        multiregion_dataset.to_compressed_pickle(dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH)
-    else:
-        multiregion_dataset = timeseries.MultiRegionDataset.from_compressed_pickle(
-            dataset_utils.COMBINED_RAW_PICKLE_GZ_PATH
-        )
-    return multiregion_dataset
-
-
-def load_datasets_by_field(
-    feature_definition_config: combined_datasets.FeatureDataSourceMap, *, state=False, fips=False
-) -> Mapping[FieldName, List[timeseries.MultiRegionDataset]]:
-    def _load_dataset(data_source_cls) -> timeseries.MultiRegionDataset:
-        try:
-            dataset = data_source_cls.make_dataset()
-            if state or fips:
-                dataset = dataset.get_subset(state=state, fips=fips)
-            return dataset
-        except Exception:
-            raise ValueError(f"Problem with {data_source_cls}")
-
-    feature_definition = {
-        # Put the highest priority first, as expected by timeseries.combined_datasets.
-        # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
-        field_name: list(reversed(list(_load_dataset(cls) for cls in classes)))
-        for field_name, classes in feature_definition_config.items()
-        if classes
-    }
-    return feature_definition

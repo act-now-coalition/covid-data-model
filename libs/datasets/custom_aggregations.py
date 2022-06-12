@@ -57,6 +57,9 @@ def replace_dc_county_with_state_data(
 
     Returns: Dataset with DC county data replaced to match DC state.
     """
+    import logging
+
+    logging.info(f"in replace for {dataset_in.location_ids[0]}")
     dc_state_region = pipeline.Region.from_fips(DC_STATE_FIPS)
     dc_county_region = pipeline.Region.from_fips(DC_COUNTY_FIPS)
 
