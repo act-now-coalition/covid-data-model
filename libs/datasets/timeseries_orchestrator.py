@@ -53,6 +53,9 @@ TailFilter = tail_filter.TailFilter
 
 REGION_OVERRIDES_JSON = DATA_DIRECTORY / "region-overrides.json"
 
+DATA_PATH_PREFIX = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
+
+
 KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
     # Territories other than PR
     "iso1:us#iso2:us-vi",
@@ -96,19 +99,33 @@ class MultiRegionOrchestrator:
         """Create an """
         bulk_dataset = load_bulk_dataset(refresh_datasets=refresh_datasets)
         if not states:
-            states = list(US_STATE_ABBREV.values())[:-6]
+            states = list(US_STATE_ABBREV.values())
         regions = [bulk_dataset.get_subset(state=region) for region in states]
         multiregion_dataset = MultiRegionOrchestrator(regions=regions).build_and_combine_regions()
 
         logging.info("Writing multiregion_dataset...")
-        path_prefix = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
-        combined_dataset_utils.persist_dataset(multiregion_dataset, path_prefix)
+        combined_dataset_utils.persist_dataset(multiregion_dataset, DATA_PATH_PREFIX)
         logging.info("Finished multiregion_dataset")
 
     def build_and_combine_regions(self):
         processed_regions = parallel_map(_build_region_timeseries, self.regions)
         logging.info("Finished processing individual regions...")
         return combine_regions(list(processed_regions))
+
+    @staticmethod
+    def update_single_state(state: str, print_stats: bool):
+        """Recreate dataset for a specific state and its subregions leaving other regions unchanged"""
+        # Never refreshing datasets to ensure all data comes from the same parquet file.
+        bulk_dataset = load_bulk_dataset(refresh_datasets=False)
+        to_update, unchanged = bulk_dataset.partition_by_region(
+            include=[pipeline.Region.from_state(state)]
+        )
+        # TODO PARALLEL: check that metros are properly updated, too
+        updated = _build_region_timeseries(to_update, print_stats=print_stats)
+
+        multiregion_dataset = unchanged.append_regions(updated)
+        assert updated.location_ids == multiregion_dataset.location_ids
+        combined_dataset_utils.persist_dataset(multiregion_dataset, DATA_PATH_PREFIX)
 
 
 def combine_regions(datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
@@ -133,19 +150,18 @@ def combine_regions(datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
     multiregion_dataset = MultiRegionDataset(
         timeseries_bucketed=timeseries_df, static=static_df, tag=tag
     )
-    # logging.info("starting CBSA aggregation...")
-    # aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-    # cbsa_dataset = aggregator.aggregate(
-    # multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-    # )
-    # multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
-    # multiregion_dataset.print_stats("CBSA dataset")
-    # logging.info("starting country aggregation...")
-    # multiregion_dataset = custom_aggregations.aggregate_to_country(
-    # multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-    # )
-    # multiregion_dataset.print_stats("Aggregate to country")
-    logging.info("exiting region...")
+    logging.info("starting CBSA aggregation...")
+    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
+    cbsa_dataset = aggregator.aggregate(
+        multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+    )
+    multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+    multiregion_dataset.print_stats("CBSA dataset")
+    logging.info("starting country aggregation...")
+    multiregion_dataset = custom_aggregations.aggregate_to_country(
+        multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+    )
+    multiregion_dataset.print_stats("Aggregate to country")
     return multiregion_dataset
 
 

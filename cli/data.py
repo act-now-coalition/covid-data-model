@@ -76,15 +76,32 @@ def main():
     "--refresh-datasets/--no-refresh-datasets",
     is_flag=True,
     help="Disable to skip loading datasets and instead re-use data from combined-raw.pkl.gz (much faster)",
-    default=True,
+    default=False,
 )
 @click.option(
     "--states", "-s", type=str, multiple=True, help="For testing, a two letter state abbr"
 )
-def generate(states: Optional[List[str]], refresh_datasets: bool):
+def generate(refresh_datasets: bool, states: Optional[List[str]]):
     MultiRegionOrchestrator.compute_and_persist_from_bulk_multiregion(
         states=states, refresh_datasets=refresh_datasets
     )
+
+
+@main.command()
+@click.option(
+    "--state",
+    "-s",
+    type=str,
+    help="A two letter state abbr of the state who's data is to be updated.",
+)
+@click.option(
+    "--print-stats/--no-print-stats",
+    is_flag=True,
+    help="Print summary stats at several places in the pipeline. Producing these takes extra time.",
+    default=True,
+)
+def update_state(state: str, print_stats: bool):
+    MultiRegionOrchestrator.update_single_state(state=state, print_stats=print_stats)
 
 
 @main.command()
