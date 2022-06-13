@@ -220,9 +220,9 @@ def deploy_single_level(
             output_path = path_builder.single_timeseries(timeseries, FileType.CSV)
             bulk_timeseries = AggregateRegionSummaryWithTimeseries(__root__=[timeseries])
             flattened_timeseries = build_api_v2.build_bulk_flattened_timeseries(bulk_timeseries)
-            deploy_csv_api_output(
-                flattened_timeseries, output_path, csv_column_ordering.TIMESERIES_ORDER
-            )
+            # deploy_csv_api_output(
+            # flattened_timeseries, output_path, csv_column_ordering.TIMESERIES_ORDER
+            # )
 
     deploy_bulk_files(path_builder, all_timeseries, all_summaries)
 
