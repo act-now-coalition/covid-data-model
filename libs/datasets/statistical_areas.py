@@ -170,12 +170,6 @@ class CountyToHSAAggregator:
         # any other county in the same HSA has data, regardless of whether or
         # not we have actually collected data for that county.
         aggregated_ts = hsa_ts.explode(CommonFields.LOCATION_ID)
-        # TODO PARALLEL: Clean this up. assert that there's only one state, etc...
-        if restrict_to_current_state and len(dataset_in.location_ids) != 0:
-            state = Region.from_state(Region.from_location_id(dataset_in.location_ids[0]).state)
-            aggregated_ts = aggregated_ts.loc[
-                aggregated_ts.index.get_level_values(CommonFields.LOCATION_ID) == state.location_id
-            ]
 
         # Here we are dropping the index level "location_id", which are the HSAs,
         # and replacing them with the newly added "location_id" column, which are the counties.
@@ -186,4 +180,15 @@ class CountyToHSAAggregator:
         assert not set(aggregated_ts.columns) & set(dataset_in.timeseries_bucketed.columns)
         out_ts = dataset_in.timeseries_bucketed.combine_first(aggregated_ts)
         out_ds = dataclasses.replace(dataset_in, timeseries_bucketed=out_ts)
+
+        # TODO PARALLEL: Clean this up. assert that there's only one state, etc...
+        if restrict_to_current_state and len(dataset_in.location_ids) != 0:
+            state = Region.from_state(Region.from_location_id(dataset_in.location_ids[0]).state)
+            out_ds, other_locs = out_ds.partition_by_region(
+                include=[
+                    state,
+                    pipeline.RegionMask(states=[state.state], level=AggregationLevel.COUNTY),
+                ]
+            )
+            return out_ds
         return out_ds

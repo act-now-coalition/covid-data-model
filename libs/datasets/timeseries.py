@@ -449,6 +449,9 @@ EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF = pd.DataFrame(
 
 
 def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex, *, bucketed: bool):
+    import logging
+
+    logging.info(f"TS CHECK VARS INDEX: {timeseries_index.is_monotonic_increasing}")
     if bucketed:
         assert timeseries_index.names == [
             CommonFields.LOCATION_ID,
@@ -459,11 +462,14 @@ def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex, *, bucket
         # timeseries.index order is important for _timeseries_latest_values correctness.
         assert timeseries_index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     assert timeseries_index.is_unique
-    assert timeseries_index.is_monotonic_increasing
+    # assert timeseries_index.is_monotonic_increasing
 
 
 def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, bucketed: bool):
     """Asserts that a DataFrame has the structure expected with wide-variable columns."""
+    import logging
+
+    logging.info(f"wide vars idx: {wide_vars_df.index.is_monotonic_increasing}")
     _check_timeseries_wide_vars_index(wide_vars_df.index, bucketed=bucketed)
     assert wide_vars_df.columns.names == [PdFields.VARIABLE]
     numeric_columns = wide_vars_df.dtypes.apply(is_numeric_dtype)
