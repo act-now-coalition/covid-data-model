@@ -62,6 +62,8 @@ _logger = logging.getLogger(__name__)
 
 
 REGION_OVERRIDES_JSON = DATA_DIRECTORY / "region-overrides.json"
+DATA_PATH_PREFIX = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
+
 
 from libs.datasets.timeseries_orchestrator import MultiRegionOrchestrator
 
@@ -82,9 +84,14 @@ def main():
     "--states", "-s", type=str, multiple=True, help="For testing, a two letter state abbr"
 )
 def generate(refresh_datasets: bool, states: Optional[List[str]]):
-    MultiRegionOrchestrator.compute_and_persist_from_bulk_multiregion(
+    orchestrator = MultiRegionOrchestrator.from_bulk_mrds(
         states=states, refresh_datasets=refresh_datasets
     )
+    dataset = orchestrator.build_and_combine_regions()
+
+    _logger.info("Writing multiregion_dataset...")
+    combined_dataset_utils.persist_dataset(dataset, DATA_PATH_PREFIX)
+    _logger.info("Finished multiregion_dataset!")
 
 
 @main.command()
@@ -101,7 +108,8 @@ def generate(refresh_datasets: bool, states: Optional[List[str]]):
     default=True,
 )
 def update_state(state: str, print_stats: bool):
-    MultiRegionOrchestrator.update_single_state(state=state, print_stats=print_stats)
+    pass
+    # MultiRegionOrchestrator.update_single_state(state=state, print_stats=print_stats)
 
 
 @main.command()

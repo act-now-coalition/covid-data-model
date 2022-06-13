@@ -843,6 +843,15 @@
       "end_date": "",
       "region": "CA",
       "context": "CA test positivity jumped for a bunch of counties."
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2021-06-10",
+      "end_date": "",
+      "region": "MA",
+      "context": "TEST MA."
     }
   ]
 }

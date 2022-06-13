@@ -53,9 +53,6 @@ TailFilter = tail_filter.TailFilter
 
 REGION_OVERRIDES_JSON = DATA_DIRECTORY / "region-overrides.json"
 
-DATA_PATH_PREFIX = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
-
-
 KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
     # Territories other than PR
     "iso1:us#iso2:us-vi",
@@ -88,59 +85,106 @@ DEFAULT_REPORTING_RATIO = 0.95
 
 
 @dataclass
+class OneStateDataset:
+    """Wrapper class containing a MultiRegionDataset with data for a single state. 
+    
+    As consistent with the Region class, territories are considered states (e.g. GU, PR)
+    """
+
+    multiregion_dataset: MultiRegionDataset
+    state: pipeline.Region
+
+    @staticmethod
+    def from_mrds(dataset: MultiRegionDataset):
+        if len(dataset.timeseries_bucketed) == 0:
+            logging.info(f"failed for {dataset}")
+            # TODO Parallel: Handle more gracefully.
+            return OneStateDataset(multiregion_dataset=pd.DataFrame(), state=None)
+
+        locations = [pipeline.Region.from_location_id(loc).state for loc in dataset.location_ids]
+        if len(set(locations)) != 1:
+            raise ValueError(
+                "Can only create OneStateDataset from datasets with data for a single state"
+            )
+
+        return OneStateDataset(
+            multiregion_dataset=dataset, state=pipeline.Region.from_state(locations[0])
+        )
+
+
+@dataclass
 class MultiRegionOrchestrator:
 
-    regions: Iterable[MultiRegionDataset]  # Make a generator
+    regions: Iterable[OneStateDataset]
     cbsa_aggregator: statistical_areas.CountyToCBSAAggregator
     region_overrides: Dict
 
     @classmethod
-    def compute_and_persist_from_bulk_multiregion(
+    def from_bulk_mrds(
         self, states: Optional[List[str]] = None, refresh_datasets: Optional[bool] = True
     ) -> "MultiRegionOrchestrator":
-        """Create an """
+        """Create an TODO Parallel: ... finish"""
         bulk_dataset = load_bulk_dataset(refresh_datasets=refresh_datasets)
         if not states:
             states = list(US_STATE_ABBREV.values())
-        regions = [bulk_dataset.get_subset(state=region) for region in states]
+        regions = [
+            OneStateDataset.from_mrds(bulk_dataset.get_subset(state=region)) for region in states
+        ]
 
         cbsa_aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
         region_overrides = json.load(open(REGION_OVERRIDES_JSON))
-        multiregion_dataset = MultiRegionOrchestrator(
+        return MultiRegionOrchestrator(
             regions=regions, region_overrides=region_overrides, cbsa_aggregator=cbsa_aggregator
-        ).build_and_combine_regions()
-
-        logging.info("Writing multiregion_dataset...")
-        combined_dataset_utils.persist_dataset(multiregion_dataset, DATA_PATH_PREFIX)
-        logging.info("Finished multiregion_dataset")
-
-    @staticmethod
-    def update_single_state(state: str, print_stats: bool):
-        """Recreate dataset for a specific state and its subregions leaving other regions unchanged"""
-        # Never refresh datasets to ensure all data comes from the same parquet file.
-        bulk_dataset = load_bulk_dataset(refresh_datasets=False)
-        to_update, unchanged = bulk_dataset.partition_by_region(
-            include=[
-                pipeline.Region.from_state(state),
-                pipeline.RegionMask(states=[state], level=AggregationLevel.COUNTY),
-            ]
         )
-        # TODO PARALLEL: check that metros are properly updated, too
-        updated = _build_region_timeseries(to_update, print_stats=print_stats)
-        multiregion_dataset = unchanged.append_regions(updated)
-        combined_dataset_utils.persist_dataset(multiregion_dataset, DATA_PATH_PREFIX)
 
     def build_and_combine_regions(self):
         processed_regions = parallel_map(self._build_region_timeseries, self.regions)
         logging.info("Finished processing individual regions...")
-        return combine_regions(list(processed_regions))
+        return self.combine_regions(list(processed_regions))
 
-    def _build_region_timeseries(self, region_dataset: MultiRegionDataset, print_stats=True):
+    def combine_regions(self, datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
+        # common_location_id = location_ids.intersection(other.location_ids)
+        # if not common_location_id.empty:
+        # raise ValueError("Do not use append_regions with duplicate location_id")
+        logging.info("starting region combination...")
+        timeseries_df = (
+            pd.concat([dataset.timeseries_bucketed for dataset in datasets])
+            .sort_index()
+            .rename_axis(columns=PdFields.VARIABLE)
+        )
+        static_df = (
+            pd.concat(dataset.static for dataset in datasets)
+            .sort_index()
+            .rename_axis(columns=PdFields.VARIABLE)
+        )
+        tag = pd.concat([dataset.tag for dataset in datasets]).sort_index()
+        multiregion_dataset = MultiRegionDataset(
+            timeseries_bucketed=timeseries_df, static=static_df, tag=tag
+        )
+        logging.info("starting CBSA aggregation...")
+        cbsa_dataset = self.cbsa_aggregator.aggregate(
+            multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+        )
+        multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+        multiregion_dataset.print_stats("CBSA dataset")
+        logging.info("starting country aggregation...")
+        multiregion_dataset = custom_aggregations.aggregate_to_country(
+            multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+        )
+        multiregion_dataset.print_stats("Aggregate to country")
+        return multiregion_dataset
+
+    def _build_region_timeseries(self, region_dataset: OneStateDataset, print_stats=True):
+        state = region_dataset.state
+        multiregion_dataset = region_dataset.multiregion_dataset
+
         region_overrides_config = manual_filter.transform_region_overrides(
             self.region_overrides, self.cbsa_aggregator.cbsa_to_counties_region_map
         )
-        before_manual_filter = region_dataset
-        multiregion_dataset = manual_filter.run(region_dataset, region_overrides_config)
+        logging.info(region_overrides_config)
+
+        before_manual_filter = multiregion_dataset
+        multiregion_dataset = manual_filter.run(multiregion_dataset, region_overrides_config)
         manual_filter_touched = manual_filter.touched_subset(
             before_manual_filter, multiregion_dataset
         )
@@ -149,14 +193,14 @@ class MultiRegionOrchestrator:
             dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH,
         )
         if print_stats:
-            region_dataset.print_stats("manual filter")
+            multiregion_dataset.print_stats("manual filter")
         multiregion_dataset = timeseries.drop_observations(
-            region_dataset, after=datetime.datetime.utcnow().date()
+            multiregion_dataset, after=datetime.datetime.utcnow().date()
         )
 
         multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
         if print_stats:
-            multiregion_dataset.print_stats(f"drop_tail {region_dataset.location_ids}")
+            multiregion_dataset.print_stats(f"drop_tail {multiregion_dataset.location_ids}")
 
         # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
         _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
@@ -190,9 +234,12 @@ class MultiRegionOrchestrator:
             multiregion_dataset
         )
 
-        multiregion_dataset = custom_patches.patch_maryland_missing_case_data(multiregion_dataset)
-        if print_stats:
-            multiregion_dataset.print_stats("patch_maryland_missing_case_data")
+        if state.state == "MD":
+            multiregion_dataset = custom_patches.patch_maryland_missing_case_data(
+                multiregion_dataset
+            )
+            if print_stats:
+                multiregion_dataset.print_stats("patch_maryland_missing_case_data")
 
         multiregion_dataset = nytimes_anomalies.filter_by_nyt_anomalies(multiregion_dataset)
         if print_stats:
@@ -209,64 +256,36 @@ class MultiRegionOrchestrator:
         if print_stats:
             multiregion_dataset.print_stats("drop_regions_without_population")
 
-        multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
-            multiregion_dataset
-        )
-        if print_stats:
-            multiregion_dataset.print_stats("aggregate_puerto_rico_from_counties")
-        multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(multiregion_dataset)
-        if print_stats:
-            multiregion_dataset.print_stats("aggregate_to_new_york_city")
+        if state.state == "PR":
+            multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
+                multiregion_dataset
+            )
+            if print_stats:
+                multiregion_dataset.print_stats("aggregate_puerto_rico_from_counties")
+
+        if state == "NY":
+            multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(
+                multiregion_dataset
+            )
+            if print_stats:
+                multiregion_dataset.print_stats("aggregate_to_new_york_city")
 
         # TODO: restrict HSA aggregation to create only rows for counties within state lines.
         # Or remove duplicates after the fact.
         hsa_aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
         multiregion_dataset = hsa_aggregator.aggregate(
-            multiregion_dataset, restrict_to_current_state=True
+            multiregion_dataset, restrict_to_current_state=state
         )
         if print_stats:
             multiregion_dataset.print_stats("CountyToHSAAggregator")
 
-        multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(
-            multiregion_dataset
-        )
-        if print_stats:
-            multiregion_dataset.print_stats("replace_dc_county_with_state_data")
+        if state == "DC":
+            multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(
+                multiregion_dataset
+            )
+            if print_stats:
+                multiregion_dataset.print_stats("replace_dc_county_with_state_data")
         return multiregion_dataset
-
-
-def combine_regions(datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
-    # common_location_id = location_ids.intersection(other.location_ids)
-    # if not common_location_id.empty:
-    # raise ValueError("Do not use append_regions with duplicate location_id")
-    logging.info("starting region combination...")
-    timeseries_df = (
-        pd.concat([dataset.timeseries_bucketed for dataset in datasets])
-        .sort_index()
-        .rename_axis(columns=PdFields.VARIABLE)
-    )
-    static_df = (
-        pd.concat(dataset.static for dataset in datasets)
-        .sort_index()
-        .rename_axis(columns=PdFields.VARIABLE)
-    )
-    tag = pd.concat([dataset.tag for dataset in datasets]).sort_index()
-    multiregion_dataset = MultiRegionDataset(
-        timeseries_bucketed=timeseries_df, static=static_df, tag=tag
-    )
-    logging.info("starting CBSA aggregation...")
-    aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
-    cbsa_dataset = aggregator.aggregate(
-        multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-    )
-    multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
-    multiregion_dataset.print_stats("CBSA dataset")
-    logging.info("starting country aggregation...")
-    multiregion_dataset = custom_aggregations.aggregate_to_country(
-        multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-    )
-    multiregion_dataset.print_stats("Aggregate to country")
-    return multiregion_dataset
 
 
 def load_bulk_dataset(refresh_datasets: Optional[bool] = True) -> MultiRegionDataset:
@@ -305,3 +324,17 @@ def load_datasets_by_field(
         if classes
     }
     return feature_definition
+
+
+# def update_specific_states(self, states: List[str], print_stats: bool):
+#     """Recreate dataset for specific states and their subregions leaving other regions unchanged"""
+#     # Never refresh datasets to ensure all data comes from the same parquet file.
+#     to_update, unchanged = bulk_dataset.partition_by_region(
+#         include=[
+#             [pipeline.Region.from_state(state) for state in states] +
+#             [pipeline.RegionMask(states=[state], level=AggregationLevel.COUNTY) for state in states],
+#         ]
+#     )
+#     # TODO PARALLEL: check that metros are properly updated, too
+#     updated = self._build_region_timeseries(to_update, print_stats=print_stats)
+#     return unchanged.append_regions(updated)

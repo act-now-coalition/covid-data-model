@@ -127,7 +127,7 @@ class CountyToHSAAggregator:
         self,
         dataset_in: MultiRegionDataset,
         fields_to_aggregate: Dict[CommonFields, CommonFields] = HSA_FIELDS_MAPPING,
-        restrict_to_current_state: bool = False,
+        restrict_to_current_state: Region = None,
     ) -> MultiRegionDataset:
         """Create new fields by aggregating county-level data into HSA level data. 
         
@@ -135,13 +135,6 @@ class CountyToHSAAggregator:
             dataset_in: MultiRegionDataset with fields to aggregate.
             fields_to_aggregate: Mapping of names of columns to aggregate to names of resulting columns.
         """
-
-        # TODO PARALLEL: make a multiregion_dataset class explicitly for 1 state/place.
-        # check that restriction is only used when one state is present
-        # if restrict_to_current_state and len(dataset_in.location_ids) != 1:
-        # raise ValueError(
-        # f"restrict_to_current_state flag can only be used on single-location datasets. {}"
-        # )
 
         # Only aggregate county-level data for specified fields
         counties = dataset_in.get_subset(aggregation_level=AggregationLevel.COUNTY)
@@ -181,9 +174,9 @@ class CountyToHSAAggregator:
         out_ts = dataset_in.timeseries_bucketed.combine_first(aggregated_ts)
         out_ds = dataclasses.replace(dataset_in, timeseries_bucketed=out_ts)
 
-        # TODO PARALLEL: Clean this up. assert that there's only one state, etc...
-        if restrict_to_current_state and len(dataset_in.location_ids) != 0:
-            state = Region.from_state(Region.from_location_id(dataset_in.location_ids[0]).state)
+        if restrict_to_current_state:
+            assert restrict_to_current_state.is_state()
+            state = restrict_to_current_state
             out_ds, other_locs = out_ds.partition_by_region(
                 include=[
                     state,
