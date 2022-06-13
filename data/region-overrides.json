@@ -836,7 +836,7 @@
       "context": "spike in cases after no reporting"
     },
     {
-      "include": "subregions",
+      "include": "region-and-subregions",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
       "start_date": "2022-06-10",
