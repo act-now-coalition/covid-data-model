@@ -35,6 +35,7 @@ def calculate_weekly_column_from_daily(
     if field_in not in subset_ts.columns or not subset_ts[field_in].any():
         return dataset_in
 
+    # Make sure we do not have any pre-existing weekly data before overwriting the field_out column.
     if field_out in subset_ts.columns and subset_ts[field_out].any():
         raise ValueError("Data for output column already exists, do not override this data.")
     subset_ts[field_out] = _rolling_sum_7day(subset_ts[field_in])

@@ -70,15 +70,11 @@ class OneStateDataset:
 
     @classmethod
     def from_mrds(cls, dataset: MultiRegionDataset) -> "OneStateDataset":
-        if len(dataset.timeseries_bucketed) == 0:
-            # TODO Parallel: Handle more gracefully and find out if/why this is needed.
-            return OneStateDataset(multiregion_dataset=pd.DataFrame(), state=None)
-
         states = [pipeline.Region.from_location_id(loc).state for loc in dataset.location_ids]
         if len(set(states)) != 1:
             raise ValueError(
-                "Cannot create a OneStateDataset from datasets with data "
-                "for more than a single state."
+                "Can only create a OneStateDataset from datasets with data "
+                f"for a single state. Data for {len(set(states))} found."
             )
         return OneStateDataset(
             multiregion_dataset=dataset, state=pipeline.Region.from_state(states[0])
@@ -92,7 +88,7 @@ class MultiRegionOrchestrator:
     regions: Iterable[OneStateDataset]
     cbsa_aggregator: statistical_areas.CountyToCBSAAggregator
     region_overrides: Dict
-    print_stats: bool  # To avoid having to create a partial when mapping _build_region_timeseries
+    print_stats: bool
 
     @classmethod
     def from_bulk_mrds(

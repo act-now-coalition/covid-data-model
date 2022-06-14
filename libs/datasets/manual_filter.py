@@ -163,7 +163,7 @@ def run(dataset: timeseries.MultiRegionDataset, config: Config) -> timeseries.Mu
         )
         if filtered_dataset.location_ids.empty:
             # TODO(tom): Find a cleaner way to refer to a filter in logs.
-            # _logger.info("No locations matched", regions=str(filter_.regions_included))
+            _logger.info("No locations matched", regions=str(filter_.regions_included))
             continue
         if filter_.drop_observations:
             filtered_dataset = drop_observations(filtered_dataset, filter_)
