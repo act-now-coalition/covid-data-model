@@ -169,12 +169,13 @@ def drop_tail_positivity_outliers(
 
     Returns: Dataset with outliers removed from test_positivity_7d.
     """
+    ds_wide_dates = dataset.timeseries_bucketed_wide_dates
+    ds_variables = ds_wide_dates.index.get_level_values(PdFields.VARIABLE)
+    if CommonFields.TEST_POSITIVITY_7D not in ds_variables:
+        return dataset
     # TODO(https://trello.com/c/7J2SmDnr): Be more consistent about accessing this data
     # through wide dates rather than duplicating timeseries.
-
-    if CommonFields.TEST_POSITIVITY_7D not in dataset.timeseries_bucketed_wide_dates.columns:
-        return dataset
-    ts_to_filter = dataset.timeseries_bucketed_wide_dates.xs(
+    ts_to_filter = ds_wide_dates.xs(
         CommonFields.TEST_POSITIVITY_7D, level=PdFields.VARIABLE, drop_level=False
     )
 
