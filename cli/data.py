@@ -49,7 +49,7 @@ def main():
 @click.option(
     "--print-stats/--no-print-stats",
     is_flag=True,
-    help="Disable to skip loading datasets and instead re-use data from combined-raw.pkl.gz (much faster)",
+    help="Print summary stats at several places in the pipeline. Producing these takes extra time.",
     default=True,
 )
 @click.option(
