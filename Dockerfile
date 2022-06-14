@@ -3,7 +3,7 @@ FROM --platform=linux/amd64 python:3.7-slim-bullseye as deps-image
 RUN \
   apt-get -y update && \
   apt-get --fix-broken -y install && \
-  apt-get -y install --no-install-recommends build-essential gcc git
+  apt-get -y install --no-install-recommends build-essential curl gcc git git-lfs screen vim zip
 
 ENV PATH="/opt/venv/covid-data-model/bin:${PATH}"
 
