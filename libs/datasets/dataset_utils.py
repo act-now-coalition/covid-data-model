@@ -61,6 +61,22 @@ MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH = DATA_DIRECTORY / "manual_filter_remo
 MANUAL_FILTER_REMOVED_STATIC_CSV_PATH = DATA_DIRECTORY / "manual_filter_removed-static.csv"
 COMBINED_RAW_PICKLE_GZ_PATH = DATA_DIRECTORY / "combined-raw.pkl.gz"
 
+REGION_OVERRIDES_JSON = DATA_DIRECTORY / "region-overrides.json"
+
+CUMULATIVE_FIELDS_TO_FILTER = [
+    CommonFields.CASES,
+    CommonFields.DEATHS,
+    CommonFields.POSITIVE_TESTS,
+    CommonFields.NEGATIVE_TESTS,
+    CommonFields.TOTAL_TESTS,
+    CommonFields.POSITIVE_TESTS_VIRAL,
+    CommonFields.POSITIVE_CASES_VIRAL,
+    CommonFields.TOTAL_TESTS_VIRAL,
+    CommonFields.TOTAL_TESTS_PEOPLE_VIRAL,
+    CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL,
+]
+DEFAULT_REPORTING_RATIO = 0.95
+
 
 class AggregationLevel(enum.Enum):
     COUNTRY = "country"
