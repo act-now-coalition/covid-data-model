@@ -60,7 +60,7 @@ KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
 
 @dataclass
 class OneStateDataset:
-    """Wrapper class containing a MultiRegionDataset with data for a single state. 
+    """Wrapper class containing a MultiRegionDataset with data for a single state and its subregions. 
     
     As consistent with the Region class, territories are considered states (e.g. GU, PR)
     """
@@ -68,28 +68,30 @@ class OneStateDataset:
     multiregion_dataset: MultiRegionDataset
     state: pipeline.Region
 
-    @staticmethod
-    def from_mrds(dataset: MultiRegionDataset):
+    @classmethod
+    def from_mrds(cls, dataset: MultiRegionDataset) -> "OneStateDataset":
         if len(dataset.timeseries_bucketed) == 0:
-            # TODO Parallel: Handle more gracefully.
+            # TODO Parallel: Handle more gracefully and find out if/why this is needed.
             return OneStateDataset(multiregion_dataset=pd.DataFrame(), state=None)
-        locations = [pipeline.Region.from_location_id(loc).state for loc in dataset.location_ids]
-        if len(set(locations)) != 1:
+
+        states = [pipeline.Region.from_location_id(loc).state for loc in dataset.location_ids]
+        if len(set(states)) != 1:
             raise ValueError(
-                "Can only create a OneStateDataset from datasets with data for a single state "
-                "and its counties."
+                "Cannot create a OneStateDataset from datasets with data "
+                "for more than a single state."
             )
         return OneStateDataset(
-            multiregion_dataset=dataset, state=pipeline.Region.from_state(locations[0])
+            multiregion_dataset=dataset, state=pipeline.Region.from_state(states[0])
         )
 
 
 @dataclass
 class MultiRegionOrchestrator:
+    """Class to orchestrate dataset updates through state-oriented parallelization."""
+
     regions: Iterable[OneStateDataset]
     cbsa_aggregator: statistical_areas.CountyToCBSAAggregator
     region_overrides: Dict
-    bulk_dataset: MultiRegionDataset  # TODO Parallel: use this to only update certain regions
     print_stats: bool  # To avoid having to create a partial when mapping _build_region_timeseries
 
     @classmethod
@@ -99,7 +101,6 @@ class MultiRegionOrchestrator:
         refresh_datasets: Optional[bool] = True,
         print_stats: bool = True,
     ) -> "MultiRegionOrchestrator":
-        """Create an TODO Parallel: ... finish"""
         bulk_dataset = load_bulk_dataset(refresh_datasets=refresh_datasets)
         if not states:
             states = list(US_STATE_ABBREV.values())
@@ -113,7 +114,6 @@ class MultiRegionOrchestrator:
             regions=regions,
             region_overrides=region_overrides,
             cbsa_aggregator=cbsa_aggregator,
-            bulk_dataset=bulk_dataset,
             print_stats=print_stats,
         )
 
@@ -158,7 +158,7 @@ class MultiRegionOrchestrator:
         state = region_dataset.state
         multiregion_dataset = region_dataset.multiregion_dataset
 
-        # TODO PARALLEL: maybe filter overrides to match only the specific region?
+        # TODO: maybe filter overrides to match only the current region?
         # Not sure if that will help performance but worth a shot.
         region_overrides_config = manual_filter.transform_region_overrides(
             self.region_overrides, self.cbsa_aggregator.cbsa_to_counties_region_map
