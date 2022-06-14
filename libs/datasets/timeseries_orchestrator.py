@@ -117,12 +117,16 @@ class MultiRegionOrchestrator:
             print_stats=print_stats,
         )
 
-    def build_and_combine_regions(self):
+    def build_and_combine_regions(self, aggregate_to_country: bool = True):
         processed_regions = parallel_map(self._build_region_timeseries, self.regions)
         _log.info("Finished processing individual regions...")
-        return self.combine_regions(list(processed_regions))
+        return self.combine_regions(
+            list(processed_regions), aggregate_to_country=aggregate_to_country
+        )
 
-    def combine_regions(self, datasets: List[MultiRegionDataset]) -> MultiRegionDataset:
+    def combine_regions(
+        self, datasets: List[MultiRegionDataset], aggregate_to_country: bool = True
+    ) -> MultiRegionDataset:
         regions = [region for dataset in datasets for region in dataset.location_ids]
         assert len(regions) == len(set(regions)), "Can't combine datasets with duplicate locations"
 
@@ -147,11 +151,12 @@ class MultiRegionOrchestrator:
         )
         multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
         multiregion_dataset.print_stats("CBSA dataset")
-        _log.info("starting country aggregation...")
-        multiregion_dataset = custom_aggregations.aggregate_to_country(
-            multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-        )
-        multiregion_dataset.print_stats("Aggregate to country")
+        if aggregate_to_country:
+            _log.info("starting country aggregation...")
+            multiregion_dataset = custom_aggregations.aggregate_to_country(
+                multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+            )
+            multiregion_dataset.print_stats("Aggregate to country")
         return multiregion_dataset
 
     def _build_region_timeseries(self, region_dataset: OneStateDataset):

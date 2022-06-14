@@ -41,13 +41,10 @@ def main():
 
 @main.command()
 @click.option(
-    "--refresh-datasets/--no-refresh-datasets",
+    "--aggregate-to-country/--no-aggregate-to-country",
     is_flag=True,
-    help="Disable to skip loading datasets and instead re-use data from combined-raw.pkl.gz (much faster)",
-    default=False,
-)
-@click.option(
-    "--states", "-s", type=str, multiple=True, help="For testing, two letter state abbrev's"
+    help="Aggregate states to one USA country region",
+    default=True,
 )
 @click.option(
     "--print-stats/--no-print-stats",
@@ -55,10 +52,24 @@ def main():
     help="Disable to skip loading datasets and instead re-use data from combined-raw.pkl.gz (much faster)",
     default=True,
 )
-def update(refresh_datasets: bool, states: Optional[List[str]], print_stats: bool):
+@click.option(
+    "--refresh-datasets/--no-refresh-datasets",
+    is_flag=True,
+    help="Disable to skip loading datasets and instead re-use data from combined-raw.pkl.gz (much faster)",
+    default=True,
+)
+@click.option(
+    "--states", "-s", type=str, multiple=True, help="For testing, two letter state abbrev's"
+)
+def update(
+    aggregate_to_country: bool,
+    print_stats: bool,
+    refresh_datasets: bool,
+    states: Optional[List[str]],
+):
     dataset = MultiRegionOrchestrator.from_bulk_mrds(
         states=states, refresh_datasets=refresh_datasets, print_stats=print_stats
-    ).build_and_combine_regions()
+    ).build_and_combine_regions(aggregate_to_country=aggregate_to_country)
     _logger.info("Writing multiregion_dataset to disk...")
     combined_dataset_utils.persist_dataset(dataset, DATA_PATH_PREFIX)
     _logger.info("Finished writing multiregion_dataset!")
