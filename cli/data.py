@@ -3,11 +3,11 @@ import logging
 import pathlib
 import structlog
 import dataclasses
-from typing import Mapping, Optional, List
+from typing import Optional, List
 
 from libs import google_sheet_helpers
 from libs.pipeline import Region, RegionMask
-from datapublic.common_fields import CommonFields, FieldName
+from datapublic.common_fields import CommonFields
 from libs.datasets.timeseries_orchestrator import (
     MultiRegionOrchestrator,
     KNOWN_LOCATION_ID_WITHOUT_POPULATION,
@@ -25,7 +25,6 @@ from libs.datasets import (
     combined_datasets,
     tail_filter,
 )
-
 
 DATA_PATH_PREFIX = dataset_utils.DATA_DIRECTORY.relative_to(dataset_utils.REPO_ROOT)
 
@@ -70,6 +69,26 @@ def update(
     dataset = MultiRegionOrchestrator.from_bulk_mrds(
         states=states, refresh_datasets=refresh_datasets, print_stats=print_stats
     ).build_and_combine_regions(aggregate_to_country=aggregate_to_country)
+    _logger.info("Writing multiregion_dataset to disk...")
+    combined_dataset_utils.persist_dataset(dataset, DATA_PATH_PREFIX)
+    _logger.info("Finished writing multiregion_dataset!")
+
+
+@main.command()
+@click.option(
+    "--print-stats/--no-print-stats",
+    is_flag=True,
+    help="Print summary stats at several places in the pipeline. Producing these takes extra time.",
+    default=True,
+)
+@click.option(
+    "--states", "-s", type=str, multiple=True, help="Two letter state abbrev's of states to rerun."
+)
+def update_and_replace_states(print_stats: bool, states: List[str]):
+    # Not refreshing datasets to ensure all data comes from the same parquet file.
+    dataset = MultiRegionOrchestrator.from_bulk_mrds(
+        states=states, print_stats=print_stats, refresh_datasets=False
+    ).update_and_replace_states()
     _logger.info("Writing multiregion_dataset to disk...")
     combined_dataset_utils.persist_dataset(dataset, DATA_PATH_PREFIX)
     _logger.info("Finished writing multiregion_dataset!")
@@ -225,25 +244,3 @@ def update_test_combined_data(truncate_dates: bool, state: List[str]):
     test_subset.write_to_wide_dates_csv(
         dataset_utils.TEST_COMBINED_WIDE_DATES_CSV_PATH, dataset_utils.TEST_COMBINED_STATIC_CSV_PATH
     )
-
-
-def load_datasets_by_field(
-    feature_definition_config: combined_datasets.FeatureDataSourceMap, *, state, fips
-) -> Mapping[FieldName, List[timeseries.MultiRegionDataset]]:
-    def _load_dataset(data_source_cls) -> timeseries.MultiRegionDataset:
-        try:
-            dataset = data_source_cls.make_dataset()
-            if state or fips:
-                dataset = dataset.get_subset(state=state, fips=fips)
-            return dataset
-        except Exception:
-            raise ValueError(f"Problem with {data_source_cls}")
-
-    feature_definition = {
-        # Put the highest priority first, as expected by timeseries.combined_datasets.
-        # TODO(tom): reverse the hard-coded FeatureDataSourceMap and remove the reversed call.
-        field_name: list(reversed(list(_load_dataset(cls) for cls in classes)))
-        for field_name, classes in feature_definition_config.items()
-        if classes
-    }
-    return feature_definition

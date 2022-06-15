@@ -6,12 +6,14 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Mapping
 
 from libs import pipeline
+from libs.datasets import dataset_pointer
 from libs.parallel_utils import parallel_map
 from libs.datasets.sources import zeros_filter
 from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_UNKNOWN_COUNTY_FIPS
 from libs.datasets.timeseries import MultiRegionDataset
 from datapublic.common_fields import CommonFields, PdFields, FieldName
 from libs.datasets.dataset_utils import (
+    DATA_DIRECTORY,
     REGION_OVERRIDES_JSON,
     CUMULATIVE_FIELDS_TO_FILTER,
     DEFAULT_REPORTING_RATIO,
@@ -89,6 +91,7 @@ class MultiRegionOrchestrator:
     cbsa_aggregator: statistical_areas.CountyToCBSAAggregator
     region_overrides: Dict
     print_stats: bool
+    refreshed_dataset: bool
 
     @classmethod
     def from_bulk_mrds(
@@ -111,22 +114,58 @@ class MultiRegionOrchestrator:
             region_overrides=region_overrides,
             cbsa_aggregator=cbsa_aggregator,
             print_stats=print_stats,
+            refreshed_dataset=refresh_datasets,
         )
 
-    def build_and_combine_regions(self, aggregate_to_country: bool = True):
+    def build_and_combine_regions(
+        self, aggregate_to_country: bool = True, generate_cbsas: bool = True
+    ):
         processed_regions = parallel_map(self._build_region_timeseries, self.regions)
         _log.info("Finished processing individual regions...")
-        return self.combine_regions(
-            list(processed_regions), aggregate_to_country=aggregate_to_country
+        return self._combine_regions(
+            list(processed_regions),
+            aggregate_to_country=aggregate_to_country,
+            generate_cbsas=generate_cbsas,
         )
 
-    def combine_regions(
-        self, datasets: List[MultiRegionDataset], aggregate_to_country: bool = True
+    def update_and_replace_states(self):
+        """Replace locations in the existing dataset with updated matching locations in self.regions
+        
+        Leaves other locations (those not in self.regions) untouched, then regenerates country
+        aggregation and CBSAs.
+        """
+        assert not self.refreshed_dataset, "Don't refresh datasets when updating specific regions."
+        to_update = self.build_and_combine_regions(aggregate_to_country=False, generate_cbsas=False)
+        locs_to_drop = [pipeline.Region.from_location_id(loc) for loc in to_update.location_ids]
+
+        filename = dataset_pointer.form_filename(dataset_pointer.DatasetType.MULTI_REGION)
+        ds_path = DATA_DIRECTORY / filename
+        ds_pointer = dataset_pointer.DatasetPointer.parse_raw(ds_path.read_text())
+        persisted_ds = MultiRegionDataset.read_from_pointer(ds_pointer)
+
+        ds_to_drop, ds_to_keep = persisted_ds.partition_by_region(include=locs_to_drop)
+        ds_out = ds_to_keep.append_regions(to_update)
+
+        # Aggregate to country and create CBSAs now that we have all of the locations
+        ds_out = custom_aggregations.aggregate_to_country(
+            ds_out, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+        )
+        cbsa_dataset = self.cbsa_aggregator.aggregate(
+            ds_out.drop_cbsas(), reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+        )
+        ds_out = ds_out.append_regions(cbsa_dataset)
+        return ds_out
+
+    def _combine_regions(
+        self,
+        datasets: List[MultiRegionDataset],
+        aggregate_to_country: bool = True,
+        generate_cbsas: bool = True,
     ) -> MultiRegionDataset:
         regions = [region for dataset in datasets for region in dataset.location_ids]
         assert len(regions) == len(set(regions)), "Can't combine datasets with duplicate locations"
 
-        _log.info("starting region combination...")
+        _log.info("Starting region combination...")
         timeseries_df = (
             pd.concat([dataset.timeseries_bucketed for dataset in datasets])
             .sort_index()
@@ -141,14 +180,17 @@ class MultiRegionOrchestrator:
         multiregion_dataset = MultiRegionDataset(
             timeseries_bucketed=timeseries_df, static=static_df, tag=tag
         )
-        _log.info("starting CBSA aggregation...")
-        cbsa_dataset = self.cbsa_aggregator.aggregate(
-            multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-        )
-        multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
-        multiregion_dataset.print_stats("CBSA dataset")
+
+        if generate_cbsas:
+            _log.info("Starting CBSA aggregation...")
+            cbsa_dataset = self.cbsa_aggregator.aggregate(
+                multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
+            )
+            multiregion_dataset = multiregion_dataset.append_regions(cbsa_dataset)
+            multiregion_dataset.print_stats("CBSA dataset")
+
         if aggregate_to_country:
-            _log.info("starting country aggregation...")
+            _log.info("Starting country aggregation...")
             multiregion_dataset = custom_aggregations.aggregate_to_country(
                 multiregion_dataset, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
             )
