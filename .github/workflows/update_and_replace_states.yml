@@ -1,17 +1,20 @@
 name: Update Dataset for Specific States
 
 on:
+  push:
   workflow_dispatch:
     inputs:
       trigger_api_build:
         description: 'If "true" API snapshot build will be triggered after dataset update.'
         default: 'true'
-      states:
-        description: 'List of states to update datasets for (formatted like "-s CA -s MA ...")'
+      # states:
+        # description: 'List of states to update datasets for (formatted like "-s CA -s MA ...")'
 env:
 
   # Used by python code that reports errors to sentry.
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+  STATES: '-s MA'
 
   SENTRY_ENVIRONMENT: 'production'
 
@@ -73,7 +76,7 @@ jobs:
     - name: Update Dataset for Specific States.
       working-directory: ./covid-data-model
       run: |
-        ./run.py data update-and-replace-states ${{ github.event.inputs.refresh_datasets }}
+        ./run.py data update-and-replace-states ${{ env.STATES }}
 
     - name: Create Update Commit
       working-directory: ./covid-data-model
