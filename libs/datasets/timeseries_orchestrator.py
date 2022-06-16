@@ -103,6 +103,7 @@ class MultiRegionOrchestrator:
         bulk_dataset = load_bulk_dataset(refresh_datasets=refresh_datasets)
         if not states:
             states = list(US_STATE_ABBREV.values())
+        # TODO PARALLEL: need to include places too (only 2 locations that we don't use, though)
         regions = [
             OneStateDataset.from_mrds(bulk_dataset.get_subset(state=region)) for region in states
         ]
