@@ -103,7 +103,8 @@ class MultiRegionOrchestrator:
         bulk_dataset = load_bulk_dataset(refresh_datasets=refresh_datasets)
         if not states:
             states = list(US_STATE_ABBREV.values())
-        # TODO PARALLEL: need to include places too (only 2 locations that we don't use, though)
+        # TODO PARALLEL: This will ignore 'place' locations that have no attached state.
+        # ATM this is not an issue (the only 'place' is NYC which is mapped to NY).
         regions = [
             OneStateDataset.from_mrds(bulk_dataset.get_subset(state=region)) for region in states
         ]
@@ -287,7 +288,7 @@ class MultiRegionOrchestrator:
             if self.print_stats:
                 multiregion_dataset.print_stats("aggregate_puerto_rico_from_counties")
 
-        if state == "NY":
+        if state.state == "NY":
             multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(
                 multiregion_dataset
             )
@@ -301,7 +302,7 @@ class MultiRegionOrchestrator:
         if self.print_stats:
             multiregion_dataset.print_stats("CountyToHSAAggregator")
 
-        if state == "DC":
+        if state.state == "DC":
             multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(
                 multiregion_dataset
             )
