@@ -103,8 +103,6 @@ class MultiRegionOrchestrator:
         bulk_dataset = load_bulk_dataset(refresh_datasets=refresh_datasets)
         if not states:
             states = list(US_STATE_ABBREV.values())
-        # TODO PARALLEL: This will ignore 'place' locations that have no attached state.
-        # ATM this is not an issue (the only 'place' is NYC which is mapped to NY).
         regions = [
             OneStateDataset.from_mrds(bulk_dataset.get_subset(state=region)) for region in states
         ]
