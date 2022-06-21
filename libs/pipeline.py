@@ -186,9 +186,6 @@ class Region:
     def is_state(self):
         return self.level is AggregationLevel.STATE
 
-    def is_cbsa(self):
-        return self.level is AggregationLevel.CBSA
-
     def state_obj(self):
         if self.is_state():
             return us.states.lookup(self.fips)
