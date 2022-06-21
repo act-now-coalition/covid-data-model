@@ -6,14 +6,12 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Mapping
 
 from libs import pipeline
-from libs.datasets import dataset_pointer
 from libs.parallel_utils import parallel_map
 from libs.datasets.sources import zeros_filter
 from libs.us_state_abbrev import US_STATE_ABBREV, ABBREV_US_UNKNOWN_COUNTY_FIPS
 from libs.datasets.timeseries import MultiRegionDataset
 from datapublic.common_fields import CommonFields, PdFields, FieldName
 from libs.datasets.dataset_utils import (
-    DATA_DIRECTORY,
     REGION_OVERRIDES_JSON,
     CUMULATIVE_FIELDS_TO_FILTER,
     DEFAULT_REPORTING_RATIO,
@@ -91,7 +89,6 @@ class MultiRegionOrchestrator:
     cbsa_aggregator: statistical_areas.CountyToCBSAAggregator
     region_overrides: Dict
     print_stats: bool
-    refreshed_dataset: bool
 
     @classmethod
     def from_bulk_mrds(
@@ -114,7 +111,6 @@ class MultiRegionOrchestrator:
             region_overrides=region_overrides,
             cbsa_aggregator=cbsa_aggregator,
             print_stats=print_stats,
-            refreshed_dataset=refresh_datasets,
         )
 
     def build_and_combine_regions(
@@ -127,34 +123,6 @@ class MultiRegionOrchestrator:
             aggregate_to_country=aggregate_to_country,
             generate_cbsas=generate_cbsas,
         )
-
-    def update_and_replace_states(self):
-        """Update the locations from self.regions in the persisted dataset, leaving others unchanged
-                
-        Leaves other locations (those not in self.regions) untouched, then regenerates country
-        aggregation and CBSAs.
-        """
-        assert not self.refreshed_dataset, "Do not refresh datasets when updating specific regions"
-        to_update = self.build_and_combine_regions(aggregate_to_country=False, generate_cbsas=False)
-        locs_to_drop = [pipeline.Region.from_location_id(loc) for loc in to_update.location_ids]
-
-        filename = dataset_pointer.form_filename(dataset_pointer.DatasetType.MULTI_REGION)
-        ds_path = DATA_DIRECTORY / filename
-        ds_pointer = dataset_pointer.DatasetPointer.parse_raw(ds_path.read_text())
-        persisted_ds = MultiRegionDataset.read_from_pointer(ds_pointer)
-
-        ds_to_drop, ds_to_keep = persisted_ds.partition_by_region(include=locs_to_drop)
-        ds_out = ds_to_keep.append_regions(to_update)
-
-        # Aggregate to country and create CBSAs now that we have all of the locations
-        ds_out = custom_aggregations.aggregate_to_country(
-            ds_out, reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-        )
-        cbsa_dataset = self.cbsa_aggregator.aggregate(
-            ds_out.drop_cbsas(), reporting_ratio_required_to_aggregate=DEFAULT_REPORTING_RATIO
-        )
-        ds_out = ds_out.append_regions(cbsa_dataset)
-        return ds_out
 
     def _combine_regions(
         self,

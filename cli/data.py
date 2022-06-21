@@ -75,26 +75,6 @@ def update(
 
 
 @main.command()
-@click.option(
-    "--print-stats/--no-print-stats",
-    is_flag=True,
-    help="Print summary stats at several places in the pipeline. Producing these takes extra time.",
-    default=True,
-)
-@click.option(
-    "--states", "-s", type=str, multiple=True, help="Two letter state abbrev's of states to rerun."
-)
-def update_and_replace_states(print_stats: bool, states: List[str]):
-    # Not refreshing datasets to ensure all data comes from the same parquet file.
-    dataset = MultiRegionOrchestrator.from_bulk_mrds(
-        states=states, print_stats=print_stats, refresh_datasets=False
-    ).update_and_replace_states()
-    _logger.info("Writing multiregion_dataset to disk...")
-    combined_dataset_utils.persist_dataset(dataset, DATA_PATH_PREFIX)
-    _logger.info("Finished writing multiregion_dataset!")
-
-
-@main.command()
 @click.argument("output_path", type=pathlib.Path)
 def aggregate_cbsa(output_path: pathlib.Path):
     us_timeseries = combined_datasets.load_us_timeseries_dataset()
