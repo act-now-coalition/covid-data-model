@@ -134,6 +134,7 @@ class CountyToHSAAggregator:
         Args:
             dataset_in: MultiRegionDataset with fields to aggregate.
             fields_to_aggregate: Mapping of names of columns to aggregate to names of resulting columns.
+            restrict_to_current_state: If provided, aggregation will only return locations in the given state.
         """
 
         # Only aggregate county-level data for specified fields
@@ -174,6 +175,10 @@ class CountyToHSAAggregator:
         out_ts = dataset_in.timeseries_bucketed.combine_first(aggregated_ts)
         out_ds = dataclasses.replace(dataset_in, timeseries_bucketed=out_ts)
 
+        # HSAs are not bound to state borders, so use this to only provide output for HSAs
+        # inside the provided state.
+        # This is used in MultiRegionOrchestrator to prevent HSA rows from being duplicated/created
+        # by multiple states.
         if restrict_to_current_state:
             assert restrict_to_current_state.is_state()
             state = restrict_to_current_state

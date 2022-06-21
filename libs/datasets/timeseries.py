@@ -1310,11 +1310,6 @@ class MultiRegionDataset:
         tag = _slice_with_labels(self.tag, timeseries_wide_dates.index)
         return dataclasses.replace(self, timeseries_bucketed=timeseries_wide_variables, tag=tag,)
 
-    def drop_cbsas(self):
-        """Returns an object with all of the CBSA datapoints removed."""
-        cbsa_locs = [loc for loc in self.location_ids if Region.from_location_id(loc).is_cbsa()]
-        return self.get_locations_subset(location_ids=cbsa_locs)
-
     def replace_timeseries_wide_dates(
         self, timeseries_bucketed_to_concat: List[pd.DataFrame]
     ) -> "MultiRegionDataset":
