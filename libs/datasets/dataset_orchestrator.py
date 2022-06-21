@@ -129,6 +129,7 @@ class MultiRegionOrchestrator:
         datasets: List[MultiRegionDataset],
         aggregate_to_country: bool = True,
         generate_cbsas: bool = True,
+        generate_hsas: bool = True,
     ) -> MultiRegionDataset:
         regions = [region for dataset in datasets for region in dataset.location_ids]
         assert len(regions) == len(set(regions)), "Can't combine datasets with duplicate locations"
@@ -148,6 +149,11 @@ class MultiRegionOrchestrator:
         multiregion_dataset = MultiRegionDataset(
             timeseries_bucketed=timeseries_df, static=static_df, tag=tag
         )
+
+        if generate_hsas:
+            _log.info("Starting HSA aggregation...")
+            hsa_aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
+            multiregion_dataset = hsa_aggregator.aggregate(multiregion_dataset)
 
         if generate_cbsas:
             _log.info("Starting CBSA aggregation...")
@@ -260,13 +266,6 @@ class MultiRegionOrchestrator:
             )
             if self.print_stats:
                 multiregion_dataset.print_stats("aggregate_to_new_york_city")
-
-        hsa_aggregator = statistical_areas.CountyToHSAAggregator.from_local_data()
-        multiregion_dataset = hsa_aggregator.aggregate(
-            multiregion_dataset, restrict_to_current_state=state
-        )
-        if self.print_stats:
-            multiregion_dataset.print_stats("CountyToHSAAggregator")
 
         if state.state == "DC":
             multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(
