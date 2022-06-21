@@ -8,7 +8,7 @@ from typing import Optional, List
 from libs import google_sheet_helpers
 from libs.pipeline import Region, RegionMask
 from datapublic.common_fields import CommonFields
-from libs.datasets.timeseries_orchestrator import (
+from libs.datasets.dataset_orchestrator import (
     MultiRegionOrchestrator,
     KNOWN_LOCATION_ID_WITHOUT_POPULATION,
 )

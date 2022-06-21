@@ -85,7 +85,7 @@ class OneStateDataset:
 
 @dataclass
 class MultiRegionOrchestrator:
-    """Class to orchestrate dataset updates through state-oriented parallelization."""
+    """Class to orchestrate dataset updates through state-focused parallelization."""
 
     regions: Iterable[OneStateDataset]
     cbsa_aggregator: statistical_areas.CountyToCBSAAggregator
@@ -129,12 +129,12 @@ class MultiRegionOrchestrator:
         )
 
     def update_and_replace_states(self):
-        """Replace locations in the existing dataset with updated matching locations in self.regions
-        
+        """Update the locations from self.regions in the persisted dataset, leaving others unchanged
+                
         Leaves other locations (those not in self.regions) untouched, then regenerates country
         aggregation and CBSAs.
         """
-        assert not self.refreshed_dataset, "Don't refresh datasets when updating specific regions."
+        assert not self.refreshed_dataset, "Do not refresh datasets when updating specific regions"
         to_update = self.build_and_combine_regions(aggregate_to_country=False, generate_cbsas=False)
         locs_to_drop = [pipeline.Region.from_location_id(loc) for loc in to_update.location_ids]
 
