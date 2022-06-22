@@ -843,6 +843,15 @@
       "end_date": "",
       "region": "CA",
       "context": "CA test positivity jumped for a bunch of counties."
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-06-21",
+      "end_date": "2022-06-21",
+      "region": "GA",
+      "context": "GA reporting near 0 cases dragged down WNC rate 6/21/2022"
     }
   ]
 }
