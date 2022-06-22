@@ -459,9 +459,6 @@ def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex, *, bucket
         # timeseries.index order is important for _timeseries_latest_values correctness.
         assert timeseries_index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     assert timeseries_index.is_unique
-    # TODO: The following fails during manual_filter runs, despite the resulting datasets
-    # having monotonic increasing indexes. Maybe related to the TODO in __post_init__?
-    # assert timeseries_index.is_monotonic_increasing
 
 
 def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, bucketed: bool):
