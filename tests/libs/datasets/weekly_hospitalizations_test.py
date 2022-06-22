@@ -45,5 +45,5 @@ def test_add_weekly_hospitalizations_no_overwrite():
             },
         }
     )
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         weekly_hospitalizations.add_weekly_hospitalizations(dataset_in=dataset_in)

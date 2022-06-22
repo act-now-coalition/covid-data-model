@@ -10,8 +10,7 @@ from datapublic.common_fields import CommonFields
 from datapublic.common_fields import DemographicBucket
 from datapublic.common_fields import FieldGroup
 
-from cli import data
-from libs.datasets import AggregationLevel
+from libs.datasets import AggregationLevel, dataset_utils
 from libs.datasets import manual_filter
 from libs.datasets import statistical_areas
 from libs.datasets import taglib
@@ -204,7 +203,7 @@ def test_manual_filter_per_bucket_tag():
 def test_region_overrides_transform_smoke_test():
     aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
     transformed = manual_filter.transform_region_overrides(
-        json.load(open(data.REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
+        json.load(open(dataset_utils.REGION_OVERRIDES_JSON)), aggregator.cbsa_to_counties_region_map
     )
     assert transformed.filters
     # pprint.pprint(transformed)

@@ -459,7 +459,6 @@ def _check_timeseries_wide_vars_index(timeseries_index: pd.MultiIndex, *, bucket
         # timeseries.index order is important for _timeseries_latest_values correctness.
         assert timeseries_index.names == [CommonFields.LOCATION_ID, CommonFields.DATE]
     assert timeseries_index.is_unique
-    assert timeseries_index.is_monotonic_increasing
 
 
 def _check_timeseries_wide_vars_structure(wide_vars_df: pd.DataFrame, *, bucketed: bool):
@@ -1361,9 +1360,12 @@ class MultiRegionDataset:
         # TODO(tom): Deprecate use of DatasetPointer and remove this method
         return self.write_to_wide_dates_csv(pointer.path_wide_dates(), pointer.path_static())
 
-    def write_to_wide_dates_csv(self, path_wide_dates: pathlib.Path, path_static: pathlib.Path):
+    def write_to_wide_dates_csv(
+        self, path_wide_dates: pathlib.Path, path_static: pathlib.Path, compression: bool = True
+    ):
         """Writes `self` to given file paths."""
         wide_df = self.timeseries_rows()
+        kwargs = {"compression": "gzip"} if compression else {}
 
         # The values we write are generally ratios (such as test positivity) where we only need ~5
         # digits beyond the decimal point or integers that we'd like to preserve as an exact value.
@@ -1375,7 +1377,7 @@ class MultiRegionDataset:
         # floats but I don't see an easy solution with to_csv float_format.
         # https://trello.com/c/aDGn57Df/1192-change-combined-data-from-csv-to-parquet will remove
         # the need to format values as strings
-        wide_df.to_csv(path_wide_dates, index=True, float_format="%.9g", compression="gzip")
+        wide_df.to_csv(path_wide_dates, index=True, float_format="%.9g", **kwargs)
 
         static_sorted = common_df.index_and_sort(
             self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
