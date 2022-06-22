@@ -61,8 +61,13 @@ MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH = DATA_DIRECTORY / "manual_filter_remo
 MANUAL_FILTER_REMOVED_STATIC_CSV_PATH = DATA_DIRECTORY / "manual_filter_removed-static.csv"
 COMBINED_RAW_PICKLE_GZ_PATH = DATA_DIRECTORY / "combined-raw.pkl.gz"
 
+# Path to the CMS generated JSON file used for manual blocks/filtering
 REGION_OVERRIDES_JSON = DATA_DIRECTORY / "region-overrides.json"
 
+# Cumulative fields often stall when there is no new data. Rather than treating
+# these as valid values (and the rest of the pipeline calculating daily deltas
+# of 0 for the stalled cumulative value), we apply a "tail filter" that drops
+# stalled data at the end.
 CUMULATIVE_FIELDS_TO_FILTER = [
     CommonFields.CASES,
     CommonFields.DEATHS,
@@ -75,6 +80,8 @@ CUMULATIVE_FIELDS_TO_FILTER = [
     CommonFields.TOTAL_TESTS_PEOPLE_VIRAL,
     CommonFields.TOTAL_TEST_ENCOUNTERS_VIRAL,
 ]
+
+# By default require 0.95 of populations from regions to include a data point in aggregate.
 DEFAULT_REPORTING_RATIO = 0.95
 
 

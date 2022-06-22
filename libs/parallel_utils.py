@@ -31,12 +31,10 @@ SeriesOrDataFrame = TypeVar("SeriesOrDataFrame", pd.Series, pd.DataFrame)
 def parallel_map(func: Callable[[T], R], iterable: Iterable[T]) -> Iterable[R]:
     """Runs func on each item in iterable, in parallel if possible."""
     if USE_MULTIPROCESSING:
-        # Setting maxtasksperchild to one ensures that we minimize memory usage over time by creating
-        # a new child for every task. Addresses OOMs we saw on highly parallel build machine.
-        # But that might not be enough. Also make sure we don't spawn more than 32 processes (the
-        # build machine is 96-core)
-        processes = min(os.cpu_count(), 32)
-        with get_context("spawn").Pool(maxtasksperchild=1, processes=processes) as pool:
+        # Our current GitHub Actions runner has 40 cores, so default to this
+        # and fall back to a lower amount as necessary.
+        processes = min(os.cpu_count(), 40)
+        with get_context("spawn").Pool(processes=processes) as pool:
             # Always return an iterator to make sure the return type is consistent.
             return iter(pool.map(func, iterable))
     else:

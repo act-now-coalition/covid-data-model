@@ -3,7 +3,12 @@ import datetime
 import structlog
 import pandas as pd
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Mapping
+from typing import Iterable, List, Optional, Mapping, Tuple, Dict
+
+try:  # To work with python 3.7 and 3.9 without changes.
+    from functools import cached_property
+except ImportError:
+    from backports.cached_property import cached_property
 
 from libs import pipeline
 from libs.parallel_utils import parallel_map
@@ -40,7 +45,8 @@ from libs.datasets import (
 TailFilter = tail_filter.TailFilter
 _log = structlog.get_logger()
 
-# Putting this in dataset_utils caused a circular import with libs.pipeline
+# Ideally this should probably go in dataset_utils, but that causes
+# a circular import with libs.pipeline, so leaving here for now.
 KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
     # Territories other than PR
     "iso1:us#iso2:us-vi",
@@ -58,7 +64,7 @@ KNOWN_LOCATION_ID_WITHOUT_POPULATION = [
 ]
 
 
-@dataclass
+@dataclass(frozen=True)
 class OneStateDataset:
     """Wrapper class containing a MultiRegionDataset with data for a single state and its subregions. 
     
@@ -81,14 +87,20 @@ class OneStateDataset:
         )
 
 
-@dataclass
-class MultiRegionOrchestrator:
+@dataclass(frozen=True)
+class DatasetUpdater:
     """Class to orchestrate dataset updates through state-focused parallelization."""
 
-    regions: Iterable[OneStateDataset]
+    state_datasets: Iterable[OneStateDataset]
     cbsa_aggregator: statistical_areas.CountyToCBSAAggregator
     region_overrides: Dict
     print_stats: bool
+
+    @cached_property
+    def region_overrides_config(self) -> manual_filter.Config:
+        return manual_filter.transform_region_overrides(
+            self.region_overrides, self.cbsa_aggregator.cbsa_to_counties_region_map
+        )
 
     @classmethod
     def from_bulk_mrds(
@@ -96,18 +108,18 @@ class MultiRegionOrchestrator:
         states: Optional[List[str]] = None,
         refresh_datasets: Optional[bool] = True,
         print_stats: bool = True,
-    ) -> "MultiRegionOrchestrator":
+    ) -> "DatasetUpdater":
         bulk_dataset = load_bulk_dataset(refresh_datasets=refresh_datasets)
         if not states:
             states = list(US_STATE_ABBREV.values())
-        regions = [
+        state_datasets = [
             OneStateDataset.from_mrds(bulk_dataset.get_subset(state=region)) for region in states
         ]
 
         cbsa_aggregator = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
         region_overrides = json.load(open(REGION_OVERRIDES_JSON))
-        return MultiRegionOrchestrator(
-            regions=regions,
+        return DatasetUpdater(
+            state_datasets=state_datasets,
             region_overrides=region_overrides,
             cbsa_aggregator=cbsa_aggregator,
             print_stats=print_stats,
@@ -115,40 +127,91 @@ class MultiRegionOrchestrator:
 
     def build_and_combine_regions(
         self, aggregate_to_country: bool = True, generate_cbsas: bool = True
-    ):
-        processed_regions = parallel_map(self._build_region_timeseries, self.regions)
+    ) -> Tuple[MultiRegionDataset, MultiRegionDataset]:
+        """Run pipeline on self.state_datasets, combine and return outputs and manually removed data"""
+        processed_states, manual_filter_datasets = zip(
+            *parallel_map(self._build_state_dataset, self.state_datasets)
+        )
         _log.info("Finished processing individual regions...")
-        return self._combine_regions(
-            list(processed_regions),
+
+        _log.info("Combining individual regions...")
+        manual_filter_touched = _combine_datasets(manual_filter_datasets)
+        multiregion_dataset = self._combine_state_datasets(
+            list(processed_states),
             aggregate_to_country=aggregate_to_country,
             generate_cbsas=generate_cbsas,
         )
+        return multiregion_dataset, manual_filter_touched
 
-    def _combine_regions(
+    def _build_state_dataset(self, state_dataset: OneStateDataset) -> Tuple[MultiRegionDataset]:
+        """Runs pipeline on state_dataset returning the output and the manual filtered dataset"""
+        state = state_dataset.state
+        multiregion_dataset = state_dataset.multiregion_dataset
+
+        before_manual_filter = multiregion_dataset
+        multiregion_dataset = manual_filter.run(multiregion_dataset, self.region_overrides_config)
+        manual_filter_touched = manual_filter.touched_subset(
+            before_manual_filter, multiregion_dataset
+        )
+        multiregion_dataset = timeseries.drop_observations(
+            multiregion_dataset, after=datetime.datetime.utcnow().date()
+        )
+        multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
+        # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
+        _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
+        multiregion_dataset = zeros_filter.drop_all_zero_timeseries(
+            multiregion_dataset,
+            [
+                CommonFields.VACCINES_DISTRIBUTED,
+                CommonFields.VACCINES_ADMINISTERED,
+                CommonFields.VACCINATIONS_COMPLETED,
+                CommonFields.VACCINATIONS_INITIATED,
+                CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
+            ],
+        )
+        multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(
+            multiregion_dataset
+        )
+        multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
+        multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
+        multiregion_dataset = weekly_hospitalizations.add_weekly_hospitalizations(
+            multiregion_dataset
+        )
+        if state.state == "MD":
+            multiregion_dataset = custom_patches.patch_maryland_missing_case_data(
+                multiregion_dataset
+            )
+        multiregion_dataset = nytimes_anomalies.filter_by_nyt_anomalies(multiregion_dataset)
+        multiregion_dataset = outlier_detection.drop_new_case_outliers(multiregion_dataset)
+        multiregion_dataset = outlier_detection.drop_new_deaths_outliers(multiregion_dataset)
+        multiregion_dataset = timeseries.drop_regions_without_population(
+            multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, _log
+        )
+        if state.state == "PR":
+            multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
+                multiregion_dataset
+            )
+        if state.state == "NY":
+            multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(
+                multiregion_dataset
+            )
+        if state.state == "DC":
+            multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(
+                multiregion_dataset
+            )
+
+        if self.print_stats:
+            multiregion_dataset.print_stats(f"Finished {state.state}")
+        return multiregion_dataset, manual_filter_touched
+
+    def _combine_state_datasets(
         self,
         datasets: List[MultiRegionDataset],
         aggregate_to_country: bool = True,
         generate_cbsas: bool = True,
         generate_hsas: bool = True,
     ) -> MultiRegionDataset:
-        regions = [region for dataset in datasets for region in dataset.location_ids]
-        assert len(regions) == len(set(regions)), "Can't combine datasets with duplicate locations"
-
-        _log.info("Starting region combination...")
-        timeseries_df = (
-            pd.concat([dataset.timeseries_bucketed for dataset in datasets])
-            .sort_index()
-            .rename_axis(columns=PdFields.VARIABLE)
-        )
-        static_df = (
-            pd.concat(dataset.static for dataset in datasets)
-            .sort_index()
-            .rename_axis(columns=PdFields.VARIABLE)
-        )
-        tag = pd.concat([dataset.tag for dataset in datasets]).sort_index()
-        multiregion_dataset = MultiRegionDataset(
-            timeseries_bucketed=timeseries_df, static=static_df, tag=tag
-        )
+        multiregion_dataset = _combine_datasets(datasets)
 
         if generate_hsas:
             _log.info("Starting HSA aggregation...")
@@ -171,109 +234,24 @@ class MultiRegionOrchestrator:
             multiregion_dataset.print_stats("Aggregate to country")
         return multiregion_dataset
 
-    def _build_region_timeseries(self, region_dataset: OneStateDataset):
-        state = region_dataset.state
-        multiregion_dataset = region_dataset.multiregion_dataset
 
-        # TODO: maybe filter overrides to match only the current region?
-        # Not sure if that will help performance but worth a shot.
-        region_overrides_config = manual_filter.transform_region_overrides(
-            self.region_overrides, self.cbsa_aggregator.cbsa_to_counties_region_map
-        )
-        before_manual_filter = multiregion_dataset
-        multiregion_dataset = manual_filter.run(multiregion_dataset, region_overrides_config)
-        manual_filter_touched = manual_filter.touched_subset(
-            before_manual_filter, multiregion_dataset
-        )
-        manual_filter_touched.write_to_wide_dates_csv(
-            dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH,
-            dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH,
-        )
-        if self.print_stats:
-            multiregion_dataset.print_stats("manual filter")
-        multiregion_dataset = timeseries.drop_observations(
-            multiregion_dataset, after=datetime.datetime.utcnow().date()
-        )
+def _combine_datasets(datasets: List[MultiRegionDataset]):
+    regions = [region for dataset in datasets for region in dataset.location_ids]
+    assert len(regions) == len(set(regions)), "Can't combine datasets with duplicate locations"
 
-        multiregion_dataset = outlier_detection.drop_tail_positivity_outliers(multiregion_dataset)
-        if self.print_stats:
-            multiregion_dataset.print_stats(f"drop_tail {multiregion_dataset.location_ids}")
-
-        # Filter for stalled cumulative values before deriving NEW_CASES from CASES.
-        _, multiregion_dataset = TailFilter.run(multiregion_dataset, CUMULATIVE_FIELDS_TO_FILTER)
-        if self.print_stats:
-            multiregion_dataset.print_stats("TailFilter")
-        multiregion_dataset = zeros_filter.drop_all_zero_timeseries(
-            multiregion_dataset,
-            [
-                CommonFields.VACCINES_DISTRIBUTED,
-                CommonFields.VACCINES_ADMINISTERED,
-                CommonFields.VACCINATIONS_COMPLETED,
-                CommonFields.VACCINATIONS_INITIATED,
-                CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
-            ],
-        )
-        if self.print_stats:
-            multiregion_dataset.print_stats("zeros_filter")
-
-        multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(
-            multiregion_dataset
-        )
-        if self.print_stats:
-            multiregion_dataset.print_stats("estimate_initiated_from_state_ratio")
-
-        multiregion_dataset = new_cases_and_deaths.add_new_cases(multiregion_dataset)
-        multiregion_dataset = new_cases_and_deaths.add_new_deaths(multiregion_dataset)
-        if self.print_stats:
-            multiregion_dataset.print_stats("new_cases_and_deaths")
-
-        multiregion_dataset = weekly_hospitalizations.add_weekly_hospitalizations(
-            multiregion_dataset
-        )
-
-        if state.state == "MD":
-            multiregion_dataset = custom_patches.patch_maryland_missing_case_data(
-                multiregion_dataset
-            )
-            if self.print_stats:
-                multiregion_dataset.print_stats("patch_maryland_missing_case_data")
-
-        multiregion_dataset = nytimes_anomalies.filter_by_nyt_anomalies(multiregion_dataset)
-        if self.print_stats:
-            multiregion_dataset.print_stats("nytimes_anomalies")
-
-        multiregion_dataset = outlier_detection.drop_new_case_outliers(multiregion_dataset)
-        multiregion_dataset = outlier_detection.drop_new_deaths_outliers(multiregion_dataset)
-        if self.print_stats:
-            multiregion_dataset.print_stats("outlier_detection")
-
-        multiregion_dataset = timeseries.drop_regions_without_population(
-            multiregion_dataset, KNOWN_LOCATION_ID_WITHOUT_POPULATION, _log
-        )
-        if self.print_stats:
-            multiregion_dataset.print_stats("drop_regions_without_population")
-
-        if state.state == "PR":
-            multiregion_dataset = custom_aggregations.aggregate_puerto_rico_from_counties(
-                multiregion_dataset
-            )
-            if self.print_stats:
-                multiregion_dataset.print_stats("aggregate_puerto_rico_from_counties")
-
-        if state.state == "NY":
-            multiregion_dataset = custom_aggregations.aggregate_to_new_york_city(
-                multiregion_dataset
-            )
-            if self.print_stats:
-                multiregion_dataset.print_stats("aggregate_to_new_york_city")
-
-        if state.state == "DC":
-            multiregion_dataset = custom_aggregations.replace_dc_county_with_state_data(
-                multiregion_dataset
-            )
-            if self.print_stats:
-                multiregion_dataset.print_stats("replace_dc_county_with_state_data")
-        return multiregion_dataset
+    _log.info("Starting region combination...")
+    timeseries_df = (
+        pd.concat([dataset.timeseries_bucketed for dataset in datasets])
+        .sort_index()
+        .rename_axis(columns=PdFields.VARIABLE)
+    )
+    static_df = (
+        pd.concat(dataset.static for dataset in datasets)
+        .sort_index()
+        .rename_axis(columns=PdFields.VARIABLE)
+    )
+    tag = pd.concat([dataset.tag for dataset in datasets]).sort_index()
+    return MultiRegionDataset(timeseries_bucketed=timeseries_df, static=static_df, tag=tag)
 
 
 def load_bulk_dataset(refresh_datasets: Optional[bool] = True) -> MultiRegionDataset:

@@ -8,8 +8,8 @@ from typing import Optional, List
 from libs import google_sheet_helpers
 from libs.pipeline import Region, RegionMask
 from datapublic.common_fields import CommonFields
-from libs.datasets.dataset_orchestrator import (
-    MultiRegionOrchestrator,
+from libs.datasets.dataset_updater import (
+    DatasetUpdater,
     KNOWN_LOCATION_ID_WITHOUT_POPULATION,
 )
 from libs.datasets.dataset_utils import (
@@ -66,12 +66,19 @@ def update(
     refresh_datasets: bool,
     states: Optional[List[str]],
 ):
-    dataset = MultiRegionOrchestrator.from_bulk_mrds(
+    multiregion_dataset, filtered_dataset = DatasetUpdater.from_bulk_mrds(
         states=states, refresh_datasets=refresh_datasets, print_stats=print_stats
     ).build_and_combine_regions(aggregate_to_country=aggregate_to_country)
     _logger.info("Writing multiregion_dataset to disk...")
-    combined_dataset_utils.persist_dataset(dataset, DATA_PATH_PREFIX)
+    combined_dataset_utils.persist_dataset(multiregion_dataset, DATA_PATH_PREFIX)
     _logger.info("Finished writing multiregion_dataset!")
+    _logger.info("Writing manually filtered data to disk...")
+    filtered_dataset.write_to_wide_dates_csv(
+        dataset_utils.MANUAL_FILTER_REMOVED_WIDE_DATES_CSV_PATH,
+        dataset_utils.MANUAL_FILTER_REMOVED_STATIC_CSV_PATH,
+        compression=False,
+    )
+    _logger.info("Finished writing manual filtered data to disk!")
 
 
 @main.command()
