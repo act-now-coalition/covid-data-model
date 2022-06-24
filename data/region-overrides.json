@@ -843,15 +843,6 @@
       "end_date": "",
       "region": "CA",
       "context": "CA test positivity jumped for a bunch of counties."
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2022-06-21",
-      "end_date": "2022-06-21",
-      "region": "UT",
-      "context": "Near 0 reporting on 6/22/2022 causing case rates to drop"
     }
   ]
 }
