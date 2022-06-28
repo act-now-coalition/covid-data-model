@@ -843,6 +843,15 @@
       "end_date": "",
       "region": "CA",
       "context": "CA test positivity jumped for a bunch of counties."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-06-27",
+      "end_date": "2022-06-27",
+      "region": "08031",
+      "context": "Denver, CO case suspected backlog 6/27/2022"
     }
   ]
 }
