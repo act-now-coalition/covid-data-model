@@ -44,6 +44,22 @@ def parallel_map(func: Callable[[T], R], iterable: Iterable[T]) -> Iterable[R]:
         return map(func, iterable)
 
 
+def parallel_starmap(func: Callable[[T], R], iterable: Iterable[T]) -> Iterable[R]:
+    """Runs func on each item in iterable, in parallel if possible."""
+    if USE_MULTIPROCESSING:
+        # Our current GitHub Actions runner has 40 cores, so default to this
+        # and fall back to a lower amount as necessary.
+        processes = min(os.cpu_count(), 40)
+        # Using the standard "fork" start method caused DatasetUpdater to hang indefinitely.
+        # Since get_context() only sets the method inside the context manager this should be
+        # compatible with pandarallel.
+        with get_context("spawn").Pool(processes=processes) as pool:
+            # Always return an iterator to make sure the return type is consistent.
+            return iter(pool.starmap(func, iterable))
+    else:
+        raise ValueError("cannot starmap without FORCE_MULTIPROCESSING")
+
+
 def pandas_parallel_apply(
     func: Callable[[T], R], series_or_dataframe: SeriesOrDataFrame
 ) -> SeriesOrDataFrame:

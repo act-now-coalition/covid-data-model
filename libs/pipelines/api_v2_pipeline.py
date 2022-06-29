@@ -5,6 +5,7 @@ import pathlib
 import pandas as pd
 import pydantic
 import structlog
+from itertools import repeat
 
 import pyseir.run
 from libs.metrics import community_levels, test_positivity
@@ -346,9 +347,21 @@ def generate_from_loaded_data(
     # Build all region timeseries API Output objects.
     log.info("Generating all API Timeseries")
     all_timeseries = run_on_regions(regional_inputs)
-    deploy_single_level(all_timeseries, AggregationLevel.COUNTY, output)
-    deploy_single_level(all_timeseries, AggregationLevel.STATE, output)
-    deploy_single_level(all_timeseries, AggregationLevel.CBSA, output)
-    deploy_single_level(all_timeseries, AggregationLevel.PLACE, output)
-    deploy_single_level(all_timeseries, AggregationLevel.COUNTRY, output)
+    levels = zip(
+        repeat(all_timeseries),
+        [
+            AggregationLevel.COUNTY,
+            AggregationLevel.CBSA,
+            AggregationLevel.STATE,
+            AggregationLevel.PLACE,
+            AggregationLevel.COUNTRY,
+        ],
+        repeat(output),
+    )
+    parallel_utils.parallel_starmap(deploy_single_level, levels)
+    # deploy_single_level(all_timeseries, AggregationLevel.COUNTY, output)
+    # deploy_single_level(all_timeseries, AggregationLevel.STATE, output)
+    # deploy_single_level(all_timeseries, AggregationLevel.CBSA, output)
+    # deploy_single_level(all_timeseries, AggregationLevel.PLACE, output)
+    # deploy_single_level(all_timeseries, AggregationLevel.COUNTRY, output)
     log.info("Finished API generation.")
