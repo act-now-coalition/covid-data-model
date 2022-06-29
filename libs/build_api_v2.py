@@ -254,20 +254,20 @@ def _sources_from_provenance_and_source_url(
     if not sources_enum:
         source_enum = None
     else:
-        if len(sources_enum) > 1:
-            log.warning(METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE, field_name=field_name)
+        # if len(sources_enum) > 1:
+        # log.warning(METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE, field_name=field_name)
         source_enum = sources_enum.pop()
 
     source_urls = set(tag_series.source_url.get(field_name, []))
     if not source_urls:
         source_url = None
     else:
-        if len(source_urls) > 1:
-            log.warning(
-                METRIC_MULTIPLE_SOURCE_URLS_MESSAGE,
-                field_name=field_name,
-                urls=list(sorted(source_urls)),
-            )
+        # if len(source_urls) > 1:
+        # log.warning(
+        #     METRIC_MULTIPLE_SOURCE_URLS_MESSAGE,
+        #     field_name=field_name,
+        #     urls=list(sorted(source_urls)),
+        # )
         # If multiple URLs actually happens in a meaningful way consider doing something better than
         # returning one at random.
         source_url = source_urls.pop()
@@ -282,9 +282,9 @@ def _lookup_source_type(source_str, field_name, log) -> FieldSourceType:
     source_enum = FieldSourceType.get(source_str)
     if source_enum is None:
         source_enum = FieldSourceType.OTHER
-        log.info(
-            METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
-        )
+        # log.info(
+        #     METRIC_SOURCES_NOT_FOUND_MESSAGE, field_name=field_name, provenance=source_str,
+        # )
     return source_enum
 
 

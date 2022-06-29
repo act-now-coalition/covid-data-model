@@ -168,11 +168,11 @@ def _lookup_test_positivity_method(
     if positive_tests_provenance and positive_tests_provenance == negative_tests_provenance:
         method = TestPositivityRatioMethod.get(positive_tests_provenance)
     if method is None:
-        log.debug(
-            "Unable to find TestPositivityRatioMethod",
-            positive_tests_provenance=positive_tests_provenance,
-            negative_tests_provenance=negative_tests_provenance,
-        )
+        # log.debug(
+        #     "Unable to find TestPositivityRatioMethod",
+        #     positive_tests_provenance=positive_tests_provenance,
+        #     negative_tests_provenance=negative_tests_provenance,
+        # )
         method = TestPositivityRatioMethod.OTHER
     return method
 
@@ -211,8 +211,8 @@ def copy_test_positivity(
         # Most likely there were zero provenance or the one wasn't found. Less likely, there were
         # more than one unique values in provenance.
         method = TestPositivityRatioMethod.OTHER
-        if provenance:
-            log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
+        # if provenance:
+        # log.warning("Unable to find TestPositivityRatioMethod", provenance=provenance)
     return test_positivity, TestPositivityRatioDetails(source=method)
 
 
