@@ -230,11 +230,13 @@ def deploy_single_level(
 
     if level is AggregationLevel.COUNTY:
         # parallel map this
+        logging.info("entering counties")
         for state in set(record.state for record in all_summaries):
-            logging.info(f"state county deploy bulk for {state}")
+            # logging.info(f"state county deploy bulk for {state}")
             state_timeseries = [record for record in all_timeseries if record.state == state]
             state_summaries = [record for record in all_summaries if record.state == state]
             deploy_bulk_files(path_builder, state_timeseries, state_summaries, state=state)
+        logging.info("leaving counties")
 
 
 def deploy_bulk_files(
