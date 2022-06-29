@@ -194,7 +194,7 @@ def deploy_single_level(
         all_timeseries: List of timeseries to deploy.
         output_root: Root of API output.
     """
-
+    logger.info(f"In deploy_single_level for {level}")
     path_builder = APIOutputPathBuilder(output_root, level)
     path_builder.make_directories()
     # Filter all timeseries to just aggregate level.
@@ -335,10 +335,10 @@ def generate_from_loaded_data(
     """Runs the API generation code using data in parameters, writing results to output."""
     # If calculating test positivity succeeds join it with the combined_datasets into one
     # MultiRegionDataset
-    log.info("Running test positivity.")
-    regions_data = test_positivity.run_and_maybe_join_columns(selected_dataset, log)
+    # log.info("Running test positivity.")
+    # regions_data = test_  positivity.run_and_maybe_join_columns(selected_dataset, log)
 
-    regions_data = vaccine_backfills.derive_vaccine_pct(regions_data)
+    regions_data = vaccine_backfills.derive_vaccine_pct(selected_dataset)
 
     log.info(f"Joining inputs by region.")
     rt_data_map = dict(model_output.infection_rate.iter_one_regions())

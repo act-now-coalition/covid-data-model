@@ -98,20 +98,17 @@ def write_nested_csv(
         writer = csv.DictWriter(csvfile, header)
         writer.writeheader()
 
-        flattened_data = parallel_map(flatten_dict, data)
-        flattened_rows = parallel_map(partial(_flatten_row, header_set), flattened_data)
-        [writer.writerow(row) for row in flattened_rows]
+        flattened_data = [flatten_dict(row) for row in data]
+        for flattened_row in flattened_data:
+            # if a nested key is optional (i.e. {a: Optional[dict]}) and there is no
+            # value for a, (i.e. {a: None}), don't write a, as it's not in the header.
+            flattened_row = {k: v for k, v in flattened_row.items() if k in header_set}
+            flattened_row = {k: v for k, v in flattened_row.items() if not pd.isnull(v)}
+            flattened_row = {
+                k: v.value if isinstance(v, enum.Enum) else v for k, v in flattened_row.items()
+            }
 
-
-def _flatten_row(header_set, flattened_row):
-    # if a nested key is optional (i.e. {a: Optional[dict]}) and there is no
-    # value for a, (i.e. {a: None}), don't write a, as it's not in the header.
-    flattened_row = {k: v for k, v in flattened_row.items() if k in header_set}
-    flattened_row = {k: v for k, v in flattened_row.items() if not pd.isnull(v)}
-    flattened_row = {
-        k: v.value if isinstance(v, enum.Enum) else v for k, v in flattened_row.items()
-    }
-    return flattened_row
+            writer.writerow(flattened_row)
 
 
 def upload_json(key_name, json: str, output_dir: str):
