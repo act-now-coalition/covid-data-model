@@ -843,6 +843,15 @@
       "end_date": "2022-06-27",
       "region": "08031",
       "context": "Denver, CO case suspected backlog 6/27/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-07-04",
+      "end_date": "2022-07-04",
+      "region": "TX, KY",
+      "context": "No or reduced case rporting for July 4th"
     }
   ]
 }
