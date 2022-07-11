@@ -852,6 +852,15 @@
       "end_date": "2022-07-04",
       "region": "TX, KY",
       "context": "No or reduced case rporting for July 4th"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-07-10",
+      "end_date": "2022-07-10",
+      "region": "08001",
+      "context": "Dropoff in cases on 7/11/2022"
     }
   ]
 }
