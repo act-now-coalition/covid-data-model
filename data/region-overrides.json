@@ -858,7 +858,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2022-07-10",
-      "end_date": "2022-07-10",
+      "end_date": "2022-07-12",
       "region": "08001",
       "context": "Dropoff in cases on 7/11/2022"
     },
