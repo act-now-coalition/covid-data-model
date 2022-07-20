@@ -870,6 +870,15 @@
       "end_date": "2022-07-12",
       "region": "UT",
       "context": "Near 0 case reporting dragging Weekly New Cases down"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-07-17",
+      "end_date": "2022-07-17",
+      "region": "13021",
+      "context": "near-zero case reporting caused weekly new cases to drop towards zero"
     }
   ]
 }
