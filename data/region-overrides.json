@@ -879,6 +879,15 @@
       "end_date": "2022-07-17",
       "region": "13021",
       "context": "near-zero case reporting caused weekly new cases to drop towards zero"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2022-07-17",
+      "end_date": "2022-07-17",
+      "region": "04027",
+      "context": "large spike in cases in Yuma County, AZ"
     }
   ]
 }
