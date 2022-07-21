@@ -884,8 +884,8 @@
       "include": "region",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
-      "start_date": "2022-07-17",
-      "end_date": "2022-07-17",
+      "start_date": "2022-07-19",
+      "end_date": "2022-07-19",
       "region": "04027",
       "context": "large spike in cases in Yuma County, AZ"
     }
