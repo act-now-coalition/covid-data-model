@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "5f46d8cb0093e93128c1eae46ca67fe6805ce39a",
-    "branch": "main",
-    "is_dirty": false
+    "sha": "e0ac4db3431ee749874229e622e997ffc1854f0f",
+    "branch": "smcclure17/update-hsa-defns",
+    "is_dirty": true
   },
-  "updated_at": "2022-08-02T10:20:30.876100"
+  "updated_at": "2022-08-03T14:43:09.598386"
 }
