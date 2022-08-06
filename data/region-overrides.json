@@ -888,6 +888,15 @@
       "end_date": "2022-07-19",
       "region": "04027",
       "context": "large spike in cases in Yuma County, AZ"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-07-13",
+      "end_date": "",
+      "region": "MP",
+      "context": "MP dropoff in cases"
     }
   ]
 }
