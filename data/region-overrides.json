@@ -763,15 +763,6 @@
       "context": "Suspected backlog in KY state case data"
     },
     {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2022-04-07",
-      "end_date": "",
-      "region": "31109",
-      "context": "Blocking zero-data due to outlier detection removal"
-    },
-    {
       "include": "region-and-subregions",
       "metric": "metrics.testPositivityRatio",
       "blocked": true,
