@@ -897,6 +897,15 @@
       "end_date": "2022-08-07",
       "region": "GA",
       "context": "GA near zero-reporting dragging down WNC"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-08-12",
+      "end_date": "2022-08-12",
+      "region": "41660",
+      "context": "San Angelo TX cases dropof"
     }
   ]
 }
