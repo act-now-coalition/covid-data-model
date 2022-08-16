@@ -207,7 +207,6 @@ CDC_STATE_EXCLUSIONS = RegionMask(
     states=[
         # CA - Data irregularities including 99.9% of 12+ vaccinated in San Diego
         "CA",
-        "NM",
         # PA - Data irregularities including very high rates in several counties
         # (e.g. Montgomery, Chester)
         "PA",
