@@ -906,6 +906,15 @@
       "end_date": "2022-08-12",
       "region": "41660",
       "context": "San Angelo TX cases dropof"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.infectionRate",
+      "blocked": true,
+      "start_date": "2022-08-18",
+      "end_date": "2022-08-18",
+      "region": "06029",
+      "context": "Weekly admissions spike in Kern County, CA"
     }
   ]
 }
