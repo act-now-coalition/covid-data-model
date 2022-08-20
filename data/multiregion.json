@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "f03f85feebfaf223db9b194cf450d0bef18768d1",
+    "sha": "24a00efc236bd4bf33a38eb81ef8dafa70ef0331",
     "branch": "main",
-    "is_dirty": true
+    "is_dirty": false
   },
-  "updated_at": "2022-08-20T07:41:06.080992"
+  "updated_at": "2022-08-20T10:19:22.009014"
 }
