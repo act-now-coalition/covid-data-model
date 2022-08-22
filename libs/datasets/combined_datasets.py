@@ -207,12 +207,8 @@ CDC_STATE_EXCLUSIONS = RegionMask(
     states=[
         # CA - Data irregularities including 99.9% of 12+ vaccinated in San Diego
         "CA",
-        # PA - Data irregularities including very high rates in several counties
-        # (e.g. Montgomery, Chester)
-        "PA",
         # VA - Very low coverage.
         "VA",
-        "VT",
         # CDC reporting 0.1% vaccinated
         "HI",
         # NC - 1/27/2022: North Carolina CDC data is inaccurate due to issues tracking
