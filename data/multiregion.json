@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "89ce53394c3c90d8d0af506c0d272599da90d12e",
-    "branch": "main",
+    "sha": "7c1d9a6d26ba624735db37f295e3e5ab4c267b2a",
+    "branch": "smcclure17/use-cdc-for-nm",
     "is_dirty": true
   },
-  "updated_at": "2022-08-16T20:49:06.211475"
+  "updated_at": "2022-08-30T14:38:38.559195"
 }
