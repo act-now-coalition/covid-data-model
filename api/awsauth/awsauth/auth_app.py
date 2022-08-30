@@ -52,7 +52,8 @@ def init():
         dsn=Config.Constants.SENTRY_DSN,
         environment=Config.Constants.SENTRY_ENVIRONMENT,
         integrations=[AwsLambdaIntegration()],
-        traces_sample_rate=1.0,  # adjust the sample rate in production as needed
+        # We don't care about performance traces and they use up our transaction quota.
+        traces_sample_rate=0,
     )
 
 
