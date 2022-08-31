@@ -36,7 +36,7 @@ jobs:
       run: pip install -r requirements_test.txt -r requirements.txt
     - name: Install Serverless Framework and NPM dependencies
       run: |
-        npm install -g serverless
+        npm install -g serverless@2.72.3
         npm install
     - name: Deploy
       env:
