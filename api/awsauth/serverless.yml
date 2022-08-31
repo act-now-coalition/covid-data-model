@@ -18,7 +18,7 @@ service: awsauth
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
-frameworkVersion: '2'
+frameworkVersion: '2.72.3'
 
 
 custom:
@@ -41,6 +41,7 @@ plugins:
 
 provider:
   name: aws
+  region: us-east-1
   runtime: python3.7
 
   stage: ${opt:stage, 'dev'}
