@@ -600,15 +600,6 @@
     },
     {
       "include": "region-and-subregions",
-      "metric": "metrics.icuCapacityRatio",
-      "blocked": true,
-      "start_date": "",
-      "end_date": "",
-      "region": "DE",
-      "context": "DE state spike to 100% ICU usage, Dover drop to < 50% usage"
-    },
-    {
-      "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2022-03-06",
