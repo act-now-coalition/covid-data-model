@@ -915,15 +915,6 @@
       "end_date": "2022-08-24",
       "region": "TN",
       "context": "backlog on 8/24"
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2022-09-05",
-      "end_date": "2022-09-05",
-      "region": "KY",
-      "context": "Missed reporting day due to Labor Day"
     }
   ]
 }
