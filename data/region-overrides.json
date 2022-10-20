@@ -915,6 +915,15 @@
       "end_date": "2022-08-24",
       "region": "TN",
       "context": "backlog on 8/24"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-10-19",
+      "end_date": "2022-10-19",
+      "region": "20045",
+      "context": "Spike in cases on 10/19/2022"
     }
   ]
 }
