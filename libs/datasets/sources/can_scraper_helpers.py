@@ -242,10 +242,12 @@ class CanScraperLoader:
 
         dups = indexed_rows.index.duplicated(keep=False)
         if dups.any():
-            raise NotImplementedError(
-                f"No support for aggregating duplicate observations:\n"
-                f"{indexed_rows.loc[dups].to_string(line_width=200, max_rows=200, max_colwidth=40)}"
-            )
+            # TODO(michael): Remove this. We shouldn't be getting duplicates.
+            indexed_rows = indexed_rows[~indexed_rows.index.duplicated(keep="first")]
+            # raise NotImplementedError(
+            #     f"No support for aggregating duplicate observations:\n"
+            #     f"{indexed_rows.loc[dups].to_string(line_width=200, max_rows=200, max_colwidth=40)}"
+            # )
 
         # For now only making a source tag for observations with bucket "all".
         tag_df = taglib.Source.rename_and_make_tag_df(
