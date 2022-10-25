@@ -924,6 +924,24 @@
       "end_date": "2022-10-19",
       "region": "20045",
       "context": "Spike in cases on 10/19/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-10-23",
+      "end_date": "2022-10-23",
+      "region": "08101",
+      "context": "backlog of cases on 10/24/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-10-10",
+      "end_date": "",
+      "region": "21111",
+      "context": "0 Cases since 10/10/2022"
     }
   ]
 }
