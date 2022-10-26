@@ -215,16 +215,6 @@
     },
     {
       "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "region": "LA",
-      "disclaimer": "In September, Louisiana was hit by Hurricane Ida which affected many aspects of daily life, including COVID testing. We expect it to take some time for testing to recover. In the meantime, our metrics and risk levels should be treated with caution.",
-      "context": "Disclaimer for Hurricane Ida"
-    },
-    {
-      "include": "region-and-subregions",
       "metric": "metrics.vaccinationsInitiatedRatio",
       "blocked": false,
       "start_date": "",
@@ -232,16 +222,6 @@
       "region": "PA",
       "context": "Disclaimer to note that county level data is prone to undercounting",
       "disclaimer": "Vaccination data for Pennsylvania counties are sourced from the Pennsylvania Department of Health. Note that county-level vaccine data may be under-reported for various reasons including doses being administered without recording county-of-residence information or doses being administered through federal programs that aren't tracked by the state. These limitations do not affect the state-level data, and as a result, there may be inconsistencies between the state-level and county-level metrics."
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.testPositivityRatio",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "region": "HI",
-      "disclaimer": "Vaccination data for Hawaii counties are sourced from the State of Hawaii Department of Health. Note that county-level vaccine data may be under-reported for various reasons including doses being administered without recording county-of-residence information or doses being administered through federal programs that aren't tracked by the state. These limitations do not affect the state-level data, and as a result, there may be inconsistencies between the state-level and county-level metrics.",
-      "context": "Disclaimer to note that county level data is prone to undercounting"
     },
     {
       "include": "region",
@@ -269,16 +249,6 @@
       "end_date": "",
       "region": "30013, 30063, 29077",
       "context": "cdc test positivity issue"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "region": "MN",
-      "disclaimer": "On November 1st, 2021, Minnesota added a number of backlogged cases of people who have been infected with Covid multiple times.",
-      "context": "MN reporting backlog of reinfections"
     },
     {
       "include": "region-and-subregions",
@@ -478,16 +448,6 @@
       "context": "https://www.dropbox.com/scl/fi/9nxnpdtwlgn6lwe5cf4g9/CDC-Vaccine-Irregularities.paper?dl=0&rlkey=dxqax20k09p4el1pkivayq7h9"
     },
     {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "region": "ID",
-      "disclaimer": "According to the [Idaho Division of Public Health](https://public.tableau.com/app/profile/idaho.division.of.public.health/viz/DPHIdahoCOVID-19Dashboard/Home) data for the most recent 2-week period are incomplete. Due to the recent surge in cases, approximately 29,800 outstanding positive laboratory results are pending local public health district review and follow up.",
-      "context": "https://apnews.com/article/coronavirus-pandemic-lifestyle-health-public-health-idaho-96b67c8d8c5c733aa68b1fe3fa8408e0"
-    },
-    {
       "include": "region",
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
@@ -504,16 +464,6 @@
       "end_date": "2022-01-16",
       "region": "WI",
       "context": "WI elevated case data due to backlog https://www.dhs.wisconsin.gov/news/releases/011422.htm"
-    },
-    {
-      "include": "region-and-subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "context": "Disclaimer for WI backlog",
-      "region": "WI",
-      "disclaimer": "On the week of January 14th, 2022, the Wisconsin Department of Health Services updated its data collection processes. As a result of the new process, COVID case data is expected to be temporarily elevated over the following days while this process occurs and back-logged cases are brought into the live system. [See the Department of Health Services' press release for more information.](https://www.dhs.wisconsin.gov/news/releases/011422.htm)"
     },
     {
       "include": "region",
