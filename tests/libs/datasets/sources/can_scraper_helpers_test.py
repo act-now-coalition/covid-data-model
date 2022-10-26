@@ -212,8 +212,6 @@ def test_query_multiple_variables_extra_field():
         data.query_multiple_variables([variable], source_type="MySource")
 
 
-# TODO(michael): Reenable.
-@pytest.mark.skip(reason="Temporary hack to allow / remove duplicates.")
 def test_query_multiple_variables_duplicate_observation():
     variable = ccd_helpers.ScraperVariable(
         variable_name="cases",
