@@ -892,6 +892,16 @@
       "end_date": "",
       "region": "21111",
       "context": "0 Cases since 10/10/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "2022-10-12",
+      "end_date": "",
+      "region": "37023, 37051, 37197, 37037, 37133",
+      "disclaimer": "",
+      "context": "NC counties going to 0 new cases"
     }
   ]
 }
