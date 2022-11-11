@@ -902,6 +902,15 @@
       "region": "37023, 37051, 37197, 37037, 37133",
       "disclaimer": "",
       "context": "NC counties going to 0 new cases"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-11-05",
+      "end_date": "",
+      "region": "FL,12086,12011,12087",
+      "context": "Suspicious jump in admissions data for Florida and Miami HSA."
     }
   ]
 }
