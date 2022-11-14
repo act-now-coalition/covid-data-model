@@ -152,6 +152,10 @@ JOPLIN_COUNTIES = [
     Region.from_fips("29145"),
 ]
 
+# 11/14/2022: NYT has not been reporting data for Jefferson County, KY. Switch to
+# USA Facts until this is resolved.
+JEFFERSON_COUNTY = Region.from_fips("21111")
+
 # 11/15/2021: NE periodically stops reporting county-level case data.
 # When this occurs, we access Health Department level data via the state's API,
 # and we dissaggregate this data to the county level. In these cases, for NE
@@ -170,7 +174,8 @@ NC_STATE = Region.from_state("NC")
 # reporting done by city, as documented at
 # https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions
 NYTimesDatasetWithoutExceptions = datasource_regions(
-    NYTimesDataset, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
+    NYTimesDataset,
+    exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES, JEFFERSON_COUNTY],
 )
 
 CANScraperUSAFactsProviderWithoutNe = datasource_regions(
