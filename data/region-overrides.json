@@ -876,15 +876,6 @@
     },
     {
       "include": "region",
-      "metric": "metrics.icuCapacityRatio",
-      "blocked": true,
-      "start_date": "2022-11-05",
-      "end_date": "",
-      "region": "FL,12086,12011,12087",
-      "context": "Suspicious jump in admissions data for Florida and Miami HSA."
-    },
-    {
-      "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "",
