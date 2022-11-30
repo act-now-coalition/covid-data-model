@@ -891,6 +891,15 @@
       "end_date": "2022-11-27",
       "region": "26161",
       "context": "cases backlog on 11/28"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-11-27",
+      "end_date": "",
+      "context": "suspicious spiking admissions data starting 11/27",
+      "region": "WY"
     }
   ]
 }
