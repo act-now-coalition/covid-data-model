@@ -1,16 +1,13 @@
 name: Update API User Usage
 
 on:
-  push:
-    branches:
-      - smcclure17/hubspot
   schedule:
      # Run every 4 hours at the top of the hour
    - cron: '0 */6 * * *'
 
 env:
   # !!! Change this to your BRANCH if you want to test it
-  COVID_DATA_MODEL_REF: 'smcclure17/hubspot'
+  COVID_DATA_MODEL_REF: 'main'
 
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'main'
