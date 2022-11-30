@@ -40,7 +40,6 @@ def update_hubspot_activity(email, latest_active_at, days_active):
     date = datetime.datetime.strptime(latest_active_at + " +0000", "%Y-%m-%d %z")
     url = f"https://api.hubapi.com/contacts/v1/contact/createOrUpdate/email/{email}"
 
-    _logger.warning(f"Updating Hubspot contact {email}")
     response = requests.post(
         url,
         headers={"Authorization": f"Bearer {HUBSPOT_AUTH_TOKEN}"},
