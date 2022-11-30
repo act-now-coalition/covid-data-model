@@ -42,7 +42,7 @@ def update_hubspot_activity(email, latest_active_at, days_active):
 
     response = requests.post(
         url,
-        headers={"Authorization": f"Bearer no token"},
+        headers={"Authorization": f"Bearer {HUBSPOT_AUTH_TOKEN}"},
         json={
             "email": email,
             "properties": [

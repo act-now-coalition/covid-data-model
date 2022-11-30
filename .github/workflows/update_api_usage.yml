@@ -10,7 +10,7 @@ on:
 
 env:
   # !!! Change this to your BRANCH if you want to test it
-  COVID_DATA_MODEL_REF: 'main'
+  COVID_DATA_MODEL_REF: 'smcclure17/hubspot'
 
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'main'
