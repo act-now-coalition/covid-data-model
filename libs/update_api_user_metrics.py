@@ -25,7 +25,7 @@ GROUP BY email
 
 
 ATHENA_BUCKET = "s3://covidactnow-athena-results"
-HUBSPOT_API_KEY = os.getenv("HUBSPOT_API_KEY")
+HUBSPOT_AUTH_TOKEN = os.getenv("HUBSPOT_AUTH_TOKEN")
 
 
 class CloudWatchQueryError(Exception):
@@ -34,9 +34,6 @@ class CloudWatchQueryError(Exception):
 
 def update_hubspot_activity(email, latest_active_at, days_active):
     """Updates Hubspot contact with latest activity dates."""
-    contacts_url = "https://api.hubapi.com/crm/v3/objects/contacts"
-
-    query_string = {"hapikey": HUBSPOT_API_KEY}
 
     # Hubspot date field should be at UTC midnight. When the %z directive is provided to the
     # strptime() method, a TZ aware datetime object will be produced.
@@ -45,7 +42,7 @@ def update_hubspot_activity(email, latest_active_at, days_active):
 
     response = requests.post(
         url,
-        params=query_string,
+        headers={"Authorization": f"Bearer {HUBSPOT_AUTH_TOKEN}"},
         json={
             "email": email,
             "properties": [
@@ -183,7 +180,7 @@ def update_hubspot_users(data: List[Dict[str, Any]], only_update_recent: bool = 
         data: List of query results.
         only_update_recent: If True only updates users with usage in the past 2 days.
     """
-    if not HUBSPOT_API_KEY:
+    if not HUBSPOT_AUTH_TOKEN:
         _logger.warning("Hubspot API key not provided, skipping hubspot update")
         return
 
