@@ -25,7 +25,7 @@ GROUP BY email
 
 
 ATHENA_BUCKET = "s3://covidactnow-athena-results"
-HUBSPOT_OATH_TOKEN = os.getenv("HUBSPOT_OATH_TOKEN")
+HUBSPOT_AUTH_TOKEN = os.getenv("HUBSPOT_AUTH_TOKEN")
 
 
 class CloudWatchQueryError(Exception):
@@ -42,7 +42,7 @@ def update_hubspot_activity(email, latest_active_at, days_active):
 
     response = requests.post(
         url,
-        headers={"Authorization": f"Bearer {HUBSPOT_OATH_TOKEN}"},
+        headers={"Authorization": f"Bearer {HUBSPOT_AUTH_TOKEN}"},
         json={
             "email": email,
             "properties": [
@@ -54,6 +54,8 @@ def update_hubspot_activity(email, latest_active_at, days_active):
     if not response.ok:
         _logger.warning(f"Failed to update hubspot activity for {email}")
         return
+    else:
+        _logger.info(f"Updated hubspot activity for {email} with status {response.status_code}")
 
     _logger.info(f"Successfully updated {email}")
 
@@ -180,7 +182,7 @@ def update_hubspot_users(data: List[Dict[str, Any]], only_update_recent: bool = 
         data: List of query results.
         only_update_recent: If True only updates users with usage in the past 2 days.
     """
-    if not HUBSPOT_OATH_TOKEN:
+    if not HUBSPOT_AUTH_TOKEN:
         _logger.warning("Hubspot API key not provided, skipping hubspot update")
         return
 
