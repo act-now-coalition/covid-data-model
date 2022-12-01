@@ -896,10 +896,19 @@
       "include": "region",
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
-      "start_date": "2022-11-27",
+      "start_date": "2022-11-30",
       "end_date": "",
-      "context": "suspicious spiking admissions data starting 11/27",
-      "region": "WY"
+      "region": "KY",
+      "context": "Spike in Admissions on 11/30/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-11-23",
+      "end_date": "",
+      "region": "08001",
+      "context": "Weekly new cases going to 0 WNC on 12/01/2022"
     }
   ]
 }
