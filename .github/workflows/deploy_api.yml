@@ -1,12 +1,8 @@
 name: Build & Publish API snapshot to data.covidactnow.org
 
-#######################################################################################
-###
-### YOU DON'T NEED TO MODIFY THIS FILE TO KICK OFF A SNAPSHOT FROM YOUR BRANCH ANYMORE.
-###
-### See: https://github.com/covid-projections/covid-data-model/#api-snapshots
-###
-#######################################################################################
+# Use a concurrency group to make sure we don't try to have multiple workflows
+# run with the hosted runner at the same time.
+concurrency: gce-runner
 
 on:
   workflow_dispatch:
@@ -50,8 +46,27 @@ env:
   # Optional Snapshot number to use pyseir model output from. An empty string by default
   PYSEIR_ARTIFACT_SNAPSHOT: ${{ github.event.inputs.pyseir_snapshot }}
 
+  # The GCE instance to start / stop before / after running the job.
+  GCE_ZONE: "us-west1-b"
+  GCE_INSTANCE: "can-actions-runner"
+
 jobs:
+  start-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCE_ADMIN_SERVICE_ACCOUNT }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: "Start ${{env.GCE_INSTANCE}} VM."
+        run: "gcloud compute instances start --zone ${{env.GCE_ZONE}} ${{env.GCE_INSTANCE}}"
+
   build-and-publish-snapshot:
+    needs: "start-runner"
     runs-on: gce-runner
     steps:
     - name: Parse covid data model branch name and set env variable
@@ -146,3 +161,19 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.CAN_ROBOT_PERSONAL_ACCESS_TOKEN }}
       run: ./covid-data-model/tools/maybe-trigger-label-api.sh ${{env.SNAPSHOT_ID}} ${{env.COVID_DATA_MODEL_REF}}
+
+  stop-runner:
+    if: ${{ always() }}
+    needs: ["start-runner", "build-and-publish-snapshot"]
+    runs-on: ubuntu-latest
+    steps:
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCE_ADMIN_SERVICE_ACCOUNT }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: "Stop ${{env.GCE_INSTANCE}} VM."
+        run: "gcloud compute instances stop --zone ${{env.GCE_ZONE}} ${{env.GCE_INSTANCE}}"
