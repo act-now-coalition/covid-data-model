@@ -1,0 +1,50 @@
+name: Test on-demand action runner
+
+# Use a concurrency group to make sure we don't try to have multiple workflows run with the hosted runner at the same time.
+concurrency: gce-runner
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  GCE_ZONE: "us-west1-b"
+  GCE_INSTANCE: "can-actions-runner-2"
+
+jobs:
+  start-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCE_ADMIN_SERVICE_ACCOUNT }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: "Start ${{env.GCE_INSTANCE}} VM."
+        run: "gcloud compute instances start --zone ${{env.GCE_ZONE}} ${{env.GCE_INSTANCE}}"
+
+  do-work:
+    needs: "start-runner"
+    runs-on: "gce-runner-2"
+    steps:
+      - run: hostname
+      - run: echo "Hello world!"
+
+  stop-runner:
+    if: ${{ always() }}
+    needs: ["start-runner", "do-work"]
+    runs-on: ubuntu-latest
+    steps:
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCE_ADMIN_SERVICE_ACCOUNT }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: "Stop ${{env.GCE_INSTANCE}} VM."
+        run: "gcloud compute instances stop --zone ${{env.GCE_ZONE}} ${{env.GCE_INSTANCE}}"
