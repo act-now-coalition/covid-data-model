@@ -1,5 +1,9 @@
 name: Update combined datasets
 
+# Use a concurrency group to make sure we don't try to have multiple workflows
+# run with the hosted runner at the same time.
+concurrency: gce-runner
+
 on:
   schedule:
     # Run job everyday at 5:00 am EST
@@ -35,8 +39,27 @@ env:
 
   REFRESH_DATASETS_ARG: ${{ (github.event.inputs.refresh_datasets == 'true') && '--refresh-datasets' || '--no-refresh-datasets' }}
 
+  # The GCE instance to start / stop before / after running the job.
+  GCE_ZONE: "us-west1-b"
+  GCE_INSTANCE: "can-actions-runner"
+
 jobs:
+  start-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCE_ADMIN_SERVICE_ACCOUNT }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: "Start ${{env.GCE_INSTANCE}} VM."
+        run: "gcloud compute instances start --zone ${{env.GCE_ZONE}} ${{env.GCE_INSTANCE}}"
+
   update-and-promote-datasets:
+    needs: "start-runner"
     runs-on: gce-runner
     steps:
     - name: Parse covid data model branch name and set env variable
@@ -125,3 +148,19 @@ jobs:
       uses: Ilshidur/action-slack@fb92a78a305a399cd6d8ede99d641f2b9224daf3
       with:
         args: 'update-dataset-snapshot succeeded. View Data Availability Report at {{DATA_AVAILABILITY_URL}}'
+
+  stop-runner:
+    if: ${{ always() }}
+    needs: ["start-runner", "update-and-promote-datasets"]
+    runs-on: ubuntu-latest
+    steps:
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCE_ADMIN_SERVICE_ACCOUNT }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: "Stop ${{env.GCE_INSTANCE}} VM."
+        run: "gcloud compute instances stop --zone ${{env.GCE_ZONE}} ${{env.GCE_INSTANCE}}"
