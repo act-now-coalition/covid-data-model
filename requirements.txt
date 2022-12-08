@@ -54,7 +54,7 @@ python-snappy==0.6.0
 
 # Mostly for dash_app.py
 Brotli==1.0.7
-certifi==2020.6.20
+certifi==2022.12.7
 dash==1.14.0
 dash-core-components==1.10.2
 dash-html-components==1.0.3
