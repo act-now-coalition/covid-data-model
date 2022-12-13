@@ -48,7 +48,11 @@ class Method(ABC):
 
     # This method needs a timeseries to have at least one real value within recent_days for it to
     # be considered recent / not stale. Stale timeseries are dropped.
-    recent_days: int = 14
+
+    # TODO 12/13/2022: This is a legacy filtering system. Metrics are excluded from the website
+    # further down the pipeline if the data is stale. Typically, we don't exclude the entire
+    # timeseries if the data is stale.
+    recent_days: int = 60
 
     @property
     @abstractmethod
