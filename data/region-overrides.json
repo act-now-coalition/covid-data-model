@@ -882,6 +882,51 @@
       "end_date": "",
       "region": "29097,29037,29145,29047,29165,29095",
       "context": "Jasper, Cass, Newton, Clay, Platte, Jackson County MO having anamalous data."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-11-27",
+      "end_date": "2022-11-27",
+      "region": "26161",
+      "context": "cases backlog on 11/28"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2022-11-30",
+      "end_date": "",
+      "region": "KY",
+      "context": "Spike in Admissions on 11/30/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-11-23",
+      "end_date": "",
+      "region": "08001",
+      "context": "Weekly new cases going to 0 WNC on 12/01/2022"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-12-07",
+      "end_date": "2022-12-07",
+      "region": "06025",
+      "context": "Case spike on Dec 8"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-12-06",
+      "end_date": "2022-12-06",
+      "region": "47009, 47125",
+      "context": "Cases spike on "
     }
   ]
 }
