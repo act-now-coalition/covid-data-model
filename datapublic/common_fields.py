@@ -79,8 +79,6 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
 
     DATE = "date", None
 
-    LOCATION = "location", None
-
     # In the style of CovidAtlas/Project Li `locationID`. See
     # https://github.com/covidatlas/li/blob/master/docs/reports-v1.md#general-notes
     LOCATION_ID = "location_id", None
