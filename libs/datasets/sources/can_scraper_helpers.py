@@ -274,4 +274,6 @@ class CanScraperLoader:
     def load_from_gcs() -> "CanScraperLoader":
         """Returns a CanScraperLoader which holds data loaded from the CAN Scraper."""
         all_df = pd.read_parquet(GCS_PARQUET_PATH)
+        # Change location/fips column type from int32 to object/string
+        all_df[CommonFields.LOCATION] = all_df[Fields.LOCATION].astype("object")
         return CanScraperLoader(all_df)
