@@ -47,12 +47,9 @@ class Method(ABC):
     """A method of calculating test positivity"""
 
     # This method needs a timeseries to have at least one real value within recent_days for it to
-    # be considered recent / not stale. Stale timeseries are dropped.
-
-    # TODO 12/13/2022: This is a legacy filtering system. Metrics are excluded from the website
-    # further down the pipeline if the data is stale. Typically, we don't exclude the entire
-    # timeseries if the data is stale.
-    recent_days: int = 60
+    # be considered recent / not stale. Stale timeseries are dropped. This is needed in order to choose
+    # a testing data source with
+    recent_days: int = 14
 
     @property
     @abstractmethod
@@ -295,6 +292,9 @@ TEST_POSITIVITY_METHODS = (
     # TEST_POSITIVITY_14D came from CMS.
     PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
     PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY_14D),
+    DivisionMethod(
+        "StateProvidedTesting", CommonFields.POSITIVE_TESTS_7D, CommonFields.TOTAL_TESTS_7D,
+    ),
     DivisionMethod(
         "positiveTestsViral_totalTestsViral",
         CommonFields.POSITIVE_TESTS_VIRAL,

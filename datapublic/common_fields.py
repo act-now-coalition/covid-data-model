@@ -121,6 +121,9 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     NEGATIVE_TESTS = "negative_tests", FieldGroup.TESTS
     TOTAL_TESTS = "total_tests", FieldGroup.TESTS
 
+    POSITIVE_TESTS_7D = "positive_tests_7d", FieldGroup.TESTS
+    TOTAL_TESTS_7D = "total_tests_7d", FieldGroup.TESTS
+
     POSITIVE_TESTS_VIRAL = "positive_tests_viral", FieldGroup.TESTS
     POSITIVE_CASES_VIRAL = "positive_cases_viral", FieldGroup.TESTS
     TOTAL_TESTS_VIRAL = "total_tests_viral", FieldGroup.TESTS
