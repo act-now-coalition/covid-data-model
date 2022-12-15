@@ -295,7 +295,9 @@ TEST_POSITIVITY_METHODS = (
     PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
     PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY_14D),
     DivisionMethod(
-        "StateProvidedTesting", CommonFields.POSITIVE_TESTS_7D, CommonFields.TOTAL_TESTS_7D,
+        "StateProvidedTesting",
+        CommonFields.POSITIVE_TESTS_VIRAL_7D,
+        CommonFields.TOTAL_TESTS_VIRAL_7D,
     ),
     DivisionMethod(
         "positiveTestsViral_totalTestsViral",

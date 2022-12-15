@@ -13,17 +13,17 @@ class StateProvidedTestingDataset(data_source.CanScraperBase):
     VARIABLES = [
         ccd_helpers.ScraperVariable(
             variable_name="pcr_tests_positive",
-            measurement="cumulative",
+            measurement="new",
             provider="state",
             unit="specimens",
-            common_field=CommonFields.POSITIVE_TESTS,
+            common_field=CommonFields.NEW_POSITIVE_TESTS_VIRAL,
         ),
         ccd_helpers.ScraperVariable(
             variable_name="pcr_tests_total",
-            measurement="cumulative",
+            measurement="new",
             provider="state",
             unit="specimens",
-            common_field=CommonFields.TOTAL_TESTS,
+            common_field=CommonFields.NEW_TOTAL_TESTS_VIRAL,
         ),
     ]
 
@@ -33,8 +33,14 @@ class StateProvidedTestingDataset(data_source.CanScraperBase):
         # Calculate 7-day rolling sum to match CDC test positivity convention.
         # See "Test Percent Positivity Metric" at
         # https://data.cdc.gov/Public-Health-Surveillance/Weekly-COVID-19-County-Level-of-Community-Transmis/dt66-w6m6/
-        ts[CommonFields.TOTAL_TESTS_7D] = ts[CommonFields.TOTAL_TESTS].rolling(window=7).sum()
-        ts[CommonFields.POSITIVE_TESTS_7D] = ts[CommonFields.POSITIVE_TESTS].rolling(window=7).sum()
-        ts = ts.drop(columns=[CommonFields.TOTAL_TESTS, CommonFields.POSITIVE_TESTS])
+        ts[CommonFields.TOTAL_TESTS_VIRAL_7D] = (
+            ts[CommonFields.NEW_TOTAL_TESTS_VIRAL].rolling(window=7).sum()
+        )
+        ts[CommonFields.POSITIVE_TESTS_VIRAL_7D] = (
+            ts[CommonFields.NEW_POSITIVE_TESTS_VIRAL].rolling(window=7).sum()
+        )
+        ts = ts.drop(
+            columns=[CommonFields.NEW_TOTAL_TESTS_VIRAL, CommonFields.NEW_POSITIVE_TESTS_VIRAL]
+        )
 
         return dataclasses.replace(dataset, timeseries_bucketed=ts)
