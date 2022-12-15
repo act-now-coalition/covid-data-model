@@ -52,7 +52,7 @@ class Method(ABC):
     # TODO 12/13/2022: This is a legacy filtering system. Metrics are excluded from the website
     # further down the pipeline if the data is stale. Typically, we don't exclude the entire
     # timeseries if the data is stale.
-    recent_days: int = 60
+    recent_days: int = 14
 
     @property
     @abstractmethod
@@ -295,6 +295,9 @@ TEST_POSITIVITY_METHODS = (
     # TEST_POSITIVITY_14D came from CMS.
     PassThruMethod("CDCTesting", CommonFields.TEST_POSITIVITY_7D),
     PassThruMethod("CMSTesting", CommonFields.TEST_POSITIVITY_14D),
+    DivisionMethod(
+        "StateProvidedTesting", CommonFields.POSITIVE_TESTS_7D, CommonFields.TOTAL_TESTS_7D,
+    ),
     DivisionMethod(
         "positiveTestsViral_totalTestsViral",
         CommonFields.POSITIVE_TESTS_VIRAL,
