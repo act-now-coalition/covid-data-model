@@ -47,8 +47,10 @@ class Method(ABC):
     """A method of calculating test positivity"""
 
     # This method needs a timeseries to have at least one real value within recent_days for it to
-    # be considered recent / not stale. Stale timeseries are dropped. This is needed in order to choose
-    # a testing data source with
+    # be considered recent / not stale. Stale timeseries are dropped.
+    # This is needed b/c the downstream process for choosing test positivity sources looks for the first
+    # non-empty timeseries in the list of sources. We want to choose sources with recent data, so we drop
+    # stale timeseries here.
     recent_days: int = 14
 
     @property

@@ -6,7 +6,7 @@ from libs.datasets.timeseries import MultiRegionDataset
 
 
 class StateProvidedTestingDataset(data_source.CanScraperBase):
-    """Data source connecting to ."""
+    """Data source connecting to state health department sourced testing data."""
 
     SOURCE_TYPE = "StateProvidedTesting"
 
