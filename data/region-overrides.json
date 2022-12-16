@@ -906,7 +906,7 @@
       "metric": "metrics.caseDensity",
       "blocked": true,
       "start_date": "2022-11-16",
-      "end_date": "2022-12-06",
+      "end_date": "",
       "region": "36085,36081,36061,36005,36047,02060,21111",
       "context": "The last 1+ month of NYC, Bristol County, AK, and Jefferson County, KY data got rewritten with huge spikes."
     }
