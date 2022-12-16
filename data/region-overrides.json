@@ -900,6 +900,15 @@
       "end_date": "2022-12-07",
       "region": "06025",
       "context": "Case spike on Dec 8"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "",
+      "end_date": "",
+      "region": "36085,36081,36061,36005,36047",
+      "context": "The last 1+ month of NYC data got rewritten with huge spikes."
     }
   ]
 }
