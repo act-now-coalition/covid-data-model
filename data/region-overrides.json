@@ -900,6 +900,15 @@
       "end_date": "2022-12-07",
       "region": "06025",
       "context": "Case spike on Dec 8"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-12-26",
+      "end_date": "2022-12-26",
+      "region": "NY",
+      "context": "NY state lack of reporting over xmas weekend"
     }
   ]
 }
