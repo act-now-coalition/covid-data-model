@@ -900,6 +900,15 @@
       "end_date": "2022-12-07",
       "region": "06025",
       "context": "Case spike on Dec 8"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-12-22",
+      "end_date": "2023-01-09",
+      "context": "Outlier detection removed data following New Years for some NC counties",
+      "region": "37001,37019,37057,37135"
     }
   ]
 }
