@@ -142,7 +142,7 @@ Fields:
         description="""
 Information about acute bed utilization details aggregated for the county's corresponding
 Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted.
-For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
  * capacity - Current staffed acute bed capacity.
@@ -167,7 +167,7 @@ Fields:
         description="""
 Information about ICU bed utilization details aggregated for the county's corresponding
 Health Service Area (HSA). For CBSA, state, and country regions these fields are omitted.
-For For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+For For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
 
 Fields:
  * capacity - Current staffed ICU bed capacity.
@@ -637,11 +637,11 @@ class RegionSummary(base_model.APIBaseModel):
 
     hsa: Optional[str] = pydantic.Field(
         ...,
-        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md",
     )
     hsaName: Optional[str] = pydantic.Field(
         ...,
-        description="Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        description="Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md",
     )
     level: AggregationLevel = pydantic.Field(..., description="Level of region.")
     lat: Optional[float] = pydantic.Field(
@@ -660,7 +660,7 @@ class RegionSummary(base_model.APIBaseModel):
 
     hsaPopulation: Optional[int] = pydantic.Field(
         ...,
-        description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md",
         gt=0,
     )
 
@@ -753,17 +753,17 @@ class RegionTimeseriesRowWithHeader(base_model.APIBaseModel):
 
     hsa: Optional[str] = pydantic.Field(
         ...,
-        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        description="3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md",
     )
 
     hsaName: Optional[str] = pydantic.Field(
         ...,
-        description="Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        description="Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md",
     )
 
     hsaPopulation: Optional[int] = pydantic.Field(
         ...,
-        description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+        description="Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md",
         gt=0,
     )
 

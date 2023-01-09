@@ -124,7 +124,7 @@ class TailFilter:
                 self.long_truncated += 1
             # Currently one annotation is created per series. Maybe it makes more sense to add
             # one for each dropped observation / real value?
-            # https://github.com/covid-projections/covid-data-model/pull/855#issuecomment-747698288
+            # https://github.com/act-now-coalition/covid-data-model/pull/855#issuecomment-747698288
             self._annotations.add(
                 annotation_type(
                     date=series_in.index[truncate_at - 1],
