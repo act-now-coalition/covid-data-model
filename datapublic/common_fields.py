@@ -36,7 +36,7 @@ class FieldName(str):
 class DemographicBucket(str):
     """Represents a demographic bucket name such as "all" or "age:10-19" or "age:60-69;sex:female".
     These are not enumerated in this repo but there is a list of them at
-    https://github.com/covid-projections/can-scrapers/blob/main/can_tools/bootstrap_data/covid_demographics.csv"""
+    https://github.com/act-now-coalition/can-scrapers/blob/main/can_tools/bootstrap_data/covid_demographics.csv"""
 
     ALL: "DemographicBucket"
 
@@ -198,7 +198,7 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     # vaccinations_ prefixed variables are people vaccinated.
     # _pct suffix is percent of the population which may be copied from an external source,
     # for example
-    # https://github.com/covid-projections/can-scrapers/blob/main/can_tools/scrapers/official/TN/tn_vaccine.py
+    # https://github.com/act-now-coalition/can-scrapers/blob/main/can_tools/scrapers/official/TN/tn_vaccine.py
     # or derived from the count of people vaccinated.
     VACCINATIONS_INITIATED = "vaccinations_initiated", FieldGroup.VACCINES
     VACCINATIONS_INITIATED_PCT = "vaccinations_initiated_pct", FieldGroup.VACCINES

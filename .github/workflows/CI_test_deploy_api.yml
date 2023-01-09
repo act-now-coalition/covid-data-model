@@ -1,5 +1,5 @@
 # To debug, it's recommended you modify / use the version in the test-actions repo:
-# https://github.com/covid-projections/test-actions/blob/master/.github/workflows/deploy_api.yml
+# https://github.com/act-now-coalition/test-actions/blob/master/.github/workflows/deploy_api.yml
 
 #Test workflow to validate new CI build machines.  It is a cut down version of
 #the build and publish workflow
@@ -55,7 +55,7 @@ jobs:
     - name: Checkout covid-data-model
       uses: actions/checkout@v2
       with:
-        repository: covid-projections/covid-data-model
+        repository: act-now-coalition/covid-data-model
         path: covid-data-model
         ref: '${{env.COVID_DATA_MODEL_REF}}'
         lfs: true

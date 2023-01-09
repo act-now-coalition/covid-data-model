@@ -1,5 +1,5 @@
 # To debug, it's recommended you modify / use the version in the test-actions repo:
-# https://github.com/covid-projections/test-actions/blob/master/.github/workflows/label_api_snapshot.yml
+# https://github.com/act-now-coalition/test-actions/blob/master/.github/workflows/label_api_snapshot.yml
 
 # Used to assign a label (like /snapshot/latest or /v0) to a published API
 # snapshot (like /snapshot/123).

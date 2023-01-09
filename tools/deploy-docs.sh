@@ -21,9 +21,9 @@ execute () {
        -H "Accept: application/vnd.github.v3+json" \
       --request POST \
       --data "{ \"ref\": \"main\" }" \
-      https://api.github.com/repos/covid-projections/covid-data-model/actions/workflows/deploy_docs.yml/dispatches
+      https://api.github.com/repos/act-now-coalition/covid-data-model/actions/workflows/deploy_docs.yml/dispatches
 
-  echo "Deploying API Documentation. Go to https://github.com/covid-projections/covid-data-model/actions to monitor progress."
+  echo "Deploying API Documentation. Go to https://github.com/act-now-coalition/covid-data-model/actions to monitor progress."
 }
 
 prepare "$@"

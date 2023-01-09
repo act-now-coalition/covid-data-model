@@ -53,9 +53,9 @@ execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
       --request POST \
       --data "{ \"ref\": \"${BRANCH}\", \"inputs\": { \"snapshot_id\": \"${SNAPSHOT_ID}\" } }" \
-      https://api.github.com/repos/covid-projections/covid-projections/actions/workflows/update-snapshot.yml/dispatches
+      https://api.github.com/repos/act-now-coalition/covid-projections/actions/workflows/update-snapshot.yml/dispatches
 
-  echo "Snapshot update requested. Go to https://github.com/covid-projections/covid-projections/actions to monitor progress."
+  echo "Snapshot update requested. Go to https://github.com/act-now-coalition/covid-projections/actions to monitor progress."
 }
 
 prepare "$@"

@@ -16,7 +16,7 @@ import git
 
 _logger = logging.getLogger(__name__)
 
-REPO = "covid-projections/covid-data-model"
+REPO = "act-now-coalition/covid-data-model"
 
 REPO_GIT_URL = f"https://api.github.com/repos/{REPO}"
 # GitHub assigned ID for "Build & Publish API artifacts" workflow.
