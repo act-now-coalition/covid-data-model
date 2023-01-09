@@ -23,7 +23,7 @@ def test_derive_vaccine_pct():
         ),
         CommonFields.VACCINATIONS_COMPLETED: [None, 1_000],
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE: [1_000, 5_000],
-        CommonFields.VACCINATIONS_BIVALENT_DOSE_PCT: [1_000, 5_000],
+        CommonFields.VACCINATIONS_BIVALENT_DOSE: [1_000, 5_000],
         CommonFields.CASES: TimeseriesLiteral([1, 2], provenance=["caseprov"]),
     }
 
@@ -54,6 +54,7 @@ def test_derive_vaccine_pct():
     )
 
     ds_out = vaccine_backfills.derive_vaccine_pct(ds_in)
+    print(ds_out.timeseries[["vaccinations_bivalent_dose"]])
 
     ds_expected = test_helpers.build_dataset(
         {
@@ -69,6 +70,7 @@ def test_derive_vaccine_pct():
         },
         static_by_region_then_field_name=static_data_map,
     )
+    print(ds_expected.timeseries[["vaccinations_bivalent_dose"]])
     test_helpers.assert_dataset_like(ds_out, ds_expected)
 
 

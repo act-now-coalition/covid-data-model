@@ -171,6 +171,7 @@ def test_top_level_metrics_basic():
         CommonFields.VACCINATIONS_INITIATED_PCT: [1, 2, None, 3],
         CommonFields.VACCINATIONS_COMPLETED_PCT: [0.1, 0.2, None, 0.3],
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [0.1, 0.2, None, 0.3],
+        CommonFields.VACCINATIONS_BIVALENT_DOSE_PCT: [0.1, 0.2, None, 0.3],
         CommonFields.STAFFED_BEDS_HSA: [10, 20, 60, 80],
         CommonFields.CURRENT_HOSPITALIZED_HSA: [1, 2, 3, 4],
         CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA: [1, 1, 2, 2],
