@@ -316,8 +316,8 @@ def build_region_timeseries(
             del actual["vaccinationsCompleted"]
             del actual["vaccinationsAdditionalDose"]
 
-    if row[CommonFields.DATE] < USA_BIVALENT_VACCINATION_START_DATE:
-        del actual["vaccinationsBivalentDose"]
+        if row[CommonFields.DATE] < USA_BIVALENT_VACCINATION_START_DATE:
+            del actual["vaccinationsBivalentDose"]
 
         timeseries_row = ActualsTimeseriesRow(**actual, date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
