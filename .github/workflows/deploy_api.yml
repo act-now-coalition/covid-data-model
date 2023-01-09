@@ -75,7 +75,7 @@ jobs:
     - name: Checkout covid-data-model (${{ env.COVID_DATA_MODEL_REF }})
       uses: actions/checkout@v2
       with:
-        repository: covid-projections/covid-data-model
+        repository: act-now-coalition/covid-data-model
         path: covid-data-model
         lfs: true
         ref: '${{env.COVID_DATA_MODEL_REF}}'

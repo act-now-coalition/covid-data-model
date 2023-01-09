@@ -17,7 +17,7 @@ module.exports = {
   },
   onBrokenLinks: "throw",
   favicon: "img/favicon.ico",
-  organizationName: "covid-projections", // Usually your GitHub org/user name.
+  organizationName: "act-now-coalition", // Usually your GitHub org/user name.
   projectName: "covid-data-model", // Usually your repo name.
   themeConfig: {
     googleAnalytics: {
@@ -47,7 +47,7 @@ module.exports = {
         },
 
         {
-          href: "https://github.com/covid-projections/covid-data-model",
+          href: "https://github.com/act-now-coalition/covid-data-model",
           label: "GitHub",
           position: "right",
         },

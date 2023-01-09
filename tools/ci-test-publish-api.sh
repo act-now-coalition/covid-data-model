@@ -30,9 +30,9 @@ execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
       --request POST \
       --data "{\"event_type\": \"ci-test-publish-api\" }" \
-      https://api.github.com/repos/covid-projections/covid-data-model/dispatches
+      https://api.github.com/repos/act-now-coalition/covid-data-model/dispatches
 
-  echo "Publish requested. Go to https://github.com/covid-projections/covid-data-model/actions to monitor progress."
+  echo "Publish requested. Go to https://github.com/act-now-coalition/covid-data-model/actions to monitor progress."
 }
 
 prepare "$@"

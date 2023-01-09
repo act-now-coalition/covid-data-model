@@ -17,7 +17,7 @@ def smooth_with_rolling_average(
     https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.rolling.html
 
     Port of Projections.ts:
-    https://github.com/covid-projections/covid-projections/blob/master/src/common/models/Projection.ts#L715
+    https://github.com/act-now-coalition/covid-projections/blob/master/src/common/models/Projection.ts#L715
 
     Args:
         series: Series with datetime index to smooth.

@@ -27,7 +27,7 @@ class HSAPopulation(data_source.DataSource):
     HSA populations are calculated as the sum of the populations of the contained counties. 
 
     For more information on HSAs see:
-        https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md
+        https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md
     """
 
     EXPECTED_FIELDS = [CommonFields.HSA_POPULATION, CommonFields.HSA]

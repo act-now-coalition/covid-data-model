@@ -1,5 +1,5 @@
 # To debug, it's recommended you modify / use the version in the test-actions repo:
-# https://github.com/covid-projections/test-actions/blob/master/.github/workflows/deploy_api.yml
+# https://github.com/act-now-coalition/test-actions/blob/master/.github/workflows/deploy_api.yml
 
 #Test workflow to validate new CI build machines.  It is a cut down version of
 #the build and publish workflow

@@ -81,7 +81,7 @@ def cbsa_to_location_id(cbsa_code: str) -> str:
     """Turns a CBSA code into a location_id.
 
     For information about how these identifiers are brought into the CAN code see
-    https://github.com/covid-projections/covid-data-model/tree/main/data/misc
+    https://github.com/act-now-coalition/covid-data-model/tree/main/data/misc
     """
     return f"iso1:us#cbsa:{cbsa_code}"
 
@@ -90,7 +90,7 @@ def hsa_to_location_id(hsa_code: str) -> str:
     """Turns a HSA code into a location_id.
     
     For information about how these identifiers are brought into the CAN code see
-    https://github.com/covid-projections/covid-data-model/tree/main/data/misc
+    https://github.com/act-now-coalition/covid-data-model/tree/main/data/misc
     """
     return f"iso1:us#hsa:{hsa_code}"
 

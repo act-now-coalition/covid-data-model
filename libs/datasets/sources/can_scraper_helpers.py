@@ -60,7 +60,7 @@ class ScraperVariable:
     `query_multiple_variables` asserts that each ScraperVariable is in one of these modes.
     Turning these into two different classes seems like more work than it is worth right now.
 
-    The table at https://github.com/covid-projections/can-scrapers/blob/main/can_tools/bootstrap_data/covid_variables.csv
+    The table at https://github.com/act-now-coalition/can-scrapers/blob/main/can_tools/bootstrap_data/covid_variables.csv
     """
 
     variable_name: str

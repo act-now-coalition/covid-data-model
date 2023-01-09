@@ -53,7 +53,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
 
 
 # These precisions should be inline with
-# https://github.com/covid-projections/covid-projections/blob/c076f39f54dcf6ca3f20fbb67839c37bb8b0f5bf/src/common/metric.tsx#L90
+# https://github.com/act-now-coalition/covid-projections/blob/c076f39f54dcf6ca3f20fbb67839c37bb8b0f5bf/src/common/metric.tsx#L90
 # but note that percentages (ICU_*, TEST_POSITIVITY, VACCINATIONS_*) need an
 # additional 2 digits of precisions since they will be converted from ratio
 # (0.xyz) to percentage (XY.Z%).
