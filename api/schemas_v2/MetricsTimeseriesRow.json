@@ -157,6 +157,18 @@
         }
       ]
     },
+    "vaccinationsBivalentDoseRatio": {
+      "title": "Vaccinationsbivalentdoseratio",
+      "description": "Ratio of population have received a bivalent vaccine dose.",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "date": {
       "title": "Date",
       "description": "Date of timeseries data point",

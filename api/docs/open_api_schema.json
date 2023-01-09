@@ -1451,6 +1451,18 @@
             ],
             "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose."
           },
+          "vaccinationsBivalentDose": {
+            "title": "Vaccinationsbivalentdose",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of individuals who have received a bivalent vaccine dose."
+          },
           "vaccinesAdministered": {
             "title": "Vaccinesadministered",
             "anyOf": [
@@ -1682,6 +1694,18 @@
               }
             ],
             "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
+          },
+          "vaccinationsBivalentDoseRatio": {
+            "title": "Vaccinationsbivalentdoseratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of population have received a bivalent vaccine dose."
           }
         },
         "description": "Calculated metrics data based on known actuals."
@@ -1712,7 +1736,7 @@
                 "$ref": "#/components/schemas/RiskLevel"
               }
             ],
-            "description": "Overall risk level for region ."
+            "description": "Overall risk level for region."
           },
           "caseDensity": {
             "allOf": [
@@ -1760,7 +1784,7 @@
                 "$ref": "#/components/schemas/CommunityLevel"
               }
             ],
-            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n"
           },
           "canCommunityLevel": {
             "allOf": [
@@ -1768,7 +1792,7 @@
                 "$ref": "#/components/schemas/CommunityLevel"
               }
             ],
-            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n"
           },
           "date": {
             "title": "Date",
@@ -1796,7 +1820,8 @@
           "cdcTransmissionLevel",
           "hsa",
           "hsaName",
-          "hsaPopulation"
+          "hsaPopulation",
+          "communityLevels"
         ],
         "type": "object",
         "properties": {
@@ -1942,14 +1967,13 @@
             "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
           },
           "communityLevels": {
-            "anyOf": [
+            "title": "Communitylevels",
+            "allOf": [
               {
                 "$ref": "#/components/schemas/CommunityLevelsTimeseriesRow"
-              },
-              {
-                "type": "null"
               }
-            ]
+            ],
+            "description": "Community levels for any given day"
           }
         },
         "description": "Prediction timeseries row with location information."
@@ -2051,7 +2075,7 @@
                 "$ref": "#/components/schemas/CommunityLevel"
               }
             ],
-            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n"
           },
           "canCommunityLevel": {
             "allOf": [
@@ -2059,7 +2083,7 @@
                 "$ref": "#/components/schemas/CommunityLevel"
               }
             ],
-            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n"
           }
         },
         "description": "Community levels for a region."
@@ -2332,6 +2356,15 @@
             ],
             "description": "Annotations for vaccinationsAdditionalDose"
           },
+          "vaccinationsBivalentDose": {
+            "title": "Vaccinationsbivalentdose",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinationsBivalentDose"
+          },
           "vaccinesAdministered": {
             "title": "Vaccinesadministered",
             "allOf": [
@@ -2448,6 +2481,15 @@
               }
             ],
             "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
+          },
+          "vaccinationsBivalentDoseRatio": {
+            "title": "Vaccinationsbivalentdoseratio",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Ratio of population have received a bivalent vaccine dose."
           }
         },
         "description": "Annotations for each field."
@@ -2820,6 +2862,18 @@
             ],
             "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
           },
+          "vaccinationsBivalentDoseRatio": {
+            "title": "Vaccinationsbivalentdoseratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of population have received a bivalent vaccine dose."
+          },
           "date": {
             "title": "Date",
             "type": "string",
@@ -3015,6 +3069,18 @@
             ],
             "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose."
           },
+          "vaccinationsBivalentDose": {
+            "title": "Vaccinationsbivalentdose",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of individuals who have received a bivalent vaccine dose."
+          },
           "vaccinesAdministered": {
             "title": "Vaccinesadministered",
             "anyOf": [
@@ -3069,7 +3135,7 @@
                 "$ref": "#/components/schemas/RiskLevel"
               }
             ],
-            "description": "Overall risk level for region ."
+            "description": "Overall risk level for region."
           },
           "caseDensity": {
             "allOf": [

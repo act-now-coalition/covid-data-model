@@ -330,6 +330,10 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CDCVaccinesStatesAndNationDataset,
         CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
     ],
+    CommonFields.VACCINATIONS_BIVALENT_DOSE: [
+        CDCVaccinesStatesAndNationDataset,
+        CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
+    ],
     CommonFields.VACCINATIONS_INITIATED_PCT: [
         CANScraperStateProvidersWithoutFLCounties,
         CANScraperCountyProviders,

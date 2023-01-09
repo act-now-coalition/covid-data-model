@@ -156,6 +156,18 @@
           "type": "null"
         }
       ]
+    },
+    "vaccinationsBivalentDoseRatio": {
+      "title": "Vaccinationsbivalentdoseratio",
+      "description": "Ratio of population have received a bivalent vaccine dose.",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [

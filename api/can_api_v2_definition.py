@@ -237,6 +237,9 @@ number of people vaccinated with both the first and second dose.
         None,
         description="Number of individuals who are fully vaccinated and have received a booster (or additional) dose.",
     )
+    vaccinationsBivalentDose: Optional[int] = pydantic.Field(
+        None, description="Number of individuals who have received a bivalent vaccine dose.",
+    )
     vaccinesAdministered: Optional[int] = pydantic.Field(
         None, description="Total number of vaccine doses administered."
     )
@@ -325,6 +328,9 @@ class Annotations(base_model.APIBaseModel):
     vaccinationsAdditionalDose: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinationsAdditionalDose"
     )
+    vaccinationsBivalentDose: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Annotations for vaccinationsBivalentDose"
+    )
     vaccinesAdministered: Optional[FieldAnnotations] = pydantic.Field(
         None, description="Annotations for vaccinesAdministered"
     )
@@ -367,6 +373,9 @@ class Annotations(base_model.APIBaseModel):
         description=(
             "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
         ),
+    )
+    vaccinationsBivalentDoseRatio: Optional[FieldAnnotations] = pydantic.Field(
+        None, description="Ratio of population have received a bivalent vaccine dose."
     )
 
 
@@ -430,6 +439,9 @@ class Metrics(base_model.APIBaseModel):
         description=(
             "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
         ),
+    )
+    vaccinationsBivalentDoseRatio: Optional[float] = pydantic.Field(
+        None, description=("Ratio of population have received a bivalent vaccine dose."),
     )
 
     @staticmethod

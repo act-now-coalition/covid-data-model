@@ -388,6 +388,18 @@
               "type": "null"
             }
           ]
+        },
+        "vaccinationsBivalentDoseRatio": {
+          "title": "Vaccinationsbivalentdoseratio",
+          "description": "Ratio of population have received a bivalent vaccine dose.",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -503,7 +515,7 @@
       "type": "object",
       "properties": {
         "cdcCommunityLevel": {
-          "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n",
+          "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n",
           "allOf": [
             {
               "$ref": "#/definitions/CommunityLevel"
@@ -511,7 +523,7 @@
           ]
         },
         "canCommunityLevel": {
-          "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n",
+          "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n",
           "allOf": [
             {
               "$ref": "#/definitions/CommunityLevel"
@@ -869,6 +881,18 @@
             }
           ]
         },
+        "vaccinationsBivalentDose": {
+          "title": "Vaccinationsbivalentdose",
+          "description": "Number of individuals who have received a bivalent vaccine dose.",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "vaccinesAdministered": {
           "title": "Vaccinesadministered",
           "description": "Total number of vaccine doses administered.",
@@ -1183,6 +1207,15 @@
             }
           ]
         },
+        "vaccinationsBivalentDose": {
+          "title": "Vaccinationsbivalentdose",
+          "description": "Annotations for vaccinationsBivalentDose",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
         "vaccinesAdministered": {
           "title": "Vaccinesadministered",
           "description": "Annotations for vaccinesAdministered",
@@ -1294,6 +1327,15 @@
         "vaccinationsAdditionalDoseRatio": {
           "title": "Vaccinationsadditionaldoseratio",
           "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/FieldAnnotations"
+            }
+          ]
+        },
+        "vaccinationsBivalentDoseRatio": {
+          "title": "Vaccinationsbivalentdoseratio",
+          "description": "Ratio of population have received a bivalent vaccine dose.",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"

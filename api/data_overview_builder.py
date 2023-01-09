@@ -33,11 +33,17 @@ VACCINATION_FIELDS = Fields(
         "vaccinationsInitiated",
         "vaccinationsCompleted",
         "vaccinationsAdditionalDose",
+        "vaccinationsBivalentDose",
         "vaccinesAdministered",
         "vaccinesAdministeredDemographics",
         "vaccinationsInitiatedDemographics",
     ],
-    ["vaccinationsInitiatedRatio", "vaccinationsCompletedRatio", "vaccinationsAdditionalDoseRatio"],
+    [
+        "vaccinationsInitiatedRatio",
+        "vaccinationsCompletedRatio",
+        "vaccinationsAdditionalDoseRatio",
+        "vaccinationsBivalentDoseRatio",
+    ],
 )
 
 

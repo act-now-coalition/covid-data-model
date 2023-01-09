@@ -53,4 +53,11 @@ class CDCNewVaccinesCountiesDataset(data_source.CanScraperBase):
             provider="cdc2",
             common_field=CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
         ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_additional_dose",  # TODO: USE BIVALENT DATA ONCE IT'S IN THE PARQUET
+            measurement="cumulative",
+            unit="people",
+            provider="cdc2",
+            common_field=CommonFields.VACCINATIONS_BIVALENT_DOSE,
+        ),
     ]

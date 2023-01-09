@@ -138,6 +138,15 @@
         }
       ]
     },
+    "vaccinationsBivalentDose": {
+      "title": "Vaccinationsbivalentdose",
+      "description": "Annotations for vaccinationsBivalentDose",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
     "vaccinesAdministered": {
       "title": "Vaccinesadministered",
       "description": "Annotations for vaccinesAdministered",
@@ -249,6 +258,15 @@
     "vaccinationsAdditionalDoseRatio": {
       "title": "Vaccinationsadditionaldoseratio",
       "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "vaccinationsBivalentDoseRatio": {
+      "title": "Vaccinationsbivalentdoseratio",
+      "description": "Ratio of population have received a bivalent vaccine dose.",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"
