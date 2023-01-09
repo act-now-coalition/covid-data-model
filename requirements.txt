@@ -10,7 +10,7 @@ kiwisolver==1.1.0
 lazy-object-proxy==1.4.1
 gspread==3.6.0
 gspread-formatting==0.2.5
-GitPython==3.1.0
+GitPython==3.1.30
 matplotlib==3.5.1
 mccabe==0.6.1
 numpy==1.21.4
