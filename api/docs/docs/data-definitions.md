@@ -61,6 +61,14 @@ Processing steps:
 * CSV column names: ``metrics.infectionRateCI90``
 * JSON file fields: ``metrics.infectionRateCI90``, ``metricsTimeseries.*.infectionRateCI90``
 
+### Weekly New Cases Per100K
+
+  The number of new cases per 100k population over the last week.
+
+**Where to access**  
+* CSV column names: ``metrics.weeklyNewCasesPer100k``
+* JSON file fields: ``metrics.weeklyNewCasesPer100k``, ``metricsTimeseries.*.weeklyNewCasesPer100k``
+
 
 
 ## Tests
@@ -135,6 +143,22 @@ Fields:
 **Where to access**  
 * CSV column names: ``metrics.icuCapacityRatio``
 * JSON file fields: ``metrics.icuCapacityRatio``, ``metricsTimeseries.*.icuCapacityRatio``
+
+### Beds With Covid Patients Ratio
+
+  Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.
+
+**Where to access**  
+* CSV column names: ``metrics.bedsWithCovidPatientsRatio``
+* JSON file fields: ``metrics.bedsWithCovidPatientsRatio``, ``metricsTimeseries.*.bedsWithCovidPatientsRatio``
+
+### Weekly Covid Admissions Per100K
+
+  Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area.
+
+**Where to access**  
+* CSV column names: ``metrics.weeklyCovidAdmissionsPer100k``
+* JSON file fields: ``metrics.weeklyCovidAdmissionsPer100k``, ``metricsTimeseries.*.weeklyCovidAdmissionsPer100k``
 
 
 
