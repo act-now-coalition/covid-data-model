@@ -138,6 +138,15 @@
         }
       ]
     },
+    "vaccinationsFall2022BivalentBooster": {
+      "title": "Vaccinationsfall2022Bivalentbooster",
+      "description": "Annotations for vaccinationsFall2022BivalentBooster",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
     "vaccinesAdministered": {
       "title": "Vaccinesadministered",
       "description": "Annotations for vaccinesAdministered",
@@ -248,7 +257,16 @@
     },
     "vaccinationsAdditionalDoseRatio": {
       "title": "Vaccinationsadditionaldoseratio",
-      "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose.",
+      "description": "Annotations for vaccinationsAdditionalDoseRatio",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FieldAnnotations"
+        }
+      ]
+    },
+    "vaccinationsFall2022BivalentBoosterRatio": {
+      "title": "Vaccinationsfall2022Bivalentboosterratio",
+      "description": "Annotations for vaccinationsFall2022BivalentBoosterRatio.",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"

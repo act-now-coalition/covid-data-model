@@ -45,14 +45,6 @@ Processing steps:
 * CSV column names: ``metrics.caseDensity``
 * JSON file fields: ``metrics.caseDensity``, ``metricsTimeseries.*.caseDensity``
 
-### Weekly New Cases Per 100k Population
-
-  The number of new cases per 100k population over the last week.
-
-**Where to access**  
-* CSV column names: ``metrics.weeklyNewCasesPer100k``
-* JSON file fields: ``metrics.weeklyNewCasesPer100k``, ``metricsTimeseries.*.weeklyNewCasesPer100k``
-
 ### Infection Rate
 
   R_t, or the estimated number of infections arising from a typical case.
@@ -68,6 +60,14 @@ Processing steps:
 **Where to access**  
 * CSV column names: ``metrics.infectionRateCI90``
 * JSON file fields: ``metrics.infectionRateCI90``, ``metricsTimeseries.*.infectionRateCI90``
+
+### Weekly New Cases Per100K
+
+  The number of new cases per 100k population over the last week.
+
+**Where to access**  
+* CSV column names: ``metrics.weeklyNewCasesPer100k``
+* JSON file fields: ``metrics.weeklyNewCasesPer100k``, ``metricsTimeseries.*.weeklyNewCasesPer100k``
 
 
 
@@ -146,21 +146,21 @@ Fields:
 
 ### Beds With Covid Patients Ratio
 
-  Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using health service area data for the corresponding area. For more information on HSAs see the [Health Service Area section](https://apidocs.covidactnow.org/data-definitions/#health-service-areas)
+  Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas
 
 **Where to access**  
 * CSV column names: ``metrics.bedsWithCovidPatientsRatio``
 * JSON file fields: ``metrics.bedsWithCovidPatientsRatio``, ``metricsTimeseries.*.bedsWithCovidPatientsRatio``
 
-### Weekly Covid Admissions Per 100k Population
+### Weekly Covid Admissions Per100K
 
-  Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using health service area data for the corresponding area. For more information on HSAs see the [Health Service Area section](https://apidocs.covidactnow.org/data-definitions/#health-service-areas)
+  Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas
 
 **Where to access**  
 * CSV column names: ``metrics.weeklyCovidAdmissionsPer100k``
 * JSON file fields: ``metrics.weeklyCovidAdmissionsPer100k``, ``metricsTimeseries.*.weeklyCovidAdmissionsPer100k``
 
-County- and metro-level hospitalization and ICU actuals are calculated from facility-level data which, suppresses near-zero values due to privacy concerns. As a result, this data may undercount real values, particularly at low levels.
+
 
 ## Vaccinations
 
@@ -201,6 +201,14 @@ number of people vaccinated with both the first and second dose.
 **Where to access**  
 * CSV column names: ``actuals.vaccinationsAdditionalDose``
 * JSON file fields: ``actuals.vaccinationsAdditionalDose``, ``actualsTimeseries.*.vaccinationsAdditionalDose``
+
+### Vaccinations Fall 2022 Bivalent Booster
+
+  Number of individuals who have received a bivalent vaccine dose.
+
+**Where to access**  
+* CSV column names: ``actuals.vaccinationsFall2022BivalentBooster``
+* JSON file fields: ``actuals.vaccinationsFall2022BivalentBooster``, ``actualsTimeseries.*.vaccinationsFall2022BivalentBooster``
 
 ### Vaccines Administered
 
@@ -247,6 +255,14 @@ number of people vaccinated with both the first and second dose.
 **Where to access**  
 * CSV column names: ``metrics.vaccinationsAdditionalDoseRatio``
 * JSON file fields: ``metrics.vaccinationsAdditionalDoseRatio``, ``metricsTimeseries.*.vaccinationsAdditionalDoseRatio``
+
+### Vaccinations Fall 2022 Bivalent Booster Ratio
+
+  Ratio of population that have received a bivalent vaccine dose.
+
+**Where to access**  
+* CSV column names: ``metrics.vaccinationsFall2022BivalentBoosterRatio``
+* JSON file fields: ``metrics.vaccinationsFall2022BivalentBoosterRatio``, ``metricsTimeseries.*.vaccinationsFall2022BivalentBoosterRatio``
 
 
 

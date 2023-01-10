@@ -4,6 +4,7 @@ from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
 class CDCVaccinesDataset(data_source.CanScraperBase):
+    # This data source is used to pull in state-level vaccine data from the CDC.
     SOURCE_TYPE = "CDCVaccine"
 
     VARIABLES = [
@@ -48,5 +49,12 @@ class CDCVaccinesDataset(data_source.CanScraperBase):
             unit="people",
             provider="cdc",
             common_field=CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
+        ),
+        ccd_helpers.ScraperVariable(
+            variable_name="total_vaccine_bivalent_dose",
+            measurement="cumulative",
+            unit="people",
+            provider="cdc",
+            common_field=CommonFields.VACCINATIONS_2022_FALL_BIVALENT_DOSE,
         ),
     ]

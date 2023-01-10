@@ -33,6 +33,7 @@ def derive_vaccine_pct(
         CommonFields.VACCINATIONS_INITIATED: CommonFields.VACCINATIONS_INITIATED_PCT,
         CommonFields.VACCINATIONS_COMPLETED: CommonFields.VACCINATIONS_COMPLETED_PCT,
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE: CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT,
+        CommonFields.VACCINATIONS_2022_FALL_BIVALENT_DOSE: CommonFields.VACCINATIONS_BIVALENT_DOSE_PCT,
     }
 
     ts_in_all = ds_in.timeseries_bucketed_wide_dates

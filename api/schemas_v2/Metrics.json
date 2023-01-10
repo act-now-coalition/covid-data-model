@@ -99,7 +99,7 @@
     },
     "bedsWithCovidPatientsRatio": {
       "title": "Bedswithcovidpatientsratio",
-      "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.",
+      "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas",
       "anyOf": [
         {
           "type": "number"
@@ -111,7 +111,7 @@
     },
     "weeklyCovidAdmissionsPer100k": {
       "title": "Weeklycovidadmissionsper100K",
-      "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area.",
+      "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas",
       "anyOf": [
         {
           "type": "number"
@@ -148,6 +148,18 @@
     "vaccinationsAdditionalDoseRatio": {
       "title": "Vaccinationsadditionaldoseratio",
       "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose.",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "vaccinationsFall2022BivalentBoosterRatio": {
+      "title": "Vaccinationsfall2022Bivalentboosterratio",
+      "description": "Ratio of population that have received a bivalent vaccine dose.",
       "anyOf": [
         {
           "type": "number"

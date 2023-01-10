@@ -204,6 +204,11 @@ class CommonFields(GetByValueMixin, ValueAsStrMixin, FieldName, enum.Enum):
     VACCINATIONS_INITIATED_PCT = "vaccinations_initiated_pct", FieldGroup.VACCINES
     VACCINATIONS_ADDITIONAL_DOSE = "vaccinations_additional_dose", FieldGroup.VACCINES
     VACCINATIONS_ADDITIONAL_DOSE_PCT = "vaccinations_additional_dose_pct", FieldGroup.VACCINES
+    VACCINATIONS_2022_FALL_BIVALENT_DOSE = (
+        "vaccinations_2022_fall_bivalent_dose",
+        FieldGroup.VACCINES,
+    )
+    VACCINATIONS_BIVALENT_DOSE_PCT = "vaccinations_bivalent_dose_pct", FieldGroup.VACCINES
     VACCINATIONS_COMPLETED = "vaccinations_completed", FieldGroup.VACCINES
     VACCINATIONS_COMPLETED_PCT = "vaccinations_completed_pct", FieldGroup.VACCINES
 

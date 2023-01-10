@@ -1359,7 +1359,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilizationWithAdmissions"
               }
             ],
-            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
+            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
           },
           "icuBeds": {
             "title": "Icubeds",
@@ -1377,7 +1377,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
-            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
+            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
           },
           "newCases": {
             "title": "Newcases",
@@ -1450,6 +1450,18 @@
               }
             ],
             "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose."
+          },
+          "vaccinationsFall2022BivalentBooster": {
+            "title": "Vaccinationsfall2022Bivalentbooster",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of individuals who have received a bivalent vaccine dose."
           },
           "vaccinesAdministered": {
             "title": "Vaccinesadministered",
@@ -1633,7 +1645,7 @@
                 "type": "null"
               }
             ],
-            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area."
+            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas"
           },
           "weeklyCovidAdmissionsPer100k": {
             "title": "Weeklycovidadmissionsper100K",
@@ -1645,7 +1657,7 @@
                 "type": "null"
               }
             ],
-            "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area."
+            "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas"
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
@@ -1682,6 +1694,18 @@
               }
             ],
             "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
+          },
+          "vaccinationsFall2022BivalentBoosterRatio": {
+            "title": "Vaccinationsfall2022Bivalentboosterratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of population that have received a bivalent vaccine dose."
           }
         },
         "description": "Calculated metrics data based on known actuals."
@@ -1712,7 +1736,7 @@
                 "$ref": "#/components/schemas/RiskLevel"
               }
             ],
-            "description": "Overall risk level for region ."
+            "description": "Overall risk level for region."
           },
           "caseDensity": {
             "allOf": [
@@ -1760,7 +1784,7 @@
                 "$ref": "#/components/schemas/CommunityLevel"
               }
             ],
-            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n"
           },
           "canCommunityLevel": {
             "allOf": [
@@ -1768,7 +1792,7 @@
                 "$ref": "#/components/schemas/CommunityLevel"
               }
             ],
-            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n"
           },
           "date": {
             "title": "Date",
@@ -1796,7 +1820,8 @@
           "cdcTransmissionLevel",
           "hsa",
           "hsaName",
-          "hsaPopulation"
+          "hsaPopulation",
+          "communityLevels"
         ],
         "type": "object",
         "properties": {
@@ -1914,7 +1939,7 @@
                 "type": "null"
               }
             ],
-            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
           },
           "hsaName": {
             "title": "Hsaname",
@@ -1926,7 +1951,7 @@
                 "type": "null"
               }
             ],
-            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
           },
           "hsaPopulation": {
             "title": "Hsapopulation",
@@ -1939,17 +1964,16 @@
                 "type": "null"
               }
             ],
-            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
           },
           "communityLevels": {
-            "anyOf": [
+            "title": "Communitylevels",
+            "allOf": [
               {
                 "$ref": "#/components/schemas/CommunityLevelsTimeseriesRow"
-              },
-              {
-                "type": "null"
               }
-            ]
+            ],
+            "description": "Community levels for any given day"
           }
         },
         "description": "Prediction timeseries row with location information."
@@ -2051,7 +2075,7 @@
                 "$ref": "#/components/schemas/CommunityLevel"
               }
             ],
-            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+            "description": "\nCDC Community level for county, as provided by the CDC.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n"
           },
           "canCommunityLevel": {
             "allOf": [
@@ -2059,7 +2083,7 @@
                 "$ref": "#/components/schemas/CommunityLevel"
               }
             ],
-            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpretted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated on a daily basis using CAN's data\nsources and is available for states, counties, and metros.  The other is\ncalled cdcCommunityLevel and is the raw Community Level published by the\nCDC. It is only available for counties, and updates on a weekly basis.\n"
+            "description": "\nCommunity level for region, calculated using the CDC definition but with CAN\ndata sources.\n\nPossible values:\n    - 0: Low\n    - 1: Medium\n    - 2: High\n\nSee https://www.cdc.gov/coronavirus/2019-ncov/science/community-levels.html\nfor details about how the Community Level is calculated and should be\ninterpreted.\n\nNote that we provide two versions of the Community Level. One is called\ncanCommunityLevel which is calculated using CAN's data sources and is\navailable for states, counties, and metros. It is updated daily though\ndepends on hospital data which may only update weekly for counties. The\nother is called cdcCommunityLevel and is the raw Community Level published\nby the CDC. It is only available for counties and is updated on a weekly\nbasis.\n"
           }
         },
         "description": "Community levels for a region."
@@ -2332,6 +2356,15 @@
             ],
             "description": "Annotations for vaccinationsAdditionalDose"
           },
+          "vaccinationsFall2022BivalentBooster": {
+            "title": "Vaccinationsfall2022Bivalentbooster",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinationsFall2022BivalentBooster"
+          },
           "vaccinesAdministered": {
             "title": "Vaccinesadministered",
             "allOf": [
@@ -2447,7 +2480,16 @@
                 "$ref": "#/components/schemas/FieldAnnotations"
               }
             ],
-            "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
+            "description": "Annotations for vaccinationsAdditionalDoseRatio"
+          },
+          "vaccinationsFall2022BivalentBoosterRatio": {
+            "title": "Vaccinationsfall2022Bivalentboosterratio",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldAnnotations"
+              }
+            ],
+            "description": "Annotations for vaccinationsFall2022BivalentBoosterRatio."
           }
         },
         "description": "Annotations for each field."
@@ -2522,7 +2564,7 @@
                 "type": "null"
               }
             ],
-            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
           },
           "hsaName": {
             "title": "Hsaname",
@@ -2534,7 +2576,7 @@
                 "type": "null"
               }
             ],
-            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
           },
           "level": {
             "allOf": [
@@ -2590,7 +2632,7 @@
                 "type": "null"
               }
             ],
-            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
           },
           "metrics": {
             "$ref": "#/components/schemas/Metrics"
@@ -2770,7 +2812,7 @@
                 "type": "null"
               }
             ],
-            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area."
+            "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas"
           },
           "weeklyCovidAdmissionsPer100k": {
             "title": "Weeklycovidadmissionsper100K",
@@ -2782,7 +2824,7 @@
                 "type": "null"
               }
             ],
-            "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area."
+            "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas"
           },
           "vaccinationsInitiatedRatio": {
             "title": "Vaccinationsinitiatedratio",
@@ -2819,6 +2861,18 @@
               }
             ],
             "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
+          },
+          "vaccinationsFall2022BivalentBoosterRatio": {
+            "title": "Vaccinationsfall2022Bivalentboosterratio",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ratio of population that have received a bivalent vaccine dose."
           },
           "date": {
             "title": "Date",
@@ -2923,7 +2977,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilizationWithAdmissions"
               }
             ],
-            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
+            "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n"
           },
           "icuBeds": {
             "title": "Icubeds",
@@ -2941,7 +2995,7 @@
                 "$ref": "#/components/schemas/HospitalResourceUtilization"
               }
             ],
-            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
+            "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n"
           },
           "newCases": {
             "title": "Newcases",
@@ -3015,6 +3069,18 @@
             ],
             "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose."
           },
+          "vaccinationsFall2022BivalentBooster": {
+            "title": "Vaccinationsfall2022Bivalentbooster",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of individuals who have received a bivalent vaccine dose."
+          },
           "vaccinesAdministered": {
             "title": "Vaccinesadministered",
             "anyOf": [
@@ -3069,7 +3135,7 @@
                 "$ref": "#/components/schemas/RiskLevel"
               }
             ],
-            "description": "Overall risk level for region ."
+            "description": "Overall risk level for region."
           },
           "caseDensity": {
             "allOf": [
@@ -3188,7 +3254,7 @@
                 "type": "null"
               }
             ],
-            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+            "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
           },
           "hsaName": {
             "title": "Hsaname",
@@ -3200,7 +3266,7 @@
                 "type": "null"
               }
             ],
-            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+            "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
           },
           "level": {
             "allOf": [
@@ -3256,7 +3322,7 @@
                 "type": "null"
               }
             ],
-            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md"
+            "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md"
           },
           "metrics": {
             "$ref": "#/components/schemas/Metrics"

@@ -40,6 +40,7 @@ METRIC_MULTIPLE_SOURCE_URLS_MESSAGE = "More than one source_url for a field"
 METRIC_MULTIPLE_SOURCE_TYPES_MESSAGE = "More than one provenance for a field"
 
 USA_VACCINATION_START_DATE = datetime(2020, 12, 14)
+USA_BIVALENT_VACCINATION_START_DATE = datetime(2022, 9, 1)
 
 
 def _build_distributions(
@@ -119,6 +120,9 @@ def _build_actuals(actual_data: dict, distributions_by_field: Optional[Dict] = N
         vaccinationsInitiated=vaccinations_initiated,
         vaccinationsCompleted=actual_data.get(CommonFields.VACCINATIONS_COMPLETED),
         vaccinationsAdditionalDose=actual_data.get(CommonFields.VACCINATIONS_ADDITIONAL_DOSE),
+        vaccinationsFall2022BivalentBooster=actual_data.get(
+            CommonFields.VACCINATIONS_2022_FALL_BIVALENT_DOSE
+        ),
         vaccinesAdministered=actual_data.get(CommonFields.VACCINES_ADMINISTERED),
         vaccinesAdministeredDemographics=vaccines_administered_demographics,
         vaccinationsInitiatedDemographics=vaccines_initiated_demographics,
@@ -183,6 +187,7 @@ ACTUALS_NAME_TO_COMMON_FIELD = {
     "vaccinationsInitiated": CommonFields.VACCINATIONS_INITIATED,
     "vaccinationsCompleted": CommonFields.VACCINATIONS_COMPLETED,
     "vaccinationsAdditionalDose": CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
+    "vaccinationsFall2022BivalentBooster": CommonFields.VACCINATIONS_2022_FALL_BIVALENT_DOSE,
 }
 
 
@@ -197,6 +202,7 @@ METRICS_NAME_TO_COMMON_FIELD = {
     "vaccinationsInitiatedRatio": CommonFields.VACCINATIONS_INITIATED_PCT,
     "vaccinationsCompletedRatio": CommonFields.VACCINATIONS_COMPLETED_PCT,
     "vaccinationsAdditionalDoseRatio": CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT,
+    "vaccinationsFall2022BivalentBoosterRatio": CommonFields.VACCINATIONS_BIVALENT_DOSE_PCT,
     "icuCapacityRatio": CommonFields.CURRENT_ICU,
     "bedsWithCovidPatientsRatio": CommonFields.CURRENT_HOSPITALIZED,
     "weeklyCovidAdmissionsPer100k": CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID,
@@ -312,6 +318,9 @@ def build_region_timeseries(
             del actual["vaccinationsCompleted"]
             del actual["vaccinationsAdditionalDose"]
 
+        if row[CommonFields.DATE] < USA_BIVALENT_VACCINATION_START_DATE:
+            del actual["vaccinationsFall2022BivalentBooster"]
+
         timeseries_row = ActualsTimeseriesRow(**actual, date=row[CommonFields.DATE])
         actuals_timeseries.append(timeseries_row)
 
@@ -323,6 +332,8 @@ def build_region_timeseries(
             del metric_row["vaccinationsInitiatedRatio"]
             del metric_row["vaccinationsCompletedRatio"]
             del metric_row["vaccinationsAdditionalDoseRatio"]
+        if metric_row[CommonFields.DATE] < USA_BIVALENT_VACCINATION_START_DATE:
+            del metric_row["vaccinationsFall2022BivalentBoosterRatio"]
         metrics_rows.append(MetricsTimeseriesRow(**metric_row))
 
     risk_level_rows = [

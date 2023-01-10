@@ -23,6 +23,7 @@ def test_derive_vaccine_pct():
         ),
         CommonFields.VACCINATIONS_COMPLETED: [None, 1_000],
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE: [1_000, 5_000],
+        CommonFields.VACCINATIONS_2022_FALL_BIVALENT_DOSE: [1_000, 5_000],
         CommonFields.CASES: TimeseriesLiteral([1, 2], provenance=["caseprov"]),
     }
 
@@ -61,6 +62,7 @@ def test_derive_vaccine_pct():
                 CommonFields.VACCINATIONS_INITIATED_PCT: [1, 2],
                 CommonFields.VACCINATIONS_COMPLETED_PCT: [None, 1],
                 CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [1, 5],
+                CommonFields.VACCINATIONS_BIVALENT_DOSE_PCT: [1, 5],
             },
             region_ma: {**ma_timeseries_in, CommonFields.VACCINATIONS_INITIATED_PCT: [94, 95],},
             region_sf: {CommonFields.VACCINATIONS_COMPLETED_PCT: [10, 95],},

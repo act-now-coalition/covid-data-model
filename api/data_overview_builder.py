@@ -21,11 +21,17 @@ class Fields:
     metrics: List[str]
 
 
-CASES_FIELDS = Fields(["cases", "newCases"], ["caseDensity", "infectionRate", "infectionRateCI90"],)
+CASES_FIELDS = Fields(
+    ["cases", "newCases"],
+    ["caseDensity", "infectionRate", "infectionRateCI90", "weeklyNewCasesPer100k"],
+)
 
 DEATHS_FIELDS = Fields(["deaths"], [])
 
-HOSPITALIZATIONS_FIELDS = Fields(["icuBeds", "hospitalBeds"], ["icuCapacityRatio"],)
+HOSPITALIZATIONS_FIELDS = Fields(
+    ["icuBeds", "hospitalBeds"],
+    ["icuCapacityRatio", "bedsWithCovidPatientsRatio", "weeklyCovidAdmissionsPer100k"],
+)
 
 VACCINATION_FIELDS = Fields(
     [
@@ -33,11 +39,17 @@ VACCINATION_FIELDS = Fields(
         "vaccinationsInitiated",
         "vaccinationsCompleted",
         "vaccinationsAdditionalDose",
+        "vaccinationsFall2022BivalentBooster",
         "vaccinesAdministered",
         "vaccinesAdministeredDemographics",
         "vaccinationsInitiatedDemographics",
     ],
-    ["vaccinationsInitiatedRatio", "vaccinationsCompletedRatio", "vaccinationsAdditionalDoseRatio"],
+    [
+        "vaccinationsInitiatedRatio",
+        "vaccinationsCompletedRatio",
+        "vaccinationsAdditionalDoseRatio",
+        "vaccinationsFall2022BivalentBoosterRatio",
+    ],
 )
 
 

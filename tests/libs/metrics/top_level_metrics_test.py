@@ -171,6 +171,7 @@ def test_top_level_metrics_basic():
         CommonFields.VACCINATIONS_INITIATED_PCT: [1, 2, None, 3],
         CommonFields.VACCINATIONS_COMPLETED_PCT: [0.1, 0.2, None, 0.3],
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [0.1, 0.2, None, 0.3],
+        CommonFields.VACCINATIONS_BIVALENT_DOSE_PCT: [0.1, 0.2, None, 0.3],
         CommonFields.STAFFED_BEDS_HSA: [10, 20, 60, 80],
         CommonFields.CURRENT_HOSPITALIZED_HSA: [1, 2, 3, 4],
         CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_HSA: [1, 1, 2, 2],
@@ -198,6 +199,7 @@ def test_top_level_metrics_basic():
         vaccinationsInitiatedRatio=[0.01, 0.02, None, 0.03],
         vaccinationsCompletedRatio=[0.001, 0.002, None, 0.003],
         vaccinationsAdditionalDoseRatio=[0.001, 0.002, None, 0.003],
+        vaccinationsFall2022BivalentBoosterRatio=[0.001, 0.002, None, 0.003],
         bedsWithCovidPatientsRatio=[0.1, 0.1, 0.05, 0.05],
         weeklyCovidAdmissionsPer100k=[1.0, 1.0, 2.0, 2.0],
     )
@@ -219,6 +221,7 @@ def test_top_level_metrics_rounding():
         CommonFields.VACCINATIONS_INITIATED_PCT: [33.3333, 66.666, 100],
         CommonFields.VACCINATIONS_COMPLETED_PCT: [33.3333, 66.6666, 100],
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE_PCT: [33.3333, 66.6666, 100],
+        CommonFields.VACCINATIONS_BIVALENT_DOSE_PCT: [33.3333, 66.6666, 100],
     }
     latest = {
         CommonFields.POPULATION: 100_000,
@@ -243,6 +246,7 @@ def test_top_level_metrics_rounding():
         vaccinationsInitiatedRatio=[0.333, 0.667, 1],
         vaccinationsCompletedRatio=[0.333, 0.667, 1],
         vaccinationsAdditionalDoseRatio=[0.333, 0.667, 1],
+        vaccinationsFall2022BivalentBoosterRatio=[0.333, 0.667, 1],
         bedsWithCovidPatientsRatio=[0.1, 0.1, 0.086],
         weeklyCovidAdmissionsPer100k=[2.0, 3.0, 4.0],
     )

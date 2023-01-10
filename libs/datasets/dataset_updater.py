@@ -167,6 +167,7 @@ class DatasetUpdater:
                 CommonFields.VACCINATIONS_COMPLETED,
                 CommonFields.VACCINATIONS_INITIATED,
                 CommonFields.VACCINATIONS_ADDITIONAL_DOSE,
+                CommonFields.VACCINATIONS_2022_FALL_BIVALENT_DOSE,
             ],
         )
         multiregion_dataset = vaccine_backfills.estimate_initiated_from_state_ratio(
