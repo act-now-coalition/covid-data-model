@@ -23,7 +23,7 @@ def test_derive_vaccine_pct():
         ),
         CommonFields.VACCINATIONS_COMPLETED: [None, 1_000],
         CommonFields.VACCINATIONS_ADDITIONAL_DOSE: [1_000, 5_000],
-        CommonFields.VACCINATIONS_BIVALENT_DOSE: [1_000, 5_000],
+        CommonFields.VACCINATIONS_2022_FALL_BIVALENT_DOSE: [1_000, 5_000],
         CommonFields.CASES: TimeseriesLiteral([1, 2], provenance=["caseprov"]),
     }
 

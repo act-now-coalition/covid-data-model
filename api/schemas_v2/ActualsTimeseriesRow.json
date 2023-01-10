@@ -171,8 +171,8 @@
         }
       ]
     },
-    "vaccinationsBivalentDose": {
-      "title": "Vaccinationsbivalentdose",
+    "vaccinationsFall2022BivalentBooster": {
+      "title": "Vaccinationsfall2022Bivalentbooster",
       "description": "Number of individuals who have received a bivalent vaccine dose.",
       "anyOf": [
         {

@@ -138,9 +138,9 @@
         }
       ]
     },
-    "vaccinationsBivalentDose": {
-      "title": "Vaccinationsbivalentdose",
-      "description": "Annotations for vaccinationsBivalentDose",
+    "vaccinationsFall2022BivalentBooster": {
+      "title": "Vaccinationsfall2022Bivalentbooster",
+      "description": "Annotations for vaccinationsFall2022BivalentBooster",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"
@@ -264,9 +264,9 @@
         }
       ]
     },
-    "vaccinationsBivalentDoseRatio": {
-      "title": "Vaccinationsbivalentdoseratio",
-      "description": "Annotations for vaccinationsBivalentDoseRatio.",
+    "vaccinationsFall2022BivalentBoosterRatio": {
+      "title": "Vaccinationsfall2022Bivalentboosterratio",
+      "description": "Annotations for vaccinationsFall2022BivalentBoosterRatio.",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"

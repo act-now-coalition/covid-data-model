@@ -1451,8 +1451,8 @@
             ],
             "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose."
           },
-          "vaccinationsBivalentDose": {
-            "title": "Vaccinationsbivalentdose",
+          "vaccinationsFall2022BivalentBooster": {
+            "title": "Vaccinationsfall2022Bivalentbooster",
             "anyOf": [
               {
                 "type": "integer"
@@ -1695,8 +1695,8 @@
             ],
             "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
           },
-          "vaccinationsBivalentDoseRatio": {
-            "title": "Vaccinationsbivalentdoseratio",
+          "vaccinationsFall2022BivalentBoosterRatio": {
+            "title": "Vaccinationsfall2022Bivalentboosterratio",
             "anyOf": [
               {
                 "type": "number"
@@ -2356,14 +2356,14 @@
             ],
             "description": "Annotations for vaccinationsAdditionalDose"
           },
-          "vaccinationsBivalentDose": {
-            "title": "Vaccinationsbivalentdose",
+          "vaccinationsFall2022BivalentBooster": {
+            "title": "Vaccinationsfall2022Bivalentbooster",
             "allOf": [
               {
                 "$ref": "#/components/schemas/FieldAnnotations"
               }
             ],
-            "description": "Annotations for vaccinationsBivalentDose"
+            "description": "Annotations for vaccinationsFall2022BivalentBooster"
           },
           "vaccinesAdministered": {
             "title": "Vaccinesadministered",
@@ -2482,14 +2482,14 @@
             ],
             "description": "Annotations for vaccinationsAdditionalDoseRatio"
           },
-          "vaccinationsBivalentDoseRatio": {
-            "title": "Vaccinationsbivalentdoseratio",
+          "vaccinationsFall2022BivalentBoosterRatio": {
+            "title": "Vaccinationsfall2022Bivalentboosterratio",
             "allOf": [
               {
                 "$ref": "#/components/schemas/FieldAnnotations"
               }
             ],
-            "description": "Annotations for vaccinationsBivalentDoseRatio."
+            "description": "Annotations for vaccinationsFall2022BivalentBoosterRatio."
           }
         },
         "description": "Annotations for each field."
@@ -2862,8 +2862,8 @@
             ],
             "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
           },
-          "vaccinationsBivalentDoseRatio": {
-            "title": "Vaccinationsbivalentdoseratio",
+          "vaccinationsFall2022BivalentBoosterRatio": {
+            "title": "Vaccinationsfall2022Bivalentboosterratio",
             "anyOf": [
               {
                 "type": "number"
@@ -3069,8 +3069,8 @@
             ],
             "description": "Number of individuals who are fully vaccinated and have received a booster (or additional) dose."
           },
-          "vaccinationsBivalentDose": {
-            "title": "Vaccinationsbivalentdose",
+          "vaccinationsFall2022BivalentBooster": {
+            "title": "Vaccinationsfall2022Bivalentbooster",
             "anyOf": [
               {
                 "type": "integer"

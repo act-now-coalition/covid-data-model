@@ -85,8 +85,8 @@ SUMMARY_ORDER = [
     "metrics.weeklyCovidAdmissionsPer100k",
     "communityLevels.cdcCommunityLevel",
     "communityLevels.canCommunityLevel",
-    "actuals.vaccinationsBivalentDose",
-    "metrics.vaccinationsBivalentDoseRatio",
+    "actuals.vaccinationsFall2022BivalentBooster",
+    "metrics.vaccinationsFall2022BivalentBoosterRatio",
 ]
 
 # Due to an inconsistency with how we previously were generating column names,
@@ -169,8 +169,8 @@ SUMMARY_ORDER_NO_HEADROOM_DETAILS = [
     "metrics.weeklyCovidAdmissionsPer100k",
     "communityLevels.cdcCommunityLevel",
     "communityLevels.canCommunityLevel",
-    "actuals.vaccinationsBivalentDose",
-    "metrics.vaccinationsBivalentDoseRatio",
+    "actuals.vaccinationsFall2022BivalentBooster",
+    "metrics.vaccinationsFall2022BivalentBoosterRatio",
 ]
 
 
@@ -240,6 +240,6 @@ TIMESERIES_ORDER = [
     "metrics.weeklyCovidAdmissionsPer100k",
     "communityLevels.cdcCommunityLevel",
     "communityLevels.canCommunityLevel",
-    "actuals.vaccinationsBivalentDose",
-    "metrics.vaccinationsBivalentDoseRatio",
+    "actuals.vaccinationsFall2022BivalentBooster",
+    "metrics.vaccinationsFall2022BivalentBoosterRatio",
 ]

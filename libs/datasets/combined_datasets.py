@@ -330,7 +330,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         CDCVaccinesStatesAndNationDataset,
         CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
     ],
-    CommonFields.VACCINATIONS_BIVALENT_DOSE: [
+    CommonFields.VACCINATIONS_2022_FALL_BIVALENT_DOSE: [
         CDCVaccinesStatesAndNationDataset,
         CDCNewVaccinesCompletedBoosterCountiesWithoutExceptions,
     ],

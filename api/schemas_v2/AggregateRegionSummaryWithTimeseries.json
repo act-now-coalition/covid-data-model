@@ -207,8 +207,8 @@
             }
           ]
         },
-        "vaccinationsBivalentDoseRatio": {
-          "title": "Vaccinationsbivalentdoseratio",
+        "vaccinationsFall2022BivalentBoosterRatio": {
+          "title": "Vaccinationsfall2022Bivalentboosterratio",
           "description": "Ratio of population that have received a bivalent vaccine dose.",
           "anyOf": [
             {
@@ -699,8 +699,8 @@
             }
           ]
         },
-        "vaccinationsBivalentDose": {
-          "title": "Vaccinationsbivalentdose",
+        "vaccinationsFall2022BivalentBooster": {
+          "title": "Vaccinationsfall2022Bivalentbooster",
           "description": "Number of individuals who have received a bivalent vaccine dose.",
           "anyOf": [
             {
@@ -1025,9 +1025,9 @@
             }
           ]
         },
-        "vaccinationsBivalentDose": {
-          "title": "Vaccinationsbivalentdose",
-          "description": "Annotations for vaccinationsBivalentDose",
+        "vaccinationsFall2022BivalentBooster": {
+          "title": "Vaccinationsfall2022Bivalentbooster",
+          "description": "Annotations for vaccinationsFall2022BivalentBooster",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"
@@ -1151,9 +1151,9 @@
             }
           ]
         },
-        "vaccinationsBivalentDoseRatio": {
-          "title": "Vaccinationsbivalentdoseratio",
-          "description": "Annotations for vaccinationsBivalentDoseRatio.",
+        "vaccinationsFall2022BivalentBoosterRatio": {
+          "title": "Vaccinationsfall2022Bivalentboosterratio",
+          "description": "Annotations for vaccinationsFall2022BivalentBoosterRatio.",
           "allOf": [
             {
               "$ref": "#/definitions/FieldAnnotations"
@@ -1321,8 +1321,8 @@
             }
           ]
         },
-        "vaccinationsBivalentDoseRatio": {
-          "title": "Vaccinationsbivalentdoseratio",
+        "vaccinationsFall2022BivalentBoosterRatio": {
+          "title": "Vaccinationsfall2022Bivalentboosterratio",
           "description": "Ratio of population that have received a bivalent vaccine dose.",
           "anyOf": [
             {
@@ -1526,8 +1526,8 @@
             }
           ]
         },
-        "vaccinationsBivalentDose": {
-          "title": "Vaccinationsbivalentdose",
+        "vaccinationsFall2022BivalentBooster": {
+          "title": "Vaccinationsfall2022Bivalentbooster",
           "description": "Number of individuals who have received a bivalent vaccine dose.",
           "anyOf": [
             {

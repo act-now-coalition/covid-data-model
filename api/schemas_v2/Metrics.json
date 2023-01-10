@@ -157,8 +157,8 @@
         }
       ]
     },
-    "vaccinationsBivalentDoseRatio": {
-      "title": "Vaccinationsbivalentdoseratio",
+    "vaccinationsFall2022BivalentBoosterRatio": {
+      "title": "Vaccinationsfall2022Bivalentboosterratio",
       "description": "Ratio of population that have received a bivalent vaccine dose.",
       "anyOf": [
         {

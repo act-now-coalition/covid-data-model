@@ -39,7 +39,7 @@ VACCINATION_FIELDS = Fields(
         "vaccinationsInitiated",
         "vaccinationsCompleted",
         "vaccinationsAdditionalDose",
-        "vaccinationsBivalentDose",
+        "vaccinationsFall2022BivalentBooster",
         "vaccinesAdministered",
         "vaccinesAdministeredDemographics",
         "vaccinationsInitiatedDemographics",
@@ -48,7 +48,7 @@ VACCINATION_FIELDS = Fields(
         "vaccinationsInitiatedRatio",
         "vaccinationsCompletedRatio",
         "vaccinationsAdditionalDoseRatio",
-        "vaccinationsBivalentDoseRatio",
+        "vaccinationsFall2022BivalentBoosterRatio",
     ],
 )
 

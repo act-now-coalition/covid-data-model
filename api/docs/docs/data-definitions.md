@@ -202,13 +202,13 @@ number of people vaccinated with both the first and second dose.
 * CSV column names: ``actuals.vaccinationsAdditionalDose``
 * JSON file fields: ``actuals.vaccinationsAdditionalDose``, ``actualsTimeseries.*.vaccinationsAdditionalDose``
 
-### Vaccinations Bivalent Dose
+### Vaccinations Fall 2022 Bivalent Booster
 
   Number of individuals who have received a bivalent vaccine dose.
 
 **Where to access**  
-* CSV column names: ``actuals.vaccinationsBivalentDose``
-* JSON file fields: ``actuals.vaccinationsBivalentDose``, ``actualsTimeseries.*.vaccinationsBivalentDose``
+* CSV column names: ``actuals.vaccinationsFall2022BivalentBooster``
+* JSON file fields: ``actuals.vaccinationsFall2022BivalentBooster``, ``actualsTimeseries.*.vaccinationsFall2022BivalentBooster``
 
 ### Vaccines Administered
 
@@ -256,13 +256,13 @@ number of people vaccinated with both the first and second dose.
 * CSV column names: ``metrics.vaccinationsAdditionalDoseRatio``
 * JSON file fields: ``metrics.vaccinationsAdditionalDoseRatio``, ``metricsTimeseries.*.vaccinationsAdditionalDoseRatio``
 
-### Vaccinations Bivalent Dose Ratio
+### Vaccinations Fall 2022 Bivalent Booster Ratio
 
   Ratio of population that have received a bivalent vaccine dose.
 
 **Where to access**  
-* CSV column names: ``metrics.vaccinationsBivalentDoseRatio``
-* JSON file fields: ``metrics.vaccinationsBivalentDoseRatio``, ``metricsTimeseries.*.vaccinationsBivalentDoseRatio``
+* CSV column names: ``metrics.vaccinationsFall2022BivalentBoosterRatio``
+* JSON file fields: ``metrics.vaccinationsFall2022BivalentBoosterRatio``, ``metricsTimeseries.*.vaccinationsFall2022BivalentBoosterRatio``
 
 
 

@@ -49,7 +49,7 @@ class MetricsFields(common_fields.ValueAsStrMixin, str, enum.Enum):
     VACCINATIONS_INITIATED_RATIO = "vaccinationsInitiatedRatio"
     VACCINATIONS_COMPLETED_RATIO = "vaccinationsCompletedRatio"
     VACCINATIONS_ADDITIONAL_DOSE_RATIO = "vaccinationsAdditionalDoseRatio"
-    VACCINATIONS_BIVALENT_DOSE_RATIO = "vaccinationsBivalentDoseRatio"
+    VACCINATIONS_BIVALENT_DOSE_RATIO = "vaccinationsFall2022BivalentBoosterRatio"
 
 
 # These precisions should be inline with

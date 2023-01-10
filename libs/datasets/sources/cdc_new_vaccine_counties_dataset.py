@@ -59,6 +59,6 @@ class CDCNewVaccinesCountiesDataset(data_source.CanScraperBase):
             measurement="cumulative",
             unit="people",
             provider="cdc2",
-            common_field=CommonFields.VACCINATIONS_BIVALENT_DOSE,
+            common_field=CommonFields.VACCINATIONS_2022_FALL_BIVALENT_DOSE,
         ),
     ]
