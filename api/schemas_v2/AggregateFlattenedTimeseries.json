@@ -254,7 +254,7 @@
         },
         "hsaHospitalBeds": {
           "title": "Hsahospitalbeds",
-          "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n",
+          "description": "\nInformation about acute bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed acute bed capacity.\n * currentUsageTotal - Total number of acute beds currently in use\n * currentUsageCovid - Number of acute beds currently in use by COVID patients.\n * weeklyCovidAdmissions - Number of COVID patients admitted in the past week.\n",
           "allOf": [
             {
               "$ref": "#/definitions/HospitalResourceUtilizationWithAdmissions"
@@ -272,7 +272,7 @@
         },
         "hsaIcuBeds": {
           "title": "Hsaicubeds",
-          "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n",
+          "description": "\nInformation about ICU bed utilization details aggregated for the county's corresponding\nHealth Service Area (HSA). For CBSA, state, and country regions these fields are omitted.\nFor For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md\"\n\nFields:\n * capacity - Current staffed ICU bed capacity.\n * currentUsageTotal - Total number of ICU beds currently in use\n * currentUsageCovid - Number of ICU beds currently in use by COVID patients.\n",
           "allOf": [
             {
               "$ref": "#/definitions/HospitalResourceUtilization"
@@ -539,7 +539,7 @@
         },
         "bedsWithCovidPatientsRatio": {
           "title": "Bedswithcovidpatientsratio",
-          "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.",
+          "description": "Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas",
           "anyOf": [
             {
               "type": "number"
@@ -551,7 +551,7 @@
         },
         "weeklyCovidAdmissionsPer100k": {
           "title": "Weeklycovidadmissionsper100K",
-          "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area.",
+          "description": "Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas",
           "anyOf": [
             {
               "type": "number"
@@ -599,7 +599,7 @@
         },
         "vaccinationsBivalentDoseRatio": {
           "title": "Vaccinationsbivalentdoseratio",
-          "description": "Ratio of population have received a bivalent vaccine dose.",
+          "description": "Ratio of population that have received a bivalent vaccine dose.",
           "anyOf": [
             {
               "type": "number"
@@ -826,7 +826,7 @@
         },
         "hsa": {
           "title": "Hsa",
-          "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+          "description": "3 digit Health Service Area identification code. For CBSA, state, and country regions hsa is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md",
           "anyOf": [
             {
               "type": "string"
@@ -838,7 +838,7 @@
         },
         "hsaName": {
           "title": "Hsaname",
-          "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+          "description": "Name of Health Service Area. For CBSA, state, and country regions hsaName is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md",
           "anyOf": [
             {
               "type": "string"
@@ -850,7 +850,7 @@
         },
         "hsaPopulation": {
           "title": "Hsapopulation",
-          "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/covid-projections/covid-data-model/blob/main/data/misc/README.md",
+          "description": "Total Population of county's corresponding Health Service Area. For CBSA, state, and country regions hsaPopulation is omitted. For more on HSAs see: https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md",
           "exclusiveMinimum": 0,
           "anyOf": [
             {

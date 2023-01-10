@@ -257,7 +257,7 @@
     },
     "vaccinationsAdditionalDoseRatio": {
       "title": "Vaccinationsadditionaldoseratio",
-      "description": "Ratio of population that are fully vaccinated and have received a booster (or additional) dose.",
+      "description": "Annotations for vaccinationsAdditionalDoseRatio",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"
@@ -266,7 +266,7 @@
     },
     "vaccinationsBivalentDoseRatio": {
       "title": "Vaccinationsbivalentdoseratio",
-      "description": "Ratio of population have received a bivalent vaccine dose.",
+      "description": "Annotations for vaccinationsBivalentDoseRatio.",
       "allOf": [
         {
           "$ref": "#/definitions/FieldAnnotations"

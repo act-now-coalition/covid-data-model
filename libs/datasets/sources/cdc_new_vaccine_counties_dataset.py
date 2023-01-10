@@ -8,6 +8,7 @@ class CDCNewVaccinesCountiesDataset(data_source.CanScraperBase):
     1st dose data and historical timeseries data. This is surfaced by the
     scrapers as provider=cdc2 and we now prefer it over the old data source."""
 
+    # This data source is used to pull in county-level vaccine data from the CDC.
     SOURCE_TYPE = "CDCNewVaccinesCountiesDataset"
 
     VARIABLES = [

@@ -146,7 +146,7 @@ Fields:
 
 ### Beds With Covid Patients Ratio
 
-  Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.
+  Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas
 
 **Where to access**  
 * CSV column names: ``metrics.bedsWithCovidPatientsRatio``
@@ -154,7 +154,7 @@ Fields:
 
 ### Weekly Covid Admissions Per100K
 
-  Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area.
+  Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas
 
 **Where to access**  
 * CSV column names: ``metrics.weeklyCovidAdmissionsPer100k``
@@ -258,7 +258,7 @@ number of people vaccinated with both the first and second dose.
 
 ### Vaccinations Bivalent Dose Ratio
 
-  Ratio of population have received a bivalent vaccine dose.
+  Ratio of population that have received a bivalent vaccine dose.
 
 **Where to access**  
 * CSV column names: ``metrics.vaccinationsBivalentDoseRatio``

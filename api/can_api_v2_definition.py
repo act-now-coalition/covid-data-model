@@ -369,13 +369,10 @@ class Annotations(base_model.APIBaseModel):
         None, description="Annotations for vaccinationsCompletedRatio"
     )
     vaccinationsAdditionalDoseRatio: Optional[FieldAnnotations] = pydantic.Field(
-        None,
-        description=(
-            "Ratio of population that are fully vaccinated and have received a booster (or additional) dose."
-        ),
+        None, description=("Annotations for vaccinationsAdditionalDoseRatio"),
     )
     vaccinationsBivalentDoseRatio: Optional[FieldAnnotations] = pydantic.Field(
-        None, description="Ratio of population have received a bivalent vaccine dose."
+        None, description="Annotations for vaccinationsBivalentDoseRatio."
     )
 
 
@@ -420,12 +417,12 @@ class Metrics(base_model.APIBaseModel):
 
     bedsWithCovidPatientsRatio: Optional[float] = pydantic.Field(
         ...,
-        description="Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area.",
+        description="Ratio of staffed hospital beds that are currently in use by COVID patients. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas",
     )
 
     weeklyCovidAdmissionsPer100k: Optional[float] = pydantic.Field(
         ...,
-        description="Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area.",
+        description="Number of COVID patients per 100k population admitted in the past week. For counties, this is calculated using HSA-level data for the corresponding area. For more on HSAs, see https://apidocs.covidactnow.org/data-definitions/#health-service-areas",
     )
 
     vaccinationsInitiatedRatio: Optional[float] = pydantic.Field(
@@ -441,7 +438,7 @@ class Metrics(base_model.APIBaseModel):
         ),
     )
     vaccinationsBivalentDoseRatio: Optional[float] = pydantic.Field(
-        None, description=("Ratio of population have received a bivalent vaccine dose."),
+        None, description=("Ratio of population that have received a bivalent vaccine dose."),
     )
 
     @staticmethod

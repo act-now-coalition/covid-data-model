@@ -4,6 +4,7 @@ from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 
 
 class CDCVaccinesDataset(data_source.CanScraperBase):
+    # This data source is used to pull in state-level vaccine data from the CDC.
     SOURCE_TYPE = "CDCVaccine"
 
     VARIABLES = [
