@@ -5,7 +5,7 @@ setup(
     name="pyseir",
     version="0.2",
     description=(""),
-    url="https://github.com/covid-projections/covid-data-model/",
+    url="https://github.com/act-now-coalition/covid-data-model/",
     author="covidactnow.com",
     install_requires=["Click",],
     entry_points="""

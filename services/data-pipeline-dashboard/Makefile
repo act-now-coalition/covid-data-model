@@ -1,4 +1,4 @@
-# Inspired by https://github.com/covid-projections/can-scrapers/blob/main/services/prefect/Makefile
+# Inspired by https://github.com/act-now-coalition/can-scrapers/blob/main/services/prefect/Makefile
 
 sync_nginx:
 	sudo cp ./nginx.conf /etc/nginx/sites-available/data-pipeline-dashboard
