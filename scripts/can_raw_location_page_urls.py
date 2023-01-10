@@ -11,7 +11,7 @@ from libs.datasets.dataset_utils import DATA_DIRECTORY
 # NOTE(sean) 1/18/21: This file does not exist anymore, so this script is not functional.
 # This script was used to generate the location page URLs used in the API.
 DATASET_URL = (
-    "https://github.com/act-now-coalition/covid-projections/raw/develop/src/components/"
+    "https://github.com/act-now-coalition/covid-act-now-website/raw/develop/src/components/"
     "MapSelectors/datasets/us_states_dataset_01_02_2020.json"
 )
 CSV_PATH = DATA_DIRECTORY / "misc" / "can_location_page_urls.csv"

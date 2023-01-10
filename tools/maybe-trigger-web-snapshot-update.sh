@@ -2,7 +2,7 @@
 # maybe-trigger-web-snapshot-update.sh
 #
 # Helper script called at the end of the deploy_api.yml workflow to potentially
-# trigger the update-snapshot.yml workflow in the covid-projections repo to
+# trigger the update-snapshot.yml workflow in the covid-act-now-website repo to
 # update to the newly generated snapshot.
 
 set -o nounset
@@ -10,7 +10,7 @@ set -o errexit
 
 CMD=$0
 
-# The covid-projections branch to open a PR against.
+# The covid-act-now-website branch to open a PR against.
 BRANCH="develop"
 
 # Checks command-line arguments, sets variables, etc.
@@ -30,7 +30,7 @@ prepare () {
   fi
 
   if [[ $COVID_DATA_MODEL_REF != "main" ]] ; then
-    echo "Not triggering covid-projections update-snapshot since this isn't a 'main' branch run."
+    echo "Not triggering covid-act-now-website update-snapshot since this isn't a 'main' branch run."
     exit 0
   fi
 
@@ -53,9 +53,9 @@ execute () {
   curl -H "Authorization: token $GITHUB_TOKEN" \
       --request POST \
       --data "{ \"ref\": \"${BRANCH}\", \"inputs\": { \"snapshot_id\": \"${SNAPSHOT_ID}\" } }" \
-      https://api.github.com/repos/act-now-coalition/covid-projections/actions/workflows/update-snapshot.yml/dispatches
+      https://api.github.com/repos/act-now-coalition/covid-act-now-website/actions/workflows/update-snapshot.yml/dispatches
 
-  echo "Snapshot update requested. Go to https://github.com/act-now-coalition/covid-projections/actions to monitor progress."
+  echo "Snapshot update requested. Go to https://github.com/act-now-coalition/covid-act-now-website/actions to monitor progress."
 }
 
 prepare "$@"
