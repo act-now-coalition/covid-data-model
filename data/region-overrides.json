@@ -909,6 +909,6 @@
       "end_date": "2023-01-18",
       "context": "Outlier detection removed data following New Years for some NC counties",
       "region": "37001,37019,37057,37135"
-    },
+    }
   ]
 }
