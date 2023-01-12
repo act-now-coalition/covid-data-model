@@ -7,6 +7,15 @@ description: Updates to the Covid Act Now API.
 
 Updates to the API will be reflected here.
 
+
+### Sunsetting Demographic Vaccine Data
+_2023-01-11_
+
+Unlike the other data in our API, county-level demographic vaccine data is not actively quality assured, and as such, we cannot guarantee that it is of high quality. 
+
+We will continue to provide this data until 02/15/2023, at which point we will remove it from the API. Please reach out to [data@covidactnow.org](mailto:data@covidactnow.org) with any concerns or questions. 
+
+
 ### CDC Community Level data now available 
 _Added on 2022-04-05_
 
