@@ -5,9 +5,13 @@ name: Update combined datasets
 concurrency: gce-runner
 
 on:
-  schedule:
-    # Run job everyday at 5:00 am EST
-    - cron: '0 10 * * *'
+# 2023/01/17: We no longer have a run scheduled via github actions and instead rely on the prefect
+# scrapers to kick off a build after NYT updates each day.
+# https://github.com/covid-projections/can-scrapers/blob/643819f7a42d0ae227453b1de24a317a54c6cde8/services/prefect/flows/scheduled_nyt_and_parquet_updater.py#L37
+#
+#  schedule:
+#    # Run job everyday at 5:00 am EST
+#    - cron: '0 10 * * *'
   workflow_dispatch:
     inputs:
       trigger_api_build:
