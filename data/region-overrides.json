@@ -909,6 +909,24 @@
       "end_date": "2023-01-18",
       "context": "Outlier detection removed data following New Years for some NC counties",
       "region": "37001,37019,37057,37135"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2022-12-29",
+      "end_date": "",
+      "context": "Davidson County, TN WNC going to 0 as of 01/19/2023",
+      "region": "47037"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2023-01-09",
+      "end_date": "2023-01-09",
+      "region": "47157",
+      "context": "Shelby County TN data reporting spike on 01/10/2023"
     }
   ]
 }
