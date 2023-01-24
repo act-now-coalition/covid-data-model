@@ -927,15 +927,6 @@
       "end_date": "2023-01-09",
       "region": "47157",
       "context": "Shelby County TN data reporting spike on 01/10/2023"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2022-12-28",
-      "end_date": "",
-      "region": "21111",
-      "context": "Jefferson County TN not reporting cases since 12/27/2022 as of 01/24/2023"
     }
   ]
 }
