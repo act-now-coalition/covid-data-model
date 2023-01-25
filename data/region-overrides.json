@@ -914,15 +914,6 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "2022-12-29",
-      "end_date": "",
-      "context": "Davidson County, TN WNC going to 0 as of 01/19/2023",
-      "region": "47037"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "2023-01-09",
       "end_date": "2023-01-09",
       "region": "47157",
