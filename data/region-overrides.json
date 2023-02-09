@@ -844,6 +844,15 @@
       "end_date": "2023-01-09",
       "region": "47157",
       "context": "Shelby County TN data reporting spike on 01/10/2023"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.testPositivityRatio",
+      "blocked": true,
+      "start_date": "2023-02-08",
+      "end_date": "2023-02-08",
+      "region": "01073",
+      "context": "Blocked on 2/9/2023: Anamoly in Jefferson County, AL Case data on 2/8/2023"
     }
   ]
 }
