@@ -853,15 +853,6 @@
       "end_date": "2023-02-08",
       "region": "01073",
       "context": "Blocked on 2/9/2023: Anamoly in Jefferson County, AL Case data on 2/8/2023"
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
-      "start_date": "2023-02-06",
-      "end_date": "2023-02-06",
-      "region": "56021",
-      "context": "Blocked on 2/15/2023: Unexpected spike in case data on 2/7/2023"
     }
   ]
 }
