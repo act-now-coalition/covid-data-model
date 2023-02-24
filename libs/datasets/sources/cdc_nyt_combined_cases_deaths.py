@@ -4,8 +4,6 @@ from functools import lru_cache
 import pandas as pd
 from libs.datasets import data_source
 from datapublic.common_fields import CommonFields, PdFields
-from libs.datasets.dataset_utils import REPO_ROOT
-from libs.datasets.new_cases_and_deaths import add_new_cases
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.timeseries import MultiRegionDataset
