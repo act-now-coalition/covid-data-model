@@ -19,7 +19,7 @@ To run the pipeline end-to-end but only generate data for Connecticut state / co
 # Fetches latest scraped data from can-scrapers and combines all data sources
 # into a combined dataset, runs all filters, etc.  Adding --no-refresh-datasets
 # will make this much faster but skips fetching / combining latest datasets.
-./run.py data update --state CT
+./run.py data update --stateS CT
 
 # Runs the pyseir code to generate the infection rate, i.e. r(t) metric data for locations.
 python ./pyseir/cli.py build-all --states=CT

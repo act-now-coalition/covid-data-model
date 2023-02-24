@@ -29,7 +29,7 @@ from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalCountyDataset
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.sources.nytimes_dataset import NYTimesDataset
+from libs.datasets.sources.cdc_nyt_combined_cases_deaths import CdcNytCombinedCasesDeaths
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperCountyProviders
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
@@ -169,8 +169,8 @@ NC_STATE = Region.from_state("NC")
 # Remove counties in MO that overlap with Kansas City and Joplin because we don't handle the
 # reporting done by city, as documented at
 # https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions
-NYTimesDatasetWithoutExceptions = datasource_regions(
-    NYTimesDataset, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
+CdcNytDatasetWithoutExceptions = datasource_regions(
+    CdcNytCombinedCasesDeaths, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
 )
 
 CANScraperUSAFactsProviderWithoutNe = datasource_regions(
@@ -253,11 +253,7 @@ CANScraperStateProvidersWithoutFLCounties = datasource_regions(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [
-        CANScraperStateProviders,
-        CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutExceptions,
-    ],
+    CommonFields.CASES: [CANScraperUSAFactsProvider, CdcNytDatasetWithoutExceptions,],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CANScraperStateProviders,
@@ -270,11 +266,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
-    CommonFields.DEATHS: [
-        CANScraperStateProviders,
-        CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutExceptions,
-    ],
+    CommonFields.DEATHS: [CANScraperUSAFactsProvider, CdcNytDatasetWithoutExceptions,],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
         CANScraperStateProviders,
