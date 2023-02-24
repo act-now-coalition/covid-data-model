@@ -80,8 +80,4 @@ class CdcNytCombinedCasesDeaths(data_source.DataSource):
 
         # TODO: fix the tags
         combined_ts = nyt_ts.combine_first(cdc_ts)
-        merged_ds: MultiRegionDataset = dataclasses.replace(
-            nyt_ds, timeseries=combined_ts, timeseries_bucketed=None,
-        )
-        merged_ds.to_compressed_pickle(REPO_ROOT / "cdc_nyt_combined_cases_deaths.pkl.gz")
-        return add_new_cases(merged_ds)
+        return dataclasses.replace(nyt_ds, timeseries=combined_ts, timeseries_bucketed=None,)
