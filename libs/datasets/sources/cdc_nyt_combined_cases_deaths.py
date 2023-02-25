@@ -1,8 +1,7 @@
-import dataclasses
 from functools import lru_cache
 
 import pandas as pd
-from libs.datasets import data_source
+from libs.datasets import data_source, taglib
 from datapublic.common_fields import CommonFields, PdFields
 from libs.datasets.sources import can_scraper_helpers as ccd_helpers
 from libs.datasets.sources.nytimes_dataset import NYTimesDataset
@@ -38,22 +37,23 @@ class CDCCasesDeaths(data_source.CanScraperBase):
         """Returns a dataset with cumulative cases and deaths from CDC."""
         dataset = super().make_dataset()
 
-        # CDC state-level data only provides weekly datapoints, so we fill forward to get "daily"
-        # granularity. This conforms the data to the format of the NYT data, which the parts
-        # of the pipeline expects.
+        # CDC state-level data only provides weekly datapoints, so we
+        #  add in the missing dates and fill forward to get "daily"
+        # granularity. This conforms the data to the format of the NYT
+        # data, which parts of the pipeline expect.
         def _forward_fill_field(
             dataset: MultiRegionDataset, field: CommonFields
         ) -> MultiRegionDataset:
             # timeseries_bucketed_wide_dates preserves all dates even if they are NaN
             # so we can use it to fill forward.
-            ts_wide: pd.DataFrame = dataset.timeseries_bucketed_wide_dates
-            field_ts = ts_wide.xs(field, level=PdFields.VARIABLE, drop_level=False)
-            filled_ts = field_ts.ffill(limit=6, axis=1)
-            filled_ds = MultiRegionDataset.from_timeseries_wide_dates_df(filled_ts, bucketed=True)
+            ts_filled = dataset.timeseries_bucketed_wide_dates.xs(
+                field, level=PdFields.VARIABLE, drop_level=False
+            ).ffill(limit=6, axis=1)
+            filled_ds = MultiRegionDataset.from_timeseries_wide_dates_df(ts_filled, bucketed=True)
             return dataset.drop_column_if_present(field).join_columns(filled_ds)
 
-        with_filled_cases_ds = _forward_fill_field(dataset, CommonFields.CASES)
-        return _forward_fill_field(with_filled_cases_ds, CommonFields.DEATHS)
+        with_ffilled_cases_ds = _forward_fill_field(dataset, CommonFields.CASES)
+        return _forward_fill_field(with_ffilled_cases_ds, CommonFields.DEATHS)
 
 
 class CdcNytCombinedCasesDeaths(data_source.DataSource):
@@ -65,9 +65,7 @@ class CdcNytCombinedCasesDeaths(data_source.DataSource):
     @classmethod
     @lru_cache(None)
     def make_dataset(cls) -> MultiRegionDataset:
-        """Use historical data when possible, use as-originally-posted for data that the historical dataset does not have.
-        """
-
+        """Combines the CDC and NYT datasets into a single dataset."""
         nyt_ds = NYTimesDataset.make_dataset()
         cdc_ds = CDCCasesDeaths.make_dataset()
 
@@ -76,6 +74,15 @@ class CdcNytCombinedCasesDeaths(data_source.DataSource):
             f"{CommonFields.DATE} >= '{NYT_CUTOFF_DATE}'"
         )
 
-        # TODO: fix the tags
+        # Manually creating tags for simplicity's sake
+        tag = taglib.Source(
+            type="CDC and NYT Combined",
+            url=[
+                "https://github.com/nytimes/covid-19-data",
+                "https://covid.cdc.gov/covid-data-tracker/#datatracker-home",
+            ],
+            name=f"NYT data before {NYT_CUTOFF_DATE}, CDC data after {NYT_CUTOFF_DATE}",
+        )
+
         combined_ts = nyt_ts.combine_first(cdc_ts)
-        return dataclasses.replace(nyt_ds, timeseries=combined_ts, timeseries_bucketed=None,)
+        return MultiRegionDataset(timeseries=combined_ts).add_tag_all_bucket(tag)

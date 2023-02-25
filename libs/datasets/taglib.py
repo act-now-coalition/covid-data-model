@@ -6,7 +6,7 @@ import json
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Union
 from typing import ClassVar
 from typing import Iterable
 from typing import List
@@ -128,7 +128,7 @@ class UrlStr(str):
 
     # If we need to do more with URLs consider replacing UrlStr with https://pypi.org/project/yarl/
     @staticmethod
-    def make_optional(str_in: Optional[str]) -> Optional["UrlStr"]:
+    def make_optional(str_in: Optional[Union[str, List[str]]]) -> Optional["UrlStr"]:
         return UrlStr(str_in) if str_in else None
 
 
@@ -150,7 +150,7 @@ class SourceUrl(TagInTimeseries):
 @dataclass_with_default_init(frozen=True)
 class Source(TagInTimeseries):
     type: str
-    url: Optional[UrlStr] = None
+    url: Optional[Union[UrlStr, List[UrlStr]]] = None
     name: Optional[str] = None
 
     TAG_TYPE = TagType.SOURCE
