@@ -76,7 +76,7 @@ class CdcNytCombinedCasesDeaths(data_source.DataSource):
 
         # Manually creating tags for simplicity's sake
         tag = taglib.Source(
-            type="CDC and NYT Combined",
+            type="CdcNyt",
             url=[
                 "https://github.com/nytimes/covid-19-data",
                 "https://covid.cdc.gov/covid-data-tracker/#datatracker-home",

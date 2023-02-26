@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 import enum
 import textwrap
 
@@ -270,8 +270,8 @@ class FieldSource(base_model.APIBaseModel):
     type: Optional[FieldSourceType] = pydantic.Field(
         None, description="The type of data source from a CAN list of data source types"
     )
-    url: Optional[str] = pydantic.Field(
-        None, description="URL of a webpage containing the data at the source"
+    url: Optional[Union[str, List[str]]] = pydantic.Field(
+        None, description="URL(s) of a webpage containing the data at the source"
     )
     name: Optional[str] = pydantic.Field(None, description="A human readable name of the source")
 

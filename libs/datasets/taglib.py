@@ -128,19 +128,19 @@ class UrlStr(str):
 
     # If we need to do more with URLs consider replacing UrlStr with https://pypi.org/project/yarl/
     @staticmethod
-    def make_optional(str_in: Optional[Union[str, List[str]]]) -> Optional["UrlStr"]:
+    def make_optional(str_in: Optional[str]) -> Optional["UrlStr"]:
         return UrlStr(str_in) if str_in else None
 
 
 @dataclass(frozen=True)
 class SourceUrl(TagInTimeseries):
-    source: UrlStr
+    source: Union[str, List[str]]
 
     TAG_TYPE = TagType.SOURCE_URL
 
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        return cls(source=UrlStr(content))
+        return cls(source=content)
 
     @property
     def content(self) -> str:
@@ -150,7 +150,7 @@ class SourceUrl(TagInTimeseries):
 @dataclass_with_default_init(frozen=True)
 class Source(TagInTimeseries):
     type: str
-    url: Optional[Union[UrlStr, List[UrlStr]]] = None
+    url: Optional[Union[str, List[str]]] = None
     name: Optional[str] = None
 
     TAG_TYPE = TagType.SOURCE
@@ -224,7 +224,7 @@ class Source(TagInTimeseries):
         content_parsed = json.loads(content)
         return cls(
             type=content_parsed["type"],
-            url=UrlStr.make_optional(content_parsed.get("url", None)),
+            url=content_parsed.get("url", None),
             name=content_parsed.get("name", None),
         )
 
