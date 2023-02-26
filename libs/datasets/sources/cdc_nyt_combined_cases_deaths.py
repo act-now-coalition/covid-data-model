@@ -8,7 +8,7 @@ from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.timeseries import MultiRegionDataset
 
 
-NYT_CUTOFF_DATE = "2023-01-15"
+NYT_CUTOFF_DATE = "2023-03-01"
 
 
 class CDCCasesDeaths(data_source.CanScraperBase):
@@ -38,7 +38,7 @@ class CDCCasesDeaths(data_source.CanScraperBase):
         dataset = super().make_dataset()
 
         # CDC state-level data only provides weekly datapoints, so we
-        #  add in the missing dates and fill forward to get "daily"
+        # add in the missing dates and fill forward to get "daily"
         # granularity. This conforms the data to the format of the NYT
         # data, which parts of the pipeline expect.
         def _forward_fill_field(
@@ -48,7 +48,7 @@ class CDCCasesDeaths(data_source.CanScraperBase):
             # so we can use it to fill forward.
             ts_filled = dataset.timeseries_bucketed_wide_dates.xs(
                 field, level=PdFields.VARIABLE, drop_level=False
-            ).ffill(limit=6, axis=1)
+            ).ffill(axis=1)
             filled_ds = MultiRegionDataset.from_timeseries_wide_dates_df(ts_filled, bucketed=True)
             return dataset.drop_column_if_present(field).join_columns(filled_ds)
 
