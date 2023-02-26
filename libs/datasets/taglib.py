@@ -134,13 +134,13 @@ class UrlStr(str):
 
 @dataclass(frozen=True)
 class SourceUrl(TagInTimeseries):
-    source: Union[str, List[str]]
+    source: Union[UrlStr, List[UrlStr]]
 
     TAG_TYPE = TagType.SOURCE_URL
 
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
-        return cls(source=content)
+        return cls(source=UrlStr(content))
 
     @property
     def content(self) -> str:
@@ -150,7 +150,7 @@ class SourceUrl(TagInTimeseries):
 @dataclass_with_default_init(frozen=True)
 class Source(TagInTimeseries):
     type: str
-    url: Optional[Union[str, List[str]]] = None
+    url: Optional[Union[UrlStr, List[UrlStr]]] = None
     name: Optional[str] = None
 
     TAG_TYPE = TagType.SOURCE
@@ -222,11 +222,12 @@ class Source(TagInTimeseries):
     @classmethod
     def make_instance(cls, *, content: str) -> "TagInTimeseries":
         content_parsed = json.loads(content)
-        return cls(
-            type=content_parsed["type"],
-            url=content_parsed.get("url", None),
-            name=content_parsed.get("name", None),
-        )
+        raw_url = content_parsed.get("url", None)
+        if isinstance(raw_url, list):
+            url = [UrlStr.make_optional(u) for u in raw_url]
+        else:
+            url = UrlStr.make_optional(raw_url)
+        return cls(type=content_parsed["type"], url=url, name=content_parsed.get("name", None),)
 
     @property
     def content(self) -> str:
