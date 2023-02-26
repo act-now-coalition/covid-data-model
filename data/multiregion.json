@@ -2,9 +2,17 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
+<<<<<<< HEAD
     "sha": "719b62a8402736fe47c9233dd8cb13e30c5e2b11",
     "branch": "smcclure17/cdc-cases",
     "is_dirty": true
   },
   "updated_at": "2023-02-25T17:00:35.708140"
+=======
+    "sha": "a801d99e93e46f2846dc4cf6d5fa03a9b7fb9ce6",
+    "branch": "smcclure17/cdc-cases",
+    "is_dirty": true
+  },
+  "updated_at": "2023-02-25T00:18:58.698723"
+>>>>>>> 5066502f185140e3066cd205c1eceb3493cad395
 }
