@@ -29,7 +29,10 @@ from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalCountyDataset
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.sources.cdc_nyt_combined_cases_deaths import CdcNytCombinedCasesDeaths
+from libs.datasets.sources.cdc_nyt_combined_cases_deaths import (
+    CdcNytCombinedCasesDeaths,
+    CDCCasesDeaths,
+)
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperCountyProviders
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
 from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
@@ -253,11 +256,7 @@ CANScraperStateProvidersWithoutFLCounties = datasource_regions(
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [
-        CANScraperStateProviders,
-        CANScraperUSAFactsProvider,
-        CdcNytDatasetWithoutExceptions,
-    ],
+    CommonFields.CASES: [CDCCasesDeaths, CdcNytDatasetWithoutExceptions,],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CANScraperStateProviders,
@@ -270,11 +269,7 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
-    CommonFields.DEATHS: [
-        CANScraperStateProviders,
-        CANScraperUSAFactsProvider,
-        CdcNytDatasetWithoutExceptions,
-    ],
+    CommonFields.DEATHS: [CDCCasesDeaths, CdcNytDatasetWithoutExceptions,],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
         CANScraperStateProviders,
