@@ -804,15 +804,6 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "",
-      "end_date": "",
-      "region": "29097,29037,29145,29047,29165,29095",
-      "context": "Jasper, Cass, Newton, Clay, Platte, Jackson County MO having anamalous data."
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "2022-11-27",
       "end_date": "2022-11-27",
       "region": "26161",
