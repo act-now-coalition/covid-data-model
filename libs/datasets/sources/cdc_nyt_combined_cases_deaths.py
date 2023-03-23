@@ -8,7 +8,7 @@ from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.timeseries import MultiRegionDataset
 
 
-NYT_CUTOFF_DATE = "2023-03-01"
+NYT_CUTOFF_DATE = "2023-03-23"
 
 
 class CDCCasesDeaths(data_source.CanScraperBase):
