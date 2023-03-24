@@ -804,15 +804,6 @@
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
-      "start_date": "",
-      "end_date": "",
-      "region": "29097,29037,29145,29047,29165,29095",
-      "context": "Jasper, Cass, Newton, Clay, Platte, Jackson County MO having anamalous data."
-    },
-    {
-      "include": "region",
-      "metric": "metrics.caseDensity",
-      "blocked": true,
       "start_date": "2022-11-27",
       "end_date": "2022-11-27",
       "region": "26161",
@@ -859,9 +850,9 @@
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
       "start_date": "2023-02-14",
-      "end_date": "",
+      "end_date": "2023-02-15",
       "region": "MS",
-      "context": "Blocked on 16 Feb: Latest data for Feb 14 and Feb 15 are incorrect (at 20% when they were at 4% before)."
+      "context": "Blocked on 16 Feb: Latest data for Feb 14 and Feb 15 are incorrect (at 20% when they were at 4% before). I've reported this to HHS. They've acknowledged the error, but as of 14 days later, have not fixed it."
     }
   ]
 }
