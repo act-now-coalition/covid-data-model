@@ -8,7 +8,10 @@ from libs.datasets.sources.nytimes_dataset import NYTimesDataset
 from libs.datasets.timeseries import MultiRegionDataset
 
 
-NYT_CUTOFF_DATE = "2023-03-23"
+# Date at which to stop using NYT data and start using CDC data.
+# NYT was archived on 2021-03-23, but we use 2021-03-25 to avoid
+# including weekly CDC data that would include duplicate/overlapping data.
+NYT_CUTOFF_DATE = "2023-03-25"
 
 
 class CDCCasesDeaths(data_source.CanScraperBase):
