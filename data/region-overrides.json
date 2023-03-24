@@ -853,6 +853,16 @@
       "end_date": "2023-02-15",
       "region": "MS",
       "context": "Blocked on 16 Feb: Latest data for Feb 14 and Feb 15 are incorrect (at 20% when they were at 4% before). I've reported this to HHS. They've acknowledged the error, but as of 14 days later, have not fixed it."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "region": "48157, 48245, 48041, 48397, 48005, 48373",
+      "context": "Texas counties had a large backlog approx March 15th, which also caused our outlier detection to block the 22nd, which appear valid.",
+      "disclaimer": "Some counties in Texas reported a large backlog of cases in mid-March. We are in the process of trying to back-distribute those cases, but please treat reported case numbers in these counties with caution.",
+      "start_date": "",
+      "end_date": ""
     }
   ]
 }
