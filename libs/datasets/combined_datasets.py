@@ -21,7 +21,6 @@ from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
 from libs.datasets import manual_filter
-from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalStateDataset
@@ -35,7 +34,6 @@ from libs.datasets.sources.cdc_nyt_combined_cases_deaths import (
 )
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperCountyProviders
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
-from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 from libs.datasets.sources.cdc_testing_dataset import CDCCombinedTestingDataset
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hsa_population import HSAPopulation
@@ -168,16 +166,12 @@ NE_COUNTIES = RegionMask(AggregationLevel.COUNTY, states=["NE"])
 NC_STATE = Region.from_state("NC")
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
-# Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
+# Remove all the NYC data so that only CDC (which reports each borough separately) is used.
 # Remove counties in MO that overlap with Kansas City and Joplin because we don't handle the
 # reporting done by city, as documented at
 # https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions
 CdcNytDatasetWithoutExceptions = datasource_regions(
-    CdcNytCombinedCasesDeaths, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
-)
-
-CANScraperUSAFactsProviderWithoutNe = datasource_regions(
-    CANScraperUSAFactsProvider, exclude=[NE_COUNTIES]
+    CdcNytCombinedCasesDeaths, exclude=[*KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
 )
 
 CDCVaccinesCountiesDataset = datasource_regions(
