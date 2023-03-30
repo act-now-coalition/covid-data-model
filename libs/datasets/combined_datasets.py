@@ -9,6 +9,7 @@ from typing import TypeVar
 from typing import Union
 
 import pandas as pd
+from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 from libs.datasets.sources.cdc_community_levels_dataset import CDCCommunityLevelsDataset
 import structlog
 
@@ -171,7 +172,7 @@ NC_STATE = Region.from_state("NC")
 # reporting done by city, as documented at
 # https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions
 CdcNytDatasetWithoutExceptions = datasource_regions(
-    CdcNytCombinedCasesDeaths, exclude=[*KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
+    CdcNytCombinedCasesDeaths, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
 )
 
 CDCVaccinesCountiesDataset = datasource_regions(
