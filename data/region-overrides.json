@@ -863,6 +863,15 @@
       "disclaimer": "Some counties in Texas reported a large backlog of cases in mid-March. We are in the process of trying to back-distribute those cases, but please treat reported case numbers in these counties with caution.",
       "start_date": "",
       "end_date": ""
+    },
+    {
+      "include": "region-and-subregions",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2023-03-23",
+      "end_date": "2023-03-23",
+      "region": "AK, AL, AR, AS, AZ, CA, CO, CT, DC, DE, FL, GA, HI, IA, ID, IL, IN, KS, KY, LA, MA, MD, ME, MI, MN, MO, MP, MS, MT, NC, ND, NE, NH, NJ, NM, NV, NY, OH, OK, OR, PA, PR, RI, SC, SD, TN, TX, UT, VA, VT, WA, WI, WV, WY",
+      "context": "NYT data overlapping with CDC data, causing double-counting for March 23rd, 2023"
     }
   ]
 }
