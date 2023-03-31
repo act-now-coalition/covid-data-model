@@ -30,7 +30,7 @@ from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
 from libs.datasets.sources.cdc_nyt_combined_cases_deaths import (
-    CdcNytCombinedCasesDeaths,
+    CDCNYTCombinedCasesDeaths,
     CDCCasesDeaths,
 )
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperCountyProviders
@@ -171,8 +171,8 @@ NC_STATE = Region.from_state("NC")
 # Remove counties in MO that overlap with Kansas City and Joplin because we don't handle the
 # reporting done by city, as documented at
 # https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions
-CdcNytDatasetWithoutExceptions = datasource_regions(
-    CdcNytCombinedCasesDeaths, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
+FilteredCDCNYTDataset = datasource_regions(
+    CDCNYTCombinedCasesDeaths, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
 )
 
 CDCVaccinesCountiesDataset = datasource_regions(
@@ -250,8 +250,11 @@ CANScraperStateProvidersWithoutFLCounties = datasource_regions(
 # immediately obvious as to the transformations that are or are not applied.
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
+# TLDR: For each field, we read from right to left through the list and stop once
+# we have any data for that particular region. Meaning, the rightmost dataset is the highest priority.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [CDCCasesDeaths, CdcNytDatasetWithoutExceptions,],
+    # For locations that the NYT didn't cover, just use the CDC data for the whole history
+    CommonFields.CASES: [CDCCasesDeaths, FilteredCDCNYTDataset,],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CANScraperStateProviders,
@@ -264,7 +267,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
-    CommonFields.DEATHS: [CDCCasesDeaths, CdcNytDatasetWithoutExceptions,],
+    # For locations that the NYT didn't cover, just use the CDC data for the whole history
+    CommonFields.DEATHS: [CDCCasesDeaths, FilteredCDCNYTDataset,],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
         CANScraperStateProviders,

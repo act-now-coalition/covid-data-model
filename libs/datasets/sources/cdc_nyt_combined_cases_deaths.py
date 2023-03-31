@@ -48,7 +48,10 @@ class CDCCasesDeaths(data_source.CanScraperBase):
             dataset: MultiRegionDataset, field: CommonFields
         ) -> MultiRegionDataset:
             # timeseries_bucketed_wide_dates preserves all dates even if they are NaN
-            # so we can use it to fill forward.
+            # so we can use it to fill forward. So we:
+            # 1. Get the wide timeseries for the field we want to fill forward (which fills in the missing dates)
+            # 2. Create a new dataset from that timeseries
+            # 3. Drop the field from the original dataset and join the new dataset, which includes the filled forward field
             ts_filled = dataset.timeseries_bucketed_wide_dates.xs(
                 field, level=PdFields.VARIABLE, drop_level=False
             ).ffill(axis=1)
@@ -59,10 +62,10 @@ class CDCCasesDeaths(data_source.CanScraperBase):
         return _forward_fill_field(with_ffilled_cases_ds, CommonFields.DEATHS)
 
 
-class CdcNytCombinedCasesDeaths(data_source.DataSource):
+class CDCNYTCombinedCasesDeaths(data_source.DataSource):
     """Data source combining the CDC's historical and as-originally-posted datasets."""
 
-    SOURCE_TYPE = "CdcNytCombinedCasesDeaths"
+    SOURCE_TYPE = "CDCNYTCombinedCasesDeaths"
     EXPECTED_FIELDS = [CommonFields.CASES, CommonFields.DEATHS]
 
     @classmethod
@@ -79,12 +82,12 @@ class CdcNytCombinedCasesDeaths(data_source.DataSource):
 
         # Manually creating tags for simplicity's sake
         tag = taglib.Source(
-            type="CdcNyt",
+            type="CDCNYT",
             url=[
                 "https://github.com/nytimes/covid-19-data",
                 "https://covid.cdc.gov/covid-data-tracker/#datatracker-home",
             ],
-            name=f"NYT data before {NYT_CUTOFF_DATE}, CDC data after {NYT_CUTOFF_DATE}",
+            name=f"Daily-resolution NYT data before {NYT_CUTOFF_DATE}, weekly-resolution CDC data afterwards.",
         )
 
         combined_ts = nyt_ts.combine_first(cdc_ts)
