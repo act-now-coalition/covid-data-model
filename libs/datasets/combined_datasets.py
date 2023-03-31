@@ -9,6 +9,7 @@ from typing import TypeVar
 from typing import Union
 
 import pandas as pd
+from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 from libs.datasets.sources.cdc_community_levels_dataset import CDCCommunityLevelsDataset
 import structlog
 
@@ -21,7 +22,6 @@ from libs.datasets import dataset_utils
 from libs.datasets import data_source
 from libs.datasets import dataset_pointer
 from libs.datasets import manual_filter
-from libs.datasets.custom_aggregations import ALL_NYC_REGIONS
 from libs.datasets.dataset_pointer import DatasetPointer
 from libs.datasets.dataset_utils import DatasetType
 from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalStateDataset
@@ -29,10 +29,12 @@ from libs.datasets.sources.hhs_hospital_dataset import HHSHospitalCountyDataset
 from libs.datasets.sources.test_and_trace import TestAndTraceData
 from libs.datasets.timeseries import MultiRegionDataset
 from libs.datasets.timeseries import OneRegionTimeseriesDataset
-from libs.datasets.sources.nytimes_dataset import NYTimesDataset
+from libs.datasets.sources.cdc_nyt_combined_cases_deaths import (
+    CDCNYTCombinedCasesDeaths,
+    CDCCasesDeaths,
+)
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperCountyProviders
 from libs.datasets.sources.can_scraper_local_dashboard_providers import CANScraperStateProviders
-from libs.datasets.sources.can_scraper_usafacts import CANScraperUSAFactsProvider
 from libs.datasets.sources.cdc_testing_dataset import CDCCombinedTestingDataset
 from libs.datasets.sources.fips_population import FIPSPopulation
 from libs.datasets.sources.hsa_population import HSAPopulation
@@ -165,16 +167,12 @@ NE_COUNTIES = RegionMask(AggregationLevel.COUNTY, states=["NE"])
 NC_STATE = Region.from_state("NC")
 
 # NY Times has cases and deaths for all boroughs aggregated into 36061 / New York County.
-# Remove all the NYC data so that USAFacts (which reports each borough separately) is used.
+# Remove all the NYC data so that only CDC (which reports each borough separately) is used.
 # Remove counties in MO that overlap with Kansas City and Joplin because we don't handle the
 # reporting done by city, as documented at
 # https://github.com/nytimes/covid-19-data/blob/master/README.md#geographic-exceptions
-NYTimesDatasetWithoutExceptions = datasource_regions(
-    NYTimesDataset, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
-)
-
-CANScraperUSAFactsProviderWithoutNe = datasource_regions(
-    CANScraperUSAFactsProvider, exclude=[NE_COUNTIES]
+FilteredCDCNYTDataset = datasource_regions(
+    CDCNYTCombinedCasesDeaths, exclude=[*ALL_NYC_REGIONS, *KANSAS_CITY_COUNTIES, *JOPLIN_COUNTIES],
 )
 
 CDCVaccinesCountiesDataset = datasource_regions(
@@ -252,12 +250,11 @@ CANScraperStateProvidersWithoutFLCounties = datasource_regions(
 # immediately obvious as to the transformations that are or are not applied.
 # One way of dealing with this is going from showcasing datasets dependencies
 # to showingcasing a dependency graph of transformations.
+# TLDR: For each field, we read from right to left through the list and stop once
+# we have any data for that particular region. Meaning, the rightmost dataset is the highest priority.
 ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
-    CommonFields.CASES: [
-        CANScraperStateProviders,
-        CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutExceptions,
-    ],
+    # For locations that the NYT didn't cover, just use the CDC data for the whole history
+    CommonFields.CASES: [CDCCasesDeaths, FilteredCDCNYTDataset,],
     CommonFields.CONTACT_TRACERS_COUNT: [TestAndTraceData],
     CommonFields.CURRENT_HOSPITALIZED: [
         CANScraperStateProviders,
@@ -270,11 +267,8 @@ ALL_TIMESERIES_FEATURE_DEFINITION: FeatureDataSourceMap = {
         HHSHospitalStateDataset,
     ],
     CommonFields.CURRENT_ICU_TOTAL: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
-    CommonFields.DEATHS: [
-        CANScraperStateProviders,
-        CANScraperUSAFactsProvider,
-        NYTimesDatasetWithoutExceptions,
-    ],
+    # For locations that the NYT didn't cover, just use the CDC data for the whole history
+    CommonFields.DEATHS: [CDCCasesDeaths, FilteredCDCNYTDataset,],
     CommonFields.HOSPITAL_BEDS_IN_USE_ANY: [HHSHospitalCountyDataset, HHSHospitalStateDataset],
     CommonFields.ICU_BEDS: [
         CANScraperStateProviders,
