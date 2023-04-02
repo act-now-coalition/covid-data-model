@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "58902a5c71f426119281b886d863f8d34394d2a0",
-    "branch": "main",
+    "sha": "82a597d75c1ce797f77a8ee4dda6a4c201c4d329",
+    "branch": "smcclure17/change-switch-date",
     "is_dirty": true
   },
-  "updated_at": "2023-04-02T06:54:02.175870"
+  "updated_at": "2023-04-02T17:39:29.814990"
 }
