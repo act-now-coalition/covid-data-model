@@ -863,6 +863,15 @@
       "disclaimer": "Some counties in Texas reported a large backlog of cases in mid-March. We are in the process of trying to back-distribute those cases, but please treat reported case numbers in these counties with caution.",
       "start_date": "",
       "end_date": ""
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": true,
+      "start_date": "2023-03-23",
+      "end_date": "2023-03-23",
+      "context": "Anamolies caused by NYT/CDC data switch. Blocked on 04/02/2023",
+      "region": "51750, 05007, 05051, 05125"
     }
   ]
 }
