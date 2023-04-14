@@ -26,7 +26,10 @@ CONTACT_TRACERS_PER_CASE = 5
 RT_TRUNCATION_DAYS = 7
 
 
-# Apr 2023: This lookback period interacts with DNC forward fill in a way that can cause a transient unknown score for a day. I'm going to generally relax this criteria across all metrics given the state of recent reporting (i.e. DNC now sourced from CDC on a weekly basis).
+# Apr 2023: This lookback period interacts with DNC forward fill in a way that
+# can cause a transient unknown score for a day. I'm going to generally relax
+# this criteria across all metrics given the state of recent reporting
+# (i.e. DNC now sourced from CDC on a weekly basis).
 MAX_METRIC_LOOKBACK_DAYS = 21
 
 
