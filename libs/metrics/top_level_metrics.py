@@ -26,9 +26,8 @@ CONTACT_TRACERS_PER_CASE = 5
 RT_TRUNCATION_DAYS = 7
 
 
-# CMS and HHS testing data can both lag by more than 7 days. Let's use it unless it's >2 weeks old.
-# TODO(michael): Consider having different lookback values per metric, but this is fine for now.
-MAX_METRIC_LOOKBACK_DAYS = 15
+# Apr 2023: This lookback period interacts with DNC forward fill in a way that can cause a transient unknown score for a day. I'm going to generally relax this criteria across all metrics given the state of recent reporting (i.e. DNC now sourced from CDC on a weekly basis).
+MAX_METRIC_LOOKBACK_DAYS = 21
 
 
 EMPTY_TS = pd.Series([], dtype="float64")
@@ -80,7 +79,9 @@ def has_data_in_past_10_days(series: pd.Series) -> bool:
 
 
 def calculate_metrics_for_timeseries(
-    timeseries: OneRegionTimeseriesDataset, rt_data: Optional[OneRegionTimeseriesDataset], log,
+    timeseries: OneRegionTimeseriesDataset,
+    rt_data: Optional[OneRegionTimeseriesDataset],
+    log,
 ) -> Tuple[pd.DataFrame, Metrics]:
     # Making sure that the timeseries object passed in is only for one fips.
     assert timeseries.has_one_region()
@@ -188,7 +189,6 @@ def _lookup_test_positivity_method(
 
 
 def _remove_trailing_zeros_until_threshold(series: pd.Series, stall_length: int) -> pd.Series:
-
     series = pd.Series(series.values.copy(), index=series.index.get_level_values(CommonFields.DATE))
     last_nonzero_index = series.loc[series != 0].last_valid_index()
     last_index = series.last_valid_index()
@@ -207,7 +207,8 @@ def _remove_trailing_zeros_until_threshold(series: pd.Series, stall_length: int)
 
 
 def copy_test_positivity(
-    dataset_in: OneRegionTimeseriesDataset, log,
+    dataset_in: OneRegionTimeseriesDataset,
+    log,
 ) -> Tuple[pd.Series, TestPositivityRatioDetails]:
     data = dataset_in.date_indexed
     test_positivity = common_df.get_timeseries(data, CommonFields.TEST_POSITIVITY, EMPTY_TS)
@@ -227,7 +228,6 @@ def copy_test_positivity(
 
 
 def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7, stall_length: int = 14):
-
     if new_cases.first_valid_index() is None:
         return new_cases
 
