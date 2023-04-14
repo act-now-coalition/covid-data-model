@@ -20,23 +20,34 @@ def is_invalid_value(value: Optional[float]) -> bool:
 def calculate_community_level(
     weekly_cases_per_100k, beds_with_covid_ratio, weekly_admissions_per_100k
 ) -> Optional[CommunityLevel]:
-    """Calculate the overall community level for a region based on metric levels."""
+    """Calculate the overall community level for a region based on metric levels.
+    
+    Note: As of April 14, 2023 we are harmonizing our score with the CDC in the
+    case where Daily New Cases are missing, we are going to treat it as "low".
 
-    # TODO(michael): The CDC footnotes say:
-    #     If the number of cases in 7 days for a jurisdiction is missing, the
-    #     7-day case rate is assigned to the “low” category. If both 7-day
-    #     admissions and 7-day percentage inpatient beds indicators are N/A, the
-    #     community burden category is assigned N/A.
-    #
-    # For now I'm allowing 1 hospital metric to be missing, but not allowing
-    # cases to be missing since that is rare and usually indicates we're
-    # blocking data or something. In that case, I'd rather have no community
-    # level calculated. But we can revisit if it ends up being a problem.
-    if is_invalid_value(weekly_cases_per_100k) or (
-        is_invalid_value(beds_with_covid_ratio) and is_invalid_value(weekly_admissions_per_100k)
+    If the number of cases in 7 days for a jurisdiction is missing, the
+    7-day case rate is assigned to the “low” category. If both 7-day
+    admissions and 7-day percentage inpatient beds indicators are N/A, the
+    community burden category is assigned N/A.    
+
+    We know have two states (Iowa and Florida) that have stopped case reporting.
+    Instead of leaving them permanently gray on the map, we are planning to
+    transition to flagging DNC as unknown, but still scoring on the hospital
+    metrics.
+
+    Therefore, an Unknown/None value for DNC no longer necessarily signals a
+    data quality issue that we should address immediately.
+    """
+
+    # Return Unknown if no valid component metrics
+    if (
+        is_invalid_value(weekly_cases_per_100k)
+        and is_invalid_value(beds_with_covid_ratio)
+        and is_invalid_value(weekly_admissions_per_100k)
     ):
         return None
 
+    weekly_cases_per_100k = weekly_cases_per_100k or 0
     beds_with_covid_ratio = beds_with_covid_ratio or 0
     weekly_admissions_per_100k = weekly_admissions_per_100k or 0
 

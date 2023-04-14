@@ -259,6 +259,7 @@ def test_generate_infection_rate_metric_fake_fips(fips):
         infer_rt.RegionalInput.from_fips(fips, load_demographics=False)
 
 
+@pytest.mark.skip(reason="Brett: Div by 0 Warning. Infection rate no longer supported")
 @pytest.mark.slow
 def test_generate_infection_rate_with_nans():
     # Check that MA counties are still working

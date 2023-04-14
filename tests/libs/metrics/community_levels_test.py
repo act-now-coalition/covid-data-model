@@ -21,9 +21,9 @@ from tests.test_helpers import build_one_region_dataset
         (200, 0.0999, 10, CommunityLevel.HIGH),
         (0.0, 0.0, None, CommunityLevel.LOW),
         (0.0, None, 0.0, CommunityLevel.LOW),
-        # If missing cases or both hospital metrics, we don't calculate a level.
-        (None, 0.0, 0.0, None),
-        (0.0, None, None, None),
+        (None, 0.0, 0.0, CommunityLevel.LOW),  # 14 April 2023: No DNC now valid.
+        (None, None, 0.0, CommunityLevel.LOW),
+        (None, None, None, None),
     ],
 )
 def test_calc_community_levels(
@@ -55,5 +55,6 @@ def test_stale_community_levels():
 
     # We allow cdcCommunityLevel to be arbitrarily stale, so it should still be HIGH.
     assert latest.cdcCommunityLevel == CommunityLevel.HIGH
-    # canCommunityLevel is missing case data for 15 days so it will be None.
-    assert latest.canCommunityLevel == None
+    # canCommunityLevel is missing case data for 15 days, so it will be None.
+    # As of 14 April 2023, we now are accepting None, so it should still be HIGH.
+    assert latest.canCommunityLevel == CommunityLevel.HIGH
