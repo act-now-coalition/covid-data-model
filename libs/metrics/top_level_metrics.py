@@ -26,9 +26,12 @@ CONTACT_TRACERS_PER_CASE = 5
 RT_TRUNCATION_DAYS = 7
 
 
-# CMS and HHS testing data can both lag by more than 7 days. Let's use it unless it's >2 weeks old.
-# TODO(michael): Consider having different lookback values per metric, but this is fine for now.
-MAX_METRIC_LOOKBACK_DAYS = 15
+# 14 April 2023: Bumped this lookback mask to 21 days. It's interacting with
+# the DNC ffill causing a single day unknown before ffill takes over. I'm
+# bumping this, as opposed to the pulling ffill earlier because I want DNC to
+# stay at latest non-zero value for as long as possible. I could make this DNC
+# specific, but I'm okay with this general relaxation for now.
+MAX_METRIC_LOOKBACK_DAYS = 21
 
 
 EMPTY_TS = pd.Series([], dtype="float64")
