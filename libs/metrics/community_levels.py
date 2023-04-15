@@ -39,7 +39,7 @@ def calculate_community_level(
     data quality issue that we should address immediately.
     """
 
-    # Return Unknown if no valid component metrics
+    # Return None if no valid component metrics
     if (
         is_invalid_value(weekly_cases_per_100k)
         and is_invalid_value(beds_with_covid_ratio)
