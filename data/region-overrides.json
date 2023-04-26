@@ -874,7 +874,7 @@
       "region": "51750, 05007, 05051, 05125"
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": false,
       "start_date": "",
@@ -884,7 +884,7 @@
       "disclaimer": "On April 1, 2023, Iowa stopped reporting Covid case data to the CDC. As such, we are unable to display up-to-date data for the state and its counties."
     },
     {
-      "include": "region",
+      "include": "region-and-subregions",
       "metric": "metrics.caseDensity",
       "blocked": false,
       "start_date": "",
