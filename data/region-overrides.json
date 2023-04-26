@@ -882,6 +882,16 @@
       "region": "IA",
       "context": "Iowa stopped reporting cases on April 1, 2023",
       "disclaimer": "On April 1, 2023, Iowa stopped reporting Covid case data to the CDC. As such, we are unable to display up-to-date data for the state and its counties."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "FL",
+      "context": "FL (temporarily?) stopped reporting covid cases on april 1 2023",
+      "disclaimer": "On April 1, 2023, Florida stopped reporting Covid case data to the CDC. As such, we are unable to display up-to-date data for the state and its counties."
     }
   ]
 }
