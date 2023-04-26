@@ -872,6 +872,16 @@
       "end_date": "2023-03-23",
       "context": "Anamolies caused by NYT/CDC data switch. Blocked on 04/02/2023",
       "region": "51750, 05007, 05051, 05125"
+    },
+    {
+      "include": "region",
+      "metric": "metrics.caseDensity",
+      "blocked": false,
+      "start_date": "",
+      "end_date": "",
+      "region": "IA",
+      "context": "Iowa stopped reporting cases on April 1, 2023",
+      "disclaimer": "On April 1, 2023, Iowa stopped reporting Covid case data to the CDC. As such, we are unable to display up-to-date data for the state and its counties."
     }
   ]
 }
