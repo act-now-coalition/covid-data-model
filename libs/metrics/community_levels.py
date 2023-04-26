@@ -39,17 +39,19 @@ def calculate_community_level(
     data quality issue that we should address immediately.
     """
 
-    # Return None if no valid component metrics
-    if (
-        is_invalid_value(weekly_cases_per_100k)
-        and is_invalid_value(beds_with_covid_ratio)
-        and is_invalid_value(weekly_admissions_per_100k)
-    ):
+    # Return None if no valid hospital component metrics are available.
+    if is_invalid_value(beds_with_covid_ratio) and is_invalid_value(weekly_admissions_per_100k):
         return None
 
-    weekly_cases_per_100k = weekly_cases_per_100k or 0
-    beds_with_covid_ratio = beds_with_covid_ratio or 0
-    weekly_admissions_per_100k = weekly_admissions_per_100k or 0
+    weekly_cases_per_100k = (
+        weekly_cases_per_100k if not is_invalid_value(weekly_cases_per_100k) else 0
+    )
+    beds_with_covid_ratio = (
+        beds_with_covid_ratio if not is_invalid_value(beds_with_covid_ratio) else 0
+    )
+    weekly_admissions_per_100k = (
+        weekly_admissions_per_100k if not is_invalid_value(weekly_admissions_per_100k) else 0
+    )
 
     if weekly_cases_per_100k < 200:
         if weekly_admissions_per_100k < 10 and beds_with_covid_ratio < 0.1:
