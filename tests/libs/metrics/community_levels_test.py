@@ -35,26 +35,40 @@ def test_calc_community_levels(
     assert expected_level == output
 
 
-def test_stale_community_levels():
+@pytest.mark.parametrize(
+    "days_stale, expected_community_level",
+    [
+        (1, CommunityLevel.MEDIUM),
+        (13, CommunityLevel.MEDIUM),
+        (14, CommunityLevel.MEDIUM),
+        (15, CommunityLevel.LOW),
+        (16, CommunityLevel.LOW),
+        (100, CommunityLevel.LOW),
+    ],
+)
+def test_stale_community_levels(days_stale, expected_community_level):
     fips = "36"
-    # Valid cdcCommunityLevel 16 days back, followed by nans.
-    dataset = build_one_region_dataset({CommonFields.CDC_COMMUNITY_LEVEL: [0] + [np.nan] * 16})
+    # Valid cdcCommunityLevel x days back, followed by nans.
+    dataset = build_one_region_dataset(
+        {CommonFields.CDC_COMMUNITY_LEVEL: [0] + [np.nan] * (days_stale - 1)}
+    )
 
-    # No valid case data for 15 days.
+    # No valid case data for x days.
     metrics_df = top_level_metrics_test.build_metrics_df(
         fips,
         start_date="2020-12-01",
-        weeklyNewCasesPer100k=[200] + [np.nan] * 15,
-        weeklyAdmissionsPer100k=[0] * 16,
-        bedsWithCovidPatientsRatio=[0] * 16,
+        weeklyNewCasesPer100k=[200] + [np.nan] * (days_stale - 1),
+        weeklyAdmissionsPer100k=[0] * days_stale,
+        bedsWithCovidPatientsRatio=[0] * days_stale,
     )
 
-    results, latest = community_levels.calculate_community_level_timeseries_and_latest(
+    _, latest = community_levels.calculate_community_level_timeseries_and_latest(
         dataset, metrics_df
     )
 
-    # We allow cdcCommunityLevel to be arbitrarily stale, so it should still be HIGH.
+    # We allow cdcCommunityLevel to be arbitrarily stale, so it should still be LOW.
+    # Note this isn't parameterized, but just is returned in the same fn call
     assert latest.cdcCommunityLevel == CommunityLevel.LOW
     # canCommunityLevel is missing case data for 15 days, so it will be None.
     # As of 14 April 2023, we now are accepting None, so it should be low.
-    assert latest.canCommunityLevel == CommunityLevel.LOW
+    assert latest.canCommunityLevel == expected_community_level
