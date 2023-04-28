@@ -20,25 +20,38 @@ def is_invalid_value(value: Optional[float]) -> bool:
 def calculate_community_level(
     weekly_cases_per_100k, beds_with_covid_ratio, weekly_admissions_per_100k
 ) -> Optional[CommunityLevel]:
-    """Calculate the overall community level for a region based on metric levels."""
+    """Calculate the overall community level for a region based on metric levels.
+    
+    Note: As of April 14, 2023 we are harmonizing our score with the CDC in the
+    case where Daily New Cases are missing, we are going to treat it as "low".
 
-    # TODO(michael): The CDC footnotes say:
-    #     If the number of cases in 7 days for a jurisdiction is missing, the
-    #     7-day case rate is assigned to the “low” category. If both 7-day
-    #     admissions and 7-day percentage inpatient beds indicators are N/A, the
-    #     community burden category is assigned N/A.
-    #
-    # For now I'm allowing 1 hospital metric to be missing, but not allowing
-    # cases to be missing since that is rare and usually indicates we're
-    # blocking data or something. In that case, I'd rather have no community
-    # level calculated. But we can revisit if it ends up being a problem.
-    if is_invalid_value(weekly_cases_per_100k) or (
-        is_invalid_value(beds_with_covid_ratio) and is_invalid_value(weekly_admissions_per_100k)
-    ):
+    If the number of cases in 7 days for a jurisdiction is missing, the
+    7-day case rate is assigned to the “low” category. If both 7-day
+    admissions and 7-day percentage inpatient beds indicators are N/A, the
+    community burden category is assigned N/A.    
+
+    We know have two states (Iowa and Florida) that have stopped case reporting.
+    Instead of leaving them permanently gray on the map, we are planning to
+    transition to flagging DNC as unknown, but still scoring on the hospital
+    metrics.
+
+    Therefore, an Unknown/None value for DNC no longer necessarily signals a
+    data quality issue that we should address immediately.
+    """
+
+    # Return None if no valid hospital component metrics are available.
+    if is_invalid_value(beds_with_covid_ratio) and is_invalid_value(weekly_admissions_per_100k):
         return None
 
-    beds_with_covid_ratio = beds_with_covid_ratio or 0
-    weekly_admissions_per_100k = weekly_admissions_per_100k or 0
+    weekly_cases_per_100k = (
+        weekly_cases_per_100k if not is_invalid_value(weekly_cases_per_100k) else 0
+    )
+    beds_with_covid_ratio = (
+        beds_with_covid_ratio if not is_invalid_value(beds_with_covid_ratio) else 0
+    )
+    weekly_admissions_per_100k = (
+        weekly_admissions_per_100k if not is_invalid_value(weekly_admissions_per_100k) else 0
+    )
 
     if weekly_cases_per_100k < 200:
         if weekly_admissions_per_100k < 10 and beds_with_covid_ratio < 0.1:
@@ -79,7 +92,7 @@ def calculate_community_level_timeseries_and_latest(
 
     # Calculate CAN Community Levels from metrics. We allow canCommunityLevel to be based on
     # metrics that are up to MAX_METRIC_LOOKBACK_DAYS days old so ffill() them.
-    metrics_df = metrics_df.set_index([CommonFields.DATE]).ffill(limit=MAX_METRIC_LOOKBACK_DAYS - 1)
+    metrics_df = metrics_df.set_index([CommonFields.DATE]).ffill(limit=MAX_METRIC_LOOKBACK_DAYS - 2)
     can_community_level_series = metrics_df.apply(calculate_community_level_from_row, axis=1)
 
     # Extract CDC Community Levels from raw timeseries.
