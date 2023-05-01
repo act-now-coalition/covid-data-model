@@ -61,7 +61,7 @@ dash-html-components==1.0.3
 dash-renderer==1.6.0
 dash-table==4.9.0
 dash-pivottable==0.0.2
-Flask==1.1.2
+Flask==2.3.2
 Flask-Compress==1.5.0
 future==0.18.2
 itsdangerous==1.1.0
