@@ -76,16 +76,6 @@
       "end_date": ""
     },
     {
-      "include": "subregions",
-      "metric": "metrics.caseDensity",
-      "blocked": false,
-      "start_date": "",
-      "end_date": "",
-      "region": "FL",
-      "context": "https://trello.com/c/3uunA3oU/1419-data-paused-for-now-florida-counties-switching-to-weekly-reporting",
-      "disclaimer": "As of March 2022, Florida only reports county data once every two weeks and therefore the above data may be up to two weeks old."
-    },
-    {
       "include": "region",
       "metric": "metrics.caseDensity",
       "blocked": true,
@@ -881,7 +871,7 @@
       "end_date": "",
       "region": "IA",
       "context": "Iowa stopped reporting cases on April 1, 2023",
-      "disclaimer": "On April 1, 2023, Iowa stopped reporting Covid case data to the CDC. As such, we are unable to display up-to-date data for the state and its counties."
+      "disclaimer": "On April 1, 2023, Iowa stopped collecting Covid case data at the state and county levels."
     },
     {
       "include": "region-and-subregions",
@@ -890,8 +880,8 @@
       "start_date": "",
       "end_date": "",
       "region": "FL",
-      "context": "FL (temporarily?) stopped reporting covid cases on april 1 2023",
-      "disclaimer": "On April 1, 2023, Florida stopped reporting Covid case data to the CDC. As such, we are unable to display up-to-date data for the state and its counties."
+      "context": "FL (temporarily?) stopped reporting covid cases on April 1, 2023",
+      "disclaimer": "Starting April 1, 2023, Florida has stopped reporting cases to the CDC at the state and county levels. They have cited 'technical difficulties' and have not given a timeline on any proposed solutions."
     }
   ]
 }
