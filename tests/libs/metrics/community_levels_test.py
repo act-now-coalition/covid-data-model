@@ -41,7 +41,7 @@ def test_calc_community_levels(
         (1, CommunityLevel.MEDIUM),
         (13, CommunityLevel.MEDIUM),
         (14, CommunityLevel.MEDIUM),
-        (15, CommunityLevel.LOW),
+        (15, CommunityLevel.MEDIUM),
         (16, CommunityLevel.LOW),
         (100, CommunityLevel.LOW),
     ],

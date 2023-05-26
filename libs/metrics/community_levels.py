@@ -92,7 +92,7 @@ def calculate_community_level_timeseries_and_latest(
 
     # Calculate CAN Community Levels from metrics. We allow canCommunityLevel to be based on
     # metrics that are up to MAX_METRIC_LOOKBACK_DAYS days old so ffill() them.
-    metrics_df = metrics_df.set_index([CommonFields.DATE]).ffill(limit=MAX_METRIC_LOOKBACK_DAYS - 2)
+    metrics_df = metrics_df.set_index([CommonFields.DATE]).ffill(limit=MAX_METRIC_LOOKBACK_DAYS - 1)
     can_community_level_series = metrics_df.apply(calculate_community_level_from_row, axis=1)
 
     # Extract CDC Community Levels from raw timeseries.
