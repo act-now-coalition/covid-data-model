@@ -188,7 +188,6 @@ def _lookup_test_positivity_method(
 
 
 def _remove_trailing_zeros(series: pd.Series) -> pd.Series:
-
     series = pd.Series(series.values.copy(), index=series.index.get_level_values(CommonFields.DATE))
     last_nonzero_index = series.loc[series != 0].last_valid_index()
     last_index = series.last_valid_index()
@@ -221,7 +220,6 @@ def copy_test_positivity(
 
 
 def _calculate_smoothed_daily_cases(new_cases: pd.Series, smooth: int = 7):
-
     if new_cases.first_valid_index() is None:
         return new_cases
 
@@ -287,10 +285,8 @@ def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
     # Extract any CDC sourced data if it exists and track the start date.
     if CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA in data.columns:
         cdc_covid_patient_ratio = data[CommonFields.BEDS_WITH_COVID_PATIENTS_RATIO_HSA]
-        first_cdc_ratio_index = cdc_covid_patient_ratio.first_valid_index()
     else:
         cdc_covid_patient_ratio = EMPTY_TS
-        first_cdc_ratio_index = None
 
     # Use HSA-level data for counties only. DC has state-level data, so we treat it as a state.
     if region.is_county() and region.fips != "11001":
@@ -303,10 +299,10 @@ def calculate_covid_patient_ratio(data: pd.DataFrame, region: Region):
     # Returns NaN for any dates missing beds or patients.
     can_covid_patient_ratio = covid_hospitalizations.div(staffed_beds, fill_value=None)
 
-    # Combine CDC and computed data while keeping only computed points from before
-    # the start of the CDC Community Level data.
-    # If first_cdc_admissions_index is None we keep all the computed data.
-    can_covid_patient_ratio = can_covid_patient_ratio[:first_cdc_ratio_index]
+    # Combine CDC and computed datapoints, preferring CDC data where it exists.
+    # NOTE 2023-05-29: We used to keep only computed points from before the start of the CDC
+    # Community Level data. This data was discontinued on May 11th, 2023
+    # so we now allow computed data to be used for all/any dates after the start of the CDC data.
     return cdc_covid_patient_ratio.combine_first(can_covid_patient_ratio)
 
 
@@ -322,10 +318,8 @@ def calculate_weekly_admissions_per_100k(
         cdc_admissions_per_100k = data[
             CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID_PER_100K_HSA
         ]
-        first_cdc_admissions_index = cdc_admissions_per_100k.first_valid_index()
     else:
         cdc_admissions_per_100k = EMPTY_TS
-        first_cdc_admissions_index = None
 
     # Use HSA-level data for counties only. DC has state-level data, so we treat it as a state.
     if region.is_county() and region.fips != "11001":
@@ -341,10 +335,10 @@ def calculate_weekly_admissions_per_100k(
         weekly_admissions = data[CommonFields.WEEKLY_NEW_HOSPITAL_ADMISSIONS_COVID]
         can_admissions_per_100k = weekly_admissions / (population / normalize_by)
 
-    # Combine CDC and computed data while keeping only computed points from before
-    # the start of the CDC Community Level data.
-    # If first_cdc_admissions_index is None we keep all the computed data.
-    can_admissions_per_100k = can_admissions_per_100k[:first_cdc_admissions_index]
+    # Combine CDC and computed datapoints, preferring CDC data where it exists.
+    # NOTE 2023-05-29: We used to keep only computed points from before the start of the CDC
+    # Community Level data. This data was discontinued on May 11th, 2023
+    # so we now allow computed data to be used for all/any dates after the start of the CDC data.
     return cdc_admissions_per_100k.combine_first(can_admissions_per_100k)
 
 
