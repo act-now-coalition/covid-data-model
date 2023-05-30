@@ -74,6 +74,13 @@ METRIC_ROUNDING_PRECISION = {
     MetricsFields.VACCINATIONS_BIVALENT_DOSE_RATIO: 3,
 }
 
+VACCINATION_METRICS = [
+    MetricsFields.VACCINATIONS_INITIATED_RATIO,
+    MetricsFields.VACCINATIONS_COMPLETED_RATIO,
+    MetricsFields.VACCINATIONS_ADDITIONAL_DOSE_RATIO,
+    MetricsFields.VACCINATIONS_BIVALENT_DOSE_RATIO,
+]
+
 
 def has_data_in_past_10_days(series: pd.Series) -> bool:
     return series_utils.has_recent_data(series, days_back=10, required_non_null_datapoints=1)
@@ -374,8 +381,11 @@ def calculate_latest_metrics(
         if last_available is None:
             metrics[field] = None
         # Limiting metrics surfaced to be metrics updated in the last `max_lookback_days` of
-        # data.
-        elif last_available <= latest_date - timedelta(days=max_lookback_days):
+        # data. Vaccination metrics are cumulative and should be surfaced regardless of staleness.
+        elif (
+            last_available <= latest_date - timedelta(days=max_lookback_days)
+            and field not in VACCINATION_METRICS
+        ):
             metrics[field] = None
         else:
             metrics[field] = data[field][last_available]
