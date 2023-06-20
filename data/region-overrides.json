@@ -882,6 +882,15 @@
       "region": "FL",
       "context": "FL (temporarily?) stopped reporting covid cases on April 1, 2023",
       "disclaimer": "Starting April 1, 2023, Florida has stopped reporting cases to the CDC at the state and county levels. They have cited 'technical difficulties' and have not given a timeline on any proposed solutions."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2023-06-13",
+      "end_date": "2023-06-16",
+      "region": "MA",
+      "context": "Brett: Massachusetts icu ratios are hitting the 100% guardrails. Blocking for now while investigating."
     }
   ]
 }
