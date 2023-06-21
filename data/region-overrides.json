@@ -887,10 +887,9 @@
       "include": "region",
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
-      "start_date": "2023-06-13",
-      "end_date": "2023-06-16",
+      "start_date": "2023-06-07",
       "region": "MA",
-      "context": "Brett: Massachusetts icu ratios are hitting the 100% guardrails. Blocking for now while investigating."
+      "context": "MA issue with facilities level hospitalization data. The error is showing up as reporting as June 15th, but I am trying to include the previous collection week in the filter."
     }
   ]
 }
