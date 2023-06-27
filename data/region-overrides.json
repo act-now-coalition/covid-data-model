@@ -882,6 +882,15 @@
       "region": "FL",
       "context": "FL (temporarily?) stopped reporting covid cases on April 1, 2023",
       "disclaimer": "Starting April 1, 2023, Florida has stopped reporting cases to the CDC at the state and county levels. They have cited 'technical difficulties' and have not given a timeline on any proposed solutions."
+    },
+    {
+      "include": "region",
+      "metric": "metrics.icuCapacityRatio",
+      "blocked": true,
+      "start_date": "2023-06-07",
+      "end_date":"",
+      "region": "MA",
+      "context": "MA issue with facilities level hospitalization data. The error is showing up as reporting as June 15th, but I am trying to include the previous collection week in the filter."
     }
   ]
 }
