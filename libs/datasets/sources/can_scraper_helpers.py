@@ -273,7 +273,7 @@ class CanScraperLoader:
     @staticmethod
     def load_from_gcs() -> "CanScraperLoader":
         """Returns a CanScraperLoader which holds data loaded from the CAN Scraper."""
-        all_df = pd.read_parquet(GCS_PARQUET_PATH)
+        all_df = pd.read_parquet(GCS_PARQUET_PATH, engine="pyarrow")
         # The location_id column is stored as a categorical in the parquet file to save memory.
         # location_id is used as an index, and categoricals create a special CategoryIndex
         # which causes issues further down the pipeline.
