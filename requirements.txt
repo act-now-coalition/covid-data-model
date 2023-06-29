@@ -43,6 +43,7 @@ more_itertools==8.3.0
 typing-extensions==3.7.4.3
 xlrd==1.2.0  # For panda's read_excel method
 compress_pickle==2.0.1
+pyarrow==12.0.1 # For pandas' read_parquet method
 
 # Dependencies recommended by pandas for better performance
 numexpr==2.7.1
