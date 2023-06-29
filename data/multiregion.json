@@ -2,9 +2,9 @@
   "dataset_type": "multiregion",
   "path": "data/multiregion.csv",
   "model_git_info": {
-    "sha": "0e9a7e36899d658e0dbca1b115a027d1d45ecb07",
-    "branch": "smcclure17/use-pyarrow",
+    "sha": "c21d7b8dfd4c0be92195de424f8bff7f089b05e6",
+    "branch": "main",
     "is_dirty": true
   },
-  "updated_at": "2023-06-28T04:32:20.209613"
+  "updated_at": "2023-06-28T08:09:47.804956"
 }
