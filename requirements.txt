@@ -1,5 +1,5 @@
 boto3==1.15.6
-scipy==1.4.1
+scipy==1.10.0
 numba==0.51.2
 astroid==2.4.1
 chardet==3.0.4
