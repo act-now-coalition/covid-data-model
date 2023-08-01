@@ -888,7 +888,7 @@
       "metric": "metrics.icuCapacityRatio",
       "blocked": true,
       "start_date": "2023-06-07",
-      "end_date":"",
+      "end_date":"2023-06-28",
       "region": "MA",
       "context": "MA issue with facilities level hospitalization data. The error is showing up as reporting as June 15th, but I am trying to include the previous collection week in the filter."
     }
