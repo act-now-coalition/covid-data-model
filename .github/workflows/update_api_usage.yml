@@ -3,6 +3,10 @@ name: Update API User Usage
 on:
   workflow_dispatch:
 
+  push:
+    branches:
+      - standardize-python-builds
+
   schedule:
      # Run every 4 hours at the top of the hour
    - cron: '0 */6 * * *'
