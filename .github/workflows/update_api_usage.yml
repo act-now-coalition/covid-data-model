@@ -47,7 +47,7 @@ env:
 
 jobs:
   update-and-promote-datasets:
-    runs-on: gce-runner
+    runs-on: ubuntu-latest
     steps:
 
     - name: Checkout covid-data-model
@@ -62,7 +62,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.7'
-        architecture: 'x64'
         cache: 'pip'
 
     - name: Install Dependencies
