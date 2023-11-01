@@ -43,7 +43,7 @@ env:
 
 jobs:
   update-and-promote-datasets:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - name: Checkout covid-data-model
