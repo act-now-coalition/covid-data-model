@@ -1,9 +1,5 @@
 name: Update API User Usage
 
-# Use a concurrency group to make sure we don't try to have multiple workflows
-# run with the hosted runner at the same time.
-concurrency: gce-runner
-
 on:
   workflow_dispatch:
 
@@ -59,10 +55,26 @@ jobs:
         lfs: true
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
-        python-version: '3.7'
-        cache: 'pip'
+        python-version: '3.7.6'
+        architecture: 'x64'
+
+    - name: Cache Pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
+            
+    # If you don't manually install the correct version of numpy before
+    # installing modules from requirements.txt, fastparquet may try to install a
+    # newer version of numpy that requires python 3.8 (but we use 3.7).
+    # See https://github.com/dask/fastparquet/issues/632#issuecomment-877871388
+    - run: pip install numpy==1.21.4
+      working-directory: ./covid-data-model
 
     - name: Install Dependencies
       working-directory: ./covid-data-model
