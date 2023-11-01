@@ -1,5 +1,9 @@
 name: Update API User Usage
 
+# Use a concurrency group to make sure we don't try to have multiple workflows
+# run with the hosted runner at the same time.
+concurrency: gce-runner
+
 on:
   workflow_dispatch:
 
@@ -43,7 +47,7 @@ env:
 
 jobs:
   update-and-promote-datasets:
-    runs-on: ubuntu-latest
+    runs-on: gce-runner
     steps:
 
     - name: Checkout covid-data-model
@@ -58,6 +62,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.7'
+        architecture: 'x64'
         cache: 'pip'
 
     - name: Install Dependencies
