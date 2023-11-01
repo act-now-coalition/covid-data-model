@@ -55,18 +55,9 @@ jobs:
         lfs: true
 
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.7.6'
-
-    - name: Cache Pip
-      uses: actions/cache@v1
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          ${{ runner.os }}-
 
     # If you don't manually install the correct version of numpy before
     # installing modules from requirements.txt, fastparquet may try to install a
