@@ -58,7 +58,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.7.6'
-        architecture: 'x64'
 
     - name: Cache Pip
       uses: actions/cache@v1
@@ -68,7 +67,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
           ${{ runner.os }}-
-            
+
     # If you don't manually install the correct version of numpy before
     # installing modules from requirements.txt, fastparquet may try to install a
     # newer version of numpy that requires python 3.8 (but we use 3.7).
