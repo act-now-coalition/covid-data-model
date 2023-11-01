@@ -1,19 +1,13 @@
 name: Update API User Usage
 
 on:
-  workflow_dispatch:
-
-  push:
-    branches:
-      - standardize-python-builds
-
   schedule:
      # Run every 4 hours at the top of the hour
    - cron: '0 */6 * * *'
 
 env:
   # !!! Change this to your BRANCH if you want to test it
-  COVID_DATA_MODEL_REF: 'standardize-python-builds'
+  COVID_DATA_MODEL_REF: 'main'
 
   # To pin to an old data sets, put the branch/tag/commit here:
   COVID_DATA_PUBLIC_REF: 'main'
