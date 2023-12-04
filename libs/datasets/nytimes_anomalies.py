@@ -111,7 +111,7 @@ def _denormalize_nyt_anomalies(df: pd.DataFrame) -> pd.DataFrame:
         ),
         omit_from_rolling_average="yes",
     ).explode(CommonFields.FIPS)
-    df = df.append(df_subgeography_rows)
+    df = pd.concat([df, df_subgeography_rows])
 
     # Look for rows with type=='both' and replace with two rows ('cases' and 'deaths')
     df = df.assign(

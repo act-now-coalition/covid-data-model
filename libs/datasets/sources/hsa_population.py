@@ -22,9 +22,9 @@ def get_location_level(location_id):
 
 
 class HSAPopulation(data_source.DataSource):
-    """HSA number and HSA population for each US county. 
-    
-    HSA populations are calculated as the sum of the populations of the contained counties. 
+    """HSA number and HSA population for each US county.
+
+    HSA populations are calculated as the sum of the populations of the contained counties.
 
     For more information on HSAs see:
         https://github.com/act-now-coalition/covid-data-model/blob/main/data/misc/README.md
@@ -59,10 +59,12 @@ class HSAPopulation(data_source.DataSource):
             .sum()
             .reset_index()
             .rename(columns={CommonFields.POPULATION: CommonFields.HSA_POPULATION})
+            .drop(columns=[CommonFields.LOCATION_ID])
         )
-        counties = counties.merge(hsas, on=CommonFields.HSA)
+        counties: pd.DataFrame = counties.merge(hsas, on=CommonFields.HSA)
 
         # Get county and HSA FIPS from location IDs
+        print(counties.columns)
         counties[CommonFields.FIPS] = counties[CommonFields.LOCATION_ID].map(
             lambda loc: Region.from_location_id(loc).fips
         )

@@ -16,7 +16,7 @@ import dataclasses
 import datetime
 import pathlib
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from itertools import chain
 from collections import defaultdict
@@ -28,7 +28,6 @@ from datapublic.common_fields import CommonFields
 from datapublic.common_fields import DemographicBucket
 from datapublic.common_fields import FieldName
 from datapublic.common_fields import PdFields
-from pandas.core.generic import FrameOrSeries
 from pandas.core.dtypes.common import is_numeric_dtype
 from pandas.core.dtypes.common import is_bool_dtype
 from typing_extensions import final
@@ -232,7 +231,10 @@ class OneRegionTimeseriesDataset:
             yield row.where(pd.notnull(row), None).to_dict()
 
     def get_subset(self, after=None, columns=tuple()):
-        rows_key = dataset_utils.make_rows_key(self.data, after=after,)
+        rows_key = dataset_utils.make_rows_key(
+            self.data,
+            after=after,
+        )
         columns_key = list(columns) if columns else slice(None, None, None)
         return dataclasses.replace(
             self, data=self.data.loc[rows_key, columns_key].reset_index(drop=True)
@@ -335,7 +337,9 @@ def _add_aggregate_level_if_missing(df: pd.DataFrame):
         )
 
 
-def _add_distribution_level(frame_or_series: FrameOrSeries) -> FrameOrSeries:
+def _add_distribution_level(
+    frame_or_series: Union[pd.DataFrame, pd.Series]
+) -> Union[pd.DataFrame, pd.Series]:
     # Assigning to `index` avoids reindexing done by constructor `pd.DataFrame(df, index=...)`.
     frame_or_series = frame_or_series.copy()
     index_as_df = frame_or_series.index.to_frame()
@@ -547,7 +551,8 @@ class MultiRegionDataset:
             ).reorder_levels(EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF.index.names)
 
         self.__default_init__(  # pylint: disable=E1101
-            timeseries_bucketed=timeseries_bucketed, **kwargs,
+            timeseries_bucketed=timeseries_bucketed,
+            **kwargs,
         )
 
     def __getstate__(self):
@@ -570,7 +575,7 @@ class MultiRegionDataset:
     @cached_property
     def timeseries(self) -> pd.DataFrame:
         """Timeseries metrics with float values. Each timeseries is identified by a variable name
-       and region"""
+        and region"""
         try:
             return self.timeseries_bucketed.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0)
         except KeyError:
@@ -900,7 +905,8 @@ class MultiRegionDataset:
         """Returns a new object with `tag` copied for every timeseries in `index`."""
         assert index.names == EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.index.names
         tag_df = pd.DataFrame(
-            {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type}, index=index,
+            {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
+            index=index,
         ).reset_index()
         return self.append_tag_df(tag_df)
 
@@ -1091,10 +1097,8 @@ class MultiRegionDataset:
         # Sort by index fields, and within rows having identical index fields, by content. This
         # makes the order of values in combined_series identical, independent of the order they
         # were appended.
-        combined_df = (
-            self.tag.reset_index()
-            .append(additional_tag_df)
-            .sort_values(_TAG_INDEX_FIELDS + [TagField.CONTENT])
+        combined_df = pd.concat([self.tag.reset_index(), additional_tag_df]).sort_values(
+            _TAG_INDEX_FIELDS + [TagField.CONTENT]
         )
         combined_series = combined_df.set_index(_TAG_INDEX_FIELDS)[TagField.CONTENT]
         return dataclasses.replace(self, tag=combined_series)
@@ -1147,7 +1151,9 @@ class MultiRegionDataset:
     def _location_ids_in_mask(self, region_mask: pipeline.RegionMask) -> pd.Index:
         geo_data = self.geo_data
         rows_key = dataset_utils.make_rows_key(
-            geo_data, aggregation_level=region_mask.level, states=region_mask.states,
+            geo_data,
+            aggregation_level=region_mask.level,
+            states=region_mask.states,
         )
         return geo_data.loc[rows_key, :].index
 
@@ -1305,7 +1311,11 @@ class MultiRegionDataset:
         )
         # Only keep tag information for timeseries in the new timeseries_wide_dates.
         tag = _slice_with_labels(self.tag, timeseries_wide_dates.index)
-        return dataclasses.replace(self, timeseries_bucketed=timeseries_wide_variables, tag=tag,)
+        return dataclasses.replace(
+            self,
+            timeseries_bucketed=timeseries_wide_variables,
+            tag=tag,
+        )
 
     def replace_timeseries_wide_dates(
         self, timeseries_bucketed_to_concat: List[pd.DataFrame]
@@ -1380,7 +1390,9 @@ class MultiRegionDataset:
         wide_df.to_csv(path_wide_dates, index=True, float_format="%.9g", **kwargs)
 
         static_sorted = common_df.index_and_sort(
-            self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
+            self.static,
+            index_names=[CommonFields.LOCATION_ID],
+            log=structlog.get_logger(),
         )
         static_sorted.to_csv(path_static)
 
@@ -1574,7 +1586,11 @@ def combined_datasets(
     else:
         output_static_df = EMPTY_STATIC_DF
 
-    return MultiRegionDataset(timeseries_bucketed=ts_bucketed, tag=tags, static=output_static_df,)
+    return MultiRegionDataset(
+        timeseries_bucketed=ts_bucketed,
+        tag=tags,
+        static=output_static_df,
+    )
 
 
 def _pick_first_with_field(
@@ -1743,9 +1759,12 @@ class MultiRegionDatasetDiff:
         `old` and no real values (all NA) in `new`. Changes in the set of dates with a real value
         and changes in the values themselves are ignored.
         """
+
         # removed is currently calculated when accessed but it may make sense to move this to
         # `make` depending on future uses of MultiRegionDatasetDiff.
-        def removed(old: FrameOrSeries, new: FrameOrSeries) -> FrameOrSeries:
+        def removed(
+            old: Union[pd.DataFrame, pd.Series], new: Union[pd.DataFrame, pd.Series]
+        ) -> Union[pd.DataFrame, pd.Series]:
             removed_mask = ~old.index.isin(new.index)
             return old.loc[removed_mask]
 

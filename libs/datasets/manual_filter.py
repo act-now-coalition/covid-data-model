@@ -117,7 +117,7 @@ def _filter_by_date(
         columns_to_drop_mask = drop_masks[0] & drop_masks[1]
 
     observations_dropped = ts_in.loc[:, columns_to_drop_mask]
-    ts_has_real_value_to_drop_mask = observations_dropped.notna().any(1)
+    ts_has_real_value_to_drop_mask = observations_dropped.notna().any(axis=1)
     ts_to_filter = ts_in.loc[ts_has_real_value_to_drop_mask]
     ts_no_real_values_to_drop = ts_in.loc[~ts_has_real_value_to_drop_mask]
     ts_filtered = ts_to_filter.loc[:, ~columns_to_drop_mask]

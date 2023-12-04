@@ -5,7 +5,7 @@ from typing import Optional
 
 import sentry_sdk
 import structlog
-from structlog_sentry import SentryJsonProcessor
+# from structlog_sentry import SentryJsonProcessor
 
 
 # env variable holding the Sentry Environment name
@@ -41,7 +41,7 @@ def configure_logging(command: Optional[str] = None):
             # The SentryJsonProcessor is used to protect against event duplication.
             # It adds loggers to a sentry_sdk ignore list, making sure that the message logged is
             # not reported in addition to the exception stack trace.
-            SentryJsonProcessor(level=logging.ERROR, tag_keys="__all__"),
+            # SentryJsonProcessor(level=logging.ERROR, tag_keys="__all__"),
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,

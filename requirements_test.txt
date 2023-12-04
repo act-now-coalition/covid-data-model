@@ -1,14 +1,14 @@
 # Requirements file containing packages needed for testing.
 # These should *not* be installed in non-test environments.
 
-pytest==6.2.1
-pytest-pylint==0.17.0
-pytest-xdist==1.34.0
-pytest-mock >= 1.10.4
+pytest
+pytest-pylint
+pytest-xdist
+pytest-mock 
 black==19.10b0
-nbstripout==0.3.7
-pylint==2.5.2
-pre-commit==2.6.0
-identify==1.4.23
-temppathlib==1.0.3
-freezegun==1.0.0
+nbstripout
+pylint
+pre-commit
+identify
+temppathlib
+freezegun

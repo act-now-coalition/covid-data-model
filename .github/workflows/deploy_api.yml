@@ -83,7 +83,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.7.6'
+        python-version: '3.10.13'
         architecture: 'x64'
 
     - name: Cache Pip
@@ -99,8 +99,8 @@ jobs:
     # installing modules from requirements.txt, fastparquet may try to install a
     # newer version of numpy that requires python 3.8 (but we use 3.7).
     # See https://github.com/dask/fastparquet/issues/632#issuecomment-877871388
-    - run: pip install numpy==1.21.4
-      working-directory: ./covid-data-model
+    # - run: pip install numpy==1.21.4
+    #   working-directory: ./covid-data-model
 
     - name: Install Dependencies
       working-directory: ./covid-data-model

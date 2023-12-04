@@ -140,7 +140,7 @@ def modify_dataset(ds: MultiRegionDataset) -> MultiRegionDataset:
         index={DC_COUNTY_LOCATION_ID: DC_STATE_LOCATION_ID}, level=CommonFields.LOCATION_ID
     )
 
-    ts_copy = ts_copy.append(dc_results, verify_integrity=True).sort_index()
+    ts_copy = pd.concat([ts_copy, dc_results], verify_integrity=True).sort_index()
 
     return dataclasses.replace(
         ds, timeseries=remove_trailing_zeros(ts_copy), timeseries_bucketed=None
