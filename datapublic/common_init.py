@@ -5,6 +5,7 @@ from typing import Optional
 
 import sentry_sdk
 import structlog
+
 # from structlog_sentry import SentryJsonProcessor
 
 

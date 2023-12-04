@@ -14,7 +14,7 @@ cfgv==3.4.0
 cftime==1.6.3
 chardet==5.2.0
 charset-normalizer==3.3.2
-click==8.1.7
+click==8.0.2
 compress-pickle==2.1.0
 contourpy==1.2.0
 cramjam==2.7.0

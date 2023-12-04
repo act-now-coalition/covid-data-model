@@ -231,10 +231,7 @@ class OneRegionTimeseriesDataset:
             yield row.where(pd.notnull(row), None).to_dict()
 
     def get_subset(self, after=None, columns=tuple()):
-        rows_key = dataset_utils.make_rows_key(
-            self.data,
-            after=after,
-        )
+        rows_key = dataset_utils.make_rows_key(self.data, after=after,)
         columns_key = list(columns) if columns else slice(None, None, None)
         return dataclasses.replace(
             self, data=self.data.loc[rows_key, columns_key].reset_index(drop=True)
@@ -551,8 +548,7 @@ class MultiRegionDataset:
             ).reorder_levels(EMPTY_TIMESERIES_BUCKETED_WIDE_VARIABLES_DF.index.names)
 
         self.__default_init__(  # pylint: disable=E1101
-            timeseries_bucketed=timeseries_bucketed,
-            **kwargs,
+            timeseries_bucketed=timeseries_bucketed, **kwargs,
         )
 
     def __getstate__(self):
@@ -905,8 +901,7 @@ class MultiRegionDataset:
         """Returns a new object with `tag` copied for every timeseries in `index`."""
         assert index.names == EMPTY_TIMESERIES_BUCKETED_WIDE_DATES_DF.index.names
         tag_df = pd.DataFrame(
-            {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type},
-            index=index,
+            {taglib.TagField.CONTENT: tag.content, taglib.TagField.TYPE: tag.tag_type}, index=index,
         ).reset_index()
         return self.append_tag_df(tag_df)
 
@@ -1151,9 +1146,7 @@ class MultiRegionDataset:
     def _location_ids_in_mask(self, region_mask: pipeline.RegionMask) -> pd.Index:
         geo_data = self.geo_data
         rows_key = dataset_utils.make_rows_key(
-            geo_data,
-            aggregation_level=region_mask.level,
-            states=region_mask.states,
+            geo_data, aggregation_level=region_mask.level, states=region_mask.states,
         )
         return geo_data.loc[rows_key, :].index
 
@@ -1311,11 +1304,7 @@ class MultiRegionDataset:
         )
         # Only keep tag information for timeseries in the new timeseries_wide_dates.
         tag = _slice_with_labels(self.tag, timeseries_wide_dates.index)
-        return dataclasses.replace(
-            self,
-            timeseries_bucketed=timeseries_wide_variables,
-            tag=tag,
-        )
+        return dataclasses.replace(self, timeseries_bucketed=timeseries_wide_variables, tag=tag,)
 
     def replace_timeseries_wide_dates(
         self, timeseries_bucketed_to_concat: List[pd.DataFrame]
@@ -1390,9 +1379,7 @@ class MultiRegionDataset:
         wide_df.to_csv(path_wide_dates, index=True, float_format="%.9g", **kwargs)
 
         static_sorted = common_df.index_and_sort(
-            self.static,
-            index_names=[CommonFields.LOCATION_ID],
-            log=structlog.get_logger(),
+            self.static, index_names=[CommonFields.LOCATION_ID], log=structlog.get_logger(),
         )
         static_sorted.to_csv(path_static)
 
@@ -1586,11 +1573,7 @@ def combined_datasets(
     else:
         output_static_df = EMPTY_STATIC_DF
 
-    return MultiRegionDataset(
-        timeseries_bucketed=ts_bucketed,
-        tag=tags,
-        static=output_static_df,
-    )
+    return MultiRegionDataset(timeseries_bucketed=ts_bucketed, tag=tags, static=output_static_df,)
 
 
 def _pick_first_with_field(
