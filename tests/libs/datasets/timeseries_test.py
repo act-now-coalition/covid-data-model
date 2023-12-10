@@ -35,6 +35,8 @@ from tests.test_helpers import TimeseriesLiteral
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
 
+
+# NOTE (sean 2023-12-10): Ignore FutureWarnings due to pandas MultiIndex .loc deprecations.
 @pytest.fixture(autouse=True)
 def ignore_future_warnings():
     warnings.simplefilter("ignore", category=FutureWarning)
@@ -133,7 +135,10 @@ def test_multi_region_get_one_region():
 
     region_97222_ts = ts.get_one_region(Region.from_fips("97222"))
     assert to_dict(["date"], region_97222_ts.data) == {
-        pd.to_datetime("2020-04-01"): {"m2": 10, "location_id": "iso1:us#fips:97222",}
+        pd.to_datetime("2020-04-01"): {
+            "m2": 10,
+            "location_id": "iso1:us#fips:97222",
+        }
     }
     assert region_97222_ts.latest["m2"] == 11
 
@@ -263,7 +268,9 @@ def test_one_region_multiple_provenance():
     one_region = test_helpers.build_one_region_dataset(
         {
             CommonFields.ICU_BEDS: TimeseriesLiteral(
-                [0, 2, 4], annotation=[tag1, tag2], provenance=["prov1", "prov2"],
+                [0, 2, 4],
+                annotation=[tag1, tag2],
+                provenance=["prov1", "prov2"],
             ),
             CommonFields.CASES: [100, 200, 300],
         }
@@ -782,7 +789,10 @@ def test_one_region_annotations():
     assert {
         region: one_region_dataset.annotations_all_bucket(CommonFields.CASES)
         for region, one_region_dataset in dataset_tx_and_sf.iter_one_regions()
-    } == {region_sf: [tag2a, tag2b], region_tx: [tag1],}
+    } == {
+        region_sf: [tag2a, tag2b],
+        region_tx: [tag1],
+    }
 
 
 def test_one_region_empty_annotations():
@@ -1107,7 +1117,8 @@ def test_drop_regions_without_population():
     all_regions = regions_with_pop + [cbsa_without_pop, fips_without_pop]
     static_populations = {r: {CommonFields.POPULATION: 80_000} for r in regions_with_pop}
     ts_in = test_helpers.build_dataset(
-        {r: {m1: [1]} for r in all_regions}, static_by_region_then_field_name=static_populations,
+        {r: {m1: [1]} for r in all_regions},
+        static_by_region_then_field_name=static_populations,
     )
     ts_expected = test_helpers.build_dataset(
         {r: {m1: [1]} for r in regions_with_pop},
@@ -1402,7 +1413,10 @@ def test_combined_annotation():
     ds1 = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts1a, CommonFields.CASES: ts1b}
     )
-    ts2a = TimeseriesLiteral([1, 3, 5], annotation=[test_helpers.make_tag(date="2020-04-01")],)
+    ts2a = TimeseriesLiteral(
+        [1, 3, 5],
+        annotation=[test_helpers.make_tag(date="2020-04-01")],
+    )
     ts2b = [150, 250, 350]
     ds2 = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts2a, CommonFields.CASES: ts2b}
@@ -1609,7 +1623,11 @@ def test_make_source_tags():
     url_str = UrlStr("http://foo.com/1")
 
     ts_prov_only = TimeseriesLiteral(
-        [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),], provenance="prov_only",
+        [0, 2, 4],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01"),
+        ],
+        provenance="prov_only",
     )
     ts_with_url = TimeseriesLiteral([3, 5, 7], provenance="prov_with_url", source_url=url_str)
     dataset_in = test_helpers.build_default_region_dataset(
@@ -1621,11 +1639,16 @@ def test_make_source_tags():
     source_tag_prov_only = taglib.Source("prov_only")
     ts_prov_only_expected = TimeseriesLiteral(
         [0, 2, 4],
-        annotation=[test_helpers.make_tag(date="2020-04-01"),],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01"),
+        ],
         source=source_tag_prov_only,
     )
     source_tag_prov_with_url = taglib.Source("prov_with_url", url=url_str)
-    ts_with_url_expected = TimeseriesLiteral([3, 5, 7], source=source_tag_prov_with_url,)
+    ts_with_url_expected = TimeseriesLiteral(
+        [3, 5, 7],
+        source=source_tag_prov_with_url,
+    )
     dataset_expected = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts_prov_only_expected, CommonFields.CASES: ts_with_url_expected}
     )
@@ -1640,7 +1663,11 @@ def test_make_source_tags_no_urls():
     # There was a bug where `./run.py data update` failed at the very end when no timeseries had
     # a source_url. This tests for it.
     ts_prov_only = TimeseriesLiteral(
-        [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),], provenance="prov_only",
+        [0, 2, 4],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01"),
+        ],
+        provenance="prov_only",
     )
     dataset_in = test_helpers.build_default_region_dataset({CommonFields.ICU_BEDS: ts_prov_only})
 
@@ -1649,7 +1676,9 @@ def test_make_source_tags_no_urls():
     source_tag_prov_only = taglib.Source("prov_only")
     ts_prov_only_expected = TimeseriesLiteral(
         [0, 2, 4],
-        annotation=[test_helpers.make_tag(date="2020-04-01"),],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01"),
+        ],
         source=source_tag_prov_only,
     )
     dataset_expected = test_helpers.build_default_region_dataset(
@@ -1667,11 +1696,16 @@ def test_make_source_url_tags():
     source_tag_prov_only = taglib.Source("prov_only")
     ts_prov_only = TimeseriesLiteral(
         [0, 2, 4],
-        annotation=[test_helpers.make_tag(date="2020-04-01"),],
+        annotation=[
+            test_helpers.make_tag(date="2020-04-01"),
+        ],
         source=source_tag_prov_only,
     )
     source_tag_prov_with_url = taglib.Source("prov_with_url", url=url_str)
-    ts_with_url = TimeseriesLiteral([3, 5, 7], source=source_tag_prov_with_url,)
+    ts_with_url = TimeseriesLiteral(
+        [3, 5, 7],
+        source=source_tag_prov_with_url,
+    )
     dataset_in = test_helpers.build_default_region_dataset(
         {CommonFields.ICU_BEDS: ts_prov_only, CommonFields.CASES: ts_with_url}
     )
@@ -1738,10 +1772,20 @@ def test_combine_demographic_data_basic():
     age30s = DemographicBucket("age:30-39")
     age40s = DemographicBucket("age:40-49")
     ds1 = test_helpers.build_default_region_dataset(
-        {m1: {age20s: [21, 22, 23], age30s: [31, 32, 33],}}
+        {
+            m1: {
+                age20s: [21, 22, 23],
+                age30s: [31, 32, 33],
+            }
+        }
     )
     ds2 = test_helpers.build_default_region_dataset(
-        {m1: {age30s: [32, 33, 34], age40s: [42, 43, 44],}}
+        {
+            m1: {
+                age30s: [32, 33, 34],
+                age40s: [42, 43, 44],
+            }
+        }
     )
 
     combined = timeseries.combined_datasets({m1: [ds1, ds2]}, {})
@@ -1817,7 +1861,12 @@ def test_bucketed_latest(nyc_region: Region):
     age30s = DemographicBucket("age:30-39")
 
     dataset = test_helpers.build_default_region_dataset(
-        {m1: {age20s: [21, 22, 23], age30s: [31, 32, 33],}}
+        {
+            m1: {
+                age20s: [21, 22, 23],
+                age30s: [31, 32, 33],
+            }
+        }
     )
     bucketed_latest = dataset._bucketed_latest_for_location_id(
         test_helpers.DEFAULT_REGION.location_id
@@ -1872,7 +1921,10 @@ def test_print_stats():
     test_helpers.build_default_region_dataset(
         {
             CommonFields.ICU_BEDS: TimeseriesLiteral(
-                [0, 2, 4], annotation=[test_helpers.make_tag(date="2020-04-01"),],
+                [0, 2, 4],
+                annotation=[
+                    test_helpers.make_tag(date="2020-04-01"),
+                ],
             ),
             CommonFields.CASES: [100, 200, 300],
         }
