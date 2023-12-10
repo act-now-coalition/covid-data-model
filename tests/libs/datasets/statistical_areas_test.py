@@ -1,4 +1,5 @@
 import dataclasses
+import warnings
 
 import pytest
 import pandas as pd
@@ -12,6 +13,12 @@ from tests.dataset_utils_test import read_csv_and_index_fips_date
 from tests import test_helpers
 
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
+
+
+# NOTE (sean 2023-12-10): Ignore FutureWarnings due to pandas MultiIndex .loc deprecations.
+@pytest.fixture(autouse=True)
+def ignore_future_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
 
 
 def test_load_from_local_public_data():
