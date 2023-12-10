@@ -1,7 +1,7 @@
 adtk==0.6.2
 appdirs==1.4.4
 arviz==0.12.1
-astroid==2.4.1
+astroid==2.12.14
 asttokens==2.4.1
 attrs==23.1.0
 backports.cached-property==1.0.0.post2
