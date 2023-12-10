@@ -11,6 +11,8 @@ from libs.pipeline import Region
 from tests.dataset_utils_test import read_csv_and_index_fips_date
 from tests import test_helpers
 
+pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
+
 
 def test_load_from_local_public_data():
     agg = statistical_areas.CountyToCBSAAggregator.from_local_public_data()
