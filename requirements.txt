@@ -1,7 +1,7 @@
 adtk==0.6.2
 appdirs==1.4.4
 arviz==0.12.1
-astroid==3.0.1
+astroid==2.4.1
 asttokens==2.4.1
 attrs==23.1.0
 backports.cached-property==1.0.0.post2
@@ -50,7 +50,7 @@ jsonschema==4.20.0
 jsonschema-specifications==2023.11.2
 jupyter_core==5.5.0
 kiwisolver==1.4.5
-lazy-object-proxy==1.9.0
+lazy-object-proxy==1.4.1
 llvmlite==0.41.1
 matplotlib==3.8.2
 matplotlib-inline==0.1.6
@@ -63,7 +63,7 @@ numba==0.58.1
 numexpr==2.8.7
 numpy==1.26.2
 oauthlib==3.2.2
-openapi-schema-pydantic==1.2.4
+openapi-schema-pydantic==1.1.0
 packaging==23.2
 pandarallel==1.6.5
 pandas==2.0.3
@@ -81,7 +81,7 @@ pure-eval==0.2.2
 pyarrow==12.0.1
 pyasn1==0.5.1
 pyasn1-modules==0.3.0
-pydantic==1.9.2
+pydantic==1.7.3
 Pygments==2.17.2
 pymc3==3.11.4
 pyparsing==3.1.1
@@ -117,7 +117,7 @@ tomli==2.0.1
 tomlkit==0.12.3
 traitlets==5.14.0
 typed-ast==1.5.5
-typing_extensions==4.8.0
+typing_extensions==3.7.4.3
 tzdata==2023.3
 ujson==5.8.0
 urllib3==2.0.7

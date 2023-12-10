@@ -68,8 +68,13 @@ def derive_vaccine_pct(
 
     # Combine the input and derived percentage time series into one DataFrame, sort by most recent
     # date and drop duplicates except for the last/most recent.
+    # combined_pcts = (
+    #     derived_pct_df.append(ts_in_pcts)
+    #     .sort_index(level=MOST_RECENT_DATE)
+    #     .droplevel(MOST_RECENT_DATE)
+    # )
     combined_pcts = (
-        derived_pct_df.append(ts_in_pcts)
+        pd.concat([derived_pct_df, ts_in_pcts])
         .sort_index(level=MOST_RECENT_DATE)
         .droplevel(MOST_RECENT_DATE)
     )
