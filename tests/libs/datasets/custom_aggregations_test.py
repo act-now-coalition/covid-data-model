@@ -111,14 +111,8 @@ def test_aggregate_to_country():
 
     # State data has some hospital and cases time series.
     states_timeseries = {
-        region_il: {
-            CommonFields.CURRENT_HOSPITALIZED: [5, 5],
-            CommonFields.CASES: [1, 2],
-        },
-        region_tx: {
-            CommonFields.CURRENT_HOSPITALIZED: [7, 7],
-            CommonFields.CASES: [0, 3],
-        },
+        region_il: {CommonFields.CURRENT_HOSPITALIZED: [5, 5], CommonFields.CASES: [1, 2],},
+        region_tx: {CommonFields.CURRENT_HOSPITALIZED: [7, 7], CommonFields.CASES: [0, 3],},
     }
     states_static = {
         r: {CommonFields.POPULATION: 100, CommonFields.STAFFED_BEDS: 10, CommonFields.ICU_BEDS: 2}
@@ -129,10 +123,7 @@ def test_aggregate_to_country():
     us_timeseries_in = {CommonFields.CASES: [2, 6]}
 
     ds_in = test_helpers.build_dataset(
-        {
-            **states_timeseries,
-            region_us: us_timeseries_in,
-        },
+        {**states_timeseries, region_us: us_timeseries_in,},
         static_by_region_then_field_name=states_static,
     )
 
@@ -145,10 +136,7 @@ def test_aggregate_to_country():
     ds_expected = test_helpers.build_dataset(
         {
             **states_timeseries,
-            region_us: {
-                **us_timeseries_in,
-                CommonFields.CURRENT_HOSPITALIZED: [12, 12],
-            },
+            region_us: {**us_timeseries_in, CommonFields.CURRENT_HOSPITALIZED: [12, 12],},
         },
         static_by_region_then_field_name={
             **states_static,
