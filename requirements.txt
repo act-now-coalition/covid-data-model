@@ -66,7 +66,7 @@ oauthlib==3.2.2
 openapi-schema-pydantic==1.1.0
 packaging==23.2
 pandarallel==1.6.5
-pandas==2.0.3
+pandas==1.5.3
 parso==0.8.3
 pathspec==0.11.2
 patsy==0.5.4
@@ -117,7 +117,7 @@ tomli==2.0.1
 tomlkit==0.12.3
 traitlets==5.14.0
 typed-ast==1.5.5
-typing_extensions==3.7.4.3
+typing-extensions==3.7.4.3
 tzdata==2023.3
 ujson==5.8.0
 urllib3==2.0.7
