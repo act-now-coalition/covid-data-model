@@ -348,8 +348,7 @@ def test_default_positivity_methods():
 
     expected_as = {
         CommonFields.TEST_POSITIVITY: TimeseriesLiteral(
-            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-            provenance="src1",
+            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], provenance="src1",
         )
     }
     expected_tx = {
@@ -358,8 +357,7 @@ def test_default_positivity_methods():
         )
     }
     expected_positivity = test_helpers.build_dataset(
-        {region_as: expected_as, region_tx: expected_tx},
-        start_date="2020-04-02",
+        {region_as: expected_as, region_tx: expected_tx}, start_date="2020-04-02",
     )
     test_helpers.assert_dataset_like(all_methods.test_positivity, expected_positivity)
 
