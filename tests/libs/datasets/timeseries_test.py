@@ -3,6 +3,7 @@ import datetime
 import io
 import pathlib
 import pickle
+import warnings
 
 import pytest
 import pandas as pd
@@ -33,6 +34,10 @@ from tests.test_helpers import TimeseriesLiteral
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
+
+@pytest.fixture(autouse=True)
+def ignore_future_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
 
 
 def _make_dataset_pointer(tmpdir, filename: str = "somefile.csv") -> dataset_pointer.DatasetPointer:
