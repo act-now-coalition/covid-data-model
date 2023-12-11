@@ -21,6 +21,7 @@ import numpy as np
 @pytest.fixture(autouse=True)
 def ignore_future_warnings():
     warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 def test_make_from_dataset():

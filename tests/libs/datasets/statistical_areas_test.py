@@ -19,6 +19,7 @@ pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsW
 @pytest.fixture(autouse=True)
 def ignore_future_warnings():
     warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 def test_load_from_local_public_data():

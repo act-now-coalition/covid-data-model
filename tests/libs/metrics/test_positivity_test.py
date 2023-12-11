@@ -31,6 +31,7 @@ pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsW
 @pytest.fixture(autouse=True)
 def ignore_future_warnings():
     warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 def _parse_wide_dates(csv_str: str) -> pd.DataFrame:

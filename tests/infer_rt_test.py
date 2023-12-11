@@ -1,4 +1,5 @@
 import pathlib
+import warnings
 
 import pytest
 import pandas as pd
@@ -20,6 +21,12 @@ from tests.mocks.inference.load_data import RateChange
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
+
+# NOTE (sean 2023-12-10): Ignore FutureWarnings due to pandas MultiIndex .loc deprecations.
+@pytest.fixture(autouse=True)
+def ignore_future_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 """

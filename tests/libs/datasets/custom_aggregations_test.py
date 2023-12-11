@@ -17,6 +17,7 @@ from tests import test_helpers
 @pytest.fixture(autouse=True)
 def ignore_future_warnings():
     warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 @pytest.mark.slow
