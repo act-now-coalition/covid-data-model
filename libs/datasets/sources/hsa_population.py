@@ -59,7 +59,6 @@ class HSAPopulation(data_source.DataSource):
             .sum()
             .reset_index()
             .rename(columns={CommonFields.POPULATION: CommonFields.HSA_POPULATION})
-            .drop(columns=[CommonFields.LOCATION_ID])
         )
         counties: pd.DataFrame = counties.merge(hsas, on=CommonFields.HSA)
 

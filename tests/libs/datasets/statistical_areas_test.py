@@ -17,7 +17,7 @@ pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsW
 
 # NOTE (sean 2023-12-10): Ignore FutureWarnings due to pandas MultiIndex .loc deprecations.
 @pytest.fixture(autouse=True)
-def ignore_future_warnings():
+def ignore_dependency_warnings():
     warnings.simplefilter("ignore", category=FutureWarning)
     warnings.simplefilter("ignore", category=DeprecationWarning)
 
