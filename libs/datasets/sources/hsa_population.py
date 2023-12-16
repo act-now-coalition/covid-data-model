@@ -60,10 +60,9 @@ class HSAPopulation(data_source.DataSource):
             .reset_index()
             .rename(columns={CommonFields.POPULATION: CommonFields.HSA_POPULATION})
         )
-        counties: pd.DataFrame = counties.merge(hsas, on=CommonFields.HSA)
+        counties = counties.merge(hsas, on=CommonFields.HSA)
 
         # Get county and HSA FIPS from location IDs
-        print(counties.columns)
         counties[CommonFields.FIPS] = counties[CommonFields.LOCATION_ID].map(
             lambda loc: Region.from_location_id(loc).fips
         )

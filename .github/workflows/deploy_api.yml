@@ -95,13 +95,6 @@ jobs:
           ${{ runner.os }}-pip-
           ${{ runner.os }}-
 
-    # If you don't manually install the correct version of numpy before
-    # installing modules from requirements.txt, fastparquet may try to install a
-    # newer version of numpy that requires python 3.8 (but we use 3.7).
-    # See https://github.com/dask/fastparquet/issues/632#issuecomment-877871388
-    # - run: pip install numpy==1.21.4
-    #   working-directory: ./covid-data-model
-
     - name: Install Dependencies
       working-directory: ./covid-data-model
       run: pip install -r requirements.txt
