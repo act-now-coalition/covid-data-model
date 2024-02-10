@@ -1,8 +1,8 @@
-sentry-sdk==0.18.0
-pydantic==1.6.2
+sentry-sdk==1.38.0
+pydantic==1.7.3
 python-dotenv==0.14.0
-chardet==3.0.4
-urllib3==1.25.10
-requests==2.24.0
+chardet==5.2.0
+urllib3==2.0.7
+requests==2.31.0
 boto3 #no-deploy
 botocore #no-deploy

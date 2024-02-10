@@ -18,7 +18,7 @@ defaults:
     working-directory: api/awsauth/
 
 env:
-  COVID_DATA_MODEL_REF: 'smcclure17/deps'
+  COVID_DATA_MODEL_REF: ${{ github.head_ref }}
 
 jobs:
 
@@ -60,7 +60,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v2
+      with:
+        ref: '${{env.COVID_DATA_MODEL_REF}}'
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
@@ -80,7 +82,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
+      with:
+        ref: '${{env.COVID_DATA_MODEL_REF}}'
     - uses: actions/setup-node@v1
       with:
         node-version: '12.x'
