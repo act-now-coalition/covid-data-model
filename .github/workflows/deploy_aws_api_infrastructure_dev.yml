@@ -17,6 +17,9 @@ defaults:
   run:
     working-directory: api/awsauth/
 
+env:
+  COVID_DATA_MODEL_REF: 'smcclure17/deps'
+
 jobs:
 
   DeployDev:
@@ -26,7 +29,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
       with:
-        ref: ${{ github.head_ref }}
+        ref: ${{ env.COVID_DATA_MODEL_REF }}
     - uses: actions/setup-node@v1
       with:
         node-version: '12.x'
