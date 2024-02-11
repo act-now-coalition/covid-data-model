@@ -1,13 +1,13 @@
 from typing import Dict, Optional
-import uuid
-import dataclasses
+from uuid import uuid4
+from dataclasses import dataclass
 import urllib.parse
-import datetime
-import base64
+from datetime import datetime
+from base64 import b64decode
 import os
 import re
 import json
-import pathlib
+from pathlib import Path
 import logging
 
 from awsauth import ses_client
@@ -19,7 +19,7 @@ from awsauth import hubspot_client
 
 
 IS_LAMBDA = os.getenv("LAMBDA_TASK_ROOT")
-WELCOME_EMAIL_PATH = pathlib.Path(__file__).parent / "welcome_email.html"
+WELCOME_EMAIL_PATH = Path(__file__).parent / "welcome_email.html"
 os.environ["AWS_REGION"] = "us-east-1"
 
 
@@ -55,7 +55,7 @@ class InvalidInputError(Exception):
     """Error raised on invalid input for registration form parameters."""
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclass(frozen=True)
 class RegistrationArguments:
 
     email: str
@@ -121,7 +121,7 @@ def _build_welcome_email(to_email: str, api_key: str) -> ses_client.EmailData:
 
 
 def _create_api_key() -> str:
-    return uuid.uuid4().hex
+    return uuid4().hex
 
 
 def _get_api_key(email: str, is_crs_user: bool) -> Optional[str]:
@@ -163,7 +163,7 @@ def _create_new_user(args: RegistrationArguments) -> str:
 
 def _record_successful_request(request: dict, record: dict):
     data = {
-        "timestamp": datetime.datetime.utcnow().isoformat().replace("T", " "),
+        "timestamp": datetime.utcnow().isoformat().replace("T", " "),
         "email": record["email"],
         "path": request["uri"],
         "ip": request["clientIp"],
@@ -231,7 +231,7 @@ def register_edge(event, context):
 
     # Data can either be 'text' or 'base64'. If 'base64' decode data.
     if request["body"]["encoding"] == "base64":
-        data = base64.b64decode(data)
+        data = b64decode(data)
 
     data = json.loads(data)
 
