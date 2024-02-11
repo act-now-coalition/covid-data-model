@@ -10,9 +10,6 @@ import json
 import pathlib
 import logging
 
-import sentry_sdk
-from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
-
 from awsauth import ses_client
 from awsauth.api_key_repo import APIKeyRepo
 from awsauth.email_repo import EmailRepo
@@ -47,14 +44,6 @@ CORS_OPTIONS_HEADERS = {
 def init():
     Config.init()
     registry.initialize()
-
-    sentry_sdk.init(
-        dsn=Config.Constants.SENTRY_DSN,
-        environment=Config.Constants.SENTRY_ENVIRONMENT,
-        integrations=[AwsLambdaIntegration()],
-        # We don't care about performance traces and they use up our transaction quota.
-        traces_sample_rate=0,
-    )
 
 
 if IS_LAMBDA:
@@ -169,8 +158,6 @@ def _create_new_user(args: RegistrationArguments) -> str:
         )
     except hubspot_client.HubSpotAPICallFailed:
         _logger.error("HubSpot call failed")
-        sentry_sdk.capture_exception()
-
     return api_key
 
 
