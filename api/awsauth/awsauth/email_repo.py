@@ -1,6 +1,9 @@
-import sentry_sdk
+import logging
+
 from awsauth import ses_client
 from awsauth.the_registry import registry
+
+logger = logging.getLogger(__name__)
 
 
 class EmailRepo:
@@ -18,5 +21,5 @@ class EmailRepo:
             client.send_email(email)
             return True
         except Exception:
-            sentry_sdk.capture_exception()
+            logger.exception("Failed to send email")
             return False
