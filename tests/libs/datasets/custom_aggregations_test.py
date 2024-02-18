@@ -1,4 +1,5 @@
 import dataclasses
+import warnings
 import pytest
 import structlog
 from datapublic.common_fields import CommonFields
@@ -10,6 +11,13 @@ from libs.datasets import combined_datasets
 from libs.datasets import custom_aggregations
 from libs.pipeline import Region
 from tests import test_helpers
+
+
+# NOTE (sean 2023-12-10): Ignore FutureWarnings due to pandas MultiIndex .loc deprecations.
+@pytest.fixture(autouse=True)
+def ignore_dependency_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 @pytest.mark.slow

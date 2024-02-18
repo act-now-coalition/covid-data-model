@@ -1,3 +1,5 @@
+import warnings
+import pytest
 from datapublic.common_fields import CommonFields
 from datapublic.common_fields import DemographicBucket
 from datapublic.common_fields import FieldGroup
@@ -14,6 +16,12 @@ from tests import test_helpers
 from tests.test_helpers import TimeseriesLiteral
 import pandas as pd
 import numpy as np
+
+# NOTE (sean 2023-12-10): Ignore FutureWarnings due to pandas MultiIndex .loc deprecations.
+@pytest.fixture(autouse=True)
+def ignore_dependency_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 def test_make_from_dataset():

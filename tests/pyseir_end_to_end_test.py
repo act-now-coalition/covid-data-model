@@ -15,7 +15,10 @@ import pytest
 # Suppressing Matplotlib RuntimeWarning for Figure Gen Count right now. The regex for message isn't
 # (https://stackoverflow.com/questions/27476642/matplotlib-get-rid-of-max-open-warning-output)
 @pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
-@pytest.mark.slow
+@pytest.mark.skip(
+    "Sean McClure: Pyseir no longer supported/used. KeyError due to empty dataframe"
+    "Empty Dataframe due to loading live data that no longer has up-to-date cases data.",
+)
 def test_pyseir_end_to_end_california(tmp_path):
     # This covers a lot of edge cases.
     with unittest.mock.patch("pyseir.utils.OUTPUT_DIR", str(tmp_path)):
@@ -35,7 +38,10 @@ def test_pyseir_end_to_end_california(tmp_path):
 
 
 @pytest.mark.filterwarnings("error", "ignore::RuntimeWarning")
-@pytest.mark.slow
+@pytest.mark.skip(
+    "Sean McClure: Pyseir no longer supported/used. KeyError due to empty dataframe"
+    "Empty Dataframe due to loading live data that no longer has up-to-date cases data.",
+)
 def test_pyseir_end_to_end_dc(tmp_path):
     # Runs over a single state which tests state filtering + running over more than
     # a single fips.

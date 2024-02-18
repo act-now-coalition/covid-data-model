@@ -1,14 +1,15 @@
 # Requirements file containing packages needed for testing.
 # These should *not* be installed in non-test environments.
 
-pytest==6.2.1
+pytest==6.2.5
 pytest-pylint==0.17.0
 pytest-xdist==1.34.0
 pytest-mock >= 1.10.4
 black==19.10b0
 nbstripout==0.3.7
-pylint==2.5.2
+pylint==2.15.2
 pre-commit==2.6.0
 identify==1.4.23
 temppathlib==1.0.3
 freezegun==1.0.0
+typing-extensions==3.7.4.3  # Pinning here as well as requirements.txt to ensure this version is used

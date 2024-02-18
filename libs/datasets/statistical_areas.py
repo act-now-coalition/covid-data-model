@@ -71,7 +71,6 @@ class CountyToCBSAAggregator:
         df = pd.read_excel(
             dataset_utils.REPO_ROOT / CBSA_LIST_PATH,
             header=2,
-            convert_float=False,
             dtype={"FIPS State Code": str, "FIPS County Code": str},
         )
         df[CommonFields.FIPS] = df["FIPS State Code"] + df["FIPS County Code"]

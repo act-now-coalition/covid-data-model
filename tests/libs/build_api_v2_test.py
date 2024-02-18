@@ -228,6 +228,9 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset):
     )
 
     # Test vaccination fields aren't in before start date
+    # Pylint throws a false positive here, the actualsTimeseries is an iterable
+    # Not clear why pylint thinks it's not, as it's type is List[ActualsTimeseriesRow]
+    # pylint: disable=not-an-iterable
     for actuals_row in region_timeseries.actualsTimeseries:
         row_data = actuals_row.dict(exclude_unset=True)
         if actuals_row.date < build_api_v2.USA_VACCINATION_START_DATE.date():
@@ -236,6 +239,9 @@ def test_generate_timeseries_for_fips(nyc_region, nyc_rt_dataset):
             assert "vaccinationsInitiated" in row_data
 
     # Test vaccination fields aren't in before start date
+    # Pylint throws a false positive here, the metricsTimeseries is an iterable
+    # Not clear why pylint thinks it's not, as it's type is List[MetricsTimeseriesRow]
+    # pylint: disable=not-an-iterable
     for row in region_timeseries.metricsTimeseries:
         row_data = row.dict(exclude_unset=True)
         if row.date < build_api_v2.USA_VACCINATION_START_DATE.date():

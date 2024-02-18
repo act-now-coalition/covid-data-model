@@ -13,16 +13,16 @@ git-lfs must be installed to checkout a copy of `covid-data-model`.
     ```
 If you clone the repo before installing git-lfs run `git lfs pull`[*](https://github.com/git-lfs/git-lfs/issues/325#issuecomment-149713215) to fetch the large data files.
 
-## Install Python 3.7 in a Virtualenv
+## Install Python 3.10 in a Virtualenv
 
-You can use conda or pyenv.  Note that if you're using Apple Silicon (an M1 Mac), you may have better luck using anaconda. Either way you need to set up a python `3.7.7` environment.
+You can use conda or pyenv.  Note that if you're using Apple Silicon (an M1 Mac), you may have better luck using anaconda. Either way you need to set up a python `3.10` environment. On Mac Silicon (M1/M2 chips) Python `3.10.13` may be specifically required.
 
 ### Conda
-You can install miniconda python 3.7 from here
+You can install miniconda python 3.10 from here
 [https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
 
 Then use the following:
-- `conda create python=3.7 -n covid-data-model`
+- `conda create python=3.10 -n covid-data-model`
 - `conda activate covid-data-model`
 
 ### pyenv
@@ -41,14 +41,14 @@ Then use the following:
 2. Install specified python version.
 
   ```
-  $ pyenv install 3.7.7
+  $ pyenv install 3.10
   ```
 
 3. Create virtualenv
 
   This example uses `covid-data-model` as the name of the virtualenv
   ```
-  pyenv virtualenv 3.7.7 covid-data-model
+  pyenv virtualenv 3.10 covid-data-model
   ```
 
   Optional: Add a `.python-version` file with the name of your virtualenv to the `covid-data-model/` root.

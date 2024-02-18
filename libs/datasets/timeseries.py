@@ -28,7 +28,6 @@ from datapublic.common_fields import CommonFields
 from datapublic.common_fields import DemographicBucket
 from datapublic.common_fields import FieldName
 from datapublic.common_fields import PdFields
-from pandas.core.generic import FrameOrSeries
 from pandas.core.dtypes.common import is_numeric_dtype
 from pandas.core.dtypes.common import is_bool_dtype
 from typing_extensions import final
@@ -335,7 +334,9 @@ def _add_aggregate_level_if_missing(df: pd.DataFrame):
         )
 
 
-def _add_distribution_level(frame_or_series: FrameOrSeries) -> FrameOrSeries:
+def _add_distribution_level(
+    frame_or_series: Union[pd.DataFrame, pd.Series]
+) -> Union[pd.DataFrame, pd.Series]:
     # Assigning to `index` avoids reindexing done by constructor `pd.DataFrame(df, index=...)`.
     frame_or_series = frame_or_series.copy()
     index_as_df = frame_or_series.index.to_frame()
@@ -570,7 +571,7 @@ class MultiRegionDataset:
     @cached_property
     def timeseries(self) -> pd.DataFrame:
         """Timeseries metrics with float values. Each timeseries is identified by a variable name
-       and region"""
+        and region"""
         try:
             return self.timeseries_bucketed.xs("all", level=PdFields.DEMOGRAPHIC_BUCKET, axis=0)
         except KeyError:
@@ -1091,10 +1092,8 @@ class MultiRegionDataset:
         # Sort by index fields, and within rows having identical index fields, by content. This
         # makes the order of values in combined_series identical, independent of the order they
         # were appended.
-        combined_df = (
-            self.tag.reset_index()
-            .append(additional_tag_df)
-            .sort_values(_TAG_INDEX_FIELDS + [TagField.CONTENT])
+        combined_df = pd.concat([self.tag.reset_index(), additional_tag_df]).sort_values(
+            _TAG_INDEX_FIELDS + [TagField.CONTENT]
         )
         combined_series = combined_df.set_index(_TAG_INDEX_FIELDS)[TagField.CONTENT]
         return dataclasses.replace(self, tag=combined_series)
@@ -1743,9 +1742,12 @@ class MultiRegionDatasetDiff:
         `old` and no real values (all NA) in `new`. Changes in the set of dates with a real value
         and changes in the values themselves are ignored.
         """
+
         # removed is currently calculated when accessed but it may make sense to move this to
         # `make` depending on future uses of MultiRegionDatasetDiff.
-        def removed(old: FrameOrSeries, new: FrameOrSeries) -> FrameOrSeries:
+        def removed(
+            old: Union[pd.DataFrame, pd.Series], new: Union[pd.DataFrame, pd.Series]
+        ) -> Union[pd.DataFrame, pd.Series]:
             removed_mask = ~old.index.isin(new.index)
             return old.loc[removed_mask]
 
