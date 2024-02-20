@@ -1,6 +1,6 @@
 pydantic==1.6.2
 python-dotenv==0.21.1
-urllib3==1.25.10
+urllib3==1.26.18
 requests==2.31.0
 boto3 #no-deploy
 botocore #no-deploy
