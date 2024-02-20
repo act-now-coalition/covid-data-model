@@ -262,7 +262,7 @@ class CanScraperLoader:
         provider_mask = self.all_df[Fields.PROVIDER] == provider_name
         counts = self.all_df.loc[provider_mask, Fields.VARIABLE_NAME].value_counts()
         variables_by_name = {var.variable_name: var for var in variables}
-        for variable_name, count in counts.iteritems():
+        for variable_name, count in counts.items():
             if variable_name not in variables_by_name:
                 _logger.info(
                     "Upstream has variable not in variables list",

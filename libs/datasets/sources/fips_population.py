@@ -62,7 +62,7 @@ class FIPSPopulation(data_source.DataSource):
             }
             unknown_fips.append(row)
 
-        data = data.append(unknown_fips)
+        data = pd.concat([data, pd.DataFrame.from_records(unknown_fips)])
         # All DH data is aggregated at the county level
         data[cls.Fields.AGGREGATE_LEVEL] = AggregationLevel.COUNTY.value
         data[cls.Fields.COUNTRY] = "USA"

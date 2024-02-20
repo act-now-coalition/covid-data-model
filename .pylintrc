@@ -5,9 +5,6 @@
 ignored-modules=pydantic
 ignore=src
 
-
-[MESSAGES CONTROL]
-
 # The following options disable all errors and only enable ones we want to track.
 disable=all
 
@@ -15,3 +12,10 @@ disable=all
 enable=E,
        F,
        unused-import
+
+[MESSAGES CONTROL]
+# Pandas threw a lot of false positives relating to , so we disable them here.
+# E1136: unsubscriptable-object (E.g. df['col'] would throw, despite being valid)
+# E1137: unsupported-assignment-operation (E.g. df['col'] = 1 would throw)
+# Seemingly related to https://github.com/pylint-dev/pylint/issues/6942
+disable=E1136,E1137

@@ -3,6 +3,7 @@ import datetime
 import io
 import pathlib
 import pickle
+import warnings
 
 import pytest
 import pandas as pd
@@ -33,6 +34,13 @@ from tests.test_helpers import TimeseriesLiteral
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
+
+
+# NOTE (sean 2023-12-10): Ignore FutureWarnings due to pandas MultiIndex .loc deprecations.
+@pytest.fixture(autouse=True)
+def ignore_dependency_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 def _make_dataset_pointer(tmpdir, filename: str = "somefile.csv") -> dataset_pointer.DatasetPointer:
@@ -872,6 +880,7 @@ def test_timeseries_latest_values():
     expected = pd.read_csv(
         io.StringIO("location_id,m1,m2\n" "iso1:us#cbsa:10100,10,1\n" "iso1:us#fips:97111,4,\n")
     )
+    expected.columns.name = PdFields.VARIABLE
     latest_from_timeseries = dataset._timeseries_latest_values().reset_index()
     pd.testing.assert_frame_equal(
         latest_from_timeseries, expected, check_like=True, check_dtype=False

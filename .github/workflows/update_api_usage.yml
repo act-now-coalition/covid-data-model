@@ -51,16 +51,10 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.7.6'
+        python-version: '3.10'
 
-    # If you don't manually install the correct version of numpy before
-    # installing modules from requirements.txt, fastparquet may try to install a
-    # newer version of numpy that requires python 3.8 (but we use 3.7).
-    # See https://github.com/dask/fastparquet/issues/632#issuecomment-877871388
     - name: Install Dependencies
       run: |
-        pip install pip==21.3.1
-        pip install numpy==1.21.4
         pip install -r requirements.txt
       working-directory: ./covid-data-model    
 

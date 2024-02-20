@@ -1,4 +1,5 @@
 import dataclasses
+import warnings
 
 import pytest
 import pandas as pd
@@ -10,6 +11,21 @@ from libs.datasets.timeseries import MultiRegionDataset
 from libs.pipeline import Region
 from tests.dataset_utils_test import read_csv_and_index_fips_date
 from tests import test_helpers
+
+# NOTE: (Sean 2023-12-10): ExtraColumnWarning previously only raised a warning
+# but would not fail the test. I'm Assuming a warning is the expected
+# behavior and am allowing the warning to be raised without failing the test.
+pytestmark = pytest.mark.filterwarnings(
+    "error",
+    "ignore::libs.pipeline.BadFipsWarning",
+    "ignore::libs.datasets.timeseries.ExtraColumnWarning",
+)
+
+# NOTE (sean 2023-12-10): Ignore FutureWarnings due to pandas MultiIndex .loc deprecations.
+@pytest.fixture(autouse=True)
+def ignore_dependency_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 def test_load_from_local_public_data():

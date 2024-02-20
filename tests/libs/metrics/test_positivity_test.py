@@ -1,6 +1,7 @@
 import dataclasses
 import io
 from typing import List
+import warnings
 
 import pandas as pd
 import pytest
@@ -24,6 +25,13 @@ from libs.pipeline import Region
 
 # turns all warnings into errors for this module
 pytestmark = pytest.mark.filterwarnings("error", "ignore::libs.pipeline.BadFipsWarning")
+
+
+# NOTE (sean 2023-12-10): Ignore FutureWarnings due to pandas MultiIndex .loc deprecations.
+@pytest.fixture(autouse=True)
+def ignore_dependency_warnings():
+    warnings.simplefilter("ignore", category=FutureWarning)
+    warnings.simplefilter("ignore", category=DeprecationWarning)
 
 
 def _parse_wide_dates(csv_str: str) -> pd.DataFrame:
