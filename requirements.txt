@@ -37,7 +37,7 @@ google-auth==2.24.0
 google-auth-oauthlib==1.1.0
 gspread==5.12.1
 gspread-formatting==1.1.2
-idna==3.6
+idna==3.7
 iminuit==2.24.0
 iniconfig==2.0.0
 ipython==8.18.1
