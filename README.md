@@ -1,3 +1,6 @@
+> [!CAUTION]
+> This page is no longer being updated due to a lack of reliable data. While we continue to surface this content for archival purposes, we recommend that you visit more regularly updated resources, such as from the [CDC](https://www.cdc.gov/coronavirus/2019-ncov/index.html).
+
 # COVID-19 Data Pipeline
 
 COVID data pipeline / API supporting https://covidactnow.org/.
