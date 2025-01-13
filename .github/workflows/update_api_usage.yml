@@ -1,9 +1,7 @@
 name: Update API User Usage
 
 on:
-  schedule:
-     # Run every 4 hours at the top of the hour
-   - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 env:
   # !!! Change this to your BRANCH if you want to test it
