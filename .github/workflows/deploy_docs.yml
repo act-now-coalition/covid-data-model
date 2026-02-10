@@ -16,6 +16,8 @@ jobs:
         working-directory: api/docs
       - run: yarn build
         working-directory: api/docs
+        env:
+          NODE_OPTIONS: '--openssl-legacy-provider'
       - uses: jakejarvis/s3-sync-action@master
         with:
           # We don't pass --delete so outdated assets will continue to be served. This ensures browsers with
