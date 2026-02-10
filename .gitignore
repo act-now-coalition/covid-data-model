@@ -145,3 +145,4 @@ pyseir_data/
 pyseir_output/
 
 output/
+api/awsauth/tools/deprecation_emails_sent.json

@@ -20,6 +20,11 @@ module.exports = {
   organizationName: "act-now-coalition", // Usually your GitHub org/user name.
   projectName: "covid-data-model", // Usually your repo name.
   themeConfig: {
+    announcementBar: {
+      id: 'eol_notice',
+      content: 'The Covid Act Now API is being deprecated. API access will be turned off on March 11, 2026. <a href="/">Learn more</a>.',
+      isCloseable: false,
+    },
     googleAnalytics: {
       trackingID: "UA-160622988-1",
     },

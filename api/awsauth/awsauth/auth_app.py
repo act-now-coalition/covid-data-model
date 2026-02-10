@@ -27,6 +27,17 @@ _logger = logging.getLogger(__name__)
 
 FIREHOSE_CLIENT = None
 
+# Set to None to keep API running, or a date string (YYYY-MM-DD) to shut down
+# after that date. When set, all API requests will receive a deprecation message
+# instead of being forwarded to the S3 backend.
+API_SHUTDOWN_DATE = None  # e.g. "2026-03-11"
+
+API_SHUTDOWN_MESSAGE = (
+    "The Covid Act Now API has been permanently shut down. "
+    "Data snapshots are no longer being updated and the API is no longer serving requests. "
+    "If you need assistance, please reach out to api@covidactnow.org."
+)
+
 # Headers needed to return for CORS OPTIONS request
 CORS_OPTIONS_HEADERS = {
     "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
@@ -189,6 +200,10 @@ def _make_error_message(message: str, status: int = 403) -> Dict:
 
 
 def check_api_key_edge(event, context):
+    # If a shutdown date is set and we've passed it, reject all requests immediately.
+    if API_SHUTDOWN_DATE and datetime.date.today() >= datetime.date.fromisoformat(API_SHUTDOWN_DATE):
+        return _make_error_message(API_SHUTDOWN_MESSAGE)
+
     request = event["Records"][0]["cf"]["request"]
 
     query_parameters = urllib.parse.parse_qs(request["querystring"])
