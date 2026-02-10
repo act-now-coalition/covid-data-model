@@ -37,7 +37,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 _logger = logging.getLogger(__name__)
 
-DEPRECATION_EMAIL_PATH = pathlib.Path(__file__).resolve().parent.parent / "awsauth" / "deprecation_email.html"
+DEPRECATION_EMAIL_PATH = (
+    pathlib.Path(__file__).resolve().parent.parent / "awsauth" / "deprecation_email.html"
+)
 SENT_LOG_PATH = pathlib.Path(__file__).resolve().parent / "deprecation_emails_sent.json"
 
 # SES has a sending rate limit (typically 14 emails/sec for production accounts).
@@ -140,6 +142,7 @@ def main():
     else:
         # DynamoDB scan mode: need .env for table name and config
         from awsauth.config import Config
+
         Config.init()
         table_name = Config.Constants.API_KEY_TABLE_NAME
         region = Config.Constants.AWS_REGION

@@ -201,7 +201,9 @@ def _make_error_message(message: str, status: int = 403) -> Dict:
 
 def check_api_key_edge(event, context):
     # If a shutdown date is set and we've passed it, reject all requests immediately.
-    if API_SHUTDOWN_DATE and datetime.date.today() >= datetime.date.fromisoformat(API_SHUTDOWN_DATE):
+    if API_SHUTDOWN_DATE and datetime.date.today() >= datetime.date.fromisoformat(
+        API_SHUTDOWN_DATE
+    ):
         return _make_error_message(API_SHUTDOWN_MESSAGE)
 
     request = event["Records"][0]["cf"]["request"]
