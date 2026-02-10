@@ -35,11 +35,11 @@ env:
 
 jobs:
   update-and-promote-datasets:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
 
     - name: Checkout covid-data-model
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: act-now-coalition/covid-data-model
         path: covid-data-model
