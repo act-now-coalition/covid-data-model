@@ -13,6 +13,6 @@ import sys
 import types
 
 try:
-    import api  # noqa: F401  – succeeds when full deps are installed
+    import api  # pylint: disable=unused-import
 except (ImportError, ModuleNotFoundError):
     sys.modules.setdefault("api", types.ModuleType("api"))
