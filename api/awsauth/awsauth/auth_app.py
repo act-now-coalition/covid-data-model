@@ -30,7 +30,7 @@ FIREHOSE_CLIENT = None
 # Set to None to keep API running, or a date string (YYYY-MM-DD) to shut down
 # after that date. When set, all API requests will receive a deprecation message
 # instead of being forwarded to the S3 backend.
-API_SHUTDOWN_DATE = None  # e.g. "2026-03-11"
+API_SHUTDOWN_DATE = "2026-03-11"
 
 API_SHUTDOWN_MESSAGE = (
     "The Covid Act Now API has been permanently shut down. "
@@ -216,16 +216,22 @@ def check_api_key_edge(event, context):
 
     if not api_key:
         return _make_error_message(
-            "API key required. Visit https://apidocs.covidactnow.org/#register to get an API key"
+            "API key required. The Covid Act Now API is no longer accepting new registrations. "
+            "If you need assistance, please reach out to api@covidactnow.org."
         )
 
     record = APIKeyRepo.get_record_for_api_key(api_key)
     if not record:
-        return _make_error_message("Invalid API key.")
+        return _make_error_message(
+            "Invalid API key. The Covid Act Now API is no longer accepting new registrations. "
+            "If you need assistance, please reach out to api@covidactnow.org."
+        )
 
     if record["email"] in Config.Constants.EMAIL_BLOCKLIST:
-        error_message = "Unauthorized. Please contact api@covidactnow.org to restore access."
-        return _make_error_message(error_message)
+        return _make_error_message(
+            "Access has been suspended. "
+            "If you need assistance, please reach out to api@covidactnow.org."
+        )
 
     _record_successful_request(request, record)
 
@@ -236,44 +242,9 @@ def check_api_key_edge(event, context):
 def register_edge(event, context):
     """API Registration function used in Lambda@Edge cloudfront distribution.
 
-    Handles CORS for OPTIONS and POST requests.
+    Registration is permanently closed. All requests are rejected.
     """
-    # For more details on the structure of the event, see:
-    # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html#example-viewer-request
-    request = event["Records"][0]["cf"]["request"]
-
-    if request["method"] == "OPTIONS":
-        return {"status": 200, "headers": CORS_OPTIONS_HEADERS}
-
-    data = request["body"]["data"]
-
-    # Data can either be 'text' or 'base64'. If 'base64' decode data.
-    if request["body"]["encoding"] == "base64":
-        data = base64.b64decode(data)
-
-    data = json.loads(data)
-
-    # Headers needed for CORS.
-    headers = {
-        "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
-    }
-
-    try:
-        args = RegistrationArguments.make_from_json_body(data)
-    except InvalidInputError as exn:
-        return {"status": 400, "errorMessage": str(exn), "headers": headers}
-
-    api_key = _get_api_key(args.email, args.is_crs_user)
-
-    if api_key:
-        new_user = False
-    else:
-        api_key = _create_new_user(args)
-        new_user = True
-
-    body = {"api_key": api_key, "email": args.email, "new_user": new_user}
-
-    headers["content-type"] = [{"key": "Content-Type", "value": "application/json"}]
-    response = {"status": 200, "body": json.dumps(body), "headers": headers}
-
-    return response
+    return _make_error_message(
+        "The Covid Act Now API is no longer accepting new registrations. "
+        "If you need assistance, please reach out to api@covidactnow.org."
+    )
