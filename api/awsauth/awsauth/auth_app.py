@@ -227,7 +227,7 @@ def check_api_key_edge(event, context):
             "If you need assistance, please reach out to api@covidactnow.org."
         )
 
-    if record["email"] in Config.Constants.EMAIL_BLOCKLIST:
+    if record.get("blocked") or record["email"] in Config.Constants.EMAIL_BLOCKLIST:
         return _make_error_message(
             "Access has been suspended. "
             "If you need assistance, please reach out to api@covidactnow.org."
