@@ -1,14 +1,13 @@
 # (DEPRECATED) V0 API
 
-## :warning: API Deprecated
+## :warning: API Shut Down
 
-API V1 is now deprecated and will stop daily updates on *Monday, October 5th*.
+The Covid Act Now API (all versions) is being permanently shut down on **March 11, 2026**. Data snapshots have been frozen since May 2024.
 
-Please refer to the [documentation](https://apidocs.covidactnow.org) for the latest version of the API.
+- **V0/V1 (`data.covidactnow.org`):** Already shut down as of February 15, 2026. All requests return 403.
+- **V2 (`api.covidactnow.org`):** Active with existing API keys until March 11, 2026. Bulk county timeseries files are no longer available.
 
-For assistance migrating to V2, check out the [migration guide](https://apidocs.covidactnow.org/migration).
-
-If you have any questions, do not hesitate to reach out to <api@covidactnow.org>. Thanks!
+For data requests or questions, contact api@covidactnow.org.
 
 ## V0 Schema Overview
 

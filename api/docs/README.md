@@ -1,14 +1,13 @@
 ---
 **NOTE**
 
-Docs site is a work in progress.  For Current API Documentation, refer to
-[API V1 Docs](https://github.com/covid-projections/covid-data-model/blob/main/api/README.V1.md)
+The Covid Act Now API is being shut down on March 11, 2026. Data snapshots have been frozen since May 2024. For questions, contact api@covidactnow.org.
 
 ---
 
-# Website
+# API Docs Website
 
-This website is built using [Docusaurus 2](https://v2.docusaurus.io/), a modern static website generator.
+This website is built using [Docusaurus 2](https://v2.docusaurus.io/), a modern static website generator. It is deployed to [apidocs.covidactnow.org](https://apidocs.covidactnow.org).
 
 ### Installation
 

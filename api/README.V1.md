@@ -3,23 +3,23 @@
 <!--- Make changes in api/README.V1.tmpl.md and run `./run.py api update-schemas` --->
 # Covid Act Now API (V1)
 
-## :warning: API V1 Deprecated
+## :warning: API V1 Shut Down
 
-API V1 is now deprecated and will stop daily updates on *Monday, October 5th*.
+**API V1 (`data.covidactnow.org`) has been permanently shut down as of February 15, 2026.** All requests return a 403 error. Direct S3 access is also blocked.
 
-Please refer to the [documentation](https://apidocs.covidactnow.org) for the latest version of the API.
+Data snapshots have been frozen since May 2024. For data requests or questions, contact api@covidactnow.org.
 
-For assistance migrating to V2, check out the [migration guide](https://apidocs.covidactnow.org/migration).
+The remainder of this document is preserved for archival reference only.
 
-If you have any questions, do not hesitate to reach out to <api@covidactnow.org>. Thanks!
+---
 
-## Introduction
+## Introduction (Archived)
 
-The Covid Act Now API provides the same data that powers [CovidActNow.org](https://covidactnow.org) but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools. Read our [blog post](https://blog.covidactnow.org/covid-act-now-api-intervention-model/) annoucing the API for more context and background.
+The Covid Act Now API provided the same data that powered [CovidActNow.org](https://covidactnow.org) but in an easily digestible, machine readable format, intended for consumption by other COVID websites, models, and tools.
 
 ### Update frequency
 
-Data is updated every day, typically around midnight US Pacific Time.
+Data was updated daily. Data snapshots have been frozen since May 2024.
 
 ## Notable Changes
 * 7/16 - ``projections.Rt`` and ``projections.RtCI90`` now match the Rt in `timeseries.RtIndicator` and `timeseries.RtIndicatorCI90`.  This value now matches the Infection Rate shown on the website as opposed to a separate value inferred from our SEIR model.
