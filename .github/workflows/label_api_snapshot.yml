@@ -6,12 +6,24 @@
 #
 name: Label API Snapshot.
 
+# DISABLED 2026-02-15: All data files are frozen. Infrastructure is winding down.
+# This workflow copies S3 files and invalidates the entire CloudFront cache (/*),
+# which causes massive cache miss costs from scrapers.
+# To re-enable, restore the original triggers and review cost implications.
+#
+# Original triggers:
+#   workflow_dispatch:
+#     inputs:
+#       snapshot_id:
+#         description: 'The snapshot ID (e.g. 1234) to be labeled as "latest" and used by the API.'
+#         required: true
 on:
   workflow_dispatch:
     inputs:
-      snapshot_id:
-        description: 'The snapshot ID (e.g. 1234) to be labeled as "latest" and used by the API.'
+      _disabled:
+        description: 'This workflow is disabled. Do not run.'
         required: true
+        default: 'disabled'
 
 jobs:
   label-api-snapshot:

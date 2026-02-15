@@ -38,6 +38,14 @@ API_SHUTDOWN_MESSAGE = (
     "If you need assistance, please reach out to api@covidactnow.org."
 )
 
+# Bulk data files that are no longer available for download due to excessive
+# bandwidth costs from automated scraping. Users can contact us for a copy.
+BLOCKED_BULK_FILES = ["counties.timeseries.json", "counties.timeseries.csv"]
+BULK_FILE_MESSAGE = (
+    "This bulk data file is no longer available for download. "
+    "For a copy of this data, please contact api@covidactnow.org."
+)
+
 # Headers needed to return for CORS OPTIONS request
 CORS_OPTIONS_HEADERS = {
     "access-control-allow-origin": [{"key": "Access-Control-Allow-Origin", "value": "*"}],
@@ -207,6 +215,10 @@ def check_api_key_edge(event, context):
         return _make_error_message(API_SHUTDOWN_MESSAGE)
 
     request = event["Records"][0]["cf"]["request"]
+
+    # Block bulk file downloads before any further processing.
+    if any(blocked in request["uri"] for blocked in BLOCKED_BULK_FILES):
+        return _make_error_message(BULK_FILE_MESSAGE)
 
     query_parameters = urllib.parse.parse_qs(request["querystring"])
     # parse query parameter by taking first api key in query string arg.

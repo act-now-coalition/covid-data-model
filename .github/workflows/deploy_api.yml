@@ -1,15 +1,26 @@
 name: Build & Publish API snapshot to data.covidactnow.org
 
+# DISABLED 2026-02-15: All data files are frozen. Infrastructure is winding down.
+# This workflow uploads to S3 with --acl public-read which is a cost/security risk.
+# To re-enable, restore the original triggers and review cost implications.
+#
+# Original triggers:
+#   workflow_dispatch:
+#     inputs:
+#       sentry_environment:
+#         description: 'Sentry environment of build. Should be "production" on main build and "staging" for other branches.'
+#         required: true
+#       pyseir_snapshot:
+#         description: 'Optionally download an existing pyseir model artifact from a previous snapshot number instead of generating a new one.'
+#         required: false
+#         default: ""
 on:
   workflow_dispatch:
     inputs:
-      sentry_environment:
-        description: 'Sentry environment of build. Should be "production" on main build and "staging" for other branches.'
+      _disabled:
+        description: 'This workflow is disabled. Do not run.'
         required: true
-      pyseir_snapshot:
-        description: 'Optionally download an existing pyseir model artifact from a previous snapshot number instead of generating a new one.'
-        required: false
-        default: ""
+        default: 'disabled'
 
 env:
 

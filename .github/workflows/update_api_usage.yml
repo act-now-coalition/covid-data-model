@@ -1,7 +1,18 @@
 name: Update API User Usage
 
+# DISABLED 2026-02-15: All data files are frozen. Infrastructure is winding down.
+# No longer needed with upcoming API shutdown on 2026-03-11.
+# To re-enable, restore the original triggers and review cost implications.
+#
+# Original triggers:
+#   workflow_dispatch:
 on:
   workflow_dispatch:
+    inputs:
+      _disabled:
+        description: 'This workflow is disabled. Do not run.'
+        required: true
+        default: 'disabled'
 
 env:
   # !!! Change this to your BRANCH if you want to test it

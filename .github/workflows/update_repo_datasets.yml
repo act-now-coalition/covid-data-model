@@ -1,22 +1,26 @@
 name: Update combined datasets
 
-on:
-# 2023/01/17: We no longer have a run scheduled via github actions and instead rely on the prefect
-# scrapers to kick off a build after NYT updates each day.
-# https://github.com/covid-projections/can-scrapers/blob/643819f7a42d0ae227453b1de24a317a54c6cde8/services/prefect/flows/scheduled_nyt_and_parquet_updater.py#L37
+# DISABLED 2026-02-15: All data files are frozen. Infrastructure is winding down.
+# This workflow triggers the full data pipeline (deploy_api + label_api_snapshot).
+# To re-enable, restore the original triggers and review cost implications.
 #
-#  schedule:
-#    # Run job everyday at 5:00 am EST
-#    - cron: '0 10 * * *'
+# Original triggers:
+#   workflow_dispatch:
+#     inputs:
+#       trigger_api_build:
+#         description: 'If "true" API snapshot build will be triggered after dataset update.'
+#         default: 'true'
+#       refresh_datasets:
+#         description: 'Set to "false" to skip downloading / re-combining the latest datasets.'
+#         default: 'true'
+#   repository_dispatch:
+on:
   workflow_dispatch:
     inputs:
-      trigger_api_build:
-        description: 'If "true" API snapshot build will be triggered after dataset update.'
-        default: 'true'
-      refresh_datasets:
-        description: 'Set to "false" to skip downloading / re-combining the latest datasets.'
-        default: 'true'
-  repository_dispatch:
+      _disabled:
+        description: 'This workflow is disabled. Do not run.'
+        required: true
+        default: 'disabled'
 
 env:
 

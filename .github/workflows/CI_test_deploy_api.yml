@@ -5,16 +5,20 @@
 #the build and publish workflow
 name: CI Test Build API artifacts
 
+# DISABLED 2026-02-15: All data files are frozen. Infrastructure is winding down.
+# This workflow could be triggered via repository_dispatch.
+# To re-enable, restore the original triggers and review cost implications.
+#
+# Original triggers:
+#   repository_dispatch:
+#     types: ci-test-publish-api
 on:
-  # So we rebuild / publish the API at 01:30 and 16:30 UTC.
-  #schedule:
-  # - cron: '30 1,16 * * *'
-
-  # push:
-  # Hook to trigger a manual run.
-  # See: https://goobar.io/2019/12/07/manually-trigger-a-github-actions-workflow/
-  repository_dispatch:
-    types: ci-test-publish-api
+  workflow_dispatch:
+    inputs:
+      _disabled:
+        description: 'This workflow is disabled. Do not run.'
+        required: true
+        default: 'disabled'
 
 env:
   # !!! Change this to your BRANCH if you want to test it
